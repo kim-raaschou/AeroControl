@@ -76,57 +76,28 @@ in a row, focused element gets a light selection plate, no drawn borders.
 
 ---
 
-## 3. App version visible in the menu — DONE
+## 3. Dead-tile on window close — push fix (in progress)
 
-The menu-bar (status item) menu leads with a disabled row showing `AeroControl <version>`
-(from `ACReleaseVersion`, falling back to `v` + `CFBundleShortVersionString`, then `dev` when
-run unbundled via `swift run`), followed by a second disabled row `Compatible with AeroSpace ≥
-0.21.1`. Since `script/release.sh` stamps the version keys, the shipped app shows its real
-release version. `Sources/AeroControlEntry/QuitTriggerController.swift`.
+**Problem:** AeroSpace emits **no** window-closed event, so a background window closing
+without a focus change leaves a stale tile in the overview. Confirmed empirically: closing a
+background window produces *zero* `subscribe` events, yet `list-windows` drops it. AeroSpace
+stays the source of truth — the fix only needs a push "doorbell" → `requestRefresh()`.
+**No polling** (firm constraint).
 
----
+Two complementary tracks:
 
-## 4. Verification gates (hooks + CI) — DONE
-
-- `.githooks/pre-commit`: code-metrics guard (fast, every commit).
-- `.githooks/pre-push`: full `swift test` suite before every push.
-- `.github/workflows/ci.yml`: `macos-26` runner (Xcode 26.2) builds, tests and re-runs the
-  metrics guard on push/PR to `main` — the authoritative, non-bypassable backstop (local hooks
-  are per-clone and `--no-verify`-bypassable). README carries the CI status badge.
-
----
-
-## Considered but not planned (YAGNI)
-
-- **Split the AeroSpace CLI contract into its own `AerospaceClient` module.** The parser lives
-  in `Sources/Common/Aerospace/` and is already pinned by drift-guard contract tests; a new
-  module adds structure without removing code, against the current reduce-code ethos.
-- **`PrivateApi` C-shim for AX symbols.** No `@_silgen_name` private-symbol linkage remains in
-  the tree, so there is nothing to isolate.
-- **Startup AeroSpace version gate** (run `aerospace --version`, parse `v0.21.2-Beta`, block if
-  below the floor). Crew audit 2026-07-14 rejected it: a version *number* never proves the CLI
-  field/event contract is intact (false confidence), a genuinely-too-old AeroSpace that drops a
-  required field already fails loud on the initial load, and parsing AeroSpace's evolving
-  version string is permanent maintenance surface for a weak signal — poor value against the
-  ~50-line metrics headroom. Only pursue if real users hit confusing stale-HUD behavior.
-- **Loud event-stream / steady-state reload** (options B/C from the same audit). Deferred: the
-  silent paths are low-blast-radius (AeroSpace itself keeps working; the HUD merely goes stale),
-  and making reloads loud risks transient-error banner spam without a consecutive-failure guard.
-  Revisit only if stale-HUD confusion is observed in practice.
-
----
-
-## Retired plans (folded in or made obsolete)
-
-All removed from `docs/`; git history keeps the full text.
-
-| Retired doc | Why |
-|---|---|
-| `architecture-review-plan.md` | Done: `Common` purity, TEA completion, AppDelegate decomposition, Kit role-folders, and Swift-6 + `strictMemorySafety` all landed. |
-| `complexity-review-2026-07.md` | Its top items (runner rewrite, `initialFloatingSize` removal, `refreshTask` bug, CRLF→LF) are all done. |
-| `full-app-review-2026-07.md` | Layout-subsystem deletion, serialized refresh, small bug fixes and comment polish all landed. |
-| `code-review-simplification-plan.md` | Wins done or obsoleted; `GapConfig`-based items (S3/S11) reference removed code. |
-| `config-parameters-assessment.md` | Self-marked superseded by the all-floating model; most flags described no longer exist. |
-| `config-parameters-assessment-plan.md` | Meta-plan for the assessment above; its deliverable shipped. |
-| `floating-overview-plan.md` | Implemented (the current all-floating widget). |
-| `liquid-glass-rework-plan.md` | Implemented; the two surviving optional items are captured in §2. |
+- **Upstream event (done, PR open).** Added a native `window-closed` subscribe event to
+  AeroSpace, broadcast from the single removal point `MacWindow.garbageCollect()` (covers every
+  close path: close command, AX destruction, refresh reconciliation). PR to
+  `nikitabobko/AeroSpace`: **#2181** (branch `feature/window-closed-event` on the fork). Once
+  merged/released, AeroControl maps `window-closed` → `requestRefresh()` for full push coverage
+  — no permission, no polling.
+- **Local fix (chosen, pending) — works today against stock AeroSpace.**
+  - Permission-free `NSEvent.addGlobalMonitorForEvents(.leftMouseUp)` doorbell →
+    `requestRefresh()` (exactly what AeroSpace does internally). Covers closing a background
+    window with the mouse.
+  - One-shot ~150ms retry after `.appTerminated` for the app-quit race where AeroSpace hasn't
+    reaped the window yet (event-triggered, fires once — not polling).
+  - Files: `NativeApiBridge` (+adapter), `OverviewStore`, `OverviewStoreTests` (FakeBridge).
+  - Not covered by the local fix alone: keyboard-only (Cmd-W) close of a background window —
+    rare, self-corrects on the next event; fully covered once the upstream event lands.
