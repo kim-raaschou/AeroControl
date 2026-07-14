@@ -296,11 +296,15 @@ public class OverviewStore {
         refreshInFlight = true
         refreshTask = Task { [weak self] in
             guard let self else { return }
+            // Snapshot the windows we already show *before* the burst reloads. Dead-window
+            // suppression only prunes these — a window that first appears during the burst is
+            // trusted even if CGWindowList hasn't composited it yet (see suppressingDeadWindows).
+            let knownAtStart = Set(self.model.workspaces.flatMap(\.windows).map(\.windowId))
             while self.needsRefresh {
                 guard !Task.isCancelled else { break }
                 self.needsRefresh = false
                 guard let result = try? await loadOverview(using: self.runner) else { continue }
-                self.apply(.loaded(self.suppressingPendingCloses(self.suppressingDeadWindows(result))))
+                self.apply(.loaded(self.suppressingPendingCloses(self.suppressingDeadWindows(result, knownIds: knownAtStart))))
                 // A successful reload proves aerospace is reachable again; clear any
                 // stale startup error so it doesn't stick after recovery.
                 self.error = nil
@@ -314,12 +318,19 @@ public class OverviewStore {
     /// AeroSpace's list briefly lags a close and emits no event when it catches up — so a
     /// reload racing that lag would keep a dead tile forever. Skipped when the live set is
     /// empty (an API failure) so a transient hiccup can never prune the whole overview.
-    private func suppressingDeadWindows(_ result: OverviewResult) -> OverviewResult {
+    ///
+    /// Only windows already on screen before this reload burst (`knownIds`) are eligible for
+    /// pruning. CGWindowList lags the *other* way on open — a just-detected window is in
+    /// AeroSpace before macOS composites it into the window server — so a brand-new window is
+    /// trusted even when it isn't live yet. Otherwise the one-shot `window-detected`/`focus-
+    /// changed` refresh would suppress it with no further event to re-trigger a reload, and the
+    /// tile would stay missing until an unrelated event (e.g. a workspace switch) forced one.
+    private func suppressingDeadWindows(_ result: OverviewResult, knownIds: Set<Int>) -> OverviewResult {
         let liveIds = nativeSystem.liveWindowIds()
         guard !liveIds.isEmpty else { return result }
         let workspaces = result.workspaces.map { ws -> WorkspaceInfo in
             var ws = ws
-            ws.windows = ws.windows.filter { liveIds.contains($0.windowId) }
+            ws.windows = ws.windows.filter { liveIds.contains($0.windowId) || !knownIds.contains($0.windowId) }
             return ws
         }
         return OverviewResult(workspaces: workspaces)

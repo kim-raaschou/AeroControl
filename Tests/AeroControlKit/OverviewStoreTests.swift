@@ -205,6 +205,27 @@ struct OverviewStoreTests {
         #expect(windowIds(store) == [1])
     }
 
+    @Test("a newly detected window is kept even before the window server lists it (open-lag race)")
+    func openLagKeepsNewWindow() async {
+        let runner = FakeRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        bridge.live = [1]
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        await store.start()
+        #expect(windowIds(store) == [1])
+
+        // A new window opens: AeroSpace lists it and emits window-detected immediately, but
+        // the window server hasn't composited it into CGWindowList yet (live still lacks 2).
+        // The one-shot detect refresh must NOT suppress the brand-new tile.
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        await waitUntil { runner.isSubscribed }
+        runner.send("{\"_event\":\"window-detected\",\"windowId\":2,\"workspace\":\"1\"}")
+
+        await waitUntil { windowIds(store).contains(2) }
+        #expect(windowIds(store) == [1, 2])
+    }
+
     @Test("an empty live set never prunes the overview")
     func emptyLiveSetKeepsAll() async {
         let runner = FakeRunner()
