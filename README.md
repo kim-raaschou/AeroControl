@@ -53,8 +53,7 @@ brew install --cask kim-raaschou/tap/aerocontrol
 
 This installs a signed `AeroControl.app` into `/Applications` and strips the Gatekeeper
 quarantine (the app is ad-hoc signed, not notarized — the same model AeroSpace uses).
-Before using it, launch it once to grant Accessibility permission (see
-[First launch & permissions](#first-launch--permissions)).
+AeroControl needs **no special permissions of its own** (see [Permissions](#permissions)).
 
 ### Build from source
 
@@ -74,20 +73,18 @@ make install
 > `.build/release/AeroControl.app`, and `make build` produces just the bare binary at
 > `.build/release/AeroControl` — point your keybind at whichever you use.
 
-## First launch & permissions
+## Permissions
 
-Before you wire AeroControl into AeroSpace, launch it **once from Finder** so macOS can
-grant it Accessibility permission:
+AeroControl requires **no macOS privacy permissions of its own** — no Accessibility, no
+Screen Recording, no Input Monitoring. It performs every window action (focus, move, close)
+by asking the **AeroSpace** CLI, whose already-running server does the work under *its* own
+Accessibility grant. AeroControl only reads window *numbers* (not titles) for liveness and
+draws its own floating overlay.
 
-1. Open **/Applications** and double-click **AeroControl.app** (it's an accessory app —
-   no Dock icon; the overlay flashes up briefly).
-2. macOS prompts for **Accessibility**. Open *System Settings → Privacy & Security →
-   Accessibility* and toggle **AeroControl** on (add it with `+` if it isn't listed).
-
-Do this first because AeroSpace launches AeroControl non-interactively (`exec-and-forget`,
-no window, no prompt). Without the grant it can't focus/move windows — so the permission
-has to be in place before it's configured. Because the app has a stable bundle identity,
-the grant survives future rebuilds; you only do this once.
+So the only permission that matters is the one **AeroSpace itself** needs, which you grant as
+part of AeroSpace's normal setup. If focusing or moving from AeroControl does nothing, check
+that **AeroSpace** (not AeroControl) has Accessibility in *System Settings → Privacy &
+Security → Accessibility*.
 
 ## Use it
 

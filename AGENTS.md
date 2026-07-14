@@ -125,6 +125,16 @@ When AeroSpace ships a new version, verify the CLI `--format` fields still decod
 compatibility range if the floor moves — bump AeroControl's own version only for AeroControl
 changes.
 
+**Permissions (none).** AeroControl requires **no macOS TCC permissions of its own** — no
+Accessibility, no Screen Recording, no Input Monitoring, no Automation. All window actions go
+through the `aerospace` CLI → the AeroSpace **server**, which does the AX work under *its own*
+grant; AeroControl calls **no** privileged AX API (verified 2026-07-14, crew + rubber-duck
+audit). It only reads window *numbers* (`kCGWindowNumber`, no titles → no Screen Recording),
+draws its own `.nonactivatingPanel` overlay, and toggles via SIGUSR1 (the summon keybind lives
+in AeroSpace's config, so there is **no** global hotkey/event monitor). A former startup
+`AXIsProcessTrusted` prompt was removed: it targeted the wrong app (AeroSpace owns that grant)
+and gave false assurance. Do not re-add a permission request without an actual privileged API.
+
 ## CLI contract & parsing
 
 - Requested field tokens live in `AerospaceCommand` (`listWindowsFields` etc.); decoder keys

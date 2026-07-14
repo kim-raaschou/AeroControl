@@ -48,8 +48,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.setActivationPolicy(.accessory)
 
-        Permissions.verifyAtStartup()
-
         let runner = AerospaceProcessRunnerCli()
         let nativeSystem = NativeApiBridgeAdapter()
 
