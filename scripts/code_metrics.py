@@ -1,32 +1,47 @@
 #!/usr/bin/env python3
 """Generate a visual dashboard of code size and complexity per layer/area.
 
-Scans tracked Swift sources, computes lines of code and an approximate
-cyclomatic-complexity score per file, groups them by architectural layer
+Scans tracked Swift sources with lizard, computes NLOC, genuine McCabe
+cyclomatic complexity and related metrics per file, groups them by architectural layer
 and writes a self-contained HTML report to docs/code-metrics.html.
 
 Usage:
   python3 scripts/code_metrics.py                 # regenerate the HTML dashboard
   python3 scripts/code_metrics.py --check         # fail if code/complexity rose above baseline
+  python3 scripts/code_metrics.py --rebuild-history  # backfill one history point per commit
   python3 scripts/code_metrics.py --update-baseline  # ratchet the baseline to current totals
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
+try:
+    import lizard
+except ImportError:
+    if os.environ.get("CODE_METRICS_BOOTSTRAPPED") == "1":
+        print("code-metrics: lizard is required; bootstrap install failed.", file=sys.stderr)
+        raise SystemExit(1)
+    venv = Path(__file__).resolve().parent / ".metrics-venv"
+    if not venv.exists():
+        subprocess.check_call([sys.executable, "-m", "venv", str(venv)])
+    venv_py = venv / "bin" / "python"
+    if not venv_py.exists():
+        venv_py = venv / "Scripts" / "python.exe"
+    subprocess.check_call([str(venv_py), "-m", "pip", "install", "-q", "lizard"])
+    os.environ["CODE_METRICS_BOOTSTRAPPED"] = "1"
+    os.execv(str(venv_py), [str(venv_py), __file__, *sys.argv[1:]])
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "code-metrics.html"
 BASELINE = ROOT / "scripts" / "metrics-baseline.json"
 HISTORY = ROOT / "scripts" / "metrics-history.json"
-
-# Keywords that introduce a branch -> +1 cyclomatic complexity each.
-DECISION = re.compile(r"\b(if|for|while|case|guard|catch)\b|&&|\|\||\?\?|(?<![\w?])\?(?!\?)")
 
 
 def layer_for(path: str) -> str:
@@ -51,97 +66,32 @@ def layer_for(path: str) -> str:
 PURE_PREFIX = "Sources/Common/"
 FORBIDDEN_IMPORTS = ("AppKit", "SwiftUI", "Cocoa", "UIKit")
 IMPORT_RE = re.compile(r"^\s*import\s+(\w+)", re.MULTILINE)
-FUNC_RE = re.compile(r"\bfunc\s+([^\s(<]+)")
 
 
-def clean_lines(text: str) -> list[str]:
-    """Blank out comments and string-literal contents while preserving the line
-    count, so brace/decision scans don't trip on braces inside strings/comments."""
-    out: list[str] = []
-    in_block = False
-    for raw in text.splitlines():
-        buf: list[str] = []
-        i, n = 0, len(raw)
-        while i < n:
-            two = raw[i : i + 2]
-            if in_block:
-                if two == "*/":
-                    in_block = False
-                    i += 2
-                    continue
-                buf.append(" ")
-                i += 1
-                continue
-            if two == "//":
-                break
-            if two == "/*":
-                in_block = True
-                i += 2
-                continue
-            if raw[i] == '"':
-                buf.append(" ")
-                i += 1
-                while i < n:
-                    if raw[i] == "\\":
-                        i += 2
-                        continue
-                    if raw[i] == '"':
-                        i += 1
-                        break
-                    i += 1
-                continue
-            buf.append(raw[i])
-            i += 1
-        out.append("".join(buf))
-    return out
-
-
-def is_code_line(raw: str) -> bool:
-    s = raw.strip()
-    return bool(s) and not s.startswith(("//", "/*", "*"))
-
-
-def max_nesting(clean: list[str]) -> int:
-    """Max brace-nesting depth reached in a file — a cognitive-load proxy."""
-    depth = mx = 0
-    for line in clean:
-        for ch in line:
-            if ch == "{":
-                depth += 1
-                mx = max(mx, depth)
-            elif ch == "}":
-                depth = max(0, depth - 1)
-    return mx
-
-
-def function_stats(clean: list[str], raw_lines: list[str]) -> list[dict]:
-    """Per-function code lines and complexity via brace matching. Nested
-    functions/closures are folded into their enclosing function."""
-    funcs: list[dict] = []
-    n = len(clean)
-    i = 0
-    while i < n:
-        m = FUNC_RE.search(clean[i])
-        if not m:
-            i += 1
-            continue
-        cx, code, depth = 1, 0, 0
-        started = False
-        j = i
-        while j < n:
-            line = clean[j]
-            cx += len(DECISION.findall(line))
-            if is_code_line(raw_lines[j]):
-                code += 1
-            depth += line.count("{") - line.count("}")
-            if "{" in line:
-                started = True
-            if started and depth <= 0:
-                break
-            j += 1
-        funcs.append({"name": m.group(1), "code": code, "complexity": cx})
-        i = j + 1
-    return funcs
+def lizard_file_stats(path: str, text: str) -> dict:
+    """Return all file/function metrics derived from lizard."""
+    info = lizard.FileAnalyzer(lizard.get_extensions(["ns"])).analyze_source_code(path, text)
+    funcs = [
+        {
+            "name": f.name,
+            "code": f.nloc,
+            "complexity": f.cyclomatic_complexity,
+            "tokens": f.token_count,
+            "params": f.parameter_count,
+            "length": f.length,
+            "nesting": getattr(f, "max_nested_structures", 0),
+        }
+        for f in info.function_list
+    ]
+    complexity = sum(f["complexity"] for f in funcs)
+    return {
+        "total": len(text.splitlines()),
+        "code": info.nloc,
+        "complexity": complexity,
+        "density": round(complexity / info.nloc, 3) if info.nloc else 0,
+        "maxDepth": max((f["nesting"] for f in funcs), default=0),
+        "funcs": funcs,
+    }
 
 
 def purity_violations(files: list[str]) -> list[dict]:
@@ -160,29 +110,20 @@ def purity_violations(files: list[str]) -> list[dict]:
     return violations
 
 
-def analyse(text: str) -> tuple[int, int, int]:
-    """Return (total_lines, code_lines, complexity) for a Swift file."""
-    lines = text.splitlines()
-    total = len(lines)
-    code = 0
-    in_block = False
-    for raw in lines:
-        line = raw.strip()
-        if in_block:
-            if "*/" in line:
-                in_block = False
-            continue
-        if not line:
-            continue
-        if line.startswith("//"):
-            continue
-        if line.startswith("/*"):
-            if "*/" not in line:
-                in_block = True
-            continue
-        code += 1
-    complexity = len(DECISION.findall(text)) + 1  # base path
-    return total, code, complexity
+def duplicate_summary(files: list[str]) -> dict:
+    """Return a compact duplicate-code summary across tracked Swift files."""
+    exts = lizard.get_extensions(["duplicate"])
+    duplicate_ext = next(e for e in exts if hasattr(e, "get_duplicates"))
+    list(lizard.analyze_files([str(ROOT / f) for f in files], exts=exts))
+    blocks = list(duplicate_ext.get_duplicates())
+    lines = test_lines = 0
+    for block in blocks:
+        for snippet in block:
+            n = snippet.end_line - snippet.start_line + 1
+            lines += n
+            if "/Tests/" in snippet.file_name:
+                test_lines += n
+    return {"blocks": len(blocks), "lines": lines, "testLines": test_lines, "prodLines": lines - test_lines}
 
 
 def build_payload() -> dict:
@@ -198,10 +139,8 @@ def build_payload() -> dict:
         if not p.exists():
             continue
         text = p.read_text(encoding="utf-8", errors="replace")
-        total, code, cx = analyse(text)
-        clean = clean_lines(text)
-        raw_lines = text.splitlines()
-        funcs = function_stats(clean, raw_lines)
+        stats = lizard_file_stats(rel, text)
+        funcs = stats["funcs"]
         for f in funcs:
             all_funcs.append({**f, "file": Path(rel).name, "layer": layer_for(rel)})
         rows.append(
@@ -209,11 +148,11 @@ def build_payload() -> dict:
                 "path": rel,
                 "file": Path(rel).name,
                 "layer": layer_for(rel),
-                "total": total,
-                "code": code,
-                "complexity": cx,
-                "density": round(cx / code, 3) if code else 0,
-                "maxDepth": max_nesting(clean),
+                "total": stats["total"],
+                "code": stats["code"],
+                "complexity": stats["complexity"],
+                "density": stats["density"],
+                "maxDepth": stats["maxDepth"],
                 "funcs": len(funcs),
                 "maxFuncCx": max((f["complexity"] for f in funcs), default=0),
             }
@@ -240,6 +179,7 @@ def build_payload() -> dict:
 
     test_code = sum(r["code"] for r in rows if r["layer"] == "Tests")
     prod_code = sum(r["code"] for r in rows if r["layer"] != "Tests")
+    duplicates = duplicate_summary(files)
 
     return {
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -257,6 +197,7 @@ def build_payload() -> dict:
             "deepestFile": deepest["file"] if deepest else "",
             "maxFuncCx": top_funcs[0]["complexity"] if top_funcs else 0,
             "longestFunc": longest_func,
+            "duplicates": duplicates,
         },
         "purity": purity_violations(files),
         "layers": layer_list,
@@ -264,17 +205,6 @@ def build_payload() -> dict:
         "topFiles": top_files,
         "topFuncs": top_funcs,
     }
-
-
-def parse_history_day(entry: dict) -> str | None:
-    """Return the YYYY-MM-DD part of a history timestamp, if it is readable."""
-    ts = entry.get("timestamp")
-    if not isinstance(ts, str):
-        return None
-    try:
-        return datetime.fromisoformat(ts).date().isoformat()
-    except ValueError:
-        return ts[:10] if re.match(r"\d{4}-\d{2}-\d{2}", ts) else None
 
 
 def load_history() -> list[dict]:
@@ -288,11 +218,76 @@ def load_history() -> list[dict]:
     return data if isinstance(data, list) else []
 
 
+def commit_info(sha: str = "HEAD") -> tuple[str, str, str]:
+    """Return (short sha, commit ISO timestamp, subject) for a commit."""
+    out = subprocess.check_output(
+        ["git", "log", "-1", "--format=%h%x1f%cI%x1f%s", sha], cwd=ROOT, text=True
+    ).strip()
+    short, timestamp, subject = out.split("\x1f", 2)
+    return short, timestamp, subject
+
+
+def totals_at_commit(sha: str) -> dict | None:
+    """Compute aggregate Swift metrics for a commit without touching the worktree."""
+    files = [
+        f
+        for f in subprocess.check_output(
+            ["git", "ls-tree", "-r", "--name-only", sha], cwd=ROOT, text=True
+        ).splitlines()
+        if f.endswith(".swift")
+    ]
+    if not files:
+        return None
+
+    totals = {"total": 0, "code": 0, "complexity": 0, "files": 0}
+    for rel in files:
+        text = subprocess.check_output(
+            ["git", "show", f"{sha}:{rel}"], cwd=ROOT, text=True, errors="replace"
+        )
+        stats = lizard_file_stats(rel, text)
+        totals["total"] += stats["total"]
+        totals["code"] += stats["code"]
+        totals["complexity"] += stats["complexity"]
+        totals["files"] += 1
+    return totals
+
+
+def rebuild_history_from_git() -> list[dict]:
+    """Backfill one metrics-history entry per first-parent commit with Swift files."""
+    rows = subprocess.check_output(
+        ["git", "log", "--first-parent", "--reverse", "--format=%H%x1f%h%x1f%cI%x1f%s", "HEAD"],
+        cwd=ROOT,
+        text=True,
+    ).splitlines()
+    history: list[dict] = []
+    for row in rows:
+        sha, short, timestamp, subject = row.split("\x1f", 3)
+        totals = totals_at_commit(sha)
+        if totals is None:
+            continue
+        history.append(
+            {
+                "timestamp": timestamp,
+                "commit": short,
+                "subject": subject,
+                "code": totals["code"],
+                "complexity": totals["complexity"],
+                "files": totals["files"],
+            }
+        )
+
+    HISTORY.write_text(json.dumps(history, indent=2) + "\n", encoding="utf-8")
+    return history
+
+
 def history_entry(payload: dict) -> dict:
-    """Build a compact snapshot suitable for trend rendering."""
+    """Build a compact per-commit snapshot suitable for trend rendering."""
     totals = payload["totals"]
+    commit, timestamp, subject = commit_info()
     return {
-        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "timestamp": timestamp,
+        "commit": commit,
+        "subject": subject,
         "code": totals["code"],
         "complexity": totals["complexity"],
         "files": totals["files"],
@@ -300,17 +295,11 @@ def history_entry(payload: dict) -> dict:
 
 
 def update_history(payload: dict) -> list[dict]:
-    """Persist one dashboard snapshot per calendar day.
-
-    Re-running the dashboard on the same day replaces that day's last entry
-    instead of appending, so repeated local regenerations do not spam history.
-    A new day appends a fresh entry even if the totals are unchanged.
-    """
+    """Persist one dashboard snapshot per git commit."""
     history = load_history()
     entry = history_entry(payload)
-    today = parse_history_day(entry)
 
-    if history and parse_history_day(history[-1]) == today:
+    if history and history[-1].get("commit") == entry["commit"]:
         history[-1] = entry
     else:
         history.append(entry)
@@ -499,19 +488,19 @@ TEMPLATE = r"""<!DOCTYPE html>
     <h2>Trend over tid</h2>
     <div class="cards" id="trend-summary"></div>
     <div class="trend-charts" id="trend-charts"></div>
-    <div class="legend">Historik gemmes i scripts/metrics-history.json som én snapshot pr. kalenderdag.</div>
+    <div class="legend">Historik gemmes i scripts/metrics-history.json som ét datapunkt pr. commit.</div>
   </section>
 
   <section>
     <h2>Kodelinjer pr. lag/område</h2>
     <div id="loc-bars"></div>
-    <div class="legend">Kodelinjer eksklusiv tomme linjer og kommentarer.</div>
+    <div class="legend">Kodelinjer er lizard NLOC.</div>
   </section>
 
   <section>
     <h2>Samlet kompleksitet pr. lag/område</h2>
     <div id="cx-bars"></div>
-    <div class="legend">Approksimeret cyklomatisk kompleksitet (sum af beslutningspunkter).</div>
+    <div class="legend">Metrikker kommer fra lizard: ægte McCabe CCN, NLOC, nesting og dubletter.</div>
   </section>
 
   <section>
@@ -534,21 +523,21 @@ TEMPLATE = r"""<!DOCTYPE html>
   <section>
     <h2>Top 15 mest komplekse funktioner</h2>
     <table id="topfn"><thead><tr>
-      <th>Funktion</th><th>Fil</th><th>Lag</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th>
+      <th>Funktion</th><th>Fil</th><th>Lag</th><th class="num">CCN</th><th class="num">NLOC</th><th class="num">Tokens</th><th class="num">Param.</th><th class="num">NS</th><th class="num">Længde</th>
     </tr></thead><tbody></tbody></table>
   </section>
 
   <section>
     <h2>Top 15 mest komplekse filer</h2>
     <table id="top"><thead><tr>
-      <th>Fil</th><th>Lag</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
+      <th>Fil</th><th>Lag</th><th class="num">NLOC</th><th class="num">CCN</th><th class="num">Tæthed</th><th class="num">Funk.</th><th class="num">Max CCN</th><th class="num">NS</th>
     </tr></thead><tbody></tbody></table>
   </section>
 
   <section>
     <h2>Alle filer</h2>
     <table id="all"><thead><tr>
-      <th>Fil</th><th>Lag</th><th class="num">Linjer</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
+      <th>Fil</th><th>Lag</th><th class="num">Linjer</th><th class="num">NLOC</th><th class="num">CCN</th><th class="num">Tæthed</th><th class="num">Funk.</th><th class="num">NS</th>
     </tr></thead><tbody></tbody></table>
   </section>
 </main>
@@ -600,7 +589,7 @@ function sparkline(metric, label, color){
   const points = HISTORY.filter(x => typeof x[metric] === "number");
   if (points.length < 2) {
     return `<div class="chart"><div class="chart-title"><strong>${label}</strong><span>Ingen tidligere data endnu</span></div>
-      <div class="legend">Kør dashboardet på flere dage for at opbygge trendhistorik.</div></div>`;
+      <div class="legend">Kør dashboardet på flere commits for at opbygge trendhistorik.</div></div>`;
   }
   const w = 320, h = 92, p = 10;
   const vals = points.map(x => x[metric]);
@@ -613,7 +602,7 @@ function sparkline(metric, label, color){
   });
   const poly = xy.map(([x,y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const dots = xy.map(([x,y], i) => `<circle class="spark-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" stroke="${color}">
-    <title>${points[i].timestamp}: ${fmt(vals[i])}</title></circle>`).join("");
+    <title>${points[i].commit ? points[i].commit+' ' : ''}${points[i].subject ? points[i].subject+' — ' : ''}${points[i].timestamp}: ${fmt(vals[i])}</title></circle>`).join("");
   const first = points[0], last = points[points.length - 1];
   return `<div class="chart"><div class="chart-title"><strong>${label}</strong><span>${fmt(first[metric])} → ${fmt(last[metric])}</span></div>
     <svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="${label} trend">
@@ -621,7 +610,7 @@ function sparkline(metric, label, color){
       <line class="spark-grid" x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}"></line>
       <polyline class="spark-line" points="${poly}" stroke="${color}"></polyline>${dots}
     </svg>
-    <div class="legend">${points.length} snapshots · min ${fmt(min)} · max ${fmt(max)}</div></div>`;
+    <div class="legend">${points.length} commits · min ${fmt(min)} · max ${fmt(max)}</div></div>`;
 }
 
 document.getElementById("trend-charts").innerHTML = [
@@ -655,24 +644,28 @@ document.querySelector("#top tbody").innerHTML = DATA.topFiles.map(f=>`
   <tr><td>${f.file}</td><td class="file">${f.layer}</td>
   <td class="num">${f.code}</td>
   <td class="num"><span class="pill" style="background:${densColor(f.density)}22;color:${densColor(f.density)}">${f.complexity}</span></td>
-  <td class="num">${f.density.toFixed(3)}</td></tr>`).join("");
+  <td class="num">${f.density.toFixed(3)}</td>
+  <td class="num">${f.funcs}</td><td class="num">${f.maxFuncCx}</td><td class="num">${f.maxDepth}</td></tr>`).join("");
 
 document.querySelector("#all tbody").innerHTML = DATA.files.map(f=>`
   <tr><td>${f.file}</td><td class="file">${f.layer}</td>
   <td class="num">${f.total}</td><td class="num">${f.code}</td>
   <td class="num">${f.complexity}</td>
-  <td class="num" style="color:${densColor(f.density)}">${f.density.toFixed(3)}</td></tr>`).join("");
+  <td class="num" style="color:${densColor(f.density)}">${f.density.toFixed(3)}</td>
+  <td class="num">${f.funcs}</td><td class="num">${f.maxDepth}</td></tr>`).join("");
 
 document.getElementById("foot").textContent =
-  "Kompleksitet er en heuristik (if/for/while/case/guard/catch/&&/||/??/?). Kør scripts/code_metrics.py for at opdatere.";
+  "Metrikker er beregnet med lizard: NLOC, ægte McCabe CCN, nesting og dubletter. Kør scripts/code_metrics.py for at opdatere docs/code-metrics.html.";
 
 const H = DATA.health;
 const lf = H.longestFunc;
+const dup = H.duplicates || {blocks:0, lines:0, testLines:0, prodLines:0};
 const healthCards = [
   ["Test-til-kode", H.testRatio.toFixed(2), `${H.testCode.toLocaleString("da-DK")} test ÷ ${H.prodCode.toLocaleString("da-DK")} prod`],
   ["Dybeste nesting", H.maxNesting, H.deepestFile],
   ["Mest kompleks funktion", H.maxFuncCx, lf ? "" : ""],
   ["Længste funktion", lf ? lf.code : 0, lf ? `${lf.name} · ${lf.file}` : ""],
+  ["Dubletter", dup.blocks, `${dup.lines} linjer · ${dup.prodLines} prod / ${dup.testLines} test`],
 ];
 document.getElementById("health").innerHTML = healthCards.map(
   ([l,n,s]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div>${s?`<div class="l" style="font-size:11px">${s}</div>`:""}</div>`
@@ -686,8 +679,8 @@ document.getElementById("purity").innerHTML = pure.length
 
 document.querySelector("#topfn tbody").innerHTML = DATA.topFuncs.map(f=>`
   <tr><td>${f.name}</td><td class="file">${f.file}</td><td class="file">${f.layer}</td>
-  <td class="num">${f.code}</td>
-  <td class="num"><span class="pill" style="background:${densColor(f.complexity/Math.max(f.code,1))}22;color:${densColor(f.complexity/Math.max(f.code,1))}">${f.complexity}</span></td></tr>`).join("");
+  <td class="num"><span class="pill" style="background:${densColor(f.complexity/Math.max(f.code,1))}22;color:${densColor(f.complexity/Math.max(f.code,1))}">${f.complexity}</span></td>
+  <td class="num">${f.code}</td><td class="num">${f.tokens}</td><td class="num">${f.params}</td><td class="num">${f.nesting}</td><td class="num">${f.length}</td></tr>`).join("");
 </script>
 </body>
 </html>
@@ -700,9 +693,12 @@ if __name__ == "__main__":
         raise SystemExit(check())
     elif arg == "--update-baseline":
         raise SystemExit(update_baseline())
+    elif arg == "--rebuild-history":
+        history = rebuild_history_from_git()
+        print(f"Rebuilt {HISTORY.relative_to(ROOT)} with {len(history)} commits.")
     elif arg in ("", "--write", "--html"):
         main()
     else:
         print(f"Unknown option: {arg}", file=sys.stderr)
-        print("Usage: code_metrics.py [--check | --update-baseline]", file=sys.stderr)
+        print("Usage: code_metrics.py [--check | --update-baseline | --rebuild-history]", file=sys.stderr)
         raise SystemExit(2)

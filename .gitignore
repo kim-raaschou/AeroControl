@@ -17,3 +17,5 @@ graphify-out/
 # Python cache
 scripts/__pycache__/
 __pycache__/
+
+scripts/.metrics-venv/
