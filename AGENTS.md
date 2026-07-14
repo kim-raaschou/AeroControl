@@ -38,23 +38,36 @@ that bar.
 - Code-size/complexity dashboard: `python3 scripts/code_metrics.py` → `docs/code-metrics.html`.
   Regenerate it after notable structural changes.
 
-### Rule: code metrics stay within baseline +2% — verified at every commit
+### Rule: code metrics stay within baseline +1% — verified at every commit
 
 - The tracked-Swift **code-line count and approximate complexity must not rise more than
-  2% above the baseline** in `scripts/metrics-baseline.json`. The baseline stores the raw
-  totals; the enforced ceiling for each metric is `floor(baseline × 1.02)` (small-refactor
+  1% above the baseline** in `scripts/metrics-baseline.json`. The baseline stores the raw
+  totals; the enforced ceiling for each metric is `floor(baseline × 1.01)` (small-refactor
   headroom so trivial churn doesn't block commits — the intent is still *don't grow*).
 - This is **enforced on every commit** by `.githooks/pre-commit`, which runs
   `python3 scripts/code_metrics.py --check` and **fails the commit** if either metric
   exceeds its ceiling. Enable the hook once per clone: `git config core.hooksPath .githooks`.
 - When you legitimately **reduce** code, ratchet the baseline down:
   `python3 scripts/code_metrics.py --update-baseline` and commit the new baseline (this also
-  lowers the ceiling, keeping the 2% band from drifting upward).
-- Sustained growth beyond the 2% band is only allowed when genuinely justified: reduce
+  lowers the ceiling, keeping the 1% band from drifting upward).
+- Sustained growth beyond the 1% band is only allowed when genuinely justified: reduce
   elsewhere to stay under the ceiling, or (as a deliberate, explained exception) run
   `--update-baseline` to re-anchor it and commit that change so the increase is reviewable in
   history. Default answer to "the metric went up" is **make it smaller**, not raise the baseline.
 - The headroom lives in one constant, `MARGIN` in `scripts/code_metrics.py`.
+
+### Rule: `Sources/Common/` stays UI-framework-free — enforced
+
+- Files under `Sources/Common/` are the pure domain and **must not import AppKit, SwiftUI,
+  Cocoa, or UIKit**. `--check` fails (blocking commit + CI) on any violation, independent of
+  the size/complexity ceiling. This keeps the domain portable and testable without a UI host.
+
+### Extra health metrics (reported, not all gated)
+
+`scripts/code_metrics.py` / `docs/code-metrics.html` also surface, for insight: per-function
+complexity (top 15) and the single longest function, max brace-nesting depth per file, and the
+test-to-production code ratio. These are informational; only code/complexity ceilings and the
+Common purity rule fail the build.
 
 ## Git hooks & CI (verification gates)
 

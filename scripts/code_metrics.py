@@ -45,9 +45,122 @@ def layer_for(path: str) -> str:
     return "Other"
 
 
-def analyse(path: Path) -> tuple[int, int, int]:
+# Architecture guardrail: files under Common/ are the pure domain and must not
+# import any UI framework. A violation fails --check (and thus the hook + CI).
+PURE_PREFIX = "Sources/Common/"
+FORBIDDEN_IMPORTS = ("AppKit", "SwiftUI", "Cocoa", "UIKit")
+IMPORT_RE = re.compile(r"^\s*import\s+(\w+)", re.MULTILINE)
+FUNC_RE = re.compile(r"\bfunc\s+([^\s(<]+)")
+
+
+def clean_lines(text: str) -> list[str]:
+    """Blank out comments and string-literal contents while preserving the line
+    count, so brace/decision scans don't trip on braces inside strings/comments."""
+    out: list[str] = []
+    in_block = False
+    for raw in text.splitlines():
+        buf: list[str] = []
+        i, n = 0, len(raw)
+        while i < n:
+            two = raw[i : i + 2]
+            if in_block:
+                if two == "*/":
+                    in_block = False
+                    i += 2
+                    continue
+                buf.append(" ")
+                i += 1
+                continue
+            if two == "//":
+                break
+            if two == "/*":
+                in_block = True
+                i += 2
+                continue
+            if raw[i] == '"':
+                buf.append(" ")
+                i += 1
+                while i < n:
+                    if raw[i] == "\\":
+                        i += 2
+                        continue
+                    if raw[i] == '"':
+                        i += 1
+                        break
+                    i += 1
+                continue
+            buf.append(raw[i])
+            i += 1
+        out.append("".join(buf))
+    return out
+
+
+def is_code_line(raw: str) -> bool:
+    s = raw.strip()
+    return bool(s) and not s.startswith(("//", "/*", "*"))
+
+
+def max_nesting(clean: list[str]) -> int:
+    """Max brace-nesting depth reached in a file — a cognitive-load proxy."""
+    depth = mx = 0
+    for line in clean:
+        for ch in line:
+            if ch == "{":
+                depth += 1
+                mx = max(mx, depth)
+            elif ch == "}":
+                depth = max(0, depth - 1)
+    return mx
+
+
+def function_stats(clean: list[str], raw_lines: list[str]) -> list[dict]:
+    """Per-function code lines and complexity via brace matching. Nested
+    functions/closures are folded into their enclosing function."""
+    funcs: list[dict] = []
+    n = len(clean)
+    i = 0
+    while i < n:
+        m = FUNC_RE.search(clean[i])
+        if not m:
+            i += 1
+            continue
+        cx, code, depth = 1, 0, 0
+        started = False
+        j = i
+        while j < n:
+            line = clean[j]
+            cx += len(DECISION.findall(line))
+            if is_code_line(raw_lines[j]):
+                code += 1
+            depth += line.count("{") - line.count("}")
+            if "{" in line:
+                started = True
+            if started and depth <= 0:
+                break
+            j += 1
+        funcs.append({"name": m.group(1), "code": code, "complexity": cx})
+        i = j + 1
+    return funcs
+
+
+def purity_violations(files: list[str]) -> list[dict]:
+    """Common/ files that import a forbidden UI framework."""
+    violations: list[dict] = []
+    for rel in files:
+        if not rel.startswith(PURE_PREFIX):
+            continue
+        p = ROOT / rel
+        if not p.exists():
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        for imp in IMPORT_RE.findall(text):
+            if imp in FORBIDDEN_IMPORTS:
+                violations.append({"path": rel, "import": imp})
+    return violations
+
+
+def analyse(text: str) -> tuple[int, int, int]:
     """Return (total_lines, code_lines, complexity) for a Swift file."""
-    text = path.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     total = len(lines)
     code = 0
@@ -78,11 +191,18 @@ def build_payload() -> dict:
     ).split()
 
     rows = []
+    all_funcs: list[dict] = []
     for rel in files:
         p = ROOT / rel
         if not p.exists():
             continue
-        total, code, cx = analyse(p)
+        text = p.read_text(encoding="utf-8", errors="replace")
+        total, code, cx = analyse(text)
+        clean = clean_lines(text)
+        raw_lines = text.splitlines()
+        funcs = function_stats(clean, raw_lines)
+        for f in funcs:
+            all_funcs.append({**f, "file": Path(rel).name, "layer": layer_for(rel)})
         rows.append(
             {
                 "path": rel,
@@ -92,6 +212,9 @@ def build_payload() -> dict:
                 "code": code,
                 "complexity": cx,
                 "density": round(cx / code, 3) if code else 0,
+                "maxDepth": max_nesting(clean),
+                "funcs": len(funcs),
+                "maxFuncCx": max((f["complexity"] for f in funcs), default=0),
             }
         )
 
@@ -110,6 +233,12 @@ def build_payload() -> dict:
         l["density"] = round(l["complexity"] / l["code"], 3) if l["code"] else 0
 
     top_files = sorted(rows, key=lambda r: r["complexity"], reverse=True)[:15]
+    top_funcs = sorted(all_funcs, key=lambda f: f["complexity"], reverse=True)[:15]
+    longest_func = max(all_funcs, key=lambda f: f["code"], default=None)
+    deepest = max(rows, key=lambda r: r["maxDepth"], default=None)
+
+    test_code = sum(r["code"] for r in rows if r["layer"] == "Tests")
+    prod_code = sum(r["code"] for r in rows if r["layer"] != "Tests")
 
     return {
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -119,9 +248,20 @@ def build_payload() -> dict:
             "code": sum(r["code"] for r in rows),
             "complexity": sum(r["complexity"] for r in rows),
         },
+        "health": {
+            "testCode": test_code,
+            "prodCode": prod_code,
+            "testRatio": round(test_code / prod_code, 3) if prod_code else 0,
+            "maxNesting": deepest["maxDepth"] if deepest else 0,
+            "deepestFile": deepest["file"] if deepest else "",
+            "maxFuncCx": top_funcs[0]["complexity"] if top_funcs else 0,
+            "longestFunc": longest_func,
+        },
+        "purity": purity_violations(files),
         "layers": layer_list,
         "files": sorted(rows, key=lambda r: (r["layer"], -r["complexity"])),
         "topFiles": top_files,
+        "topFuncs": top_funcs,
     }
 
 
@@ -142,7 +282,7 @@ GUARDED = ("code", "complexity")
 
 # Allowed headroom above the recorded baseline before a commit is blocked.
 # The enforced ceiling for each metric is floor(baseline * (1 + MARGIN)).
-MARGIN = 0.02
+MARGIN = 0.01
 
 
 def ceiling(base_value: int) -> int:
@@ -188,11 +328,23 @@ def check() -> int:
         )
         return 1
 
-    totals = build_payload()["totals"]
+    payload = build_payload()
+    totals = payload["totals"]
     pct = int(MARGIN * 100)
     regressions = [
         (k, base[k], ceiling(base[k]), totals[k]) for k in GUARDED if totals[k] > ceiling(base[k])
     ]
+
+    # Architecture guardrail: Common/ must stay UI-framework-free. A violation
+    # fails the check outright, independent of the size/complexity ceiling.
+    violations = payload["purity"]
+    if violations:
+        print(
+            "code-metrics: Common/ purity violated — it must not import a UI framework.",
+            file=sys.stderr,
+        )
+        for v in violations:
+            print(f"  {v['path']} imports {v['import']}", file=sys.stderr)
 
     if regressions:
         print(
@@ -206,13 +358,15 @@ def check() -> int:
             "`python3 scripts/code_metrics.py --update-baseline` and commit the new baseline.",
             file=sys.stderr,
         )
+
+    if regressions or violations:
         return 1
 
     reduced = [(k, base[k], totals[k]) for k in GUARDED if totals[k] < base[k]]
     print(
         f"code-metrics OK · {totals['code']} code lines (≤ {ceiling(base['code'])}) · "
         f"complexity {totals['complexity']} (≤ {ceiling(base['complexity'])})  "
-        f"[baseline {base['code']}/{base['complexity']} +{pct}%]."
+        f"[baseline {base['code']}/{base['complexity']} +{pct}%] · Common pure ✓."
     )
     if reduced:
         print(
@@ -299,6 +453,19 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <section>
+    <h2>Arkitektur &amp; sundhed</h2>
+    <div class="cards" id="health"></div>
+    <div id="purity"></div>
+  </section>
+
+  <section>
+    <h2>Top 15 mest komplekse funktioner</h2>
+    <table id="topfn"><thead><tr>
+      <th>Funktion</th><th>Fil</th><th>Lag</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th>
+    </tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
     <h2>Top 15 mest komplekse filer</h2>
     <table id="top"><thead><tr>
       <th>Fil</th><th>Lag</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
@@ -369,6 +536,29 @@ document.querySelector("#all tbody").innerHTML = DATA.files.map(f=>`
 
 document.getElementById("foot").textContent =
   "Kompleksitet er en heuristik (if/for/while/case/guard/catch/&&/||/??/?). Kør scripts/code_metrics.py for at opdatere.";
+
+const H = DATA.health;
+const lf = H.longestFunc;
+const healthCards = [
+  ["Test-til-kode", H.testRatio.toFixed(2), `${H.testCode.toLocaleString("da-DK")} test ÷ ${H.prodCode.toLocaleString("da-DK")} prod`],
+  ["Dybeste nesting", H.maxNesting, H.deepestFile],
+  ["Mest kompleks funktion", H.maxFuncCx, lf ? "" : ""],
+  ["Længste funktion", lf ? lf.code : 0, lf ? `${lf.name} · ${lf.file}` : ""],
+];
+document.getElementById("health").innerHTML = healthCards.map(
+  ([l,n,s]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div>${s?`<div class="l" style="font-size:11px">${s}</div>`:""}</div>`
+).join("");
+
+const pure = DATA.purity;
+document.getElementById("purity").innerHTML = pure.length
+  ? `<div class="legend" style="color:var(--danger)">⚠ Common/ importerer UI-framework: `
+      + pure.map(v=>`${v.path} → ${v.import}`).join(", ") + `</div>`
+  : `<div class="legend" style="color:var(--good)">✓ Common/ er fri for UI-frameworks (AppKit/SwiftUI/Cocoa/UIKit).</div>`;
+
+document.querySelector("#topfn tbody").innerHTML = DATA.topFuncs.map(f=>`
+  <tr><td>${f.name}</td><td class="file">${f.file}</td><td class="file">${f.layer}</td>
+  <td class="num">${f.code}</td>
+  <td class="num"><span class="pill" style="background:${densColor(f.complexity/Math.max(f.code,1))}22;color:${densColor(f.complexity/Math.max(f.code,1))}">${f.complexity}</span></td></tr>`).join("");
 </script>
 </body>
 </html>
