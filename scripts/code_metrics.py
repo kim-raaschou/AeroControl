@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a visual dashboard of code size and complexity per layer/area.
 
-Scans tracked Swift sources with lizard, computes NLOC, genuine McCabe
+Scans tracked Swift sources with lizard, computes NLOC, modified McCabe
 cyclomatic complexity and related metrics per file, groups them by architectural layer
 and writes a self-contained HTML report to docs/code-metrics.html.
 
@@ -70,7 +70,7 @@ IMPORT_RE = re.compile(r"^\s*import\s+(\w+)", re.MULTILINE)
 
 def lizard_file_stats(path: str, text: str) -> dict:
     """Return all file/function metrics derived from lizard."""
-    info = lizard.FileAnalyzer(lizard.get_extensions(["ns"])).analyze_source_code(path, text)
+    info = lizard.FileAnalyzer(lizard.get_extensions(["modified", "ns"])).analyze_source_code(path, text)
     funcs = [
         {
             "name": f.name,
@@ -500,7 +500,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   <section>
     <h2>Samlet kompleksitet pr. lag/område</h2>
     <div id="cx-bars"></div>
-    <div class="legend">Metrikker kommer fra lizard: ægte McCabe CCN, NLOC, nesting og dubletter.</div>
+    <div class="legend">Metrikker kommer fra lizard: modificeret McCabe CCN (en hel switch tæller som 1), NLOC, nesting og dubletter.</div>
   </section>
 
   <section>
@@ -655,7 +655,7 @@ document.querySelector("#all tbody").innerHTML = DATA.files.map(f=>`
   <td class="num">${f.funcs}</td><td class="num">${f.maxDepth}</td></tr>`).join("");
 
 document.getElementById("foot").textContent =
-  "Metrikker er beregnet med lizard: NLOC, ægte McCabe CCN, nesting og dubletter. Kør scripts/code_metrics.py for at opdatere docs/code-metrics.html.";
+  "Metrikker er beregnet med lizard: NLOC, modificeret McCabe CCN (switch = 1), nesting og dubletter. Kør scripts/code_metrics.py for at opdatere docs/code-metrics.html.";
 
 const H = DATA.health;
 const lf = H.longestFunc;

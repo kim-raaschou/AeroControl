@@ -4,7 +4,7 @@
     "commit": "f973d86",
     "subject": "Initial commit",
     "code": 3178,
-    "complexity": 508,
+    "complexity": 459,
     "files": 40
   },
   {
@@ -12,7 +12,7 @@
     "commit": "64fbc26",
     "subject": "Remove unneeded Accessibility permission request",
     "code": 3147,
-    "complexity": 503,
+    "complexity": 454,
     "files": 39
   },
   {
@@ -20,7 +20,7 @@
     "commit": "fe76973",
     "subject": "metrics: add per-function/nesting/test-ratio + Common purity guard; tighten margin to 1%",
     "code": 3147,
-    "complexity": 503,
+    "complexity": 454,
     "files": 39
   },
   {
@@ -28,7 +28,7 @@
     "commit": "2e51703",
     "subject": "fix: keep newly detected windows during open-lag CGWindowList race",
     "code": 3163,
-    "complexity": 505,
+    "complexity": 456,
     "files": 39
   },
   {
@@ -36,7 +36,7 @@
     "commit": "b3ed412",
     "subject": "Fix live-sync deadlock; mirror AeroSpace via cancel-and-reload",
     "code": 2962,
-    "complexity": 460,
+    "complexity": 417,
     "files": 39
   },
   {
@@ -44,7 +44,15 @@
     "commit": "b1ebd97",
     "subject": "docs/plan: retire done sections; add dead-tile push-fix plan",
     "code": 2962,
-    "complexity": 460,
+    "complexity": 417,
+    "files": 39
+  },
+  {
+    "timestamp": "2026-07-14T23:57:33+02:00",
+    "commit": "d44d439",
+    "subject": "metrics: switch engine to lizard (real McCabe CCN, per-commit trend)",
+    "code": 2962,
+    "complexity": 417,
     "files": 39
   }
 ]
