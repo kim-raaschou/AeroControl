@@ -32,13 +32,11 @@ public enum OverviewInput {
     case loaded(OverviewResult)
     case event(AerospaceEvent)
     case action(AeroControlAction)
-    case windowsValidated(liveIds: Set<Int>)
 }
 
 public enum OverviewEffect: Equatable {
     case windowRemoved(Int)
     case loadIcons([WindowInfo])
-    case validateWindows
     case refresh
     case monitorsChanged
     case runAction(AeroControlAction)
@@ -52,38 +50,15 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
         return applyEvent(state, event)
     case .action(let action):
         return applyAction(state, action)
-    case .windowsValidated(let liveIds):
-        return applyValidation(state, liveIds: liveIds)
     }
 }
 
-/// User-initiated actions. The reducer decides the optimistic in-model change (if any)
-/// and always emits `.runAction` so the interpreter executes the matching aerospace CLI
-/// command. Post-CLI reconciliation (e.g. refreshing after a close) is the interpreter's
-/// job since it is inherently asynchronous I/O.
+/// User-initiated actions. The model never predicts the outcome — AeroSpace is the
+/// source of truth. Each action only emits `.runAction` so the interpreter executes the
+/// matching aerospace CLI command; the interpreter then reloads and the resulting event
+/// (or its own post-command refresh) mirrors reality back into the model.
 private func applyAction(_ state: OverviewModel, _ action: AeroControlAction) -> (OverviewModel, [OverviewEffect]) {
-    switch action {
-    case .focusWorkspace, .focusWindow:
-        return (state, [.runAction(action)])
-
-    case .closeWindow(let windowId):
-        // Optimistically remove the tile so closing feels instant instead of waiting for
-        // the app (and macOS) to actually tear the window down. The interpreter
-        // reconciles afterwards and restores the tile if the close didn't take (e.g. the
-        // app kept it open for an unsaved-changes prompt).
-        let (new, removed) = removeWindow(state, windowId)
-        return removed
-            ? (new, [.windowRemoved(windowId), .runAction(action)])
-            : (state, [.runAction(action)])
-
-    case .moveWindow(let windowId, let workspace):
-        // Optimistically reflect the move so the UI updates instantly instead of waiting
-        // for the event stream. Focus follows the moved window (CLI uses
-        // --focus-follows-window), so update the focused workspace too.
-        var (new, _) = moveWindow(state, windowId, to: workspace)
-        new.focusedWorkspace = workspace
-        return (new, [.runAction(action)])
-    }
+    (state, [.runAction(action)])
 }
 
 private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (OverviewModel, [OverviewEffect]) {
@@ -130,7 +105,7 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
         return (state, [.refresh])
 
     case .appTerminated:
-        return (state, [.validateWindows])
+        return (state, [.refresh])
 
     case .bindingTriggered:
         return (state, [.refresh])
@@ -138,65 +113,4 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
     case .other:
         return (state, [])
     }
-}
-
-private func sortWorkspacesNumerically(_ workspaces: inout [WorkspaceInfo]) {
-    workspaces.sort { (Int($0.name) ?? .max) < (Int($1.name) ?? .max) }
-}
-
-/// Removes a window from whichever workspace holds it, returning the new model and
-/// whether a window was actually found and removed.
-private func removeWindow(_ state: OverviewModel, _ windowId: Int) -> (OverviewModel, Bool) {
-    var new = state
-    for (i, ws) in new.workspaces.enumerated() {
-        if let j = ws.windows.firstIndex(where: { $0.windowId == windowId }) {
-            new.workspaces[i].windows.remove(at: j)
-            return (new, true)
-        }
-    }
-    return (new, false)
-}
-
-private func moveWindow(_ state: OverviewModel, _ windowId: Int, to workspace: String) -> (OverviewModel, [OverviewEffect]) {
-    var new = state
-    for (i, ws) in new.workspaces.enumerated() {
-        if let j = ws.windows.firstIndex(where: { $0.windowId == windowId }) {
-            if ws.name == workspace { return (new, []) }
-
-            var windows = new.workspaces[i].windows
-            let window = windows.remove(at: j)
-            new.workspaces[i].windows = windows
-
-            if let targetIdx = new.workspaces.firstIndex(where: { $0.name == workspace }) {
-                new.workspaces[targetIdx].windows.append(window)
-            } else {
-                // New workspace from move — inherit source monitor
-                new.workspaces.append(WorkspaceInfo(name: workspace, windows: [window], monitorId: ws.monitorId))
-                sortWorkspacesNumerically(&new.workspaces)
-            }
-
-            return (new, [])
-        }
-    }
-    return (new, [])
-}
-
-private func applyValidation(_ state: OverviewModel, liveIds: Set<Int>) -> (OverviewModel, [OverviewEffect]) {
-    guard !liveIds.isEmpty else { return (state, []) }
-
-    var new = state
-    var effects: [OverviewEffect] = []
-
-    for (i, ws) in new.workspaces.enumerated() {
-        let alive = ws.windows.filter { liveIds.contains($0.windowId) }
-        if alive.count < ws.windows.count {
-            let removedIds = Set(ws.windows.map(\.windowId)).subtracting(alive.map(\.windowId))
-            for id in removedIds.sorted() {
-                effects.append(.windowRemoved(id))
-            }
-            new.workspaces[i].windows = alive
-        }
-    }
-
-    return (new, effects)
 }

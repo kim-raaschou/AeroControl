@@ -104,7 +104,13 @@ public struct AerospaceProcessRunnerCli: AerospaceProcessRunner {
                 return result
             }
         } onCancel: {
-            process.terminate()
+            // Only a launched, still-running child can be terminated; calling terminate()
+            // on a task that never launched (cancelled before `process.run()`) throws
+            // NSInvalidArgumentException. The cancel-and-reload refresh cancels in-flight
+            // loads routinely, so this path is hot.
+            if process.isRunning {
+                process.terminate()
+            }
         }
     }
 

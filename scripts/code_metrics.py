@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "code-metrics.html"
 BASELINE = ROOT / "scripts" / "metrics-baseline.json"
+HISTORY = ROOT / "scripts" / "metrics-history.json"
 
 # Keywords that introduce a branch -> +1 cyclomatic complexity each.
 DECISION = re.compile(r"\b(if|for|while|case|guard|catch)\b|&&|\|\||\?\?|(?<![\w?])\?(?!\?)")
@@ -265,8 +266,62 @@ def build_payload() -> dict:
     }
 
 
+def parse_history_day(entry: dict) -> str | None:
+    """Return the YYYY-MM-DD part of a history timestamp, if it is readable."""
+    ts = entry.get("timestamp")
+    if not isinstance(ts, str):
+        return None
+    try:
+        return datetime.fromisoformat(ts).date().isoformat()
+    except ValueError:
+        return ts[:10] if re.match(r"\d{4}-\d{2}-\d{2}", ts) else None
+
+
+def load_history() -> list[dict]:
+    """Load the metrics trend history, ignoring malformed legacy contents."""
+    if not HISTORY.exists():
+        return []
+    try:
+        data = json.loads(HISTORY.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def history_entry(payload: dict) -> dict:
+    """Build a compact snapshot suitable for trend rendering."""
+    totals = payload["totals"]
+    return {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "code": totals["code"],
+        "complexity": totals["complexity"],
+        "files": totals["files"],
+    }
+
+
+def update_history(payload: dict) -> list[dict]:
+    """Persist one dashboard snapshot per calendar day.
+
+    Re-running the dashboard on the same day replaces that day's last entry
+    instead of appending, so repeated local regenerations do not spam history.
+    A new day appends a fresh entry even if the totals are unchanged.
+    """
+    history = load_history()
+    entry = history_entry(payload)
+    today = parse_history_day(entry)
+
+    if history and parse_history_day(history[-1]) == today:
+        history[-1] = entry
+    else:
+        history.append(entry)
+
+    HISTORY.write_text(json.dumps(history, indent=2) + "\n", encoding="utf-8")
+    return history
+
+
 def main() -> None:
     payload = build_payload()
+    payload["history"] = update_history(payload)
     OUT.write_text(render(payload), encoding="utf-8")
     print(f"Wrote {OUT.relative_to(ROOT)}")
     print(
@@ -403,6 +458,17 @@ TEMPLATE = r"""<!DOCTYPE html>
   .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
   .card .n { font-size:26px; font-weight:600; }
   .card .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .delta { margin-top:4px; font-size:12px; font-variant-numeric:tabular-nums; }
+  .delta.good { color:var(--good); }
+  .delta.bad { color:var(--danger); }
+  .delta.neutral { color:var(--muted); }
+  .trend-charts { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .chart { background:#0d1117; border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .chart-title { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font-size:12px; margin-bottom:8px; }
+  .spark { width:100%; height:120px; display:block; overflow:visible; }
+  .spark-grid { stroke:var(--border); stroke-width:1; }
+  .spark-line { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+  .spark-dot { fill:var(--panel); stroke-width:2; }
   section { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
   h2 { margin:0 0 16px; font-size:15px; }
   .bar-row { display:grid; grid-template-columns:220px 1fr 70px; align-items:center; gap:12px; margin:9px 0; }
@@ -428,6 +494,13 @@ TEMPLATE = r"""<!DOCTYPE html>
 </header>
 <main>
   <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>Trend over tid</h2>
+    <div class="cards" id="trend-summary"></div>
+    <div class="trend-charts" id="trend-charts"></div>
+    <div class="legend">Historik gemmes i scripts/metrics-history.json som én snapshot pr. kalenderdag.</div>
+  </section>
 
   <section>
     <h2>Kodelinjer pr. lag/område</h2>
@@ -484,21 +557,77 @@ TEMPLATE = r"""<!DOCTYPE html>
 <script>
 const DATA = __DATA__;
 const COLORS = ["#58a6ff","#3fb950","#f0883e","#a371f7","#f85149","#56d4dd","#e3b341","#8b949e"];
+const HISTORY = DATA.history || [];
 
 function densColor(d){ return d < 0.12 ? "#3fb950" : d < 0.20 ? "#f0883e" : "#f85149"; }
+function fmt(n){ return n.toLocaleString("da-DK"); }
+function previousSnapshot(){ return HISTORY.length > 1 ? HISTORY[HISTORY.length - 2] : null; }
+function deltaInfo(metric){
+  const prev = previousSnapshot();
+  if (!prev || prev[metric] === undefined) return {html:"Ingen tidligere måling", cls:"neutral"};
+  const now = DATA.totals[metric];
+  const delta = now - prev[metric];
+  const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "→";
+  const goodWhenDown = metric === "code" || metric === "complexity";
+  const cls = delta === 0 ? "neutral" : (goodWhenDown ? (delta < 0 ? "good" : "bad") : "neutral");
+  return {html:`${arrow}${fmt(Math.abs(delta))} siden sidst`, cls};
+}
+function cardMarkup(label, value, metric){
+  const d = metric ? deltaInfo(metric) : null;
+  return `<div class="card"><div class="n">${value}</div><div class="l">${label}</div>${d ? `<div class="delta ${d.cls}">${d.html}</div>` : ""}</div>`;
+}
 
 document.getElementById("sub").textContent =
   `Genereret ${DATA.generated} · ${DATA.totals.files} Swift-filer`;
 
 const cards = [
-  ["Filer", DATA.totals.files],
-  ["Linjer i alt", DATA.totals.total.toLocaleString("da-DK")],
-  ["Kodelinjer", DATA.totals.code.toLocaleString("da-DK")],
-  ["Kompleksitet", DATA.totals.complexity.toLocaleString("da-DK")],
+  ["Filer", fmt(DATA.totals.files), "files"],
+  ["Linjer i alt", fmt(DATA.totals.total), null],
+  ["Kodelinjer", fmt(DATA.totals.code), "code"],
+  ["Kompleksitet", fmt(DATA.totals.complexity), "complexity"],
 ];
 document.getElementById("cards").innerHTML = cards.map(
-  ([l,n]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`
+  ([l,n,m]) => cardMarkup(l, n, m)
 ).join("");
+
+document.getElementById("trend-summary").innerHTML = [
+  ["Kodelinjer", fmt(DATA.totals.code), "code"],
+  ["Kompleksitet", fmt(DATA.totals.complexity), "complexity"],
+  ["Filer", fmt(DATA.totals.files), "files"],
+].map(([l,n,m]) => cardMarkup(l, n, m)).join("");
+
+function sparkline(metric, label, color){
+  const points = HISTORY.filter(x => typeof x[metric] === "number");
+  if (points.length < 2) {
+    return `<div class="chart"><div class="chart-title"><strong>${label}</strong><span>Ingen tidligere data endnu</span></div>
+      <div class="legend">Kør dashboardet på flere dage for at opbygge trendhistorik.</div></div>`;
+  }
+  const w = 320, h = 92, p = 10;
+  const vals = points.map(x => x[metric]);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = Math.max(1, max - min);
+  const xy = vals.map((v,i) => {
+    const x = p + (points.length === 1 ? 0 : i * (w - 2*p) / (points.length - 1));
+    const y = p + (max - v) * (h - 2*p) / span;
+    return [x, y];
+  });
+  const poly = xy.map(([x,y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const dots = xy.map(([x,y], i) => `<circle class="spark-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" stroke="${color}">
+    <title>${points[i].timestamp}: ${fmt(vals[i])}</title></circle>`).join("");
+  const first = points[0], last = points[points.length - 1];
+  return `<div class="chart"><div class="chart-title"><strong>${label}</strong><span>${fmt(first[metric])} → ${fmt(last[metric])}</span></div>
+    <svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="${label} trend">
+      <line class="spark-grid" x1="${p}" y1="${p}" x2="${w-p}" y2="${p}"></line>
+      <line class="spark-grid" x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}"></line>
+      <polyline class="spark-line" points="${poly}" stroke="${color}"></polyline>${dots}
+    </svg>
+    <div class="legend">${points.length} snapshots · min ${fmt(min)} · max ${fmt(max)}</div></div>`;
+}
+
+document.getElementById("trend-charts").innerHTML = [
+  sparkline("code", "Kodelinjer", "#58a6ff"),
+  sparkline("complexity", "Kompleksitet", "#f0883e"),
+].join("");
 
 function bars(elId, items, valFn, labelFn, colorFn){
   const max = Math.max(...items.map(valFn));

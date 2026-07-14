@@ -7,17 +7,11 @@ import Testing
 
 /// Scriptable stand-in for the aerospace CLI. `run` returns the currently-programmed
 /// list JSON; `subscribe` exposes a continuation so a test can push raw event lines.
-/// A one-shot gate lets a test park the first post-arm `list-windows` load so it can
-/// observe the refresh coordinator's coalescing (requests during an in-flight load fold
-/// into a single trailing reload).
 private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var windowsJSON = "[]"
     private var workspacesJSON = "[]"
     private var monitorsJSON = "[]"
-    private var _count = 0
-    private var gateArmed = false
-    private var parkContinuation: CheckedContinuation<Void, Never>?
 
     private var _continuation: AsyncThrowingStream<String, Error>.Continuation?
 
@@ -36,34 +30,10 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
         cont?.yield(line)
     }
 
-    var listWindowsCount: Int {
-        withLock { _count }
-    }
-
     func setState(windows: String, workspaces: String) {
         withLock {
             windowsJSON = windows
             workspacesJSON = workspaces
-        }
-    }
-
-    func armGate() {
-        withLock { gateArmed = true }
-    }
-
-    func releaseGate() async {
-        let deadline = ContinuousClock.now + .seconds(2)
-        while ContinuousClock.now < deadline {
-            let cont: CheckedContinuation<Void, Never>? = withLock {
-                let c = parkContinuation
-                parkContinuation = nil
-                return c
-            }
-            if let cont {
-                cont.resume()
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(5))
         }
     }
 
@@ -78,17 +48,6 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
         if cmd != "list-windows" {
             return ""
         }
-        let parked: Bool = withLock {
-            _count += 1
-            let park = gateArmed
-            gateArmed = false
-            return park
-        }
-        if parked {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                withLock { parkContinuation = cont }
-            }
-        }
         return withLock { windowsJSON }
     }
 
@@ -101,10 +60,22 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
 
 @MainActor
 private final class FakeBridge: NativeApiBridge {
-    var live: Set<Int> = []
-    func liveWindowIds() -> Set<Int> { live }
     func appIcon(bundleId: String) -> NSImage { NSImage() }
     func appTerminations() -> AsyncStream<Void> { AsyncStream { _ in } }
+}
+
+/// Collects the store's typed outputs off its `AsyncStream` for assertions.
+private final class OutputCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [OverviewOutput] = []
+    func append(_ output: OverviewOutput) {
+        lock.lock(); defer { lock.unlock() }
+        items.append(output)
+    }
+    func count(of output: OverviewOutput) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return items.filter { $0 == output }.count
+    }
 }
 
 // MARK: - Helpers
@@ -140,6 +111,14 @@ private func windowIds(_ store: OverviewStore) -> [Int] {
 }
 
 @MainActor
+private func workspaceOf(_ store: OverviewStore, _ id: Int) -> String? {
+    for ws in store.model.workspaces where ws.windows.contains(where: { $0.windowId == id }) {
+        return ws.name
+    }
+    return nil
+}
+
+@MainActor
 private func waitUntil(_ cond: () -> Bool) async {
     let deadline = ContinuousClock.now + .seconds(2)
     while ContinuousClock.now < deadline {
@@ -154,20 +133,20 @@ private func waitUntil(_ cond: () -> Bool) async {
 @Suite("OverviewStore")
 struct OverviewStoreTests {
 
-    @Test("dispatch(closeWindow) removes the tile immediately")
-    func optimisticCloseRemovesTile() async {
+    @Test("closing a window runs the command and the reload drops the tile")
+    func closeReloadsAndRemovesTile() async {
         let runner = FakeRunner()
         runner.setState(windows: windowsJSON([(100, "1"), (200, "1")]), workspaces: workspacesJSON(["1"]))
         let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
 
-        // The window is closed for real, so a later reconcile can't resurrect it.
+        // The window is really closed: AeroSpace no longer lists it. The close action runs
+        // the CLI command, then reloads — mirroring AeroSpace, which is the source of truth.
         runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
         await store.dispatch(.closeWindow(100))
 
-        let ids = windowIds(store)
-        #expect(!ids.contains(100))
-        #expect(ids.contains(200))
+        await waitUntil { windowIds(store) == [200] }
+        #expect(windowIds(store) == [200])
     }
 
     @Test("a refresh event reloads and applies the latest state")
@@ -185,19 +164,17 @@ struct OverviewStoreTests {
         #expect(windowIds(store) == [1, 2])
     }
 
-    @Test("a reload drops windows the window server no longer lists (dead-tile race)")
-    func reloadDropsDeadWindows() async {
+    @Test("a reload mirrors AeroSpace verbatim — a window it no longer lists disappears")
+    func reloadMirrorsAerospace() async {
         let runner = FakeRunner()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = FakeBridge()
-        bridge.live = [1, 2]
-        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(windowIds(store) == [1, 2])
 
-        // Window 2 is really gone (the window server dropped it), but AeroSpace still
-        // lists it for a beat and emits no close event. A reload must not resurrect it.
-        bridge.live = [1]
+        // AeroSpace dropped window 2; the next event-driven reload reflects that exactly —
+        // no CGWindowList cross-check, no suppression. AeroSpace is the source of truth.
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         await waitUntil { runner.isSubscribed }
         runner.send("{\"_event\":\"binding-triggered\"}")
 
@@ -205,64 +182,68 @@ struct OverviewStoreTests {
         #expect(windowIds(store) == [1])
     }
 
-    @Test("a newly detected window is kept even before the window server lists it (open-lag race)")
-    func openLagKeepsNewWindow() async {
+    @Test("a same-monitor content change emits contentChanged; a no-op reload does not")
+    func contentChangeEmitsOutput() async {
         let runner = FakeRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = FakeBridge()
-        bridge.live = [1]
-        let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        await store.start()
-        #expect(windowIds(store) == [1])
-
-        // A new window opens: AeroSpace lists it and emits window-detected immediately, but
-        // the window server hasn't composited it into CGWindowList yet (live still lacks 2).
-        // The one-shot detect refresh must NOT suppress the brand-new tile.
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        await waitUntil { runner.isSubscribed }
-        runner.send("{\"_event\":\"window-detected\",\"windowId\":2,\"workspace\":\"1\"}")
-
-        await waitUntil { windowIds(store).contains(2) }
-        #expect(windowIds(store) == [1, 2])
-    }
-
-    @Test("an empty live set never prunes the overview")
-    func emptyLiveSetKeepsAll() async {
-        let runner = FakeRunner()
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = FakeBridge()
-        bridge.live = []
-        let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        await store.start()
-
-        await waitUntil { runner.isSubscribed }
-        runner.send("{\"_event\":\"binding-triggered\"}")
-        try? await Task.sleep(for: .milliseconds(100))
-        #expect(windowIds(store) == [1, 2])
-    }
-
-    @Test("rapid refresh events coalesce into at most one trailing reload")
-    func rapidRefreshesCoalesce() async {
-        let runner = FakeRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
 
-        let baseline = runner.listWindowsCount
+        let outputs = OutputCollector()
+        let task = Task { for await output in store.outputs { outputs.append(output) } }
+        // Let the collector attach and drain start-up outputs.
+        try? await Task.sleep(for: .milliseconds(20))
 
-        // Park the next load, then fire a burst of refresh-driving events. The first
-        // request starts (and parks) a load; the rest only mark the state dirty.
+        // Window 1 moves from ws "1" to ws "2" on the same monitor: AeroSpace now lists it
+        // under "2" and emits a workspace-changed event that drives a reconcile. The
+        // manually-hosted panel doesn't auto-observe, so the store must signal the change.
+        runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
         await waitUntil { runner.isSubscribed }
-        runner.armGate()
+        runner.send("{\"_event\":\"focused-workspace-changed\",\"workspace\":\"2\",\"prevWorkspace\":\"1\"}")
+
+        await waitUntil { workspaceOf(store, 1) == "2" }
+        #expect(workspaceOf(store, 1) == "2")
+        #expect(outputs.count(of: .contentChanged) >= 1)
+
+        // A reload that returns identical state must not emit another contentChanged, so
+        // no-op reconciles never rebuild the panel (avoids flashing / mid-hover resets).
+        let before = outputs.count(of: .contentChanged)
+        runner.send("{\"_event\":\"binding-triggered\"}")
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(outputs.count(of: .contentChanged) == before)
+
+        task.cancel()
+    }
+
+    @Test("a burst of reloads to the same state stresses the UI with at most one render")
+    func rapidRefreshesRenderOnce() async {
+        let runner = FakeRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
+        await store.start()
+
+        let outputs = OutputCollector()
+        let task = Task { for await output in store.outputs { outputs.append(output) } }
+        // Let the collector attach and drain buffered start-up outputs (the initial load
+        // emits its own contentChanged), then measure the burst as a delta from here.
+        try? await Task.sleep(for: .milliseconds(20))
+        let before = outputs.count(of: .contentChanged)
+
+        // AeroSpace now reports window 1 on ws "2". Fire a burst of refresh-driving events:
+        // every reload re-reads the SAME new state, so only the first apply differs from the
+        // model. Mirroring AeroSpace on every event must not stress the UI — the store emits
+        // exactly one contentChanged for the burst, and no-op reloads emit none.
+        runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
+        await waitUntil { runner.isSubscribed }
         for _ in 0..<5 {
             runner.send("{\"_event\":\"binding-triggered\"}")
         }
-        await waitUntil { runner.listWindowsCount == baseline + 1 }
-        await runner.releaseGate()
 
-        try? await Task.sleep(for: .milliseconds(200))
-        let loads = runner.listWindowsCount - baseline
-        #expect(loads >= 1, "burst should have driven at least one reload, got \(loads)")
-        #expect(loads <= 2, "expected <=2 loads for a 5-event burst, got \(loads)")
+        await waitUntil { workspaceOf(store, 1) == "2" }
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(workspaceOf(store, 1) == "2")
+        #expect(outputs.count(of: .contentChanged) - before == 1, "burst to one new state must render once, got \(outputs.count(of: .contentChanged) - before)")
+
+        task.cancel()
     }
 }

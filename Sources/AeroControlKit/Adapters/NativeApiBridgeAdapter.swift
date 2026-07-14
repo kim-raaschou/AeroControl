@@ -7,16 +7,6 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     public init() {}
 
-    public func liveWindowIds() -> Set<Int> {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return []
-        }
-        return Set(list.compactMap { $0[kCGWindowNumber as String] as? Int })
-    }
-
     public func appIcon(bundleId: String) -> NSImage {
         if let cached = iconCache[bundleId] {
             return cached

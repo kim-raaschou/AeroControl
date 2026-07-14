@@ -124,20 +124,9 @@ public class OverviewStore {
         refreshTask = nil
     }
 
-    /// Windows we've optimistically closed (their tiles are already gone) but which
-    /// AeroSpace may still list for a moment while the app tears the window down. Reloads
-    /// suppress these so a tile can't flicker back before the close completes.
-    private var pendingCloseIds: Set<Int> = []
-
     // MARK: - Actions
 
     public func dispatch(_ action: AeroControlAction) async {
-        // Arm close-suppression synchronously with the optimistic tile removal below, so a
-        // reload already in flight can't land between the removal and the effect hop and
-        // flicker the tile back.
-        if case .closeWindow(let windowId) = action {
-            pendingCloseIds.insert(windowId)
-        }
         apply(.action(action))
     }
 
@@ -181,12 +170,21 @@ public class OverviewStore {
         // Don't animate workspace-focus changes: the focus plate should snap to the
         // newly focused workspace instantly, not fade/scale across.
         let focusChanged = newState.focusedWorkspace != model.focusedWorkspace
+        // The manually-hosted NSHostingView doesn't auto-observe @Observable model
+        // changes, so the host must rebuild the panel when the rendered model changes.
+        // Compare before assigning; monitor-set changes are handled by the
+        // `.monitorsChanged` effect (a full re-sync), so only signal same-monitor
+        // content changes here — and skip no-op reloads to avoid needless rebuilds.
+        let contentChanged = newState != model
         if animated && !focusChanged {
             withAnimation(.easeInOut(duration: 0.1)) {
                 model = newState
             }
         } else {
             model = newState
+        }
+        if contentChanged {
+            emit(.contentChanged)
         }
         // Execute effects outside animation transaction to avoid constraint loops
         DispatchQueue.main.async { [self] in
@@ -224,8 +222,6 @@ public class OverviewStore {
                 if !added.isEmpty {
                     icons.merge(added) { _, new in new }
                 }
-            case .validateWindows:
-                validateLiveWindows()
             case .refresh:
                 requestRefresh()
             case .monitorsChanged:
@@ -236,115 +232,43 @@ public class OverviewStore {
         }
     }
 
-    /// Executes a user action's aerospace CLI command and reconciles the strip against
-    /// reality where an action has no dedicated event to observe.
+    /// Executes a user action's aerospace CLI command, then reconciles the strip against
+    /// reality — a move or close has no dedicated event to observe, so reload once the
+    /// command returns (on success or failure) and let AeroSpace's list be the truth.
     private func runAction(_ action: AeroControlAction) {
         Task { [weak self] in
             guard let self else { return }
-            do {
-                _ = try await self.runner.run(AerospaceCommand.argv(for: action))
-                // A close has no dedicated event. Keep suppressing the window until it is
-                // actually gone (bounded), then resync. A real close drops the tile; an app
-                // that kept the window open (e.g. an unsaved-changes prompt) reappears.
-                if case .closeWindow(let windowId) = action {
-                    for _ in 0..<13 {
-                        if !self.nativeSystem.liveWindowIds().contains(windowId) { break }
-                        try? await Task.sleep(for: .milliseconds(150))
-                    }
-                    self.pendingCloseIds.remove(windowId)
-                    self.requestRefresh()
-                }
-            } catch {
-                // The optimistic change already updated the model; on failure, stop any
-                // close suppression and resync to the real state.
-                if case .closeWindow(let windowId) = action {
-                    self.pendingCloseIds.remove(windowId)
-                }
-                switch action {
-                case .moveWindow, .closeWindow:
-                    self.requestRefresh()
-                default:
-                    break
-                }
+            _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
+            switch action {
+            case .moveWindow, .closeWindow:
+                self.requestRefresh()
+            default:
+                break
             }
         }
     }
 
-    private func validateLiveWindows() {
-        let knownIds = Set(model.workspaces.flatMap(\.windows).map(\.windowId))
-        guard !knownIds.isEmpty else { return }
+    private var refreshGeneration = 0
 
-        let liveIds = nativeSystem.liveWindowIds()
-        let staleIds = knownIds.subtracting(liveIds)
-        if !staleIds.isEmpty {
-            apply(.windowsValidated(liveIds: liveIds))
-        }
-    }
-
-    private var refreshInFlight = false
-    private var needsRefresh = false
-
-    /// Funnels every reload through a single in-flight load. A request while a load is
-    /// already running just marks the state dirty; when that load finishes it re-runs
-    /// once more. This keeps applies ordered — no out-of-order `.loaded` can overwrite
-    /// newer event-driven state — and collapses an event burst's process storm into at
-    /// most one in-flight load plus one trailing reload, without ever dropping the final
-    /// reload the way a trailing debounce would.
+    /// Mirrors AeroSpace: every change re-reads its full state and applies it verbatim.
+    /// A generation stamp guarantees only the newest reload wins, so a burst collapses to a
+    /// single apply (the latest truth) without any single-flight gate that could stick and
+    /// freeze the mirror. AeroSpace is the source of truth — no bookkeeping, no ordering
+    /// tricks beyond "newest wins".
     private func requestRefresh() {
-        needsRefresh = true
-        guard !refreshInFlight else { return }
-        refreshInFlight = true
+        refreshGeneration &+= 1
+        let generation = refreshGeneration
+        refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             guard let self else { return }
-            // Snapshot the windows we already show *before* the burst reloads. Dead-window
-            // suppression only prunes these — a window that first appears during the burst is
-            // trusted even if CGWindowList hasn't composited it yet (see suppressingDeadWindows).
-            let knownAtStart = Set(self.model.workspaces.flatMap(\.windows).map(\.windowId))
-            while self.needsRefresh {
-                guard !Task.isCancelled else { break }
-                self.needsRefresh = false
-                guard let result = try? await loadOverview(using: self.runner) else { continue }
-                self.apply(.loaded(self.suppressingPendingCloses(self.suppressingDeadWindows(result, knownIds: knownAtStart))))
-                // A successful reload proves aerospace is reachable again; clear any
-                // stale startup error so it doesn't stick after recovery.
-                self.error = nil
-            }
-            self.refreshInFlight = false
+            guard let result = try? await loadOverview(using: self.runner) else { return }
+            // A newer refresh superseded us while this load was in flight; drop the stale
+            // result so only the latest state is applied (ordered, no UI churn).
+            guard generation == self.refreshGeneration else { return }
+            // A successful reload also proves aerospace is reachable, so clear any stale
+            // startup error so it doesn't stick after recovery.
+            self.apply(.loaded(result))
+            self.error = nil
         }
-    }
-
-    /// Drops windows AeroSpace still lists but that the window server no longer knows.
-    /// CGWindowList is authoritative and updates the instant a window closes, whereas
-    /// AeroSpace's list briefly lags a close and emits no event when it catches up — so a
-    /// reload racing that lag would keep a dead tile forever. Skipped when the live set is
-    /// empty (an API failure) so a transient hiccup can never prune the whole overview.
-    ///
-    /// Only windows already on screen before this reload burst (`knownIds`) are eligible for
-    /// pruning. CGWindowList lags the *other* way on open — a just-detected window is in
-    /// AeroSpace before macOS composites it into the window server — so a brand-new window is
-    /// trusted even when it isn't live yet. Otherwise the one-shot `window-detected`/`focus-
-    /// changed` refresh would suppress it with no further event to re-trigger a reload, and the
-    /// tile would stay missing until an unrelated event (e.g. a workspace switch) forced one.
-    private func suppressingDeadWindows(_ result: OverviewResult, knownIds: Set<Int>) -> OverviewResult {
-        let liveIds = nativeSystem.liveWindowIds()
-        guard !liveIds.isEmpty else { return result }
-        let workspaces = result.workspaces.map { ws -> WorkspaceInfo in
-            var ws = ws
-            ws.windows = ws.windows.filter { liveIds.contains($0.windowId) || !knownIds.contains($0.windowId) }
-            return ws
-        }
-        return OverviewResult(workspaces: workspaces)
-    }
-
-    /// Drops any optimistically-closed windows AeroSpace still lists, so a reload during
-    /// the close grace period can't resurrect a tile we've already removed.
-    private func suppressingPendingCloses(_ result: OverviewResult) -> OverviewResult {
-        guard !pendingCloseIds.isEmpty else { return result }
-        let workspaces = result.workspaces.map { ws -> WorkspaceInfo in
-            var ws = ws
-            ws.windows = ws.windows.filter { !pendingCloseIds.contains($0.windowId) }
-            return ws
-        }
-        return OverviewResult(workspaces: workspaces)
     }
 }

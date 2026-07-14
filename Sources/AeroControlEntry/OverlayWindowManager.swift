@@ -66,6 +66,16 @@ final class OverlayWindowManager {
         currentScreenID = screen.displayID
     }
 
+    /// Rebuilds the panel's SwiftUI root view in place to reflect a model change,
+    /// without reframing or retargeting the window. Needed because the manually-hosted
+    /// `NSHostingView` doesn't auto-observe `@Observable` model changes. Skipped when the
+    /// widget is hidden — a later summon re-syncs from the current model — so this never
+    /// resurrects a widget the user has dismissed.
+    func refreshPanel() {
+        guard let window, window.isVisible else { return }
+        hostingView?.rootView = makePanel()
+    }
+
     /// Shows the single panel on the main screen when the initial load failed and no
     /// AeroSpace monitors materialized, so `state.error` is visible.
     func showErrorFallbackIfNeeded() {
