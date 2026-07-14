@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:aerospace-overview}",
+            "name": "Debug AeroControl",
+            "target": "AeroControl",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug AeroControl"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:aerospace-overview}",
+            "name": "Release AeroControl",
+            "target": "AeroControl",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release AeroControl"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:aerospace-overview}",
+            "name": "Debug TUIOverlay",
+            "target": "TUIOverlay",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug TUIOverlay"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:aerospace-overview}",
+            "name": "Release TUIOverlay",
+            "target": "TUIOverlay",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release TUIOverlay"
+        }
+    ]
+}

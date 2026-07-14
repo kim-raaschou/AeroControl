@@ -1,0 +1,144 @@
+Wrote docs/code-metrics.html
+  40 files · 3178 code lines · complexity 526
+ewport" content="width=device-width, initial-scale=1">
+<title>AeroControl · Kodemetrics</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3;
+    --muted:#8b949e; --accent:#58a6ff; --warn:#f0883e; --danger:#f85149;
+    --good:#3fb950;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header { padding:28px 32px 8px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  .sub { color:var(--muted); font-size:13px; }
+  main { padding:16px 32px 48px; display:grid; gap:24px; max-width:1100px; }
+  .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .card .n { font-size:26px; font-weight:600; }
+  .card .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  section { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
+  h2 { margin:0 0 16px; font-size:15px; }
+  .bar-row { display:grid; grid-template-columns:220px 1fr 70px; align-items:center; gap:12px; margin:9px 0; }
+  .bar-label { color:var(--text); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-track { background:#0d1117; border-radius:6px; height:22px; overflow:hidden; border:1px solid var(--border); }
+  .bar-fill { height:100%; border-radius:6px 0 0 6px; }
+  .bar-val { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .file { color:var(--muted); }
+  .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .legend { color:var(--muted); font-size:12px; margin-top:10px; }
+  .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin:0 4px 0 12px; vertical-align:middle; }
+  footer { color:var(--muted); font-size:12px; padding:0 32px 32px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AeroControl · Kodekompleksitet &amp; linjer pr. lag</h1>
+  <div class="sub" id="sub"></div>
+</header>
+<main>
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>Kodelinjer pr. lag/område</h2>
+    <div id="loc-bars"></div>
+    <div class="legend">Kodelinjer eksklusiv tomme linjer og kommentarer.</div>
+  </section>
+
+  <section>
+    <h2>Samlet kompleksitet pr. lag/område</h2>
+    <div id="cx-bars"></div>
+    <div class="legend">Approksimeret cyklomatisk kompleksitet (sum af beslutningspunkter).</div>
+  </section>
+
+  <section>
+    <h2>Kompleksitetstæthed pr. lag <span class="sub">(kompleksitet ÷ kodelinjer)</span></h2>
+    <div id="dens-bars"></div>
+    <div class="legend">
+      Højere tæthed = mere forgrening pr. linje.
+      <span class="swatch" style="background:#3fb950"></span>lav
+      <span class="swatch" style="background:#f0883e"></span>middel
+      <span class="swatch" style="background:#f85149"></span>høj
+    </div>
+  </section>
+
+  <section>
+    <h2>Top 15 mest komplekse filer</h2>
+    <table id="top"><thead><tr>
+      <th>Fil</th><th>Lag</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
+    </tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Alle filer</h2>
+    <table id="all"><thead><tr>
+      <th>Fil</th><th>Lag</th><th class="num">Linjer</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
+    </tr></thead><tbody></tbody></table>
+  </section>
+</main>
+<footer id="foot"></footer>
+
+<script>
+const DATA = {"generated": "2026-07-14 16:17", "totals": {"files": 40, "total": 4457, "code": 3178, "complexity": 526}, "layers": [{"layer": "Tests", "total": 1444, "code": 1157, "complexity": 82, "files": 10, "density": 0.071}, {"layer": "Kit \u00b7 UI (SwiftUI views)", "total": 877, "code": 538, "complexity": 94, "files": 8, "density": 0.175}, {"layer": "App / Entry (windows, lifecycle)", "total": 797, "code": 514, "complexity": 102, "files": 6, "density": 0.198}, {"layer": "Kit \u00b7 Adapters (integrations)", "total": 337, "code": 249, "complexity": 47, "files": 4, "density": 0.189}, {"layer": "Kit \u00b7 State (stores)", "total": 354, "code": 246, "complexity": 70, "files": 2, "density": 0.285}, {"layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 341, "code": 237, "complexity": 68, "files": 5, "density": 0.287}, {"layer": "Common \u00b7 Domain (models)", "total": 275, "code": 207, "complexity": 62, "files": 4, "density": 0.3}, {"layer": "Other", "total": 32, "code": 30, "complexity": 1, "files": 1, "density": 0.033}], "files": [{"path": "Sources/AeroControlEntry/QuitTriggerController.swift", "file": "QuitTriggerController.swift", "layer": "App / Entry (windows, lifecycle)", "total": 223, "code": 150, "complexity": 27, "density": 0.18}, {"path": "Sources/AeroControlEntry/OverviewWindow.swift", "file": "OverviewWindow.swift", "layer": "App / Entry (windows, lifecycle)", "total": 196, "code": 124, "complexity": 25, "density": 0.202}, {"path": "Sources/AeroControlEntry/OverlayWindowManager.swift", "file": "OverlayWindowManager.swift", "layer": "App / Entry (windows, lifecycle)", "total": 166, "code": 103, "complexity": 23, "density": 0.223}, {"path": "Sources/AeroControlEntry/AeroControlApp.swift", "file": "AeroControlApp.swift", "layer": "App / Entry (windows, lifecycle)", "total": 156, "code": 99, "complexity": 14, "density": 0.141}, {"path": "Sources/AeroControlEntry/Permissions.swift", "file": "Permissions.swift", "layer": "App / Entry (windows, lifecycle)", "total": 44, "code": 30, "complexity": 9, "density": 0.3}, {"path": "Sources/AeroControlEntry/NSScreen+DisplayID.swift", "file": "NSScreen+DisplayID.swift", "layer": "App / Entry (windows, lifecycle)", "total": 12, "code": 8, "complexity": 4, "density": 0.5}, {"path": "Sources/Common/Aerospace/AerospaceCliParser.swift", "file": "AerospaceCliParser.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 158, "code": 111, "complexity": 23, "density": 0.207}, {"path": "Sources/Common/Aerospace/AerospaceEventParser.swift", "file": "AerospaceEventParser.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 60, "code": 48, "complexity": 21, "density": 0.438}, {"path": "Sources/Common/Aerospace/AerospaceField.swift", "file": "AerospaceField.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 30, "code": 17, "complexity": 12, "density": 0.706}, {"path": "Sources/Common/Aerospace/AerospaceCommands.swift", "file": "AerospaceCommands.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 64, "code": 44, "complexity": 6, "density": 0.136}, {"path": "Sources/Common/Aerospace/AerospaceProcessRunner.swift", "file": "AerospaceProcessRunner.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 29, "code": 17, "complexity": 6, "density": 0.353}, {"path": "Sources/Common/Domain/OverviewUpdate.swift", "file": "OverviewUpdate.swift", "layer": "Common \u00b7 Domain (models)", "total": 202, "code": 151, "complexity": 47, "density": 0.311}, {"path": "Sources/Common/Domain/AerospaceEvent.swift", "file": "AerospaceEvent.swift", "layer": "Common \u00b7 Domain (models)", "total": 14, "code": 10, "complexity": 9, "density": 0.9}, {"path": "Sources/Common/Domain/AeroControlAction.swift", "file": "AeroControlAction.swift", "layer": "Common \u00b7 Domain (models)", "total": 9, "code": 7, "complexity": 5, "density": 0.714}, {"path": "Sources/Common/Domain/Models.swift", "file": "Models.swift", "layer": "Common \u00b7 Domain (models)", "total": 50, "code": 39, "complexity": 1, "density": 0.026}, {"path": "Sources/AeroControlKit/Adapters/NativeApiBridgeAdapter.swift", "file": "NativeApiBridgeAdapter.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 137, "code": 106, "complexity": 23, "density": 0.217}, {"path": "Sources/AeroControlKit/Adapters/AerospaceProcessRunnerCli.swift", "file": "AerospaceProcessRunnerCli.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 135, "code": 104, "complexity": 13, "density": 0.125}, {"path": "Sources/AeroControlKit/Adapters/SingleInstanceGuard.swift", "file": "SingleInstanceGuard.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 56, "code": 32, "complexity": 10, "density": 0.312}, {"path": "Sources/AeroControlKit/Adapters/NativeApiBridge.swift", "file": "NativeApiBridge.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 9, "code": 7, "complexity": 1, "density": 0.143}, {"path": "Sources/AeroControlKit/State/OverviewStore.swift", "file": "OverviewStore.swift", "layer": "Kit \u00b7 State (stores)", "total": 339, "code": 240, "complexity": 64, "density": 0.267}, {"path": "Sources/AeroControlKit/State/OverviewOutput.swift", "file": "OverviewOutput.swift", "layer": "Kit \u00b7 State (stores)", "total": 15, "code": 6, "complexity": 6, "density": 1.0}, {"path": "Sources/AeroControlKit/UI/AeroControlWorkspaceCard.swift", "file": "AeroControlWorkspaceCard.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 235, "code": 158, "complexity": 29, "density": 0.184}, {"path": "Sources/AeroControlKit/UI/AeroControlAppTile.swift", "file": "AeroControlAppTile.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 168, "code": 114, "complexity": 15, "density": 0.132}, {"path": "Sources/AeroControlKit/UI/AeroControlPanel.swift", "file": "AeroControlPanel.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 155, "code": 113, "complexity": 13, "density": 0.115}, {"path": "Sources/AeroControlKit/UI/SettingsStore.swift", "file": "SettingsStore.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 96, "code": 55, "complexity": 11, "density": 0.2}, {"path": "Sources/AeroControlKit/UI/AeroControlLayout.swift", "file": "AeroControlLayout.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 63, "code": 34, "complexity": 10, "density": 0.294}, {"path": "Sources/AeroControlKit/UI/WidgetLayout.swift", "file": "WidgetLayout.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 36, "code": 15, "complexity": 8, "density": 0.533}, {"path": "Sources/AeroControlKit/UI/AeroControlMetrics.swift", "file": "AeroControlMetrics.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 108, "code": 36, "complexity": 7, "density": 0.194}, {"path": "Sources/AeroControlKit/UI/WindowDragData.swift", "file": "WindowDragData.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 16, "code": 13, "complexity": 1, "density": 0.077}, {"path": "Package.swift", "file": "Package.swift", "layer": "Other", "total": 32, "code": 30, "complexity": 1, "density": 0.033}, {"path": "Tests/AeroControlKit/OverviewStoreTests.swift", "file": "OverviewStoreTests.swift", "layer": "Tests", "total": 247, "code": 197, "complexity": 23, "density": 0.117}, {"path": "Tests/Common/AerospaceContractTests.swift", "file": "AerospaceContractTests.swift", "layer": "Tests", "total": 126, "code": 101, "complexity": 23, "density": 0.228}, {"path": "Tests/AeroControlKit/AerospaceProcessRunnerCliTests.swift", "file": "AerospaceProcessRunnerCliTests.swift", "layer": "Tests", "total": 74, "code": 59, "complexity": 11, "density": 0.186}, {"path": "Tests/Common/LoadOverviewTests.swift", "file": "LoadOverviewTests.swift", "layer": "Tests", "total": 62, "code": 52, "complexity": 8, "density": 0.154}, {"path": "Tests/Common/OverviewUpdateTests.swift", "file": "OverviewUpdateTests.swift", "layer": "Tests", "total": 463, "code": 353, "complexity": 8, "density": 0.023}, {"path": "Tests/Common/AerospaceCliParserTests.swift", "file": "AerospaceCliParserTests.swift", "layer": "Tests", "total": 129, "code": 118, "complexity": 4, "density": 0.034}, {"path": "Tests/Common/AeroControlMetricsTests.swift", "file": "AeroControlMetricsTests.swift", "layer": "Tests", "total": 127, "code": 102, "complexity": 2, "density": 0.02}, {"path": "Tests/Common/AerospaceEventTests.swift", "file": "AerospaceEventTests.swift", "layer": "Tests", "total": 86, "code": 70, "complexity": 1, "density": 0.014}, {"path": "Tests/Common/SettingsStoreTests.swift", "file": "SettingsStoreTests.swift", "layer": "Tests", "total": 76, "code": 65, "complexity": 1, "density": 0.015}, {"path": "Tests/Common/SingleInstanceGuardTests.swift", "file": "SingleInstanceGuardTests.swift", "layer": "Tests", "total": 54, "code": 40, "complexity": 1, "density": 0.025}], "topFiles": [{"path": "Sources/AeroControlKit/State/OverviewStore.swift", "file": "OverviewStore.swift", "layer": "Kit \u00b7 State (stores)", "total": 339, "code": 240, "complexity": 64, "density": 0.267}, {"path": "Sources/Common/Domain/OverviewUpdate.swift", "file": "OverviewUpdate.swift", "layer": "Common \u00b7 Domain (models)", "total": 202, "code": 151, "complexity": 47, "density": 0.311}, {"path": "Sources/AeroControlKit/UI/AeroControlWorkspaceCard.swift", "file": "AeroControlWorkspaceCard.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 235, "code": 158, "complexity": 29, "density": 0.184}, {"path": "Sources/AeroControlEntry/QuitTriggerController.swift", "file": "QuitTriggerController.swift", "layer": "App / Entry (windows, lifecycle)", "total": 223, "code": 150, "complexity": 27, "density": 0.18}, {"path": "Sources/AeroControlEntry/OverviewWindow.swift", "file": "OverviewWindow.swift", "layer": "App / Entry (windows, lifecycle)", "total": 196, "code": 124, "complexity": 25, "density": 0.202}, {"path": "Sources/AeroControlEntry/OverlayWindowManager.swift", "file": "OverlayWindowManager.swift", "layer": "App / Entry (windows, lifecycle)", "total": 166, "code": 103, "complexity": 23, "density": 0.223}, {"path": "Sources/AeroControlKit/Adapters/NativeApiBridgeAdapter.swift", "file": "NativeApiBridgeAdapter.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 137, "code": 106, "complexity": 23, "density": 0.217}, {"path": "Sources/Common/Aerospace/AerospaceCliParser.swift", "file": "AerospaceCliParser.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 158, "code": 111, "complexity": 23, "density": 0.207}, {"path": "Tests/AeroControlKit/OverviewStoreTests.swift", "file": "OverviewStoreTests.swift", "layer": "Tests", "total": 247, "code": 197, "complexity": 23, "density": 0.117}, {"path": "Tests/Common/AerospaceContractTests.swift", "file": "AerospaceContractTests.swift", "layer": "Tests", "total": 126, "code": 101, "complexity": 23, "density": 0.228}, {"path": "Sources/Common/Aerospace/AerospaceEventParser.swift", "file": "AerospaceEventParser.swift", "layer": "Common \u00b7 Aerospace (CLI parsing)", "total": 60, "code": 48, "complexity": 21, "density": 0.438}, {"path": "Sources/AeroControlKit/UI/AeroControlAppTile.swift", "file": "AeroControlAppTile.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 168, "code": 114, "complexity": 15, "density": 0.132}, {"path": "Sources/AeroControlEntry/AeroControlApp.swift", "file": "AeroControlApp.swift", "layer": "App / Entry (windows, lifecycle)", "total": 156, "code": 99, "complexity": 14, "density": 0.141}, {"path": "Sources/AeroControlKit/Adapters/AerospaceProcessRunnerCli.swift", "file": "AerospaceProcessRunnerCli.swift", "layer": "Kit \u00b7 Adapters (integrations)", "total": 135, "code": 104, "complexity": 13, "density": 0.125}, {"path": "Sources/AeroControlKit/UI/AeroControlPanel.swift", "file": "AeroControlPanel.swift", "layer": "Kit \u00b7 UI (SwiftUI views)", "total": 155, "code": 113, "complexity": 13, "density": 0.115}]};
+const COLORS = ["#58a6ff","#3fb950","#f0883e","#a371f7","#f85149","#56d4dd","#e3b341","#8b949e"];
+
+function densColor(d){ return d < 0.12 ? "#3fb950" : d < 0.20 ? "#f0883e" : "#f85149"; }
+
+document.getElementById("sub").textContent =
+  `Genereret ${DATA.generated} · ${DATA.totals.files} Swift-filer`;
+
+const cards = [
+  ["Filer", DATA.totals.files],
+  ["Linjer i alt", DATA.totals.total.toLocaleString("da-DK")],
+  ["Kodelinjer", DATA.totals.code.toLocaleString("da-DK")],
+  ["Kompleksitet", DATA.totals.complexity.toLocaleString("da-DK")],
+];
+document.getElementById("cards").innerHTML = cards.map(
+  ([l,n]) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`
+).join("");
+
+function bars(elId, items, valFn, labelFn, colorFn){
+  const max = Math.max(...items.map(valFn));
+  document.getElementById(elId).innerHTML = items.map((it,i)=>{
+    const v = valFn(it);
+    const pct = max ? (v/max*100).toFixed(1) : 0;
+    const c = colorFn ? colorFn(it,i) : COLORS[i % COLORS.length];
+    return `<div class="bar-row">
+      <div class="bar-label" title="${it.layer}">${it.layer}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c}"></div></div>
+      <div class="bar-val">${labelFn(it)}</div>
+    </div>`;
+  }).join("");
+}
+
+bars("loc-bars", DATA.layers, x=>x.code, x=>x.code.toLocaleString("da-DK"),
+     (x,i)=>COLORS[i % COLORS.length]);
+bars("cx-bars", [...DATA.layers].sort((a,b)=>b.complexity-a.complexity),
+     x=>x.complexity, x=>x.complexity.toLocaleString("da-DK"),
+     (x,i)=>COLORS[i % COLORS.length]);
+bars("dens-bars", [...DATA.layers].sort((a,b)=>b.density-a.density),
+     x=>x.density, x=>x.density.toFixed(3), x=>densColor(x.density));
+
+document.querySelector("#top tbody").innerHTML = DATA.topFiles.map(f=>`
+  <tr><td>${f.file}</td><td class="file">${f.layer}</td>
+  <td class="num">${f.code}</td>
+  <td class="num"><span class="pill" style="background:${densColor(f.density)}22;color:${densColor(f.density)}">${f.complexity}</span></td>
+  <td class="num">${f.density.toFixed(3)}</td></tr>`).join("");
+
+document.querySelector("#all tbody").innerHTML = DATA.files.map(f=>`
+  <tr><td>${f.file}</td><td class="file">${f.layer}</td>
+  <td class="num">${f.total}</td><td class="num">${f.code}</td>
+  <td class="num">${f.complexity}</td>
+  <td class="num" style="color:${densColor(f.density)}">${f.density.toFixed(3)}</td></tr>`).join("");
+
+document.getElementById("foot").textContent =
+  "Kompleksitet er en heuristik (if/for/while/case/guard/catch/&&/||/??/?). Kør scripts/code_metrics.py for at opdatere.";
+</script>
+</body>
+</html>

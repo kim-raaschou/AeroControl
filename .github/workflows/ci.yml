@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build, test & metrics guard
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pin the toolchain so Swift 6.2 / macOS 26 SDK stays deterministic
+      # even as the runner image's default Xcode moves.
+      - name: Select Xcode 26.2
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      # Same guard the pre-commit hook runs locally, enforced in CI so it
+      # cannot be bypassed with `git commit --no-verify`.
+      - name: Code-metrics guard
+        run: python3 scripts/code_metrics.py --check

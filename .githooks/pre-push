@@ -1,0 +1,25 @@
+#!/bin/sh
+# Run the unit-test suite before every push so a broken build/test never
+# leaves the machine. Commits stay fast (the metrics guard is the only
+# per-commit check); the full suite runs here instead. See AGENTS.md.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# Bypass in a true emergency with `git push --no-verify` (discouraged).
+
+echo "pre-push: running swift test…"
+out=$(mktemp)
+if swift test >"$out" 2>&1; then
+    status=0
+else
+    status=$?
+fi
+# Filter the strict-memory-safety tooling noise; keep everything else.
+grep -viE "input verification failed|while processing" "$out"
+rm -f "$out"
+
+if [ "$status" -ne 0 ]; then
+    echo "" 1>&2
+    echo "Push blocked: unit tests failed." 1>&2
+fi
+exit "$status"
