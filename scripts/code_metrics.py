@@ -172,7 +172,7 @@ def build_payload() -> dict:
     for l in layer_list:
         l["density"] = round(l["complexity"] / l["code"], 3) if l["code"] else 0
 
-    top_files = sorted(rows, key=lambda r: r["complexity"], reverse=True)[:15]
+    top_files = sorted(rows, key=lambda r: (r["maxFuncCx"], r["complexity"]), reverse=True)[:15]
     top_funcs = sorted(all_funcs, key=lambda f: f["complexity"], reverse=True)[:15]
     longest_func = max(all_funcs, key=lambda f: f["code"], default=None)
     deepest = max(rows, key=lambda r: r["maxDepth"], default=None)
@@ -528,10 +528,11 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <section>
-    <h2>Top 15 mest komplekse filer</h2>
+    <h2>Top 15 filer med tættest kompleksitet <span class="sub">(sorteret efter værste enkelt-funktion)</span></h2>
     <table id="top"><thead><tr>
       <th>Fil</th><th>Lag</th><th class="num">NLOC</th><th class="num">CCN</th><th class="num">Tæthed</th><th class="num">Funk.</th><th class="num">Max CCN</th><th class="num">NS</th>
     </tr></thead><tbody></tbody></table>
+    <div class="legend">Rangeret efter højeste funktions-CCN (hvor den værste kompleksitet bor), ikke filens sum — så store testfiler med mange trivielle funktioner ikke dominerer.</div>
   </section>
 
   <section>
