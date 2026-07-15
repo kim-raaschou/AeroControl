@@ -113,10 +113,10 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         for row in 0..<h {
             let rowStart = row * bytesPerRow
             for col in 0..<w where buffer[rowStart + col * 4 + 3] > threshold {
-                if col < minX { minX = col }
-                if col > maxX { maxX = col }
-                if row < minY { minY = row }
-                if row > maxY { maxY = row }
+                minX = min(minX, col)
+                maxX = max(maxX, col)
+                minY = min(minY, row)
+                maxY = max(maxY, row)
             }
         }
         guard maxX >= minX, maxY >= minY else { return nil }

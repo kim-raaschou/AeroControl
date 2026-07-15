@@ -54,5 +54,29 @@
     "code": 2962,
     "complexity": 417,
     "files": 39
+  },
+  {
+    "timestamp": "2026-07-15T00:03:04+02:00",
+    "commit": "9e7a2eb",
+    "subject": "metrics: use modified cyclomatic complexity (switch counts as one)",
+    "code": 2962,
+    "complexity": 417,
+    "files": 39
+  },
+  {
+    "timestamp": "2026-07-15T06:44:37+02:00",
+    "commit": "aa36da2",
+    "subject": "metrics: rank top files by worst-function CCN, not summed CCN",
+    "code": 2962,
+    "complexity": 413,
+    "files": 39
+  },
+  {
+    "timestamp": "2026-07-15T06:49:10+02:00",
+    "commit": "9f19f1d",
+    "subject": "Simplify opaqueBounds pixel scan with min/max (CCN 11->7)",
+    "code": 2962,
+    "complexity": 413,
+    "files": 39
   }
 ]
