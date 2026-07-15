@@ -79,26 +79,21 @@ struct AeroControlAppTile: View {
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
             let side = metrics.focusPlateSize
-            let shape = RoundedRectangle(cornerRadius: metrics.cornerRadius, style: .continuous)
-            // A genuine Liquid Glass plate, like the macOS Cmd-Tab switcher's
-            // selection highlight: `.regular` gives the neutral, appearance-adaptive
-            // frost (not a hard white wash) and samples the wallpaper behind the card.
-            Color.clear
+            let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
+            // The card body is near-invisible `.clear` glass, so the selection reads
+            // through a frosted material plate — the light, rounded highlight of the
+            // native Cmd-Tab switcher — with concentric corners nesting the icon.
+            shape
+                .fill(.regularMaterial)
+                .overlay { shape.fill(plateLighten) }
                 .frame(width: side, height: side)
-                .glassEffect(.regular, in: shape)
-                .overlay {
-                    // Lighten the glass toward the macOS Cmd-Tab selection highlight,
-                    // which is a bright, light plate rather than a dark frost. A soft
-                    // white wash keeps the glass refraction while lifting its tone.
-                    shape.fill(plateLighten).allowsHitTesting(false)
-                }
         }
     }
 
-    /// A soft white wash layered on the glass so the plate reads as the *light*
-    /// Cmd-Tab selection highlight instead of a dark frost over a dark backdrop.
+    /// A gentle white lift on top of the frosted plate so the selection reads as the
+    /// *light* native Cmd-Tab highlight rather than a neutral grey frost.
     private var plateLighten: Color {
-        colorScheme == .dark ? .white.opacity(0.32) : .white.opacity(0.5)
+        colorScheme == .dark ? .white.opacity(0.18) : .white.opacity(0.30)
     }
 
     /// Floating windows get a subtle dotted outline so they read as "outside the
@@ -112,7 +107,7 @@ struct AeroControlAppTile: View {
             let side = metrics.focusPlateSize
             let dot = max(1, iconSize * 0.05)
             let gap = iconSize * 0.09
-            RoundedRectangle(cornerRadius: metrics.cornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
                 .strokeBorder(
                     floatingStroke,
                     style: StrokeStyle(lineWidth: dot, lineCap: .round, dash: [0.01, gap])

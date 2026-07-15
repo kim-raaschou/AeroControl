@@ -59,13 +59,33 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     // MARK: - Focus plate (selected app) — all proportional to iconSize
 
-    /// Gap between the focused icon and the edge of its selection plate. Proportional
-    /// to the icon, so the plate grows/shrinks with the icon size.
-    public var focusPlatePadding: CGFloat { iconSize * 0.12 }
+    /// Gap between the focused icon's visible artwork and the edge of its selection
+    /// plate — a tight, even hug like the native Cmd-Tab highlight. Scales with the
+    /// icon but never drops below a legibility floor, so the focus ring stays visible
+    /// even at small icon sizes (mirrors the text `minTextSize` floor).
+    public var focusPlatePadding: CGFloat { max(Self.minPlatePadding, iconSize * 0.05) }
 
-    /// The selection plate's side: the icon plus its padding on all sides. Scales
-    /// directly with iconSize.
-    public var focusPlateSize: CGFloat { iconSize + 2 * focusPlatePadding }
+    /// Smallest on-screen focus-ring width (pt) we allow, so the selection stays
+    /// visible when icons are small.
+    private static let minPlatePadding: CGFloat = 3
+
+    /// The transparent margin macOS bakes into every app icon (~8.3% per side on the
+    /// Tahoe grid). The visible artwork sits inside it, so the selection plate and the
+    /// floating marker discount this margin to hug the artwork, not the empty canvas.
+    private var iconArtworkInset: CGFloat { iconSize * 0.083 }
+
+    /// The visible artwork's own squircle corner radius (~22% of the artwork width).
+    private var iconArtworkRadius: CGFloat { (iconSize - 2 * iconArtworkInset) * 0.22 }
+
+    /// Selection-plate corner radius, kept concentric with the icon artwork per
+    /// Apple's Tahoe concentric-corner rule: plateRadius = artworkRadius + padding.
+    /// This nests the plate around the rounded icon instead of boxing it.
+    public var focusPlateRadius: CGFloat { iconArtworkRadius + focusPlatePadding }
+
+    /// The selection plate's side: the visible artwork plus a tight even hug on all
+    /// sides (the icon's transparent margin is discounted), so the plate clings to the
+    /// artwork rather than floating around the full icon canvas.
+    public var focusPlateSize: CGFloat { iconSize - 2 * iconArtworkInset + 2 * focusPlatePadding }
 
     /// Air between the selection plate's edge and the card's outer panel edge. Also
     /// proportional to iconSize, so the breathing room scales with the icons.
