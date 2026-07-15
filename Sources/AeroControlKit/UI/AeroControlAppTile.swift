@@ -19,9 +19,9 @@ struct AeroControlAppTile: View {
     let iconSize: CGFloat
     private var metrics: AeroControlMetrics { AeroControlMetrics(iconSize: iconSize) }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
-    /// Icon-plate / focus-ring radius: 8pt at the reference size, scaled down for
-    /// smaller icons (never larger).
-    private var plateRadius: CGFloat { 8 * min(1, iconSize / AeroControlMetrics.defaultIconSize) }
+    /// Missing-icon placeholder radius: concentric with a real icon's artwork corner,
+    /// so a loading tile shares the same corner layout as a loaded one.
+    private var plateRadius: CGFloat { metrics.iconArtworkRadius }
 
     init(
         window: WindowInfo,

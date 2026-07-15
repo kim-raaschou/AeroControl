@@ -24,9 +24,11 @@ struct AeroControlMetricsTests {
     @Test func detailMetricsScaleAndFloor() {
         let tiny = AeroControlMetrics(iconSize: 16)
         let big = AeroControlMetrics(iconSize: 96)
-        // Corner radius scales down for small icons but is capped at its reference.
+        // Corner radius scales with the icon and stays concentric with the focus plate
+        // (card nests *outside* the plate: cardRadius = plateRadius + plate→card gap).
         #expect(tiny.cornerRadius < big.cornerRadius)
-        #expect(big.cornerRadius == 12)
+        #expect(big.cornerRadius > big.focusPlateRadius)
+        #expect(tiny.cornerRadius > tiny.focusPlateRadius)
         // Text stays legible at tiny sizes (floored at 7pt), yet grows with the icon.
         #expect(tiny.badgeFontSize == 7)
         #expect(big.badgeFontSize > tiny.badgeFontSize)
@@ -35,10 +37,10 @@ struct AeroControlMetricsTests {
 
     @Test func referenceSizeYieldsDesignValues() {
         // At the reference icon size, the plain design literals apply directly.
-        // cardHorizontalPadding is intentionally omitted: it is derived from the
-        // focus-plate geometry (see AeroControlMetrics), not a plain design value.
+        // cornerRadius and cardHorizontalPadding are intentionally omitted: both are
+        // derived from the focus-plate geometry (concentric corners), not plain
+        // design values (see AeroControlMetrics).
         let m = AeroControlMetrics(iconSize: AeroControlMetrics.defaultIconSize)
-        #expect(m.cornerRadius == 12)
         #expect(m.badgeFontSize == 9)
         #expect(m.appRowSpacing == 8)
         #expect(m.tileCellPadding == 2)

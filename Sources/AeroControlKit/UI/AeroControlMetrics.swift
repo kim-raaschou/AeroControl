@@ -50,10 +50,6 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     // MARK: - Proportional detail metrics (all = reference value × scale)
 
-    /// Corner radius for cards / empty tiles / focus border. Scales down for small
-    /// icons but never exceeds its reference (so large icons don't over-round).
-    public var cornerRadius: CGFloat { 12 * min(1, scale) }
-
     /// Horizontal gap between app icons within a card's row.
     public var appRowSpacing: CGFloat { 8 * scale }
 
@@ -75,7 +71,8 @@ public struct AeroControlMetrics: Equatable, Sendable {
     private var iconArtworkInset: CGFloat { iconSize * 0.083 }
 
     /// The visible artwork's own squircle corner radius (~22% of the artwork width).
-    private var iconArtworkRadius: CGFloat { (iconSize - 2 * iconArtworkInset) * 0.22 }
+    /// The missing-icon placeholder rounds to this too, so it matches a real icon.
+    public var iconArtworkRadius: CGFloat { (iconSize - 2 * iconArtworkInset) * 0.22 }
 
     /// Selection-plate corner radius, kept concentric with the icon artwork per
     /// Apple's Tahoe concentric-corner rule: plateRadius = artworkRadius + padding.
@@ -90,6 +87,19 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// Air between the selection plate's edge and the card's outer panel edge. Also
     /// proportional to iconSize, so the breathing room scales with the icons.
     public var focusPlatePanelGap: CGFloat { iconSize * 0.12 }
+
+    /// The true distance from the selection plate's edge to the card's outer edge:
+    /// the panel gap plus the icon's transparent artwork margin (the plate hugs the
+    /// *artwork*, so the empty margin also sits between the plate and the card edge).
+    /// Used to keep the card corner concentric with the plate.
+    public var focusPlateToCardGap: CGFloat { focusPlatePanelGap + iconArtworkInset }
+
+    /// Corner radius for cards / empty tiles / focus border. Kept concentric with the
+    /// selection plate per Apple's Tahoe concentric-corner rule — cardRadius =
+    /// plateRadius + (plate→card gap) — so the workspace card, the focus plate, and the
+    /// icon artwork all share one nested corner layout (icon ⊂ plate ⊂ card) at every
+    /// icon size, instead of the card using an independent, flatter radius.
+    public var cornerRadius: CGFloat { focusPlateRadius + focusPlateToCardGap }
 
     /// Horizontal padding inside a card, around the icon row. Sized so the focus
     /// plate (which overflows the tile) still leaves `focusPlatePanelGap` of air to
@@ -111,7 +121,11 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var badgeFontSize: CGFloat { max(Self.minTextSize, 9 * scale) }
     public var badgePaddingH: CGFloat { 6 * scale }
     public var badgePaddingV: CGFloat { 2 * scale }
-    public var badgeInset: CGFloat { 2 * scale }
+    /// Inset of the workspace-name badge from the card's top-leading corner. Clears the
+    /// rounded corner's arc — the arc intrudes ~0.293·radius along the diagonal (that's
+    /// `1 − 1/√2`), so the badge is pushed in by that plus a small base gap, keeping it
+    /// off (and unclipped by) the now-concentric, more-rounded corner at every size.
+    public var badgeInset: CGFloat { 2 * scale + cornerRadius * 0.293 }
 
     // MARK: - Card (one workspace)
 

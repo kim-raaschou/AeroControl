@@ -33,6 +33,18 @@ public final class SettingsStore {
     public static let minPreferredIconSize: CGFloat = 16
     public static let maxPreferredIconSize: CGFloat = 96
 
+    /// The fixed icon size used by the `menuBar` dock position, chosen to match the
+    /// native macOS menu-bar icon size so the strip reads as part of the menu bar.
+    /// Overrides the user's `iconSize` preset while that position is selected (the
+    /// preset is preserved and returns when another position is picked).
+    public static let menuBarIconSize: CGFloat = 18
+
+    /// The icon size the overview should actually render at: the native menu-bar size
+    /// when docked to the menu bar, otherwise the user's chosen preset.
+    public var effectiveIconSize: CGFloat {
+        edge.isMenuBar ? Self.menuBarIconSize : iconSize
+    }
+
     private let defaults: UserDefaults
     private let iconSizeKey = "settings.iconSize"
     private let edgeKey = "settings.edge"

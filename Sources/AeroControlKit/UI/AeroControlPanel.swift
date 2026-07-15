@@ -61,10 +61,10 @@ public struct AeroControlPanel: View {
     /// preferred size when the available extent is unknown (zero).
     private var renderedIconSize: CGFloat {
         let extent = settings.orientation.isVertical ? availableHeight : availableWidth
-        guard extent > 0 else { return settings.iconSize }
+        guard extent > 0 else { return settings.effectiveIconSize }
         let counts = workspaces.map { $0.windows.count }
         return AeroControlLayout.effectiveIconSize(
-            preferred: settings.iconSize,
+            preferred: settings.effectiveIconSize,
             availableWidth: extent * AeroControlLayout.usableScreenFraction,
             windowCounts: counts
         )

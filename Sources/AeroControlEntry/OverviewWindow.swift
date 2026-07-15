@@ -141,20 +141,16 @@ class OverviewWindow: NSPanel {
     }
 
     /// Docks the widget at `edge` (Position menu): the edge sets both the layout axis
-    /// and the on-screen anchor. Re-measures the panel when the axis changes, then
+    /// and the on-screen anchor. Always re-measures the panel — the axis may flip
+    /// (top↔left) *or* the effective icon size may change (menu-bar mode forces a native
+    /// size), and a stale fitting size would snap the window to the wrong shape — then
     /// snaps to the new placement in one reframe.
     func applyEdge(_ edge: DockEdge) {
         placementEdge = edge
-        let newVertical = edge.orientation.isVertical
-        var content = frame.size
-        if newVertical != isVertical {
-            isVertical = newVertical
-            // Re-measure synchronously for the new axis; a stale fitting size would snap
-            // the window to the wrong shape (the visible "morph" lag).
-            floatingHostingView?.needsLayout = true
-            floatingHostingView?.layoutSubtreeIfNeeded()
-            content = floatingHostingView?.fittingSize ?? content
-        }
+        isVertical = edge.orientation.isVertical
+        floatingHostingView?.needsLayout = true
+        floatingHostingView?.layoutSubtreeIfNeeded()
+        let content = floatingHostingView?.fittingSize ?? frame.size
         showFloating(contentSize: content)
     }
 
@@ -179,6 +175,13 @@ class OverviewWindow: NSPanel {
             desiredTopLeft = CGPoint(x: visible.maxX - size.width - inset, y: visible.midY + size.height / 2)
         case .center:
             desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: visible.midY + size.height / 2)
+        case .menuBar:
+            // Centered on the macOS menu-bar band: horizontally at the screen's midpoint
+            // and vertically on the middle of the band (between the menu bar's bottom edge
+            // `visible.maxY` and the screen's top `screenFrame.maxY`), so the strip sits
+            // balanced on the menu-bar line rather than hanging below it.
+            let bandMidY = (visible.maxY + screenFrame.maxY) / 2
+            desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: bandMidY + size.height / 2)
         }
         var originX = desiredTopLeft.x
         var originY = desiredTopLeft.y - size.height

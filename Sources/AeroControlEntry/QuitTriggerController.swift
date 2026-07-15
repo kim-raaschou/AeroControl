@@ -111,7 +111,10 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
         menu.addItem(.separator())
 
-        menu.addItem(sectionHeader("Icon Size"))
+        // The menu-bar dock position forces a native icon size, so the presets are
+        // locked (shown disabled) while it is selected.
+        let iconSizeLocked = settings.edge.isMenuBar
+        menu.addItem(sectionHeader(iconSizeLocked ? "Icon Size — native (Menu Bar)" : "Icon Size"))
         for preset in SettingsStore.iconSizePresets {
             let item = NSMenuItem(
                 title: iconSizeLabel(for: preset),
@@ -120,6 +123,7 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
             )
             item.target = self
             item.tag = Int(preset)
+            item.isEnabled = !iconSizeLocked
             item.state = abs(settings.iconSize - preset) < 0.5 ? .on : .off
             menu.addItem(item)
         }
@@ -197,6 +201,7 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         case .left: return "Left"
         case .right: return "Right"
         case .center: return "Center"
+        case .menuBar: return "Menu Bar"
         }
     }
 

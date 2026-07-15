@@ -131,7 +131,7 @@ final class OverlayWindowManager {
         // `onContentResize` below, which re-docks it to the exact fitting size within
         // the 0.12s fade-in — so the settle isn't visible and we avoid re-deriving the
         // panel's fitting math (which lives authoritatively in AeroControlLayout).
-        let seed = AeroControlMetrics(iconSize: settings.iconSize).cardHeight + 4
+        let seed = AeroControlMetrics(iconSize: settings.effectiveIconSize).cardHeight + 4
         window.showFloating(contentSize: NSSize(width: seed, height: seed))
         // Keep the window hugging its content as workspaces come and go. Assigned
         // after the initial placement so the first automatic layout pass can't move

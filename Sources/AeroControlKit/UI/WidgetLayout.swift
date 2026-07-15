@@ -21,16 +21,21 @@ public enum Orientation: String, Equatable, Sendable {
 /// control the user picks: it decides both where the widget sits *and* its layout axis —
 /// top/bottom/center are horizontal (wide, short), left/right are vertical (tall,
 /// narrow) — so orientation is derived, never chosen separately. `center` floats it in
-/// the middle of the focused screen (a cmd-tab-style HUD).
+/// the middle of the focused screen (a cmd-tab-style HUD). `menuBar` docks it flush
+/// against the macOS menu bar at native menu-bar icon size (a horizontal strip).
 public enum DockEdge: String, Equatable, Sendable, CaseIterable {
-    case top, bottom, left, right, center
+    case top, bottom, left, right, center, menuBar
 
-    /// The layout axis implied by this position: horizontal along the top/bottom and for
-    /// the centered HUD, vertical down the left/right.
+    /// The layout axis implied by this position: horizontal along the top/bottom, the
+    /// menu-bar strip, and for the centered HUD; vertical down the left/right.
     public var orientation: Orientation {
         switch self {
-        case .top, .bottom, .center: return .horizontal
+        case .top, .bottom, .center, .menuBar: return .horizontal
         case .left, .right: return .vertical
         }
     }
+
+    /// True for the menu-bar strip, which docks flush against the macOS menu bar and
+    /// renders at a fixed native menu-bar icon size rather than the user's preset.
+    public var isMenuBar: Bool { self == .menuBar }
 }

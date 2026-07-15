@@ -114,6 +114,8 @@ struct AeroControlWorkspaceCard: View {
     private var badge: some View {
         Text(workspace.name)
             .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
+            .lineLimit(1)
+            .truncationMode(.tail)
             .foregroundStyle(.primary)
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.55 : 0.18), radius: 1.5, x: 0, y: 0.5)
             .padding(.horizontal, metrics.badgePaddingH)
@@ -127,6 +129,12 @@ struct AeroControlWorkspaceCard: View {
             )
             .padding(.leading, metrics.badgeInset)
             .padding(.top, metrics.badgeInset)
+            // Reserve a matching gap on the right and let the badge span the card width,
+            // leading-aligned, so a long real name ("internet") truncates with a tail
+            // ellipsis inside the card instead of overflowing (or being clipped by) its
+            // right edge. Short names keep their natural capsule width.
+            .padding(.trailing, metrics.badgeInset)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     /// A solid vibrant capsule fill instead of `.ultraThinMaterial`: Apple's Liquid
