@@ -68,12 +68,12 @@
     "commit": "aa36da2",
     "subject": "metrics: rank top files by worst-function CCN, not summed CCN",
     "code": 2962,
-    "complexity": 413,
+    "complexity": 417,
     "files": 39
   },
   {
-    "timestamp": "2026-07-15T06:49:10+02:00",
-    "commit": "9f19f1d",
+    "timestamp": "2026-07-15T06:49:12+02:00",
+    "commit": "8af11c7",
     "subject": "Simplify opaqueBounds pixel scan with min/max (CCN 11->7)",
     "code": 2962,
     "complexity": 413,
