@@ -23,10 +23,15 @@ public class OverviewStore {
     public private(set) var error: String?
     public private(set) var isLoaded: Bool = false
 
-    /// Typed output channel consumed by the host. Replaces the former
-    /// `onMonitorsChanged` / `onLoaded` / `onWorkspaceFocused` closures.
-    public let outputs: AsyncStream<OverviewOutput>
-    private let outputContinuation: AsyncStream<OverviewOutput>.Continuation
+    /// Host reactions the store can't perform itself because it owns no windows. The
+    /// host (or a test) sets these; the store calls them directly instead of fanning a
+    /// separate output stream out to a single consumer.
+    ///   • onLoaded — the initial load finished; reveal / show an error fallback.
+    ///   • onMonitorsChanged — the hosting monitor set changed; re-sync windows.
+    ///   • onWorkspaceFocused — a workspace gained focus; follow it to its monitor.
+    public var onLoaded: (@MainActor () -> Void)?
+    public var onMonitorsChanged: (@MainActor () -> Void)?
+    public var onWorkspaceFocused: (@MainActor () -> Void)?
 
     /// Single ingress. Every live driver — the AeroSpace subscribe stream, the native
     /// app-termination bridge, user actions, and reload results — funnels its input into
@@ -45,7 +50,6 @@ public class OverviewStore {
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
         self.nativeSystem = nativeSystem
-        (outputs, outputContinuation) = AsyncStream.makeStream()
         (inbox, inboxContinuation) = AsyncStream.makeStream()
     }
 
@@ -53,10 +57,6 @@ public class OverviewStore {
     /// the serialized consumer owns application order.
     public func send(_ input: OverviewInput) {
         inboxContinuation.yield(input)
-    }
-
-    private func emit(_ output: OverviewOutput) {
-        outputContinuation.yield(output)
     }
 
     public func start() async {
@@ -76,7 +76,7 @@ public class OverviewStore {
     private func fireLoadedAfterEffects() {
         DispatchQueue.main.async {
             MainActor.assumeIsolated {
-                self.emit(.loaded)
+                self.onLoaded?()
             }
         }
     }
@@ -130,7 +130,7 @@ public class OverviewStore {
         // screen; re-run the sync so they are repositioned. Skipped during the
         // very first load (no windows/monitors yet), where `.loaded` drives sync.
         if changed && isLoaded {
-            emit(.monitorsChanged)
+            onMonitorsChanged?()
         }
     }
 
@@ -265,9 +265,9 @@ public class OverviewStore {
             case .refresh:
                 requestRefresh()
             case .monitorsChanged:
-                emit(.monitorsChanged)
+                onMonitorsChanged?()
             case .workspaceFocused:
-                emit(.workspaceFocused)
+                onWorkspaceFocused?()
             case .runAction(let action):
                 runAction(action)
             }

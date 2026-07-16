@@ -19,7 +19,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayManager: OverlayWindowManager!
     private var quitController: QuitTriggerController!
     private var settings: SettingsStore!
-    private var outputTask: Task<Void, Never>?
     private let instanceGuard = SingleInstanceGuard()
     /// Menu-bar control surface — the resident daemon's only reachable UI while the
     /// widget is hidden (settings + Quit).
@@ -75,32 +74,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         installStatusItem()
 
-        Task {
-            await state.start()
-        }
-
-        // Consume the store's typed output channel. Reactions:
-        // - .monitorsChanged: monitor changes re-sync the window.
-        // - .workspaceFocused: follow focus — move the single widget to the focused
+        // Wire the store's host reactions directly (it owns no windows):
+        // - onMonitorsChanged: monitor changes re-sync the window.
+        // - onWorkspaceFocused: follow focus — move the single widget to the focused
         //   monitor's screen (floating panels float above everything and never
         //   disturb window positions).
-        // - .loaded: if the initial load failed, no AeroSpace monitors are known, so
+        // - onLoaded: if the initial load failed, no AeroSpace monitors are known, so
         //   `syncWindows()` creates no panel and the error would be invisible. Show a
         //   fallback panel on the main screen so `state.error` is seen.
-        outputTask = Task { [weak self] in
-            guard let self else { return }
-            for await output in self.state.outputs {
-                switch output {
-                case .monitorsChanged:
-                    self.overlayManager.syncWindows()
-                case .workspaceFocused:
-                    // Follow focus: move the single widget to the focused monitor's
-                    // screen (a same-screen focus change is a cheap no-op).
-                    self.overlayManager.syncWindows(force: false)
-                case .loaded:
-                    self.overlayManager.showErrorFallbackIfNeeded()
-                }
-            }
+        state.onMonitorsChanged = { [weak self] in self?.overlayManager.syncWindows() }
+        state.onWorkspaceFocused = { [weak self] in self?.overlayManager.syncWindows(force: false) }
+        state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
+
+        Task {
+            await state.start()
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -126,12 +113,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Single idempotent teardown shared by `quit()` and `applicationWillTerminate`.
-    /// Order: remove quit triggers → cancel the output stream consumer → stop the
-    /// store → drop the overlay windows → remove the menu-bar item.
+    /// Order: remove quit triggers → stop the store → drop the overlay windows →
+    /// remove the menu-bar item.
     @MainActor private func performTeardown() {
         quitController?.teardown()
-        outputTask?.cancel()
-        outputTask = nil
         state?.stop()
         overlayManager?.removeAll()
         if let statusItem {

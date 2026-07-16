@@ -89,19 +89,31 @@ private final class ScriptableBridge: NativeApiBridge {
     func ringCloseDoorbell() { closeCont?.yield(()) }
 }
 
-/// Collects the store's typed outputs off its `AsyncStream` for assertions.
+/// Records the store's host-reaction callbacks for assertions.
+private enum HostSignal: Equatable { case loaded, monitorsChanged, workspaceFocused }
+
 private final class OutputCollector: @unchecked Sendable {
     private let lock = NSLock()
-    private var items: [OverviewOutput] = []
-    func append(_ output: OverviewOutput) {
+    private var items: [HostSignal] = []
+    func append(_ output: HostSignal) {
         lock.lock(); defer { lock.unlock() }
         items.append(output)
     }
-    func count(of output: OverviewOutput) -> Int {
+    func count(of output: HostSignal) -> Int {
         lock.lock(); defer { lock.unlock() }
         return items.filter { $0 == output }.count
     }
 }
+
+/// Wires a collector to a store's three host-reaction callbacks.
+@MainActor private func collect(_ store: OverviewStore) -> OutputCollector {
+    let outputs = OutputCollector()
+    store.onLoaded = { outputs.append(.loaded) }
+    store.onMonitorsChanged = { outputs.append(.monitorsChanged) }
+    store.onWorkspaceFocused = { outputs.append(.workspaceFocused) }
+    return outputs
+}
+
 
 // MARK: - Helpers
 
@@ -276,10 +288,8 @@ struct StoreIngressIntegrationTests {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let outputs = collect(store)
         await store.start()
-        let outputs = OutputCollector()
-        let task = Task { for await o in store.outputs { outputs.append(o) } }
-        try? await Task.sleep(for: .milliseconds(20))
         await waitUntil { runner.isSubscribed }
 
         runner.sendEvent("{\"_event\":\"focused-workspace-changed\",\"workspace\":\"2\",\"prevWorkspace\":\"1\"}")
@@ -287,7 +297,6 @@ struct StoreIngressIntegrationTests {
         await waitUntil { outputs.count(of: .workspaceFocused) >= 1 }
         #expect(store.model.focusedWorkspace == "2")
         #expect(outputs.count(of: .workspaceFocused) >= 1)
-        task.cancel()
         store.stop()
     }
 
@@ -296,10 +305,8 @@ struct StoreIngressIntegrationTests {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let outputs = collect(store)
         await store.start()
-        let outputs = OutputCollector()
-        let task = Task { for await o in store.outputs { outputs.append(o) } }
-        try? await Task.sleep(for: .milliseconds(20))
         await waitUntil { runner.isSubscribed }
 
         runner.sendEvent("{\"_event\":\"focused-monitor-changed\",\"workspace\":\"2\",\"monitorId\":1}")
@@ -307,7 +314,6 @@ struct StoreIngressIntegrationTests {
         await waitUntil { outputs.count(of: .workspaceFocused) >= 1 }
         #expect(store.model.focusedWorkspace == "2")
         #expect(outputs.count(of: .workspaceFocused) >= 1)
-        task.cancel()
         store.stop()
     }
 
@@ -451,11 +457,12 @@ struct StoreIngressIntegrationTests {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let outputs = collect(store)
         await store.start()
+        // The initial load ([] → [1]) emits one `.monitorsChanged` asynchronously; wait
+        // for it to settle so `before` captures a stable baseline.
+        await waitUntil { outputs.count(of: .monitorsChanged) >= 1 }
 
-        let outputs = OutputCollector()
-        let task = Task { for await o in store.outputs { outputs.append(o) } }
-        try? await Task.sleep(for: .milliseconds(20))
         let before = outputs.count(of: .monitorsChanged)
 
         // A workspace appears on a SECOND monitor: the monitor set grows [1] → [1, 2], so the
@@ -471,7 +478,6 @@ struct StoreIngressIntegrationTests {
         await waitUntil { windowIds(store) == [1, 2, 5] }
         #expect(outputs.count(of: .monitorsChanged) == afterGrow)
 
-        task.cancel()
         store.stop()
     }
 
@@ -483,14 +489,12 @@ struct StoreIngressIntegrationTests {
 
         // Attach before `start()` so the one-shot `.loaded` (fired on a later main-queue turn,
         // after the load's icon effects) is captured deterministically.
-        let outputs = OutputCollector()
-        let task = Task { for await o in store.outputs { outputs.append(o) } }
+        let outputs = collect(store)
         await store.start()
 
         await waitUntil { outputs.count(of: .loaded) >= 1 }
         #expect(outputs.count(of: .loaded) == 1)
 
-        task.cancel()
         store.stop()
     }
 }

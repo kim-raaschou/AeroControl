@@ -151,5 +151,14 @@
     "complexity": 461,
     "prodComplexity": 267,
     "files": 40
+  },
+  {
+    "timestamp": "2026-07-16T19:20:21+02:00",
+    "commit": "9b26cad",
+    "subject": "Gate complexity on production code only; report per-layer split",
+    "code": 3340,
+    "complexity": 461,
+    "prodComplexity": 267,
+    "files": 40
   }
 ]
