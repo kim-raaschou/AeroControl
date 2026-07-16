@@ -28,6 +28,15 @@ public class OverviewStore {
     public let outputs: AsyncStream<OverviewOutput>
     private let outputContinuation: AsyncStream<OverviewOutput>.Continuation
 
+    /// Single ingress. Every live driver — the AeroSpace subscribe stream, the native
+    /// app-termination bridge, user actions, and reload results — funnels its input into
+    /// this inbox, and one serialized consumer (`startInbox`) applies them in arrival
+    /// order. This gives AeroControl exactly one entrance, so ordering across sources is
+    /// deterministic and an integration test can drive the whole store from one channel.
+    private let inbox: AsyncStream<OverviewInput>
+    private let inboxContinuation: AsyncStream<OverviewInput>.Continuation
+
+    private var inboxTask: Task<Void, Never>?
     private var subscribeTask: Task<Void, Never>?
     private var terminationTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
@@ -36,6 +45,13 @@ public class OverviewStore {
         self.runner = runner
         self.nativeSystem = nativeSystem
         (outputs, outputContinuation) = AsyncStream.makeStream()
+        (inbox, inboxContinuation) = AsyncStream.makeStream()
+    }
+
+    /// Funnels one input into the single inbox. Callers never touch `apply` directly;
+    /// the serialized consumer owns application order.
+    public func send(_ input: OverviewInput) {
+        inboxContinuation.yield(input)
     }
 
     private func emit(_ output: OverviewOutput) {
@@ -44,6 +60,7 @@ public class OverviewStore {
 
     public func start() async {
         await initialLoad()
+        startInbox()
         startSubscribeListener()
         startTerminationListener()
         // Reveal only after the loaded effects (icon loading) have been applied,
@@ -116,6 +133,9 @@ public class OverviewStore {
     }
 
     public func stop() {
+        inboxContinuation.finish()
+        inboxTask?.cancel()
+        inboxTask = nil
         subscribeTask?.cancel()
         subscribeTask = nil
         terminationTask?.cancel()
@@ -127,12 +147,24 @@ public class OverviewStore {
     // MARK: - Actions
 
     public func dispatch(_ action: AeroControlAction) async {
-        apply(.action(action))
+        send(.action(action))
     }
 
     // MARK: - Internal
 
-
+    /// The single serialized consumer: drains the inbox in arrival order and applies each
+    /// input through the pure reducer. All outputs (including focus-follow) flow from the
+    /// reducer's effects, so the consumer has no per-input special-casing.
+    private func startInbox() {
+        guard inboxTask == nil else { return }
+        inboxTask = Task { [weak self] in
+            guard let self else { return }
+            for await input in self.inbox {
+                if Task.isCancelled { return }
+                self.apply(input)
+            }
+        }
+    }
 
     private func startSubscribeListener() {
         guard subscribeTask == nil else { return }
@@ -144,7 +176,7 @@ public class OverviewStore {
                     let stream = self.runner.subscribe(AerospaceCommand.subscribe())
                     for try await line in stream {
                         if let event = AerospaceEvent.parse(line) {
-                            await self.handleEvent(event)
+                            await self.send(.event(event))
                         }
                     }
                 } catch {}
@@ -160,7 +192,7 @@ public class OverviewStore {
             guard let self else { return }
             for await _ in self.nativeSystem.appTerminations() {
                 guard !Task.isCancelled else { return }
-                self.handleEvent(.appTerminated)
+                self.send(.event(.appTerminated))
             }
         }
     }
@@ -170,43 +202,26 @@ public class OverviewStore {
         // Don't animate workspace-focus changes: the focus plate should snap to the
         // newly focused workspace instantly, not fade/scale across.
         let focusChanged = newState.focusedWorkspace != model.focusedWorkspace
-        // The manually-hosted NSHostingView doesn't auto-observe @Observable model
-        // changes, so the host must rebuild the panel when the rendered model changes.
-        // Compare before assigning; monitor-set changes are handled by the
-        // `.monitorsChanged` effect (a full re-sync), so only signal same-monitor
-        // content changes here — and skip no-op reloads to avoid needless rebuilds.
-        let contentChanged = newState != model
-        if animated && !focusChanged {
-            withAnimation(.easeInOut(duration: 0.1)) {
+        // The hosted panel is `@Bindable` on this `@Observable` store and its
+        // `NSHostingView` auto-observes `model`, so re-rendering is automatic — no
+        // explicit rebuild output is needed. `@Observable` invalidates on *assignment*,
+        // not inequality, so guard the assignment: skip no-op reloads (mirroring
+        // AeroSpace on every event frequently re-reads identical state) to avoid needless
+        // re-renders / mid-hover resets. Monitor-set changes are handled separately by
+        // the `.monitorsChanged` effect (a full window re-sync).
+        if newState != model {
+            if animated && !focusChanged {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    model = newState
+                }
+            } else {
                 model = newState
             }
-        } else {
-            model = newState
-        }
-        if contentChanged {
-            emit(.contentChanged)
         }
         // Execute effects outside animation transaction to avoid constraint loops
         DispatchQueue.main.async { [self] in
             self.executeEffects(effects)
         }
-    }
-
-    private func handleEvent(_ event: AerospaceEvent) {
-        apply(.event(event))
-        switch event {
-        case .workspaceChanged(let workspace, _), .monitorChanged(let workspace, _):
-            notifyWorkspaceFocused(workspace)
-        default:
-            break
-        }
-    }
-
-    /// After a workspace gains focus, hand the focused workspace to listeners so
-    /// they can react to its floating windows.
-    private func notifyWorkspaceFocused(_ workspaceName: String) {
-        guard let workspace = model.workspaces.first(where: { $0.name == workspaceName }) else { return }
-        emit(.workspaceFocused(workspace))
     }
 
     private func executeEffects(_ effects: [OverviewEffect]) {
@@ -226,6 +241,8 @@ public class OverviewStore {
                 requestRefresh()
             case .monitorsChanged:
                 emit(.monitorsChanged)
+            case .workspaceFocused:
+                emit(.workspaceFocused)
             case .runAction(let action):
                 runAction(action)
             }
@@ -267,8 +284,10 @@ public class OverviewStore {
             guard generation == self.refreshGeneration else { return }
             // A successful reload also proves aerospace is reachable, so clear any stale
             // startup error so it doesn't stick after recovery.
-            self.apply(.loaded(result))
             self.error = nil
+            // Re-enter through the single inbox rather than applying directly, so reload
+            // results share the one ordered ingress with events and actions.
+            self.send(.loaded(result))
         }
     }
 }

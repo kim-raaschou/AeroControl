@@ -9,12 +9,7 @@ public enum OverviewOutput: Equatable, Sendable {
     case loaded
     /// The set of monitors hosting workspaces changed; the host re-syncs windows.
     case monitorsChanged
-    /// A workspace gained focus. Currently no host-side reaction (the floating widget
-    /// never disturbs window positions); retained as a meaningful store event.
-    case workspaceFocused(WorkspaceInfo)
-    /// The reconciled, rendered model changed (a window opened/closed/moved, or focus
-    /// shifted) without the monitor set changing. The manually-hosted `NSHostingView`
-    /// does not auto-observe `@Observable` model changes, so the host rebuilds the
-    /// panel's root view to reflect the new state.
-    case contentChanged
+    /// A workspace gained focus. The host follows focus — it moves the single floating
+    /// widget to the focused workspace's monitor (it never disturbs window positions).
+    case workspaceFocused
 }

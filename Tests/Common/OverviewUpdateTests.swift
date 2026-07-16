@@ -133,7 +133,7 @@ struct WorkspaceChangedTests {
         let (new, effects) = updateOverview(s, .event(.workspaceChanged(workspace: "2", prevWorkspace: "1")))
 
         #expect(new.focusedWorkspace == "2")
-        #expect(effects == [.refresh])
+        #expect(effects == [.refresh, .workspaceFocused])
     }
 
     @Test("monitor-changed opdaterer focusedWorkspace")
@@ -143,7 +143,7 @@ struct WorkspaceChangedTests {
         let (new, effects) = updateOverview(s, .event(.monitorChanged(workspace: "2", monitorId: nil)))
 
         #expect(new.focusedWorkspace == "2")
-        #expect(effects == [.refresh])
+        #expect(effects == [.refresh, .workspaceFocused])
     }
 }
 

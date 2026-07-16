@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import Testing
 @testable import AeroControlKit
 @testable import Common
@@ -62,20 +63,6 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
 private final class FakeBridge: NativeApiBridge {
     func appIcon(bundleId: String) -> NSImage { NSImage() }
     func appTerminations() -> AsyncStream<Void> { AsyncStream { _ in } }
-}
-
-/// Collects the store's typed outputs off its `AsyncStream` for assertions.
-private final class OutputCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [OverviewOutput] = []
-    func append(_ output: OverviewOutput) {
-        lock.lock(); defer { lock.unlock() }
-        items.append(output)
-    }
-    func count(of output: OverviewOutput) -> Int {
-        lock.lock(); defer { lock.unlock() }
-        return items.filter { $0 == output }.count
-    }
 }
 
 // MARK: - Helpers
@@ -182,57 +169,54 @@ struct OverviewStoreTests {
         #expect(windowIds(store) == [1])
     }
 
-    @Test("a same-monitor content change emits contentChanged; a no-op reload does not")
-    func contentChangeEmitsOutput() async {
+    @Test("a same-monitor content change invalidates the observable model; a no-op reload does not")
+    func contentChangeInvalidatesModel() async {
         let runner = FakeRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
 
-        let outputs = OutputCollector()
-        let task = Task { for await output in store.outputs { outputs.append(output) } }
-        // Let the collector attach and drain start-up outputs.
+        // Count how many times the @Observable model would invalidate SwiftUI. This is the
+        // real render trigger now that the hosted NSHostingView auto-observes `model`
+        // (the manual diff/rebuild layer is gone).
+        let invalidations = await ModelInvalidationCounter(store)
         try? await Task.sleep(for: .milliseconds(20))
+        let before = await invalidations.count
 
         // Window 1 moves from ws "1" to ws "2" on the same monitor: AeroSpace now lists it
-        // under "2" and emits a workspace-changed event that drives a reconcile. The
-        // manually-hosted panel doesn't auto-observe, so the store must signal the change.
+        // under "2" and emits a workspace-changed event that drives a reconcile. The panel
+        // auto-observes, so the store just assigns the new model — a real change.
         runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
         await waitUntil { runner.isSubscribed }
         runner.send("{\"_event\":\"focused-workspace-changed\",\"workspace\":\"2\",\"prevWorkspace\":\"1\"}")
 
         await waitUntil { workspaceOf(store, 1) == "2" }
         #expect(workspaceOf(store, 1) == "2")
-        #expect(outputs.count(of: .contentChanged) >= 1)
+        #expect(await invalidations.count > before)
 
-        // A reload that returns identical state must not emit another contentChanged, so
-        // no-op reconciles never rebuild the panel (avoids flashing / mid-hover resets).
-        let before = outputs.count(of: .contentChanged)
+        // A reload that returns identical state must not reassign `model`, so no-op
+        // reconciles never re-render the panel (avoids flashing / mid-hover resets).
+        let afterChange = await invalidations.count
         runner.send("{\"_event\":\"binding-triggered\"}")
         try? await Task.sleep(for: .milliseconds(100))
-        #expect(outputs.count(of: .contentChanged) == before)
-
-        task.cancel()
+        #expect(await invalidations.count == afterChange)
     }
 
-    @Test("a burst of reloads to the same state stresses the UI with at most one render")
+    @Test("a burst of reloads to the same state invalidates the model at most once")
     func rapidRefreshesRenderOnce() async {
         let runner = FakeRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
 
-        let outputs = OutputCollector()
-        let task = Task { for await output in store.outputs { outputs.append(output) } }
-        // Let the collector attach and drain buffered start-up outputs (the initial load
-        // emits its own contentChanged), then measure the burst as a delta from here.
+        let invalidations = await ModelInvalidationCounter(store)
         try? await Task.sleep(for: .milliseconds(20))
-        let before = outputs.count(of: .contentChanged)
+        let before = await invalidations.count
 
         // AeroSpace now reports window 1 on ws "2". Fire a burst of refresh-driving events:
         // every reload re-reads the SAME new state, so only the first apply differs from the
-        // model. Mirroring AeroSpace on every event must not stress the UI — the store emits
-        // exactly one contentChanged for the burst, and no-op reloads emit none.
+        // model. Mirroring AeroSpace on every event must not stress the UI — the model is
+        // assigned exactly once for the burst, and no-op reloads never reassign it.
         runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
         await waitUntil { runner.isSubscribed }
         for _ in 0..<5 {
@@ -242,8 +226,32 @@ struct OverviewStoreTests {
         await waitUntil { workspaceOf(store, 1) == "2" }
         try? await Task.sleep(for: .milliseconds(150))
         #expect(workspaceOf(store, 1) == "2")
-        #expect(outputs.count(of: .contentChanged) - before == 1, "burst to one new state must render once, got \(outputs.count(of: .contentChanged) - before)")
+        let delta = await invalidations.count - before
+        #expect(delta == 1, "burst to one new state must render once, got \(delta)")
+    }
+}
 
-        task.cancel()
+/// Counts how many times the store's `@Observable` `model` invalidates — i.e. how many
+/// times SwiftUI's `NSHostingView` would re-render. Re-registers its observation after
+/// each change, so it tallies a running count over the test's lifetime.
+@MainActor
+private final class ModelInvalidationCounter {
+    private(set) var count = 0
+    private let store: OverviewStore
+
+    init(_ store: OverviewStore) {
+        self.store = store
+        register()
+    }
+
+    private func register() {
+        withObservationTracking {
+            _ = store.model
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.count += 1
+                self?.register()
+            }
+        }
     }
 }

@@ -99,10 +99,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.overlayManager.syncWindows(force: false)
                 case .loaded:
                     self.overlayManager.showErrorFallbackIfNeeded()
-                case .contentChanged:
-                    // A same-monitor window open/close/move (or focus shift) changed the
-                    // rendered model; rebuild the panel in place so it reflects reality.
-                    self.overlayManager.refreshPanel()
                 }
             }
         }
