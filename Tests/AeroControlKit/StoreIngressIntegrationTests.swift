@@ -172,7 +172,7 @@ struct StoreIngressIntegrationTests {
         #expect(windowIds(store) == [100, 200])
 
         // The app owning window 100 quits: AeroSpace no longer lists it. The native bridge
-        // funnels `.appTerminated` through the same inbox, which reloads and mirrors reality.
+        // funnels `.localWindowClosed` through the same inbox, which reloads and mirrors reality.
         runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
         await waitUntil { bridge.isListening }
         bridge.terminate()
@@ -192,7 +192,7 @@ struct StoreIngressIntegrationTests {
         #expect(windowIds(store) == [100, 200])
 
         // A background window closes with the mouse — AeroSpace emits no event. The close
-        // doorbell (a global mouse-up) funnels `.windowClosed` through the same inbox,
+        // doorbell (a global mouse-up) funnels `.localWindowClosed` through the same inbox,
         // which reloads and mirrors reality even though nothing about focus changed.
         runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
         await waitUntil { bridge.isWatchingCloses }

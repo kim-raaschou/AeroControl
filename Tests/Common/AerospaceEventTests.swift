@@ -64,7 +64,16 @@ struct AerospaceEventParseTests {
         #expect(event == .other)
     }
 
-    @Test func mode_changed_now_maps_to_other() {
+    @Test func window_closed_is_not_parsed_we_emulate_it_locally() {
+        // Stock AeroSpace emits no close event, so AeroControl doesn't recognise a
+        // "window-closed" name on the stream — it emulates close locally instead
+        // (`.localWindowClosed` from the native taps). An unknown name maps to `.other`.
+        let json = #"{"_event":"window-closed","windowId":7}"#
+        let event = AerospaceEvent.parse(json)
+        #expect(event == .other)
+    }
+
+    @Test func mode_changed_maps_to_other() {
         let json = #"{"_event":"mode-changed","mode":"resize"}"#
         let event = AerospaceEvent.parse(json)
         #expect(event == .other)

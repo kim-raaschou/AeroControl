@@ -92,7 +92,7 @@ struct AerospaceFieldDriftGuardTests {
     }
 }
 
-// MARK: - b-event-name-pin — the declared event names must be the ones the parser handles.
+// MARK: - b-event-name-pin — the declared event names must mirror AeroSpace's ServerEventType.
 
 @Suite("AerospaceEventName pin")
 struct AerospaceEventNamePinTests {
@@ -102,20 +102,28 @@ struct AerospaceEventNamePinTests {
             "focus-changed",
             "focused-workspace-changed",
             "focused-monitor-changed",
+            "mode-changed",
             "window-detected",
             "binding-triggered",
         ])
     }
 
-    @Test("every declared event name is actually handled by the parser (never falls through to .other)")
-    func everyNameIsHandled() throws {
+    @Test("acted-on names map to a real event; ignored names fall through to .other")
+    func nameHandling() throws {
+        // Names AeroSpace emits that AeroControl deliberately ignores (they can't change
+        // the window/workspace layout), so the parser routes them to `.other`.
+        let ignoredNames: Set<AerospaceEventName> = [.modeChanged]
         for name in AerospaceEventName.allCases {
             // window-detected requires a window-id to be actionable; supply one so this
             // guards the name mapping rather than the id-missing→.other guard.
             let payload = name == .windowDetected ? #","windowId":1"# : ""
             let json = #"{"_event":"\#(name.rawValue)"\#(payload)}"#
             let event = try #require(AerospaceEvent.parse(json), "\(name.rawValue) did not parse")
-            #expect(event != .other, "\(name.rawValue) fell through to .other")
+            if ignoredNames.contains(name) {
+                #expect(event == .other, "\(name.rawValue) should fall through to .other")
+            } else {
+                #expect(event != .other, "\(name.rawValue) fell through to .other")
+            }
         }
     }
 

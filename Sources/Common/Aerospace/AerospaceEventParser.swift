@@ -1,12 +1,17 @@
 import Foundation
 
-/// Single source of truth for the AeroSpace CLI's `_event` names. Kept next to the
-/// parser so the strings AeroSpace emits live in exactly one place; the
-/// b-event-name-pin test locks these against the cases the parser handles.
+/// Single source of truth for the AeroSpace CLI's `_event` names — a faithful mirror
+/// of the events **stock** AeroSpace emits. Not every name is acted on: ones that can't
+/// change the window/workspace layout (e.g. `mode-changed`) are recognised here but fall
+/// through to `.other` in the parser. Deliberately absent: any "window-closed" — stock
+/// AeroSpace emits no close event, so AeroControl emulates that itself locally
+/// (`AerospaceEvent.localWindowClosed`) rather than depending on it arriving on the stream.
+/// The b-event-name-pin test locks these against AeroSpace's set.
 public enum AerospaceEventName: String, CaseIterable {
     case focusChanged = "focus-changed"
     case workspaceChanged = "focused-workspace-changed"
     case monitorChanged = "focused-monitor-changed"
+    case modeChanged = "mode-changed"
     case windowDetected = "window-detected"
     case bindingTriggered = "binding-triggered"
 }
@@ -38,7 +43,10 @@ extension AerospaceEvent {
             )
         case .bindingTriggered:
             return .bindingTriggered
-        case nil:
+        case .modeChanged, nil:
+            // Recognised but intentionally not acted on: `mode-changed` can't alter the
+            // window/workspace layout. Any unknown/future name lands here too. Both fall
+            // through to a no-op so AeroControl only reconciles on layout-affecting events.
             return .other
         }
     }

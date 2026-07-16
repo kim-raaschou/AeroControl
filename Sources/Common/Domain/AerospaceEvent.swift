@@ -8,12 +8,14 @@ public enum AerospaceEvent: Equatable, Sendable {
     case monitorChanged(workspace: String, monitorId: Int?)
     case windowDetected(windowId: Int, workspace: String?, appBundleId: String?, appName: String?)
     case bindingTriggered
-    case appTerminated
-    /// A window closed without any focus change to observe (e.g. closing a
-    /// background window with the mouse). Stock AeroSpace emits no event for this,
-    /// so it is surfaced by the native close doorbell; once AeroSpace ships its own
-    /// `window-closed` event it maps here too. Either way: reconcile against reality.
-    case windowClosed
+    /// AeroControl's OWN, locally-emulated close signal — never parsed from AeroSpace's
+    /// stream. Stock AeroSpace emits no event when a window closes or an app quits, so we
+    /// detect it ourselves via two native macOS taps that both funnel into this one case:
+    ///   • the global left-mouse-up doorbell (a background window closed with the mouse) —
+    ///     the same trick AeroSpace uses internally for unreliable close-button detection,
+    ///   • `NSWorkspace` app-termination (an app quit, taking all its windows at once).
+    /// Both mean the same thing: reconcile against reality by reloading the full list.
+    case localWindowClosed
     case other
 }
 

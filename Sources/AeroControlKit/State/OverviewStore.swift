@@ -196,13 +196,13 @@ public class OverviewStore {
             guard let self else { return }
             for await _ in self.nativeSystem.appTerminations() {
                 guard !Task.isCancelled else { return }
-                self.send(.event(.appTerminated))
+                self.send(.event(.localWindowClosed))
                 // AeroSpace may not have reaped the closed window yet when the OS fires
                 // the app-termination, so a single reconcile can race ahead of the truth.
                 // Fire one bounded, delayed retry to catch that; not polling — one shot.
                 Task { [weak self] in
                     try? await Task.sleep(for: .milliseconds(150))
-                    self?.send(.event(.appTerminated))
+                    self?.send(.event(.localWindowClosed))
                 }
             }
         }
@@ -217,7 +217,7 @@ public class OverviewStore {
             guard let self else { return }
             for await _ in self.nativeSystem.windowCloseSignals() {
                 guard !Task.isCancelled else { return }
-                self.send(.event(.windowClosed))
+                self.send(.event(.localWindowClosed))
             }
         }
     }
