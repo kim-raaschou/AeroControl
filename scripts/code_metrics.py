@@ -504,19 +504,19 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <section>
-    <h2>Kodelinjer pr. lag/område</h2>
+    <h2>Kodelinjer pr. prod-lag/område <span class="sub">(test vist separat nedenfor)</span></h2>
     <div id="loc-bars"></div>
-    <div class="legend">Kodelinjer er lizard NLOC.</div>
+    <div class="legend">Kodelinjer er lizard NLOC. Kun produktionslag — test fylder mest og ville ellers flade prod-søjlerne ud; se test i tabellen nederst.</div>
   </section>
 
   <section>
-    <h2>Samlet kompleksitet pr. lag/område</h2>
+    <h2>Kompleksitet pr. prod-lag/område <span class="sub">(det gatede tal)</span></h2>
     <div id="cx-bars"></div>
-    <div class="legend">Metrikker kommer fra lizard: modificeret McCabe CCN (en hel switch tæller som 1), NLOC, nesting og dubletter.</div>
+    <div class="legend">Modificeret McCabe CCN (en hel switch tæller som 1). Kun produktionslag — det er dét baseline-gaten måler.</div>
   </section>
 
   <section>
-    <h2>Kompleksitetstæthed pr. lag <span class="sub">(kompleksitet ÷ kodelinjer)</span></h2>
+    <h2>Kompleksitetstæthed pr. prod-lag <span class="sub">(kompleksitet ÷ kodelinjer)</span></h2>
     <div id="dens-bars"></div>
     <div class="legend">
       Højere tæthed = mere forgrening pr. linje.
@@ -527,7 +527,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <section>
-    <h2>Kompleksitet &amp; linjer pr. lag/område <span class="sub">(tabel)</span></h2>
+    <h2>Alle lag/områder <span class="sub">(prod først, test sidst)</span></h2>
     <table id="layers"><thead><tr>
       <th>Lag/område</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
     </tr></thead><tbody></tbody><tfoot></tfoot></table>
@@ -590,13 +590,13 @@ function cardMarkup(label, value, metric){
 document.getElementById("sub").textContent =
   `Genereret ${DATA.generated} · ${DATA.totals.files} Swift-filer`;
 
+const testLayer = DATA.layers.find(x => x.layer === "Tests") || {code:0, complexity:0};
+const prodCode = DATA.totals.code - testLayer.code;
 const cards = [
-  ["Filer", fmt(DATA.totals.files), "files"],
-  ["Linjer i alt", fmt(DATA.totals.total), null],
-  ["Kodelinjer", fmt(DATA.totals.code), "code"],
+  ["Kodelinjer (prod)", fmt(prodCode), null],
   ["Kompleksitet (prod, gated)", fmt(DATA.totals.prodComplexity), "prodComplexity"],
-  ["Kompleksitet (test, ej gated)", fmt(DATA.totals.testComplexity), null],
-  ["Kompleksitet i alt", fmt(DATA.totals.complexity), "complexity"],
+  ["Filer", fmt(DATA.totals.files), "files"],
+  ["Test (sekundær)", `${fmt(testLayer.code)} linjer · cx ${fmt(DATA.totals.testComplexity)}`, null],
 ];
 document.getElementById("cards").innerHTML = cards.map(
   ([l,n,m]) => cardMarkup(l, n, m)
@@ -657,28 +657,32 @@ function bars(elId, items, valFn, labelFn, colorFn){
   }).join("");
 }
 
-bars("loc-bars", DATA.layers, x=>x.code, x=>x.code.toLocaleString("da-DK"),
+const PROD_LAYERS = DATA.layers.filter(l => l.layer !== "Tests");
+bars("loc-bars", PROD_LAYERS, x=>x.code, x=>x.code.toLocaleString("da-DK"),
      (x,i)=>COLORS[i % COLORS.length]);
-bars("cx-bars", [...DATA.layers].sort((a,b)=>b.complexity-a.complexity),
+bars("cx-bars", [...PROD_LAYERS].sort((a,b)=>b.complexity-a.complexity),
      x=>x.complexity, x=>x.complexity.toLocaleString("da-DK"),
      (x,i)=>COLORS[i % COLORS.length]);
-bars("dens-bars", [...DATA.layers].sort((a,b)=>b.density-a.density),
+bars("dens-bars", [...PROD_LAYERS].sort((a,b)=>b.density-a.density),
      x=>x.density, x=>x.density.toFixed(3), x=>densColor(x.density));
 
 (function renderLayerTable(){
-  const rows = [...DATA.layers].sort((a,b)=>b.complexity-a.complexity);
-  document.querySelector("#layers tbody").innerHTML = rows.map(l=>{
+  // Prod layers first (sorted by complexity), Tests last — prod is primary, test is second.
+  const prod = [...PROD_LAYERS].sort((a,b)=>b.complexity-a.complexity);
+  const ordered = testLayer.layer ? [...prod, testLayer] : prod;
+  document.querySelector("#layers tbody").innerHTML = ordered.map(l=>{
     const isTest = l.layer === "Tests";
-    const tag = isTest ? ` <span class="sub">(ej gated)</span>` : "";
-    return `<tr><td class="file">${l.layer}${tag}</td>
+    const tag = isTest ? ` <span class="sub">(sekundær · ej gated)</span>` : "";
+    const style = isTest ? ` style="opacity:.65"` : "";
+    return `<tr${style}><td class="file">${l.layer}${tag}</td>
       <td class="num">${fmt(l.code)}</td>
       <td class="num"><span class="pill" style="background:${densColor(l.density)}22;color:${densColor(l.density)}">${fmt(l.complexity)}</span></td>
       <td class="num">${l.density.toFixed(3)}</td></tr>`;
   }).join("");
   const t = DATA.totals;
   document.querySelector("#layers tfoot").innerHTML =
-    `<tr><td><strong>Prod (gated)</strong></td><td class="num">${fmt(t.code - (DATA.layers.find(x=>x.layer==="Tests")?.code||0))}</td><td class="num"><strong>${fmt(t.prodComplexity)}</strong></td><td class="num"></td></tr>
-     <tr><td>Test (ej gated)</td><td class="num">${fmt(DATA.layers.find(x=>x.layer==="Tests")?.code||0)}</td><td class="num">${fmt(t.testComplexity)}</td><td class="num"></td></tr>
+    `<tr><td><strong>Prod (gated)</strong></td><td class="num"><strong>${fmt(prodCode)}</strong></td><td class="num"><strong>${fmt(t.prodComplexity)}</strong></td><td class="num"></td></tr>
+     <tr style="opacity:.65"><td>Test (sekundær)</td><td class="num">${fmt(testLayer.code)}</td><td class="num">${fmt(t.testComplexity)}</td><td class="num"></td></tr>
      <tr><td>I alt</td><td class="num">${fmt(t.code)}</td><td class="num">${fmt(t.complexity)}</td><td class="num"></td></tr>`;
 })();
 

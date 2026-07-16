@@ -160,5 +160,14 @@
     "complexity": 461,
     "prodComplexity": 267,
     "files": 40
+  },
+  {
+    "timestamp": "2026-07-16T21:37:24+02:00",
+    "commit": "f70eac8",
+    "subject": "Collapse OverviewOutput into direct host callbacks",
+    "code": 3316,
+    "complexity": 457,
+    "prodComplexity": 266,
+    "files": 39
   }
 ]
