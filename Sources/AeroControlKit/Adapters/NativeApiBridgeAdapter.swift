@@ -3,6 +3,7 @@ import Common
 
 public final class NativeApiBridgeAdapter: NativeApiBridge {
     private var iconCache: [String: NSImage] = [:]
+    private var closeMonitor: Any?
 
     public init() {}
 
@@ -26,6 +27,24 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    public func windowCloseSignals() -> AsyncStream<Void> {
+        AsyncStream { continuation in
+            // Global monitors for mouse events need no Accessibility permission (unlike
+            // keyboard). We only reconcile — we never consume or inspect the event.
+            self.closeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { _ in
+                continuation.yield()
+            }
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.removeCloseMonitor() }
+            }
+        }
+    }
+
+    private func removeCloseMonitor() {
+        if let closeMonitor { NSEvent.removeMonitor(closeMonitor) }
+        closeMonitor = nil
     }
 
     private static func loadIcon(bundleId: String) -> NSImage {

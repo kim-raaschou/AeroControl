@@ -109,6 +109,9 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
     case .appTerminated:
         return (state, [.refresh])
 
+    case .windowClosed:
+        return (state, [.refresh])
+
     case .bindingTriggered:
         return (state, [.refresh])
 

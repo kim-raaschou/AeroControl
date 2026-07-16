@@ -64,6 +64,7 @@ private final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 @MainActor
 private final class ScriptableBridge: NativeApiBridge {
     private var cont: AsyncStream<Void>.Continuation?
+    private var closeCont: AsyncStream<Void>.Continuation?
 
     func appIcon(bundleId: String) -> NSImage { NSImage() }
 
@@ -71,11 +72,21 @@ private final class ScriptableBridge: NativeApiBridge {
         AsyncStream { c in self.cont = c }
     }
 
+    func windowCloseSignals() -> AsyncStream<Void> {
+        AsyncStream { c in self.closeCont = c }
+    }
+
     /// True once the store's termination listener has subscribed.
     var isListening: Bool { cont != nil }
 
+    /// True once the store's window-close doorbell listener has subscribed.
+    var isWatchingCloses: Bool { closeCont != nil }
+
     /// Emits one app-termination signal.
     func terminate() { cont?.yield(()) }
+
+    /// Rings the window-close doorbell once (a background mouse-up).
+    func ringCloseDoorbell() { closeCont?.yield(()) }
 }
 
 /// Collects the store's typed outputs off its `AsyncStream` for assertions.
@@ -165,6 +176,27 @@ struct StoreIngressIntegrationTests {
         runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
         await waitUntil { bridge.isListening }
         bridge.terminate()
+
+        await waitUntil { windowIds(store) == [200] }
+        #expect(windowIds(store) == [200])
+        store.stop()
+    }
+
+    @Test("the window-close doorbell reconciles a background close with no focus change")
+    func closeDoorbellReconciles() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(100, "1"), (200, "1")]), workspaces: workspacesJSON(["1"]))
+        let bridge = ScriptableBridge()
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        await store.start()
+        #expect(windowIds(store) == [100, 200])
+
+        // A background window closes with the mouse — AeroSpace emits no event. The close
+        // doorbell (a global mouse-up) funnels `.windowClosed` through the same inbox,
+        // which reloads and mirrors reality even though nothing about focus changed.
+        runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
+        await waitUntil { bridge.isWatchingCloses }
+        bridge.ringCloseDoorbell()
 
         await waitUntil { windowIds(store) == [200] }
         #expect(windowIds(store) == [200])

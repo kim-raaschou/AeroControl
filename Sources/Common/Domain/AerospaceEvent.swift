@@ -9,6 +9,11 @@ public enum AerospaceEvent: Equatable, Sendable {
     case windowDetected(windowId: Int, workspace: String?, appBundleId: String?, appName: String?)
     case bindingTriggered
     case appTerminated
+    /// A window closed without any focus change to observe (e.g. closing a
+    /// background window with the mouse). Stock AeroSpace emits no event for this,
+    /// so it is surfaced by the native close doorbell; once AeroSpace ships its own
+    /// `window-closed` event it maps here too. Either way: reconcile against reality.
+    case windowClosed
     case other
 }
 

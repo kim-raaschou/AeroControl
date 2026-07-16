@@ -63,6 +63,7 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
 private final class FakeBridge: NativeApiBridge {
     func appIcon(bundleId: String) -> NSImage { NSImage() }
     func appTerminations() -> AsyncStream<Void> { AsyncStream { _ in } }
+    func windowCloseSignals() -> AsyncStream<Void> { AsyncStream { _ in } }
 }
 
 // MARK: - Helpers
