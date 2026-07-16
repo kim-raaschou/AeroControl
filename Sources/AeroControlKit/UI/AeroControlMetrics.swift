@@ -59,11 +59,22 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// plate — a tight, even hug like the native Cmd-Tab highlight. Scales with the
     /// icon but never drops below a legibility floor, so the focus ring stays visible
     /// even at small icon sizes (mirrors the text `minTextSize` floor).
-    public var focusPlatePadding: CGFloat { max(Self.minPlatePadding, iconSize * 0.05) }
+    public var focusPlatePadding: CGFloat { max(Self.minPlatePadding, iconSize * Self.platePaddingFraction) }
 
     /// Smallest on-screen focus-ring width (pt) we allow, so the selection stays
     /// visible when icons are small.
     private static let minPlatePadding: CGFloat = 3
+
+    /// Focus-plate padding as a fraction of the icon size, before the `minPlatePadding`
+    /// floor applies.
+    private static let platePaddingFraction: CGFloat = 0.05
+
+    /// Icon size at (and above) which `focusPlatePadding` stops being floored — where
+    /// `iconSize * platePaddingFraction` meets `minPlatePadding`. Below it the padding is
+    /// a constant, which adds a fixed per-card term to the row width (so the width stops
+    /// being linear through the origin); the fit-to-screen solver keys its piecewise math
+    /// off this breakpoint.
+    public static var focusPlateFloorIconSize: CGFloat { minPlatePadding / platePaddingFraction }
 
     /// The transparent margin macOS bakes into every app icon (~8.3% per side on the
     /// Tahoe grid). The visible artwork sits inside it, so the selection plate and the

@@ -46,6 +46,12 @@ public enum AeroControlLayout {
     /// The rendered icon size: the preferred size when the row fits, otherwise the
     /// largest size at which the whole row fits `availableWidth`. Never exceeds
     /// `preferred`; keeps shrinking below any comfort target so nothing clips.
+    ///
+    /// Row width is piecewise-linear in the icon size — linear *through the origin*
+    /// above the focus-plate padding floor, and *affine* (a fixed per-card term from the
+    /// floored padding) below it. We solve within whichever piece the fitting size lands
+    /// in, so the row fills the available width exactly instead of overshooting by the
+    /// floor's constant when the icons shrink small.
     public static func effectiveIconSize(
         preferred: CGFloat,
         availableWidth: CGFloat,
@@ -53,11 +59,21 @@ public enum AeroControlLayout {
     ) -> CGFloat {
         let pref = AeroControlMetrics.sanitizedIconSize(preferred)
         guard availableWidth > 0, !windowCounts.isEmpty else { return pref }
-        // Row width is linear through the origin in icon size, so the width per
-        // unit of icon size is `rowWidth(pref) / pref`.
-        let unitWidth = rowWidth(iconSize: pref, windowCounts: windowCounts) / pref
-        guard unitWidth > 0 else { return pref }
-        let fit = availableWidth / unitWidth
-        return min(pref, fit)
+        let floorSize = AeroControlMetrics.focusPlateFloorIconSize
+        // Above the floor the width is linear through the origin, so one division gives
+        // the exact fit.
+        let slopeAbove = rowWidth(iconSize: floorSize, windowCounts: windowCounts) / floorSize
+        guard slopeAbove > 0 else { return pref }
+        let fitAbove = availableWidth / slopeAbove
+        if fitAbove >= floorSize { return min(pref, fitAbove) }
+        // Below the floor the width gains a constant per-card term: fit the affine model
+        // from two samples in that regime and solve exactly.
+        let widthAtHalf = rowWidth(iconSize: floorSize / 2, windowCounts: windowCounts)
+        let widthAtFloor = rowWidth(iconSize: floorSize, windowCounts: windowCounts)
+        let slopeBelow = (widthAtFloor - widthAtHalf) / (floorSize / 2)
+        guard slopeBelow > 0 else { return min(pref, fitAbove) }
+        let intercept = widthAtFloor - slopeBelow * floorSize
+        let fitBelow = (availableWidth - intercept) / slopeBelow
+        return min(pref, max(1, fitBelow))
     }
 }
