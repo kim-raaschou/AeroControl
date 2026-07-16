@@ -169,5 +169,14 @@
     "complexity": 457,
     "prodComplexity": 266,
     "files": 39
+  },
+  {
+    "timestamp": "2026-07-16T21:38:08+02:00",
+    "commit": "510eb43",
+    "subject": "Make metrics report prod-first so test volume stops dominating",
+    "code": 3296,
+    "complexity": 452,
+    "prodComplexity": 266,
+    "files": 38
   }
 ]
