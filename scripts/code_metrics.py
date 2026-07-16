@@ -179,6 +179,8 @@ def build_payload() -> dict:
 
     test_code = sum(r["code"] for r in rows if r["layer"] == "Tests")
     prod_code = sum(r["code"] for r in rows if r["layer"] != "Tests")
+    test_complexity = sum(r["complexity"] for r in rows if r["layer"] == "Tests")
+    prod_complexity = sum(r["complexity"] for r in rows if r["layer"] != "Tests")
     duplicates = duplicate_summary(files)
 
     return {
@@ -188,6 +190,8 @@ def build_payload() -> dict:
             "total": sum(r["total"] for r in rows),
             "code": sum(r["code"] for r in rows),
             "complexity": sum(r["complexity"] for r in rows),
+            "prodComplexity": prod_complexity,
+            "testComplexity": test_complexity,
         },
         "health": {
             "testCode": test_code,
@@ -239,7 +243,7 @@ def totals_at_commit(sha: str) -> dict | None:
     if not files:
         return None
 
-    totals = {"total": 0, "code": 0, "complexity": 0, "files": 0}
+    totals = {"total": 0, "code": 0, "complexity": 0, "prodComplexity": 0, "files": 0}
     for rel in files:
         text = subprocess.check_output(
             ["git", "show", f"{sha}:{rel}"], cwd=ROOT, text=True, errors="replace"
@@ -248,6 +252,8 @@ def totals_at_commit(sha: str) -> dict | None:
         totals["total"] += stats["total"]
         totals["code"] += stats["code"]
         totals["complexity"] += stats["complexity"]
+        if layer_for(rel) != "Tests":
+            totals["prodComplexity"] += stats["complexity"]
         totals["files"] += 1
     return totals
 
@@ -272,6 +278,7 @@ def rebuild_history_from_git() -> list[dict]:
                 "subject": subject,
                 "code": totals["code"],
                 "complexity": totals["complexity"],
+                "prodComplexity": totals["prodComplexity"],
                 "files": totals["files"],
             }
         )
@@ -290,6 +297,7 @@ def history_entry(payload: dict) -> dict:
         "subject": subject,
         "code": totals["code"],
         "complexity": totals["complexity"],
+        "prodComplexity": totals["prodComplexity"],
         "files": totals["files"],
     }
 
@@ -322,7 +330,7 @@ def main() -> None:
 
 # --- baseline guard: code metrics must not rise ---------------------------
 
-GUARDED = ("code", "complexity")
+GUARDED = ("code", "prodComplexity")
 
 # Allowed headroom above the recorded baseline before a commit is blocked.
 # The enforced ceiling for each metric is floor(baseline * (1 + MARGIN)).
@@ -341,7 +349,7 @@ def load_baseline() -> dict | None:
 
 
 def write_baseline(totals: dict) -> None:
-    data = {k: totals[k] for k in ("code", "complexity", "files")}
+    data = {k: totals[k] for k in ("code", "prodComplexity", "files")}
     BASELINE.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
@@ -351,11 +359,14 @@ def update_baseline() -> int:
     pct = int(MARGIN * 100)
     print(
         f"Baseline set to {totals['code']} code lines · "
-        f"complexity {totals['complexity']} ({totals['files']} files)."
+        f"prod complexity {totals['prodComplexity']} ({totals['files']} files)."
     )
     print(
         f"  Enforced ceiling (+{pct}%): {ceiling(totals['code'])} code lines · "
-        f"complexity {ceiling(totals['complexity'])}."
+        f"prod complexity {ceiling(totals['prodComplexity'])}."
+    )
+    print(
+        f"  (test complexity {totals['testComplexity']} is reported but not gated.)"
     )
     print(f"  Commit {BASELINE.relative_to(ROOT)} to make it the new baseline.")
     return 0
@@ -409,8 +420,9 @@ def check() -> int:
     reduced = [(k, base[k], totals[k]) for k in GUARDED if totals[k] < base[k]]
     print(
         f"code-metrics OK · {totals['code']} code lines (≤ {ceiling(base['code'])}) · "
-        f"complexity {totals['complexity']} (≤ {ceiling(base['complexity'])})  "
-        f"[baseline {base['code']}/{base['complexity']} +{pct}%] · Common pure ✓."
+        f"prod complexity {totals['prodComplexity']} (≤ {ceiling(base['prodComplexity'])}) · "
+        f"test complexity {totals['testComplexity']} (not gated)  "
+        f"[baseline {base['code']}/{base['prodComplexity']} +{pct}%] · Common pure ✓."
     )
     if reduced:
         print(
@@ -515,6 +527,14 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <section>
+    <h2>Kompleksitet &amp; linjer pr. lag/område <span class="sub">(tabel)</span></h2>
+    <table id="layers"><thead><tr>
+      <th>Lag/område</th><th class="num">Kodelinjer</th><th class="num">Kompleksitet</th><th class="num">Tæthed</th>
+    </tr></thead><tbody></tbody><tfoot></tfoot></table>
+    <div class="legend">Prod-lag gates mod baseline; <strong>Tests</strong> rapporteres men tælles ikke med i kompleksitetsloftet.</div>
+  </section>
+
+  <section>
     <h2>Arkitektur &amp; sundhed</h2>
     <div class="cards" id="health"></div>
     <div id="purity"></div>
@@ -558,7 +578,7 @@ function deltaInfo(metric){
   const now = DATA.totals[metric];
   const delta = now - prev[metric];
   const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "→";
-  const goodWhenDown = metric === "code" || metric === "complexity";
+  const goodWhenDown = metric === "code" || metric === "complexity" || metric === "prodComplexity";
   const cls = delta === 0 ? "neutral" : (goodWhenDown ? (delta < 0 ? "good" : "bad") : "neutral");
   return {html:`${arrow}${fmt(Math.abs(delta))} siden sidst`, cls};
 }
@@ -574,7 +594,9 @@ const cards = [
   ["Filer", fmt(DATA.totals.files), "files"],
   ["Linjer i alt", fmt(DATA.totals.total), null],
   ["Kodelinjer", fmt(DATA.totals.code), "code"],
-  ["Kompleksitet", fmt(DATA.totals.complexity), "complexity"],
+  ["Kompleksitet (prod, gated)", fmt(DATA.totals.prodComplexity), "prodComplexity"],
+  ["Kompleksitet (test, ej gated)", fmt(DATA.totals.testComplexity), null],
+  ["Kompleksitet i alt", fmt(DATA.totals.complexity), "complexity"],
 ];
 document.getElementById("cards").innerHTML = cards.map(
   ([l,n,m]) => cardMarkup(l, n, m)
@@ -582,7 +604,8 @@ document.getElementById("cards").innerHTML = cards.map(
 
 document.getElementById("trend-summary").innerHTML = [
   ["Kodelinjer", fmt(DATA.totals.code), "code"],
-  ["Kompleksitet", fmt(DATA.totals.complexity), "complexity"],
+  ["Kompleksitet (prod)", fmt(DATA.totals.prodComplexity), "prodComplexity"],
+  ["Kompleksitet i alt", fmt(DATA.totals.complexity), "complexity"],
   ["Filer", fmt(DATA.totals.files), "files"],
 ].map(([l,n,m]) => cardMarkup(l, n, m)).join("");
 
@@ -616,7 +639,8 @@ function sparkline(metric, label, color){
 
 document.getElementById("trend-charts").innerHTML = [
   sparkline("code", "Kodelinjer", "#58a6ff"),
-  sparkline("complexity", "Kompleksitet", "#f0883e"),
+  sparkline("prodComplexity", "Kompleksitet (prod, gated)", "#f0883e"),
+  sparkline("complexity", "Kompleksitet i alt", "#8b949e"),
 ].join("");
 
 function bars(elId, items, valFn, labelFn, colorFn){
@@ -640,6 +664,23 @@ bars("cx-bars", [...DATA.layers].sort((a,b)=>b.complexity-a.complexity),
      (x,i)=>COLORS[i % COLORS.length]);
 bars("dens-bars", [...DATA.layers].sort((a,b)=>b.density-a.density),
      x=>x.density, x=>x.density.toFixed(3), x=>densColor(x.density));
+
+(function renderLayerTable(){
+  const rows = [...DATA.layers].sort((a,b)=>b.complexity-a.complexity);
+  document.querySelector("#layers tbody").innerHTML = rows.map(l=>{
+    const isTest = l.layer === "Tests";
+    const tag = isTest ? ` <span class="sub">(ej gated)</span>` : "";
+    return `<tr><td class="file">${l.layer}${tag}</td>
+      <td class="num">${fmt(l.code)}</td>
+      <td class="num"><span class="pill" style="background:${densColor(l.density)}22;color:${densColor(l.density)}">${fmt(l.complexity)}</span></td>
+      <td class="num">${l.density.toFixed(3)}</td></tr>`;
+  }).join("");
+  const t = DATA.totals;
+  document.querySelector("#layers tfoot").innerHTML =
+    `<tr><td><strong>Prod (gated)</strong></td><td class="num">${fmt(t.code - (DATA.layers.find(x=>x.layer==="Tests")?.code||0))}</td><td class="num"><strong>${fmt(t.prodComplexity)}</strong></td><td class="num"></td></tr>
+     <tr><td>Test (ej gated)</td><td class="num">${fmt(DATA.layers.find(x=>x.layer==="Tests")?.code||0)}</td><td class="num">${fmt(t.testComplexity)}</td><td class="num"></td></tr>
+     <tr><td>I alt</td><td class="num">${fmt(t.code)}</td><td class="num">${fmt(t.complexity)}</td><td class="num"></td></tr>`;
+})();
 
 document.querySelector("#top tbody").innerHTML = DATA.topFiles.map(f=>`
   <tr><td>${f.file}</td><td class="file">${f.layer}</td>
