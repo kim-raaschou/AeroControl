@@ -124,6 +124,6 @@ struct BuildOverviewResultTests {
             WorkspaceMonitor(workspace: "2", monitorId: 2),
         ]
         let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
-        #expect(result.monitors.count == 2)
+        #expect(Set(result.workspaces.map(\.monitorId)) == [1, 2])
     }
 }

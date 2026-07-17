@@ -17,7 +17,6 @@ public class OverviewStore {
     let nativeSystem: NativeApiBridge
     private(set) var icons: [Int: NSImage] = [:]
     public private(set) var error: String?
-    public private(set) var isLoaded: Bool = false
 
     /// Host reactions the store can't perform itself because it owns no windows. The
     /// host (or a test) sets these; the store calls them directly instead of fanning a
@@ -90,7 +89,6 @@ public class OverviewStore {
                 let result = try await loadOverview(using: runner)
                 apply(.loaded(result), animated: false)
                 self.error = nil
-                self.isLoaded = true
                 return
             } catch {
                 lastError = error
@@ -103,7 +101,6 @@ public class OverviewStore {
         if let lastError {
             self.error = "Load error: \(lastError.localizedDescription)"
         }
-        self.isLoaded = true
     }
 
     public func stop() {

@@ -45,11 +45,9 @@ public struct MonitorInfo: Equatable, Hashable, Identifiable, Sendable {
 
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
-    public let monitors: [MonitorInfo]
 
     public init(workspaces: [WorkspaceInfo]) {
         self.workspaces = workspaces
-        self.monitors = Array(Set(workspaces.map(\.monitorId))).sorted().map { MonitorInfo(monitorId: $0) }
     }
 }
 

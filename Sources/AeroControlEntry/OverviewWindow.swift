@@ -30,10 +30,6 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 
 class OverviewWindow: NSPanel {
     private let targetScreen: NSScreen
-    /// True for a vertical widget (left/right dock, cards stacked); false for a
-    /// horizontal one (top/bottom/center, cards in a row). Only used to decide when a
-    /// Position change flips the axis and the panel must be re-measured.
-    private var isVertical: Bool
     /// True once the panel has faded in, so later programmatic reframes don't replay
     /// the show animation.
     private var hasFadedIn = false
@@ -44,7 +40,6 @@ class OverviewWindow: NSPanel {
     init(targetScreen: NSScreen, edge: DockEdge = .top) {
         self.targetScreen = targetScreen
         self.placementEdge = edge
-        self.isVertical = edge.orientation.isVertical
         super.init(
             contentRect: .zero,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -140,7 +135,6 @@ class OverviewWindow: NSPanel {
     /// snaps to the new placement in one reframe.
     func applyEdge(_ edge: DockEdge) {
         placementEdge = edge
-        isVertical = edge.orientation.isVertical
         floatingHostingView?.needsLayout = true
         floatingHostingView?.layoutSubtreeIfNeeded()
         let content = floatingHostingView?.fittingSize ?? frame.size
