@@ -16,10 +16,6 @@ public class OverviewStore {
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
     private(set) var icons: [Int: NSImage] = [:]
-    /// monitorId -> AeroSpace's 1-based AppKit `NSScreen.screens` index, used to place
-    /// each overlay on the correct display (AeroSpace's own `monitor-id` ordering does
-    /// not necessarily match AppKit's screen ordering).
-    public private(set) var monitorScreenIds: [Int: Int] = [:]
     public private(set) var error: String?
     public private(set) var isLoaded: Bool = false
 
@@ -27,11 +23,10 @@ public class OverviewStore {
     /// host (or a test) sets these; the store calls them directly instead of fanning a
     /// separate output stream out to a single consumer.
     ///   • onLoaded — the initial load finished; reveal / show an error fallback.
-    ///   • onMonitorsChanged — the hosting monitor set changed; re-sync windows.
-    ///   • onWorkspaceFocused — a workspace gained focus; follow it to its monitor.
+    ///   • onMonitorsChanged — the monitor set (derived from workspaces) changed;
+    ///     re-sync the window so it re-clamps to the active screen's current extent.
     public var onLoaded: (@MainActor () -> Void)?
     public var onMonitorsChanged: (@MainActor () -> Void)?
-    public var onWorkspaceFocused: (@MainActor () -> Void)?
 
     /// Single ingress. Every live driver — the AeroSpace subscribe stream, the native
     /// app-termination bridge, user actions, and reload results — funnels its input into
@@ -93,14 +88,6 @@ public class OverviewStore {
         for attempt in 1...maxAttempts {
             do {
                 let result = try await loadOverview(using: runner)
-                // Populate the monitor→NSScreen maps *before* applying `.loaded`, whose
-                // `.monitorsChanged` effect drives the first `syncWindows()`. Otherwise
-                // `monitorScreenIds` is still empty during that first sync and windows
-                // fall back to the `monitorId - 1` guess, defeating the authoritative
-                // `monitor-appkit-nsscreen-screens-id` mapping.
-                if let monitors = try? await loadMonitors(using: runner) {
-                    setMonitors(monitors)
-                }
                 apply(.loaded(result), animated: false)
                 self.error = nil
                 self.isLoaded = true
@@ -117,21 +104,6 @@ public class OverviewStore {
             self.error = "Load error: \(lastError.localizedDescription)"
         }
         self.isLoaded = true
-    }
-
-    private func setMonitors(_ monitors: [DecodedMonitor]) {
-        let newScreenIds = Dictionary(
-            monitors.compactMap { $0.nsscreenId > 0 ? ($0.monitorId, $0.nsscreenId) : nil },
-            uniquingKeysWith: { first, _ in first }
-        )
-        let changed = newScreenIds != monitorScreenIds
-        self.monitorScreenIds = newScreenIds
-        // A changed mapping means existing strips may now belong on a different
-        // screen; re-run the sync so they are repositioned. Skipped during the
-        // very first load (no windows/monitors yet), where `.loaded` drives sync.
-        if changed && isLoaded {
-            onMonitorsChanged?()
-        }
     }
 
     public func stop() {
@@ -266,8 +238,6 @@ public class OverviewStore {
                 requestRefresh()
             case .monitorsChanged:
                 onMonitorsChanged?()
-            case .workspaceFocused:
-                onWorkspaceFocused?()
             case .runAction(let action):
                 runAction(action)
             }

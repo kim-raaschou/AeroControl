@@ -39,7 +39,6 @@ public enum OverviewEffect: Equatable {
     case loadIcons([WindowInfo])
     case refresh
     case monitorsChanged
-    case workspaceFocused
     case runAction(AeroControlAction)
 }
 
@@ -93,15 +92,14 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
         // Reconcile against reality on every workspace switch: the workspace we just
         // left (prevWorkspace) may now be empty and pruned by AeroSpace, so reload to
         // keep the current and previous workspaces in sync with the source of truth.
-        // `.workspaceFocused` lets the host follow focus (move the widget's screen).
         var new = state
         new.focusedWorkspace = workspace
-        return (new, [.refresh, .workspaceFocused])
+        return (new, [.refresh])
 
     case .monitorChanged(let workspace, _):
         var new = state
         new.focusedWorkspace = workspace
-        return (new, [.refresh, .workspaceFocused])
+        return (new, [.refresh])
 
     case .windowDetected:
         return (state, [.refresh])

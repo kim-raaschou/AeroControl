@@ -1,28 +1,31 @@
 import AeroControlKit
 import AppKit
 import Common
-import SwiftUI
 
-/// Owns the single floating overview window, positioning it on the focused
-/// monitor's screen and retargeting it as focus (or the monitor set) changes.
-/// Extracted from the AppDelegate so the composition root only wires and routes.
+/// Owns the single floating overview window, placing it on the user-chosen *active*
+/// display (from the Screen menu) at that display's configured edge. There is no
+/// follow-focus: the widget stays on the selected screen. Extracted from the
+/// AppDelegate so the composition root only wires and routes.
 @MainActor
 final class OverlayWindowManager {
     private let state: OverviewStore
     private let settings: SettingsStore
 
-    /// The one overview window. It shows every workspace grouped by monitor and
-    /// follows the focused display, so there are no per-monitor windows to sync.
+    /// The one overview window. It shows every workspace grouped by monitor and sits
+    /// on the active display, so there are no per-monitor windows to sync.
     private var window: OverviewWindow?
     /// The panel's hosting view, kept so its available-screen extent can be refreshed
-    /// when the widget follows focus onto a differently-sized display.
+    /// when the active display changes to a differently-sized one.
     private weak var hostingView: InteractiveHostingView<AeroControlPanel>?
-    /// The focused screen's available extent (visibleFrame size), fed to the panel so it
+    /// The active screen's available extent (visibleFrame size), fed to the panel so it
     /// can shrink its icons to fit rather than overflowing a busy workspace off-screen.
     private var availableSize: NSSize = .zero
-    /// The display the window currently sits on, so a same-screen focus change is a
-    /// cheap no-op instead of a needless reframe.
+    /// The display the window currently sits on, so a redundant re-sync is a cheap
+    /// no-op instead of a needless reframe.
     private var currentScreenID: CGDirectDisplayID?
+    /// Fires when displays are added/removed or their geometry changes, so the widget
+    /// re-clamps (or falls back off a disconnected active display).
+    private var screenObserver: NSObjectProtocol?
 
     init(
         state: OverviewStore,
@@ -30,10 +33,26 @@ final class OverlayWindowManager {
     ) {
         self.state = state
         self.settings = settings
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.screenParametersChanged() }
+        }
+    }
+
+    /// Resolves the initial active display (a previously-selected one if still
+    /// connected, otherwise the main screen) and records it so the menu, panel, and
+    /// placement all agree from the first frame. Also seeds a migrated legacy config
+    /// onto that screen.
+    func activateInitialScreen() {
+        let screen = activeScreen()
+        settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
     }
 
     /// Builds the SwiftUI panel bound to the current state/settings and available
-    /// screen extent (so it can shrink icons to fit the focused display).
+    /// screen extent (so it can shrink icons to fit the active display).
     private func makePanel() -> AeroControlPanel {
         AeroControlPanel(
             state: state,
@@ -43,20 +62,14 @@ final class OverlayWindowManager {
         )
     }
 
-    /// Ensures the single overview window exists and is anchored to the focused
-    /// monitor's screen. `force` retargets (and re-clamps) even when the focused
-    /// display id is unchanged — used on monitor changes, where the *same* display's
-    /// frame/visibleFrame may have shifted (resolution, arrangement, Dock/menu-bar).
-    /// Focus changes pass `force: false`, so following focus within one display is a
-    /// cheap no-op instead of a needless reframe.
+    /// Ensures the single overview window exists and is anchored to the active display.
+    /// `force` re-clamps even when the active display id is unchanged — used on monitor
+    /// (workspace-set) changes, where the *same* display's frame/visibleFrame may have
+    /// shifted (resolution, arrangement, Dock/menu-bar).
     func syncWindows(force: Bool = true) {
-        guard !state.model.monitors.isEmpty else { return }
-        let screen = focusedScreen()
+        let screen = activeScreen()
         if let window {
             guard force || screen.displayID != currentScreenID else { return }
-            // The widget may have followed focus onto a differently-sized display;
-            // refresh the panel's available extent so its shrink-to-fit uses the screen
-            // it now sits on.
             availableSize = screen.visibleFrame.size
             hostingView?.rootView = makePanel()
             window.retargetFloating(to: screen)
@@ -67,24 +80,28 @@ final class OverlayWindowManager {
     }
 
     /// Shows the single panel on the main screen when the initial load failed and no
-    /// AeroSpace monitors materialized, so `state.error` is visible.
+    /// AeroSpace workspaces materialized, so `state.error` is visible.
     func showErrorFallbackIfNeeded() {
         guard state.error != nil, window == nil else { return }
-        let screen = NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
+        let screen = activeScreen()
         window = makeFloatingWindow(screen: screen)
         currentScreenID = screen.displayID
     }
 
-    /// Orders out and forgets the window (teardown).
+    /// Orders out and forgets the window, and stops observing screen changes (teardown).
     func removeAll() {
         window?.orderOut(nil)
         window = nil
         currentScreenID = nil
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+            self.screenObserver = nil
+        }
     }
 
     /// Shows or hides the widget — driven by the summon keybind (a second launch of
     /// the single-instance binary signals SIGUSR1). Hiding keeps the window instance
-    /// warm for an instant re-show; showing retargets it to the focused monitor and
+    /// warm for an instant re-show; showing re-clamps it to the active display and
     /// fades it back in.
     func toggleVisibility() {
         if let window, window.isVisible {
@@ -92,15 +109,31 @@ final class OverlayWindowManager {
             return
         }
         let existed = window != nil
-        // Pre-hide a reused window so retargeting (which orders it front) can't flash
+        // Pre-hide a reused window so re-clamping (which orders it front) can't flash
         // it at full opacity before the reveal fade.
         if existed { window?.alphaValue = 0 }
         syncWindows(force: true)
         if existed { window?.revealFloating() }
     }
 
+    /// Selects the active display (from the Screen menu): records it (so its own edge /
+    /// icon size take effect), then moves the live window there and applies that
+    /// display's configured edge.
+    func selectScreen(_ screen: NSScreen) {
+        settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
+        availableSize = screen.visibleFrame.size
+        hostingView?.rootView = makePanel()
+        if let window {
+            window.retargetFloating(to: screen)
+            window.applyEdge(settings.edge)
+        } else {
+            window = makeFloatingWindow(screen: screen)
+        }
+        currentScreenID = screen.displayID
+    }
+
     /// Docks the widget to `edge` (chosen from the Position menu): persists the edge
-    /// (and derived orientation), then snaps the live window to it.
+    /// for the active display, then snaps the live window to it.
     func selectEdge(_ edge: DockEdge) {
         settings.setEdge(edge)
         window?.applyEdge(edge)
@@ -132,35 +165,29 @@ final class OverlayWindowManager {
         return window
     }
 
-    /// The `NSScreen` of the currently focused monitor (falls back to the lowest
-    /// monitor id, then the main screen). Follows AeroSpace focus so the single
-    /// widget appears where the user is working.
-    private func focusedScreen() -> NSScreen {
-        let focusedName = state.model.focusedWorkspace
-        let monitorId = state.model.workspaces.first { $0.name == focusedName }?.monitorId
-            ?? state.model.monitors.first?.monitorId
-        if let monitorId {
-            return screenForMonitor(MonitorInfo(monitorId: monitorId))
+    /// The `NSScreen` for the active display: the previously-selected one if still
+    /// connected, otherwise the main screen (then any screen). Never follows focus.
+    private func activeScreen() -> NSScreen {
+        if !settings.activeDisplayKey.isEmpty,
+           let match = NSScreen.screens.first(where: { $0.displayUUID == settings.activeDisplayKey }) {
+            return match
         }
         return NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
     }
 
-    /// Maps an AeroSpace monitor to its `NSScreen`. Prefers AeroSpace's reported
-    /// 1-based AppKit screen index (`monitor-appkit-nsscreen-screens-id`), which is
-    /// authoritative; falls back to the `monitorId - 1` positional guess only when
-    /// that mapping is unavailable (e.g. older aerospace without the field).
-    private func screenForMonitor(_ monitor: MonitorInfo) -> NSScreen {
-        let screens = NSScreen.screens
-        if let nsscreenId = state.monitorScreenIds[monitor.monitorId] {
-            let index = nsscreenId - 1
-            if index >= 0, index < screens.count {
-                return screens[index]
-            }
+    /// Handles display add/remove/resize. Re-resolves the active display — persisting a
+    /// fallback if the selected one is gone, so a later reconnect doesn't surprise-jump
+    /// the widget — and re-clamps an existing window to the (possibly new) extent.
+    private func screenParametersChanged() {
+        let screen = activeScreen()
+        if screen.displayUUID != settings.activeDisplayKey {
+            settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
         }
-        let fallback = monitor.monitorId - 1
-        if fallback >= 0, fallback < screens.count {
-            return screens[fallback]
-        }
-        return NSScreen.main ?? screens.first ?? NSScreen()
+        guard window != nil else { return }
+        availableSize = screen.visibleFrame.size
+        hostingView?.rootView = makePanel()
+        window?.retargetFloating(to: screen)
+        window?.applyEdge(settings.edge)
+        currentScreenID = screen.displayID
     }
 }

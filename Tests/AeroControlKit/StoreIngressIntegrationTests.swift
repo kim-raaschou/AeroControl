@@ -47,7 +47,6 @@ private final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
         switch args.first ?? "" {
         case "list-workspaces": return withLock { workspacesJSON }
         case "list-windows": return withLock { windowsJSON }
-        case "list-monitors": return "[]"
         default: return ""
         }
     }
@@ -90,7 +89,7 @@ private final class ScriptableBridge: NativeApiBridge {
 }
 
 /// Records the store's host-reaction callbacks for assertions.
-private enum HostSignal: Equatable { case loaded, monitorsChanged, workspaceFocused }
+private enum HostSignal: Equatable { case loaded, monitorsChanged }
 
 private final class OutputCollector: @unchecked Sendable {
     private let lock = NSLock()
@@ -105,12 +104,11 @@ private final class OutputCollector: @unchecked Sendable {
     }
 }
 
-/// Wires a collector to a store's three host-reaction callbacks.
+/// Wires a collector to a store's host-reaction callbacks.
 @MainActor private func collect(_ store: OverviewStore) -> OutputCollector {
     let outputs = OutputCollector()
     store.onLoaded = { outputs.append(.loaded) }
     store.onMonitorsChanged = { outputs.append(.monitorsChanged) }
-    store.onWorkspaceFocused = { outputs.append(.workspaceFocused) }
     return outputs
 }
 
@@ -283,37 +281,31 @@ struct StoreIngressIntegrationTests {
         store.stop()
     }
 
-    @Test("focused-workspace-changed sets focus and emits workspaceFocused")
+    @Test("focused-workspace-changed sets focus and reloads")
     func workspaceChangedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
-        let outputs = collect(store)
         await store.start()
         await waitUntil { runner.isSubscribed }
 
         runner.sendEvent("{\"_event\":\"focused-workspace-changed\",\"workspace\":\"2\",\"prevWorkspace\":\"1\"}")
         await waitUntil { store.model.focusedWorkspace == "2" }
-        await waitUntil { outputs.count(of: .workspaceFocused) >= 1 }
         #expect(store.model.focusedWorkspace == "2")
-        #expect(outputs.count(of: .workspaceFocused) >= 1)
         store.stop()
     }
 
-    @Test("focused-monitor-changed sets focus and emits workspaceFocused")
+    @Test("focused-monitor-changed sets focus and reloads")
     func monitorChangedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
-        let outputs = collect(store)
         await store.start()
         await waitUntil { runner.isSubscribed }
 
         runner.sendEvent("{\"_event\":\"focused-monitor-changed\",\"workspace\":\"2\",\"monitorId\":1}")
         await waitUntil { store.model.focusedWorkspace == "2" }
-        await waitUntil { outputs.count(of: .workspaceFocused) >= 1 }
         #expect(store.model.focusedWorkspace == "2")
-        #expect(outputs.count(of: .workspaceFocused) >= 1)
         store.stop()
     }
 
@@ -445,12 +437,11 @@ struct StoreIngressIntegrationTests {
 
     // MARK: Output contract — the seam that drives OverlayWindowManager
     //
-    // The store's typed `outputs` channel is the single egress that `AeroControlApp`
-    // maps to window-management calls: `.monitorsChanged` → `syncWindows()`,
-    // `.workspaceFocused` → `syncWindows(force: false)`, `.loaded` →
-    // `showErrorFallbackIfNeeded()`. Asserting the outputs here integration-tests *what*
-    // OverlayWindowManager is told to do, deterministically and without AppKit. The
-    // `.workspaceFocused` output is covered by the focus/monitor event tests above.
+    // The store's host-reaction callbacks are the egress that `AeroControlApp` maps to
+    // window-management calls: `.monitorsChanged` → `syncWindows()` (re-clamp to the
+    // active display), `.loaded` → `showErrorFallbackIfNeeded()`. Asserting them here
+    // integration-tests *what* OverlayWindowManager is told to do, deterministically and
+    // without AppKit.
 
     @Test("a monitor-set change emits monitorsChanged; a same-monitor change does not")
     func monitorSetChangeEmitsMonitorsChanged() async {

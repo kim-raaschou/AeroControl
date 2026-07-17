@@ -12,7 +12,6 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
     private let lock = NSLock()
     private var windowsJSON = "[]"
     private var workspacesJSON = "[]"
-    private var monitorsJSON = "[]"
 
     private var _continuation: AsyncThrowingStream<String, Error>.Continuation?
 
@@ -42,9 +41,6 @@ private final class FakeRunner: AerospaceProcessRunner, @unchecked Sendable {
         let cmd = args.first ?? ""
         if cmd == "list-workspaces" {
             return withLock { workspacesJSON }
-        }
-        if cmd == "list-monitors" {
-            return withLock { monitorsJSON }
         }
         if cmd != "list-windows" {
             return ""

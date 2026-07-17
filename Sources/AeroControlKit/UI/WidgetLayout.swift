@@ -23,7 +23,7 @@ public enum Orientation: String, Equatable, Sendable {
 /// narrow) — so orientation is derived, never chosen separately. `center` floats it in
 /// the middle of the focused screen (a cmd-tab-style HUD). `menuBar` docks it flush
 /// against the macOS menu bar at native menu-bar icon size (a horizontal strip).
-public enum DockEdge: String, Equatable, Sendable, CaseIterable {
+public enum DockEdge: String, Equatable, Sendable, CaseIterable, Codable {
     case top, bottom, left, right, center, menuBar
 
     /// The layout axis implied by this position: horizontal along the top/bottom, the

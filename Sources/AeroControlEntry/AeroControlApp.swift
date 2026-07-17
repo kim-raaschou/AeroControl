@@ -62,8 +62,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // SIGUSR1, which toggles the widget's visibility.
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
             // The menu-bar Position menu docks the widget to a screen edge
-            // (top/bottom/left/right/center) and sets the matching orientation.
+            // (top/bottom/left/right/center) for the active display and sets the axis.
             onSelectEdge: { [weak self] edge in self?.overlayManager.selectEdge(edge) },
+            // The menu-bar Screen menu moves the widget to the chosen display, applying
+            // that display's own edge/icon-size config.
+            onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
             settings: settings
         )
 
@@ -71,19 +74,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             state: state,
             settings: settings
         )
+        // Resolve which display the widget starts on (a previously-selected one if still
+        // connected, else main) before any placement, so menu/panel/window agree.
+        overlayManager.activateInitialScreen()
 
         installStatusItem()
 
         // Wire the store's host reactions directly (it owns no windows):
-        // - onMonitorsChanged: monitor changes re-sync the window.
-        // - onWorkspaceFocused: follow focus — move the single widget to the focused
-        //   monitor's screen (floating panels float above everything and never
-        //   disturb window positions).
-        // - onLoaded: if the initial load failed, no AeroSpace monitors are known, so
-        //   `syncWindows()` creates no panel and the error would be invisible. Show a
-        //   fallback panel on the main screen so `state.error` is seen.
+        // - onMonitorsChanged: the workspace-derived monitor set changed; re-sync the
+        //   window so it re-clamps to the active display's current extent.
+        // - onLoaded: if the initial load failed, no AeroSpace workspaces are known, so
+        //   `syncWindows()` still creates the panel; show a fallback so `state.error`
+        //   is seen even before any workspace materializes.
         state.onMonitorsChanged = { [weak self] in self?.overlayManager.syncWindows() }
-        state.onWorkspaceFocused = { [weak self] in self?.overlayManager.syncWindows(force: false) }
         state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
 
         Task {

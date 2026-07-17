@@ -68,22 +68,6 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     }
 }
 
-public struct DecodedMonitor: Decodable, Equatable {
-    @TolerantInt public var monitorId: Int
-    public let monitorName: String
-    /// AeroSpace's 1-based index of this monitor within AppKit's `NSScreen.screens`
-    /// array. Used to map an AeroSpace monitor to the correct `NSScreen`, which does
-    /// not necessarily share AeroSpace's own left-to-right `monitor-id` ordering.
-    /// `0` when the monitor lacks a mapping.
-    @TolerantInt public var nsscreenId: Int
-
-    private enum CodingKeys: String, CodingKey {
-        case monitorId = "monitor-id"
-        case monitorName = "monitor-name"
-        case nsscreenId = "monitor-appkit-nsscreen-screens-id"
-    }
-}
-
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String
@@ -120,13 +104,6 @@ public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
     return try JSONDecoder().decode([WorkspaceMonitor].self, from: data)
 }
 
-/// Parses `list-monitors` JSON into the full decoded monitor list (name + AppKit
-/// NSScreen index).
-public func parseMonitorList(json: String) throws -> [DecodedMonitor] {
-    guard let data = json.data(using: .utf8), !json.isEmpty else { return [] }
-    return try JSONDecoder().decode([DecodedMonitor].self, from: data)
-}
-
 public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor]) -> OverviewResult {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
@@ -149,10 +126,4 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
     let windows = try parseWindows(json: try await windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await workspacesJson)
     return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors)
-}
-
-/// Fetches the full monitor list (name + AppKit NSScreen index) from aerospace.
-public func loadMonitors(using runner: AerospaceProcessRunner) async throws -> [DecodedMonitor] {
-    let json = try await runner.run(AerospaceCommand.listMonitors())
-    return try parseMonitorList(json: json)
 }

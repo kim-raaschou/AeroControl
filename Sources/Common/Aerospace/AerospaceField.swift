@@ -14,8 +14,6 @@ public enum AerospaceField: String, CaseIterable, CodingKey {
     case workspace = "workspace"
     case parentLayout = "window-parent-container-layout"
     case monitorId = "monitor-id"
-    case monitorName = "monitor-name"
-    case nsscreenId = "monitor-appkit-nsscreen-screens-id"
 
     /// The `%{field-key}` format token AeroSpace expects for this field.
     public var formatToken: String { "%{\(rawValue)}" }

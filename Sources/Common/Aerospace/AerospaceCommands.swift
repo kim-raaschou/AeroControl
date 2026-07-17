@@ -11,19 +11,12 @@ public enum AerospaceCommand {
     /// Fields requested by `list-workspaces`.
     public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId]
 
-    /// Fields requested by `list-monitors`.
-    public static let listMonitorsFields: [AerospaceField] = [.monitorId, .monitorName, .nsscreenId]
-
     public static func listWindows() -> [String] {
         ["list-windows", "--all", "--json", "--format", listWindowsFields.formatString]
     }
 
     public static func listWorkspaces() -> [String] {
         ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields.formatString]
-    }
-
-    public static func listMonitors() -> [String] {
-        ["list-monitors", "--json", "--format", listMonitorsFields.formatString]
     }
 
     public static func subscribe() -> [String] {

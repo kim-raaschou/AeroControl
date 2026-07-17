@@ -1,24 +1,66 @@
 import CoreGraphics
 import Foundation
 
-/// Runtime, user-adjustable settings for the floating overview (icon size + position),
-/// backed by `UserDefaults` and edited from the menu-bar (status item) menu — the app's
-/// only configuration path; there are no launch flags.
+/// The full per-screen configuration for the floating overview: where it docks
+/// (`edge`) and its preferred app-icon size. Every physical display keeps its own,
+/// so the built-in display can be a centered HUD while an external is a menu-bar
+/// strip — with independent icon sizes. Codable so the whole map persists as JSON.
+public struct DisplayConfig: Codable, Equatable, Sendable {
+    /// The screen edge the widget docks to on this display. Its `orientation` is
+    /// derived, not chosen separately.
+    public var edge: DockEdge
+    /// The preferred app-icon size (points) on this display.
+    public var iconSize: CGFloat
+
+    public init(edge: DockEdge, iconSize: CGFloat) {
+        self.edge = edge
+        self.iconSize = iconSize
+    }
+}
+
+/// Runtime, user-adjustable settings for the floating overview, backed by
+/// `UserDefaults` and edited from the menu-bar (status item) menu — the app's only
+/// configuration path; there are no launch flags.
+///
+/// **Everything is per screen.** The store holds a `DisplayConfig` (edge + icon size)
+/// for each physical display, keyed by a persistence-stable display id, plus which
+/// display is currently *active* (the one the widget is shown on). The public
+/// `edge` / `iconSize` / `orientation` / `effectiveIconSize` accessors read the
+/// *active* display's config, and `setEdge` / `setIconSize` write it — so the menu
+/// and the SwiftUI panel keep working against the same surface while every value is
+/// scoped to the selected screen.
 ///
 /// `@Observable`, so SwiftUI views that read `iconSize` / `orientation` reflow
-/// automatically. `orientation` is *derived* from `edge` (the single Position control).
+/// automatically when the active config (or the active display) changes.
 @MainActor @Observable
 public final class SettingsStore {
-    /// The preferred app-icon size in points. Reading this in a SwiftUI body tracks
-    /// it, so the panel reflows the moment it changes.
-    public private(set) var iconSize: CGFloat
-    /// The screen edge the widget docks to. The single placement control — its
-    /// `orientation` is derived, not chosen separately.
-    public private(set) var edge: DockEdge
+    /// The key of the display the widget is currently shown on. `setActiveDisplay`
+    /// updates it (from the Screen menu); the accessors below resolve their values
+    /// from this display's config.
+    public private(set) var activeDisplayKey: String
+    /// Whether the active display is the built-in one, so a display with no saved
+    /// config yet defaults sensibly (built-in → centered HUD, external → menu bar).
+    private var activeIsBuiltin: Bool
+    /// Per-display configs, keyed by the stable display id. Absent keys fall back to
+    /// the built-in/external default lazily, so nothing is written until the user
+    /// actually customizes a screen.
+    private var configs: [String: DisplayConfig]
+    /// Legacy pre-per-screen global settings, captured once at init so the user's
+    /// existing edge/icon size migrate onto the first screen they select rather than
+    /// being lost. Cleared after the first `setActiveDisplay` seeds a config.
+    private var pendingMigration: DisplayConfig?
 
-    /// The layout axis, derived from the dock `edge` (top/bottom/center → horizontal,
-    /// left/right → vertical). Reading it in a SwiftUI body tracks `edge`, so the panel
-    /// reflows when the edge flips axis.
+    /// The active display's config, or its lazy per-type default when unset.
+    private var activeConfig: DisplayConfig {
+        configs[activeDisplayKey] ?? Self.defaultConfig(isBuiltin: activeIsBuiltin)
+    }
+
+    /// The active display's dock edge. Reading it in a SwiftUI body tracks the active
+    /// config, so the panel reflows when the edge (or the active display) changes.
+    public var edge: DockEdge { activeConfig.edge }
+    /// The active display's preferred app-icon size.
+    public var iconSize: CGFloat { activeConfig.iconSize }
+    /// The layout axis, derived from the active display's dock `edge`.
     public var orientation: Orientation { edge.orientation }
 
     /// The selectable icon-size presets surfaced in the menu, small→large. Kept
@@ -35,70 +77,114 @@ public final class SettingsStore {
 
     /// The fixed icon size used by the `menuBar` dock position, chosen to match the
     /// native macOS menu-bar icon size so the strip reads as part of the menu bar.
-    /// Overrides the user's `iconSize` preset while that position is selected (the
-    /// preset is preserved and returns when another position is picked).
+    /// Overrides the display's `iconSize` while that position is selected.
     public static let menuBarIconSize: CGFloat = 18
 
     /// The icon size the overview should actually render at: the native menu-bar size
-    /// when docked to the menu bar, otherwise the user's chosen preset.
+    /// when the active display is docked to the menu bar, otherwise its chosen preset.
     public var effectiveIconSize: CGFloat {
         edge.isMenuBar ? Self.menuBarIconSize : iconSize
     }
 
     private let defaults: UserDefaults
-    private let iconSizeKey = "settings.iconSize"
-    private let edgeKey = "settings.edge"
-    /// Legacy key from when only an axis (not an edge) was persisted; read once to
-    /// migrate an existing install to an equivalent edge.
+    private let configsKey = "settings.displayConfigs"
+    private let activeDisplayKeyKey = "settings.activeDisplay"
+    /// Legacy keys from the pre-per-screen (single global edge/icon size) install,
+    /// read once to migrate an existing setup onto the first selected screen.
+    private let legacyIconSizeKey = "settings.iconSize"
+    private let legacyEdgeKey = "settings.edge"
     private let legacyOrientationKey = "settings.orientation"
 
-    /// Seeds from persistence, falling back to the built-in defaults when nothing is
-    /// saved yet (48 pt, top edge).
+    /// Seeds from persistence. Per-screen configs and the active display are restored;
+    /// a legacy single-edge install is captured for one-time migration onto the first
+    /// screen the widget lands on.
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let saved = defaults.object(forKey: iconSizeKey) as? Double {
-            self.iconSize = Self.clamp(CGFloat(saved))
-        } else {
-            self.iconSize = AeroControlMetrics.defaultIconSize
-        }
-        if let raw = defaults.string(forKey: edgeKey), let e = DockEdge(rawValue: raw) {
-            self.edge = e
-        } else if let raw = defaults.string(forKey: legacyOrientationKey),
-                  let o = Orientation(rawValue: raw) {
-            // Migrate a pre-edge install to the matching edge, then persist so this
-            // runs only once.
-            self.edge = o.isVertical ? .left : .top
-            defaults.set(edge.rawValue, forKey: edgeKey)
-            defaults.removeObject(forKey: legacyOrientationKey)
-        } else {
-            self.edge = .top
+        self.configs = Self.loadConfigs(from: defaults, key: configsKey)
+        self.activeDisplayKey = defaults.string(forKey: activeDisplayKeyKey) ?? ""
+        self.activeIsBuiltin = true
+        // Capture a legacy global install so its edge/icon size migrate onto the first
+        // selected screen instead of vanishing. Only when no per-screen config exists.
+        if configs.isEmpty {
+            if let raw = defaults.string(forKey: legacyEdgeKey), let e = DockEdge(rawValue: raw) {
+                let saved = (defaults.object(forKey: legacyIconSizeKey) as? Double).map { CGFloat($0) }
+                pendingMigration = DisplayConfig(edge: e, iconSize: Self.clamp(saved ?? AeroControlMetrics.defaultIconSize))
+            } else if let raw = defaults.string(forKey: legacyOrientationKey),
+                      let o = Orientation(rawValue: raw) {
+                pendingMigration = DisplayConfig(edge: o.isVertical ? .left : .top, iconSize: AeroControlMetrics.defaultIconSize)
+            }
         }
     }
 
-    /// Sets and persists the icon size (clamped). No-op if unchanged.
+    /// Switches the active display (from the Screen menu). Seeds the display's config
+    /// on first selection — migrating a legacy global install if one was captured,
+    /// otherwise the built-in/external default — and persists the active key.
+    public func setActiveDisplay(key: String, isBuiltin: Bool) {
+        activeIsBuiltin = isBuiltin
+        activeDisplayKey = key
+        defaults.set(key, forKey: activeDisplayKeyKey)
+        if configs[key] == nil, let migrated = pendingMigration {
+            configs[key] = migrated
+            pendingMigration = nil
+            persistConfigs()
+            defaults.removeObject(forKey: legacyEdgeKey)
+            defaults.removeObject(forKey: legacyIconSizeKey)
+            defaults.removeObject(forKey: legacyOrientationKey)
+        }
+    }
+
+    /// Sets and persists the active display's icon size (clamped). No-op if unchanged.
     public func setIconSize(_ value: CGFloat) {
         let clamped = Self.clamp(value)
-        guard clamped != iconSize else { return }
-        iconSize = clamped
-        defaults.set(Double(clamped), forKey: iconSizeKey)
+        var config = activeConfig
+        guard config.iconSize != clamped else { return }
+        config.iconSize = clamped
+        configs[activeDisplayKey] = config
+        persistConfigs()
     }
 
-    /// Sets and persists the dock edge (and thus the derived orientation). No-op if
-    /// unchanged.
+    /// Sets and persists the active display's dock edge (and thus its derived
+    /// orientation). No-op if unchanged.
     public func setEdge(_ value: DockEdge) {
-        guard value != edge else { return }
-        edge = value
-        defaults.set(value.rawValue, forKey: edgeKey)
+        var config = activeConfig
+        guard config.edge != value else { return }
+        config.edge = value
+        configs[activeDisplayKey] = config
+        persistConfigs()
     }
 
-    /// Forgets both saved settings and reverts to the built-in defaults (used by the
-    /// menu's "Reset settings").
+    /// Forgets every per-screen config (and any captured legacy settings), so each
+    /// display reverts to its built-in/external default. The active display selection
+    /// is kept.
     public func reset() {
-        defaults.removeObject(forKey: iconSizeKey)
-        defaults.removeObject(forKey: edgeKey)
+        configs.removeAll()
+        pendingMigration = nil
+        defaults.removeObject(forKey: configsKey)
+        defaults.removeObject(forKey: legacyEdgeKey)
+        defaults.removeObject(forKey: legacyIconSizeKey)
         defaults.removeObject(forKey: legacyOrientationKey)
-        setIconSize(AeroControlMetrics.defaultIconSize)
-        setEdge(.top)
+    }
+
+    /// The lazy default config for a display with nothing saved yet: a centered HUD on
+    /// the built-in display, a menu-bar strip on externals; default icon size.
+    static func defaultConfig(isBuiltin: Bool) -> DisplayConfig {
+        DisplayConfig(
+            edge: isBuiltin ? .center : .menuBar,
+            iconSize: AeroControlMetrics.defaultIconSize
+        )
+    }
+
+    private func persistConfigs() {
+        guard let data = try? JSONEncoder().encode(configs) else { return }
+        defaults.set(data, forKey: configsKey)
+    }
+
+    private static func loadConfigs(from defaults: UserDefaults, key: String) -> [String: DisplayConfig] {
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([String: DisplayConfig].self, from: data) else {
+            return [:]
+        }
+        return decoded
     }
 
     private static func clamp(_ value: CGFloat) -> CGFloat {

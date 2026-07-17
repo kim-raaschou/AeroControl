@@ -22,14 +22,6 @@ struct AerospaceCommandArgvTests {
         ])
     }
 
-    @Test("list-monitors argv is pinned")
-    func listMonitors() {
-        #expect(AerospaceCommand.listMonitors() == [
-            "list-monitors", "--json", "--format",
-            "%{monitor-id} %{monitor-name} %{monitor-appkit-nsscreen-screens-id}",
-        ])
-    }
-
     @Test("subscribe argv is pinned")
     func subscribe() {
         #expect(AerospaceCommand.subscribe() == ["subscribe", "--all"])
@@ -49,8 +41,6 @@ private func sentinel(for field: AerospaceField) -> Any {
     case .workspace: return "ws"
     case .parentLayout: return "pl"
     case .monitorId: return 222
-    case .monitorName: return "mon"
-    case .nsscreenId: return 333
     }
 }
 
@@ -81,14 +71,6 @@ struct AerospaceFieldDriftGuardTests {
         let m = try #require(try parseWorkspaces(json: sentinelJSON(for: AerospaceCommand.listWorkspacesFields)).first)
         #expect(m.workspace == "ws")
         #expect(m.monitorId == 222)
-    }
-
-    @Test("every list-monitors field lands in a DecodedMonitor property")
-    func monitors() throws {
-        let m = try #require(try parseMonitorList(json: sentinelJSON(for: AerospaceCommand.listMonitorsFields)).first)
-        #expect(m.monitorId == 222)
-        #expect(m.monitorName == "mon")
-        #expect(m.nsscreenId == 333)
     }
 }
 

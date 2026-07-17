@@ -20,8 +20,11 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
     /// second instance signals SIGUSR1 to the running one.
     private let onToggle: () -> Void
     /// Docks the widget to a screen edge (Position menu) — snaps it to that edge and
-    /// sets the matching orientation.
+    /// sets the matching orientation for the active display.
     private let onSelectEdge: (DockEdge) -> Void
+    /// Moves the widget to another display (Screen menu), applying that display's own
+    /// edge/icon-size config.
+    private let onSelectScreen: (NSScreen) -> Void
     /// The runtime settings edited from the menu-bar menu (icon size + position), so the
     /// menu shows the current selection and applies changes live.
     private let settings: SettingsStore
@@ -32,11 +35,13 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         onQuit: @escaping () -> Void,
         onToggle: @escaping () -> Void,
         onSelectEdge: @escaping (DockEdge) -> Void,
+        onSelectScreen: @escaping (NSScreen) -> Void,
         settings: SettingsStore
     ) {
         self.onQuit = onQuit
         self.onToggle = onToggle
         self.onSelectEdge = onSelectEdge
+        self.onSelectScreen = onSelectScreen
         self.settings = settings
     }
 
@@ -111,6 +116,23 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
         menu.addItem(.separator())
 
+        // Screen selection: the widget shows on the chosen display, and each display
+        // keeps its own edge + icon size (so the sections below apply to it).
+        let screens = NSScreen.screens
+        menu.addItem(sectionHeader("Screen"))
+        for screen in screens {
+            let item = NSMenuItem(
+                title: screenLabel(for: screen, among: screens),
+                action: #selector(setScreenFromMenu(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = screen
+            item.state = screen.displayUUID == settings.activeDisplayKey ? .on : .off
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
         // The menu-bar dock position forces a native icon size, so the presets are
         // locked (shown disabled) while it is selected.
         let iconSizeLocked = settings.edge.isMenuBar
@@ -203,6 +225,23 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         case .center: return "Center"
         case .menuBar: return "Menu Bar"
         }
+    }
+
+    /// Human label for a display. Uses the OS-provided name; when two displays share a
+    /// name (identical monitors), appends a 1-based index so they stay distinguishable.
+    private func screenLabel(for screen: NSScreen, among screens: [NSScreen]) -> String {
+        let name = screen.localizedName
+        let sameName = screens.filter { $0.localizedName == name }
+        guard sameName.count > 1,
+              let position = sameName.firstIndex(where: { $0.displayUUID == screen.displayUUID }) else {
+            return name
+        }
+        return "\(name) (\(position + 1))"
+    }
+
+    @objc private func setScreenFromMenu(_ sender: NSMenuItem) {
+        guard let screen = sender.representedObject as? NSScreen else { return }
+        onSelectScreen(screen)
     }
 
     @objc private func setIconSizeFromMenu(_ sender: NSMenuItem) {
