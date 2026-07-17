@@ -1,6 +1,5 @@
 import Foundation
 
-/// All user-initiated actions in AeroControl.
 public enum AeroControlAction: Equatable, Sendable {
     case focusWorkspace(String)
     case focusWindow(Int)

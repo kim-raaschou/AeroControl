@@ -1,15 +1,10 @@
 import Foundation
 
-/// Aerospace CLI command definitions — domain knowledge about the aerospace binary's API.
 public enum AerospaceCommand {
-    /// Fields requested by `list-windows`, in the order `DecodedWindow` documents
-    /// them. Also the single source the decoder keys off (see `AerospaceField`).
     public static let listWindowsFields: [AerospaceField] = [
         .windowId, .appName, .appBundleId, .workspace, .parentLayout, .monitorId,
     ]
 
-    /// Fields requested by `list-workspaces`. `nsScreenId` lets a per-screen widget
-    /// filter to exactly its own display (see `AerospaceField.nsScreenId`).
     public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId, .nsScreenId]
 
     public static func listWindows() -> [String] {
@@ -36,13 +31,10 @@ public enum AerospaceCommand {
         ["move-node-to-workspace", "--window-id", String(windowId), "--focus-follows-window", workspace]
     }
 
-    /// Gracefully close a specific window (standard window close, not a force kill —
-    /// the app may prompt to save).
     public static func closeWindow(_ windowId: Int) -> [String] {
         ["close", "--window-id", String(windowId)]
     }
 
-    /// Maps a user action to its aerospace CLI arguments.
     public static func argv(for action: AeroControlAction) -> [String] {
         switch action {
         case .focusWorkspace(let name):

@@ -31,8 +31,6 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     public func windowCloseSignals() -> AsyncStream<Void> {
         AsyncStream { continuation in
-            // Global monitors for mouse events need no Accessibility permission (unlike
-            // keyboard). We only reconcile — we never consume or inspect the event.
             self.closeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { _ in
                 continuation.yield()
             }
@@ -54,9 +52,6 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         } else {
             original = NSWorkspace.shared.icon(for: .applicationBundle)
         }
-        // 100% native: return the raw macOS icon untouched, exactly as the Dock and
-        // the Cmd-Tab switcher render it. SwiftUI sizes the multi-representation image
-        // to the tile; no cropping or rescaling so we never diverge from the OS look.
         return original
     }
 

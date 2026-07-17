@@ -15,21 +15,14 @@ public struct OverviewModel: Equatable {
         self.focusedWorkspace = focusedWorkspace
     }
 
-    /// The distinct monitors currently hosting workspaces, ascending by id. Derived
-    /// from `workspaces`: a monitor exists exactly when it has at least one workspace,
-    /// so there is no separate monitor state to keep in sync.
     public var monitors: [MonitorInfo] {
         Array(Set(workspaces.map(\.monitorId))).sorted().map { MonitorInfo(monitorId: $0) }
     }
 
-    /// Workspaces filtered for a specific monitor.
     public func workspaces(forMonitor monitorId: Int) -> [WorkspaceInfo] {
         workspaces.filter { $0.monitorId == monitorId }
     }
 
-    /// Workspaces physically on a specific display, keyed by AeroSpace's 1-based
-    /// `NSScreen.screens` index. Used by a per-screen widget to show only its own
-    /// display's workspaces (see `AerospaceField.nsScreenId`).
     public func workspaces(forScreen nsScreenId: Int) -> [WorkspaceInfo] {
         workspaces.filter { $0.nsScreenId == nsScreenId }
     }
@@ -60,10 +53,6 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
     }
 }
 
-/// User-initiated actions. The model never predicts the outcome — AeroSpace is the
-/// source of truth. Each action only emits `.runAction` so the interpreter executes the
-/// matching aerospace CLI command; the interpreter then reloads and the resulting event
-/// (or its own post-command refresh) mirrors reality back into the model.
 private func applyAction(_ state: OverviewModel, _ action: AeroControlAction) -> (OverviewModel, [OverviewEffect]) {
     (state, [.runAction(action)])
 }
@@ -96,9 +85,6 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
         return (new, [.refresh])
 
     case .workspaceChanged(let workspace, _):
-        // Reconcile against reality on every workspace switch: the workspace we just
-        // left (prevWorkspace) may now be empty and pruned by AeroSpace, so reload to
-        // keep the current and previous workspaces in sync with the source of truth.
         var new = state
         new.focusedWorkspace = workspace
         return (new, [.refresh])

@@ -1,11 +1,6 @@
 import SwiftUI
 import Common
 
-/// A single app within an AeroControl workspace card, styled like the native
-/// macOS Cmd-Tab switcher: a clean app icon with a soft drop shadow and no
-/// background plate or border. Only the focused app rests on a subtle milky
-/// selection plate. The app name sits beneath. Carries tap-to-focus and
-/// drag-to-move directly (so it needs no chrome-heavy `WindowIcon`).
 struct AeroControlAppTile: View {
     @Environment(\.colorScheme) private var colorScheme
     let window: WindowInfo
@@ -19,8 +14,6 @@ struct AeroControlAppTile: View {
     let iconSize: CGFloat
     private var metrics: AeroControlMetrics { AeroControlMetrics(iconSize: iconSize) }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
-    /// Missing-icon placeholder radius: concentric with a real icon's artwork corner,
-    /// so a loading tile shares the same corner layout as a loaded one.
     private var plateRadius: CGFloat { metrics.iconArtworkRadius }
 
     init(
@@ -70,19 +63,10 @@ struct AeroControlAppTile: View {
         }
     }
 
-    /// Focus cue, styled like the native macOS Cmd-Tab switcher: a soft, light
-    /// translucent rounded rectangle sitting *behind* the icon. It is deliberately
-    /// a touch smaller than the icon's frame — it hugs the icon's glyph rather than
-    /// the full tile — so that even on a single-app workspace it keeps clear air
-    /// from the card's focus border. Drawn at a fixed size relative
-    /// to the icon, so showing/hiding focus never reflows the row.
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
             let side = metrics.focusPlateSize
             let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
-            // The card body is near-invisible `.clear` glass, so the selection reads
-            // through a frosted material plate — the light, rounded highlight of the
-            // native Cmd-Tab switcher — with concentric corners nesting the icon.
             shape
                 .fill(.regularMaterial)
                 .overlay { shape.fill(plateLighten) }
@@ -90,20 +74,12 @@ struct AeroControlAppTile: View {
         }
     }
 
-    /// A gentle white lift on top of the frosted plate so the selection reads as the
-    /// *light* native Cmd-Tab highlight rather than a neutral grey frost.
     private var plateLighten: Color {
         colorScheme == .dark ? .white.opacity(0.18) : .white.opacity(0.30)
     }
 
-    /// Floating windows get a subtle dotted outline so they read as "outside the
-    /// tiling flow". Appearance-adaptive (light in Dark Mode, soft dark in Light
-    /// Mode), sized to hug the icon glyph like the focus plate. Hidden while the
-    /// window is focused — the focus plate already carries the emphasis there.
     @ViewBuilder private var floatingHint: some View {
         if window.isFloating && !isFocused {
-            // Match the focus plate's footprint exactly, so the floating marker never
-            // reaches beyond the plate the focused state would show in its place.
             let side = metrics.focusPlateSize
             let dot = max(1, iconSize * 0.05)
             let gap = iconSize * 0.09
@@ -120,30 +96,16 @@ struct AeroControlAppTile: View {
         adaptive(dark: 0.33, light: 0.23)
     }
 
-    /// Solid appearance-adaptive fill for the hover close button — no `.regularMaterial`,
-    /// which would stack a second frost on the card's Liquid Glass. Near-opaque so the
-    /// primary "xmark" glyph stays legible over any wallpaper.
     private var closeButtonFill: Color {
         colorScheme == .dark ? Color(white: 0.26) : Color(white: 0.92)
     }
 
-    /// A wash that adapts to the system appearance like the macOS Cmd-Tab switcher:
-    /// a white overlay in Dark Mode, a black overlay in Light Mode.
     private func adaptive(dark: Double, light: Double) -> Color {
         colorScheme == .dark ? .white.opacity(dark) : .black.opacity(light)
     }
 
-    /// Hover affordance: a small close button in the tile's top-trailing corner
-    /// (top-leading is reserved for the workspace badge on the first tile). Wrapped
-    /// in a `Button` so its tap is consumed and never falls through to the tile's
-    /// focus gesture. Closes the window gracefully via `aerospace close`.
     @ViewBuilder private var closeButton: some View {
         if isHovering {
-            // The *visible* circle scales proportionally with the icon (~⅓ of it at
-            // every size), so it never dominates a small icon. The hit area is exactly
-            // the visible circle — no invisible enlarged frame — so a click only closes
-            // when it lands on the X you can actually see; every other click on the
-            // icon falls through to tap-to-focus.
             let diameter = max(11, iconSize * 0.32)
             Button(action: onCloseWindow) {
                 Image(systemName: "xmark")

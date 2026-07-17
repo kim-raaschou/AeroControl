@@ -20,29 +20,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController!
     private var settings: SettingsStore!
     private let instanceGuard = SingleInstanceGuard()
-    /// Menu-bar control surface — the resident daemon's only reachable UI while the
-    /// widget is hidden (settings + Quit).
     private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Allow only one AeroControl instance per user. If one is already up, this
-        // invocation is the summon keybind firing again: signal it to toggle its
-        // visibility (SIGUSR1, not SIGTERM — quit stays a separate signal), then exit.
         let lockName = "com.aerocontrol.single-instance.lock"
         guard instanceGuard.tryAcquire(name: lockName) else {
             if let pid = instanceGuard.runningInstancePID(name: lockName) {
                 kill(pid, SIGUSR1)
             }
-            // Exit directly rather than NSApp.terminate(nil): the app lifecycle
-            // (applicationWillTerminate) is not yet set up, so terminate would
-            // run teardown against uninitialized state.
             exit(0)
         }
 
-        // We are the sole instance. Ignore SIGUSR1 immediately: the summon keybind can
-        // fire again during startup, and until the dispatch source is installed at the
-        // end of launch, SIGUSR1's default disposition would terminate us instead of
-        // toggling. Ignoring it early makes an early press a harmless no-op.
         signal(SIGUSR1, SIG_IGN)
 
         NSApp.setActivationPolicy(.accessory)
@@ -52,24 +40,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         state = OverviewStore(runner: runner, nativeSystem: nativeSystem)
 
-        // The menu-bar menu (persisted to UserDefaults) is the only configuration path;
-        // settings are read from there, defaulting on first launch.
         settings = SettingsStore()
 
         menuBarController = MenuBarController(
             onQuit: { [weak self] in self?.quit() },
-            // The summon keybind relaunches the binary; the second instance signals
-            // SIGUSR1, which toggles the widget's visibility.
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
-            // The menu-bar Position menu docks the widget to a screen edge
-            // (top/bottom/left/right/center) for the active display and sets the axis.
             onSelectEdge: { [weak self] edge in self?.overlayManager.selectEdge(edge) },
-            // The menu-bar Screen menu moves the widget to the chosen display, applying
-            // that display's own edge/icon-size config.
             onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
-            // Toggles the "show on every connected display" mode.
             onToggleMultiScreen: { [weak self] in self?.overlayManager.toggleMultiScreen() },
-            // Reset restores defaults for every display, so rebuild all widgets.
             onReset: { [weak self] in self?.overlayManager.rebuild() },
             settings: settings
         )
@@ -78,17 +56,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             state: state,
             settings: settings
         )
-        // Resolve which display the widget starts on (a previously-selected one if still
-        // connected, else main) before any placement, so menu/panel/window agree.
         overlayManager.activateInitialScreen()
 
         installStatusItem()
 
-        // Wire the store's host reactions directly (it owns no windows):
-        // - onMonitorsChanged: the workspace-derived monitor set changed (rare); rebuild
-        //   the widget(s) for the current display set / active display's extent.
-        // - onLoaded: if the initial load failed, no AeroSpace workspaces are known, so
-        //   nothing has built a window yet; show a fallback so `state.error` is seen.
         state.onMonitorsChanged = { [weak self] in self?.overlayManager.rebuild() }
         state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
 
@@ -101,9 +72,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController.install()
     }
 
-    /// Installs the always-visible menu-bar icon whose menu carries the app's settings
-    /// and Quit. This is the resident daemon's only reachable control surface while the
-    /// widget is hidden, so it must stay present — a distinct icon, visible by default.
     @MainActor private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
@@ -118,9 +86,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
-    /// Single idempotent teardown shared by `quit()` and `applicationWillTerminate`.
-    /// Order: remove quit triggers → stop the store → drop the overlay windows →
-    /// remove the menu-bar item.
     @MainActor private func performTeardown() {
         menuBarController?.teardown()
         state?.stop()
@@ -133,8 +98,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor private func quit() {
         performTeardown()
-        // Flush persisted settings (dock edge, icon size) to disk now: `exit(0)`
-        // bypasses the normal termination flush, so persist once here before exiting.
         UserDefaults.standard.synchronize()
         exit(0)
     }
