@@ -99,17 +99,21 @@ public struct AeroControlPanel: View {
         .fixedSize()
     }
 
-    /// A thin divider between two monitor groups, so the single widget shows which
-    /// workspaces belong to which display without any text labels. It spans the
-    /// cross axis (a card's fixed dimension) and is a hairline along the main axis.
+    /// A Liquid Glass divider between two monitor groups, so the single widget shows
+    /// which workspaces belong to which display without any text labels. It spans the
+    /// cross axis (a card's fixed dimension) and is a slim `.regular` glass pill along
+    /// the main axis, finished with a hairline rim so it reads as a deliberate glass
+    /// element (matching the cards' crisp edge) rather than a flat line. Kept at 3pt so
+    /// the fixed cross-axis extent and the row's fit-math stay unchanged.
     private func groupSeparator(vertical: Bool, metrics: AeroControlMetrics) -> some View {
-        let thickness: CGFloat = 1
-        return RoundedRectangle(cornerRadius: thickness / 2)
-            .fill(.white.opacity(0.18))
+        let thickness: CGFloat = 3
+        return Color.clear
             .frame(
                 width: vertical ? metrics.cardHeight : thickness,
                 height: vertical ? thickness : metrics.cardHeight
             )
+            .glassEffect(.regular, in: .capsule)
+            .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
     }
 
     private func card(for workspace: WorkspaceInfo, iconSize: CGFloat) -> some View {
