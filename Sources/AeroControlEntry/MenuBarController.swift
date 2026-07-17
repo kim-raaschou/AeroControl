@@ -25,6 +25,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     /// Moves the widget to another display (Screen menu), applying that display's own
     /// edge/icon-size config.
     private let onSelectScreen: (NSScreen) -> Void
+    /// Toggles the "show on every display" mode.
+    private let onToggleMultiScreen: () -> Void
+    /// Rebuilds every widget after a settings reset, so all displays re-snap to their
+    /// defaults (not just the active one).
+    private let onReset: () -> Void
     /// The runtime settings edited from the menu-bar menu (icon size + position), so the
     /// menu shows the current selection and applies changes live.
     private let settings: SettingsStore
@@ -36,12 +41,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         onToggle: @escaping () -> Void,
         onSelectEdge: @escaping (DockEdge) -> Void,
         onSelectScreen: @escaping (NSScreen) -> Void,
+        onToggleMultiScreen: @escaping () -> Void,
+        onReset: @escaping () -> Void,
         settings: SettingsStore
     ) {
         self.onQuit = onQuit
         self.onToggle = onToggle
         self.onSelectEdge = onSelectEdge
         self.onSelectScreen = onSelectScreen
+        self.onToggleMultiScreen = onToggleMultiScreen
+        self.onReset = onReset
         self.settings = settings
     }
 
@@ -116,10 +125,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
         menu.addItem(.separator())
 
-        // Screen selection: the widget shows on the chosen display, and each display
-        // keeps its own edge + icon size (so the sections below apply to it).
+        // Screen selection: each display keeps its own edge + icon size (so the sections
+        // below apply to it). In single-screen mode selecting a screen moves the widget
+        // there; in multi-screen mode a widget shows on every display and selecting one
+        // just chooses which display's config the sections below edit.
+        let multi = settings.multiScreenEnabled
         let screens = NSScreen.screens
-        menu.addItem(sectionHeader("Screen"))
+        menu.addItem(sectionHeader(multi ? "Configure Screen" : "Screen"))
         for screen in screens {
             let item = NSMenuItem(
                 title: screenLabel(for: screen, among: screens),
@@ -131,6 +143,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             item.state = screen.displayUUID == settings.activeDisplayKey ? .on : .off
             menu.addItem(item)
         }
+
+        let multiScreenItem = NSMenuItem(
+            title: "Show on All Screens",
+            action: #selector(toggleMultiScreenFromMenu),
+            keyEquivalent: ""
+        )
+        multiScreenItem.target = self
+        multiScreenItem.state = multi ? .on : .off
+        menu.addItem(multiScreenItem)
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Icon Size"))
@@ -240,6 +261,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         onSelectScreen(screen)
     }
 
+    @objc private func toggleMultiScreenFromMenu() {
+        onToggleMultiScreen()
+    }
+
     @objc private func setIconSizeFromMenu(_ sender: NSMenuItem) {
         settings.setIconSize(CGFloat(sender.tag))
     }
@@ -256,8 +281,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func resetSettingsFromMenu() {
         settings.reset()
-        // Re-snap the live window to the reset edge/orientation (reset() only updates
-        // the store; the AppKit window is driven imperatively).
-        onSelectEdge(settings.edge)
+        // Rebuild every widget so all displays re-snap to their reset defaults (reset()
+        // only updates the store; the AppKit windows are driven imperatively).
+        onReset()
     }
 }

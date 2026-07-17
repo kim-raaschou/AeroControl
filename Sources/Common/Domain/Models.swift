@@ -21,11 +21,16 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let name: String
     public var windows: [WindowInfo]
     public var monitorId: Int
+    /// AeroSpace's 1-based `NSScreen.screens` index for this workspace's monitor. Maps
+    /// the workspace directly to its physical display, so a per-screen widget filters to
+    /// exactly its own screen (see `AerospaceField.nsScreenId`).
+    public var nsScreenId: Int
 
-    public init(name: String, windows: [WindowInfo], monitorId: Int = 1) {
+    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, nsScreenId: Int = 1) {
         self.name = name
         self.windows = windows
         self.monitorId = monitorId
+        self.nsScreenId = nsScreenId
     }
 }
 

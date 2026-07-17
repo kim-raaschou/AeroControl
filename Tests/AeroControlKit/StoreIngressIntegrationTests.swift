@@ -438,8 +438,8 @@ struct StoreIngressIntegrationTests {
     // MARK: Output contract — the seam that drives OverlayWindowManager
     //
     // The store's host-reaction callbacks are the egress that `AeroControlApp` maps to
-    // window-management calls: `.monitorsChanged` → `syncWindows()` (re-clamp to the
-    // active display), `.loaded` → `showErrorFallbackIfNeeded()`. Asserting them here
+    // window-management calls: `.monitorsChanged` → `rebuild()` (rebuild for the current
+    // display set), `.loaded` → `showErrorFallbackIfNeeded()`. Asserting them here
     // integration-tests *what* OverlayWindowManager is told to do, deterministically and
     // without AppKit.
 

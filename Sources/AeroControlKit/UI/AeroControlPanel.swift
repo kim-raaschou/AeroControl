@@ -5,7 +5,7 @@ import Common
 /// column) of workspace cards that floats above the desktop, showing **every**
 /// workspace grouped by the monitor it lives on (a thin separator divides the
 /// groups, ordered by monitor id ≈ physical left-to-right). The hosting window
-/// resizes itself to this view's fitting size and follows the focused monitor.
+/// resizes itself to this view's fitting size and docks to the active display's edge.
 /// Every workspace card has the same cross-axis size; its main-axis length scales
 /// with how many apps it holds, so busy workspaces are larger than quiet ones.
 public struct AeroControlPanel: View {
@@ -13,6 +13,16 @@ public struct AeroControlPanel: View {
     /// Observed runtime settings — reading `iconSize` / `orientation` here makes the
     /// panel reflow the instant the user changes them from the menu.
     let settings: SettingsStore
+    /// When set, the panel renders *this* display's config (edge/icon size) instead of
+    /// the single "active" display — so several windows can each show their own screen's
+    /// config in multi-screen mode. Nil falls back to the active-display accessors.
+    let displayKey: String?
+    let displayIsBuiltin: Bool
+    /// When set (multi-screen mode), the panel shows *only* the workspaces physically on
+    /// this window's screen, keyed by AeroSpace's 1-based `NSScreen.screens` index
+    /// (`monitor-appkit-nsscreen-screens-id`), so each per-screen widget mirrors just its
+    /// own display. Nil shows every monitor grouped (the single-widget default).
+    let screenFilter: Int?
     /// The focused screen's available extent (visibleFrame size), so the widget can
     /// shrink its icons to fit rather than overflowing a busy workspace off-screen. Zero
     /// means "unconstrained" (e.g. previews/tests) — the preferred size is used as-is.
@@ -22,17 +32,56 @@ public struct AeroControlPanel: View {
     public init(
         state: OverviewStore,
         settings: SettingsStore,
+        displayKey: String? = nil,
+        displayIsBuiltin: Bool = true,
+        screenFilter: Int? = nil,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0
     ) {
         self._state = Bindable(wrappedValue: state)
         self.settings = settings
+        self.displayKey = displayKey
+        self.displayIsBuiltin = displayIsBuiltin
+        self.screenFilter = screenFilter
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
     }
 
+    /// The dock orientation this panel renders at: its own display's when keyed,
+    /// otherwise the active display's. Reading it in a SwiftUI body tracks the config.
+    private var resolvedOrientation: Orientation {
+        if let displayKey {
+            return settings.config(forKey: displayKey, isBuiltin: displayIsBuiltin).edge.orientation
+        }
+        return settings.orientation
+    }
+
+    /// The icon size this panel renders at: its own display's when keyed, otherwise the
+    /// active display's.
+    private var resolvedIconSize: CGFloat {
+        if let displayKey {
+            return settings.config(forKey: displayKey, isBuiltin: displayIsBuiltin).iconSize
+        }
+        return settings.effectiveIconSize
+    }
+
+    /// The workspaces this panel renders: every one by default, or only those physically
+    /// on this window's screen in multi-screen mode.
     private var workspaces: [WorkspaceInfo] {
-        state.model.workspaces
+        if let screenFilter {
+            return state.model.workspaces(forScreen: screenFilter)
+        }
+        return state.model.workspaces
+    }
+
+    /// The monitor groups this panel lays out: every one by default, or just the single
+    /// monitor physically on this screen in multi-screen mode (so no separators are
+    /// drawn). Derived from the already-filtered workspaces, so it stays a 1:1 match.
+    private var visibleMonitors: [MonitorInfo] {
+        if screenFilter != nil {
+            return Array(Set(workspaces.map(\.monitorId))).sorted().map(MonitorInfo.init)
+        }
+        return state.model.monitors
     }
 
     /// Empty margin around the card row so the cards don't touch the window edge and
@@ -45,7 +94,10 @@ public struct AeroControlPanel: View {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
-                loadingView
+                // Nothing to show yet (AeroSpace answers in <20ms) or — in multi-screen
+                // mode — this display has no AeroSpace monitor. Render empty rather than a
+                // spinner that would otherwise sit "Loading…" forever on such a screen.
+                Color.clear.frame(width: 0, height: 0)
             } else {
                 cardRow(iconSize: renderedIconSize)
             }
@@ -60,11 +112,11 @@ public struct AeroControlPanel: View {
     /// workspace shrinks its icons instead of running off-screen. Falls back to the
     /// preferred size when the available extent is unknown (zero).
     private var renderedIconSize: CGFloat {
-        let extent = settings.orientation.isVertical ? availableHeight : availableWidth
-        guard extent > 0 else { return settings.effectiveIconSize }
+        let extent = resolvedOrientation.isVertical ? availableHeight : availableWidth
+        guard extent > 0 else { return resolvedIconSize }
         let counts = workspaces.map { $0.windows.count }
         return AeroControlLayout.effectiveIconSize(
-            preferred: settings.effectiveIconSize,
+            preferred: resolvedIconSize,
             availableWidth: extent * AeroControlLayout.usableScreenFraction,
             windowCounts: counts
         )
@@ -77,12 +129,12 @@ public struct AeroControlPanel: View {
     /// groups.
     private func cardRow(iconSize: CGFloat) -> some View {
         let metrics = AeroControlMetrics(iconSize: iconSize)
-        let vertical = settings.orientation.isVertical
+        let vertical = resolvedOrientation.isVertical
         let layout = vertical
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: metrics.cardSpacing))
             : AnyLayout(HStackLayout(alignment: .top, spacing: metrics.cardSpacing))
         return layout {
-            ForEach(Array(state.model.monitors.enumerated()), id: \.element.id) { index, monitor in
+            ForEach(Array(visibleMonitors.enumerated()), id: \.element.id) { index, monitor in
                 if index > 0 {
                     groupSeparator(vertical: vertical, metrics: metrics)
                 }
@@ -129,7 +181,7 @@ public struct AeroControlPanel: View {
                 send(.moveWindow(windowId: windowId, toWorkspace: target))
             },
             onCloseWindow: { windowId in send(.closeWindow(windowId)) },
-            isVertical: settings.orientation.isVertical
+            isVertical: resolvedOrientation.isVertical
         )
         .transition(unsafe .opacity.combined(with: .scale(scale: 0.92)))
     }
@@ -146,14 +198,5 @@ public struct AeroControlPanel: View {
             Text(message).font(.system(.callout)).foregroundStyle(.white.opacity(0.8))
         }
         .padding()
-    }
-
-    private var loadingView: some View {
-        HStack(spacing: 8) {
-            ProgressView().controlSize(.small).tint(.white)
-            Text("Loading workspaces…")
-                .font(.system(.callout, design: .rounded))
-                .foregroundStyle(.white.opacity(0.6))
-        }
     }
 }

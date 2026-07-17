@@ -29,7 +29,7 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 }
 
 class OverviewWindow: NSPanel {
-    private var targetScreen: NSScreen
+    private let targetScreen: NSScreen
     /// True for a vertical widget (left/right dock, cards stacked); false for a
     /// horizontal one (top/bottom/center, cards in a row). Only used to decide when a
     /// Position change flips the axis and the panel must be re-measured.
@@ -90,7 +90,7 @@ class OverviewWindow: NSPanel {
         setFrame(NSRect(origin: origin, size: contentSize), display: true)
         if hasFadedIn {
             // Only re-order a *visible* window front. A programmatic retarget (a focus
-            // or monitor change routed through syncWindows) must not resurrect a widget
+            // or monitor change routed through a rebuild) must not resurrect a widget
             // the user has hidden with the summon key — the show path orders it front
             // explicitly via revealFloating().
             if isVisible { orderFrontRegardless() }
@@ -120,15 +120,8 @@ class OverviewWindow: NSPanel {
         setFrame(NSRect(origin: origin, size: contentSize), display: true)
     }
 
-    /// Retargets the floating panel to a different screen, re-placing it at its docked
-    /// position at the current content size.
-    func retargetFloating(to screen: NSScreen) {
-        targetScreen = screen
-        showFloating(contentSize: frame.size)
-    }
-
     /// Fades the panel back in and orders it front — the show half of the summon-key
-    /// show/hide toggle. The manager retargets to the focused screen first (which
+    /// show/hide toggle. The manager rebuilds onto the correct screens first (which
     /// leaves the panel ordered-out at alpha 0), so this only animates the reveal.
     func revealFloating() {
         alphaValue = 0

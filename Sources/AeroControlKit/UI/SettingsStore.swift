@@ -50,9 +50,20 @@ public final class SettingsStore {
     /// being lost. Cleared after the first `setActiveDisplay` seeds a config.
     private var pendingMigration: DisplayConfig?
 
+    /// Whether the overview is shown on *every* connected display at once (opt-in), each
+    /// rendering that display's own config. When false (default) the widget shows only on
+    /// the single active display. Toggled from the menu.
+    public private(set) var multiScreenEnabled: Bool
+
     /// The active display's config, or its lazy per-type default when unset.
     private var activeConfig: DisplayConfig {
         configs[activeDisplayKey] ?? Self.defaultConfig(isBuiltin: activeIsBuiltin)
+    }
+
+    /// The stored config for a specific display (by key), or its per-type default when
+    /// unset. Used to render each window against its own display in multi-screen mode.
+    public func config(forKey key: String, isBuiltin: Bool) -> DisplayConfig {
+        configs[key] ?? Self.defaultConfig(isBuiltin: isBuiltin)
     }
 
     /// The active display's dock edge. Reading it in a SwiftUI body tracks the active
@@ -81,6 +92,7 @@ public final class SettingsStore {
     private let defaults: UserDefaults
     private let configsKey = "settings.displayConfigs"
     private let activeDisplayKeyKey = "settings.activeDisplay"
+    private let multiScreenKey = "settings.multiScreenEnabled"
     /// Legacy keys from the pre-per-screen (single global edge/icon size) install,
     /// read once to migrate an existing setup onto the first selected screen.
     private let legacyIconSizeKey = "settings.iconSize"
@@ -95,6 +107,7 @@ public final class SettingsStore {
         self.configs = Self.loadConfigs(from: defaults, key: configsKey)
         self.activeDisplayKey = defaults.string(forKey: activeDisplayKeyKey) ?? ""
         self.activeIsBuiltin = true
+        self.multiScreenEnabled = defaults.bool(forKey: multiScreenKey)
         // Capture a legacy global install so its edge/icon size migrate onto the first
         // selected screen instead of vanishing. Only when no per-screen config exists.
         if configs.isEmpty {
@@ -123,6 +136,14 @@ public final class SettingsStore {
             defaults.removeObject(forKey: legacyIconSizeKey)
             defaults.removeObject(forKey: legacyOrientationKey)
         }
+    }
+
+    /// Enables or disables showing the overview on every connected display at once.
+    /// Persisted. No-op if unchanged.
+    public func setMultiScreenEnabled(_ enabled: Bool) {
+        guard multiScreenEnabled != enabled else { return }
+        multiScreenEnabled = enabled
+        defaults.set(enabled, forKey: multiScreenKey)
     }
 
     /// Sets and persists the active display's icon size (clamped). No-op if unchanged.

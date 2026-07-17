@@ -384,3 +384,26 @@ struct ActionTests {
         #expect(effects == [.runAction(.moveWindow(windowId: 1, toWorkspace: "2"))])
     }
 }
+
+@Suite("update — per-screen filtering (nsScreenId)")
+struct PerScreenFilterTests {
+    /// A workspace tagged with an explicit AppKit NSScreen index (the per-screen key a
+    /// multi-screen widget filters on).
+    private func ws(_ name: String, monitor: Int, nsScreen: Int) -> WorkspaceInfo {
+        WorkspaceInfo(name: name, windows: [], monitorId: monitor, nsScreenId: nsScreen)
+    }
+
+    @Test("workspaces(forScreen:) keys off the AppKit NSScreen index, not the monitor id")
+    func filtersByNsScreenId() {
+        // Monitor id and NSScreen index diverge (primary display isn't the leftmost): the
+        // filter must follow the NSScreen index so each widget shows its own display.
+        let s = OverviewModel(workspaces: [
+            ws("1", monitor: 2, nsScreen: 1),
+            ws("2", monitor: 1, nsScreen: 2),
+            ws("3", monitor: 2, nsScreen: 1),
+        ])
+        #expect(s.workspaces(forScreen: 1).map(\.name) == ["1", "3"])
+        #expect(s.workspaces(forScreen: 2).map(\.name) == ["2"])
+        #expect(s.workspaces(forScreen: 3).isEmpty)
+    }
+}

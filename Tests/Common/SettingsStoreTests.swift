@@ -106,4 +106,31 @@ struct SettingsStoreTests {
         #expect(store.edge == .left)
         #expect(store.orientation == .vertical)
     }
+
+    @Test func multiScreenTogglePersists() {
+        let defaults = makeDefaults()
+        let first = SettingsStore(defaults: defaults)
+        #expect(first.multiScreenEnabled == false)
+        first.setMultiScreenEnabled(true)
+        #expect(first.multiScreenEnabled == true)
+        // A later launch restores the multi-screen preference.
+        let second = SettingsStore(defaults: defaults)
+        #expect(second.multiScreenEnabled == true)
+    }
+
+    @Test func configForKeyReadsPerDisplayConfigWithoutSwitchingActive() {
+        let store = SettingsStore(defaults: makeDefaults())
+        store.setActiveDisplay(key: "A", isBuiltin: true)
+        store.setEdge(.right)
+        store.setIconSize(64)
+        // An unknown display falls back to its per-type default…
+        let external = store.config(forKey: "unknown", isBuiltin: false)
+        #expect(external.edge == .menuBar)
+        #expect(external.iconSize == AeroControlMetrics.defaultIconSize)
+        // …a saved display returns its own config while "A" stays active.
+        let a = store.config(forKey: "A", isBuiltin: true)
+        #expect(a.edge == .right)
+        #expect(a.iconSize == 64)
+        #expect(store.activeDisplayKey == "A")
+    }
 }

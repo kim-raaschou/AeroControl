@@ -26,6 +26,13 @@ public struct OverviewModel: Equatable {
     public func workspaces(forMonitor monitorId: Int) -> [WorkspaceInfo] {
         workspaces.filter { $0.monitorId == monitorId }
     }
+
+    /// Workspaces physically on a specific display, keyed by AeroSpace's 1-based
+    /// `NSScreen.screens` index. Used by a per-screen widget to show only its own
+    /// display's workspaces (see `AerospaceField.nsScreenId`).
+    public func workspaces(forScreen nsScreenId: Int) -> [WorkspaceInfo] {
+        workspaces.filter { $0.nsScreenId == nsScreenId }
+    }
 }
 
 public enum OverviewInput: Sendable {

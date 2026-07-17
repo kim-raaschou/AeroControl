@@ -67,6 +67,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // The menu-bar Screen menu moves the widget to the chosen display, applying
             // that display's own edge/icon-size config.
             onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
+            // Toggles the "show on every connected display" mode.
+            onToggleMultiScreen: { [weak self] in self?.overlayManager.toggleMultiScreen() },
+            // Reset restores defaults for every display, so rebuild all widgets.
+            onReset: { [weak self] in self?.overlayManager.rebuild() },
             settings: settings
         )
 
@@ -81,12 +85,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         installStatusItem()
 
         // Wire the store's host reactions directly (it owns no windows):
-        // - onMonitorsChanged: the workspace-derived monitor set changed; re-sync the
-        //   window so it re-clamps to the active display's current extent.
+        // - onMonitorsChanged: the workspace-derived monitor set changed (rare); rebuild
+        //   the widget(s) for the current display set / active display's extent.
         // - onLoaded: if the initial load failed, no AeroSpace workspaces are known, so
-        //   `syncWindows()` still creates the panel; show a fallback so `state.error`
-        //   is seen even before any workspace materializes.
-        state.onMonitorsChanged = { [weak self] in self?.overlayManager.syncWindows() }
+        //   nothing has built a window yet; show a fallback so `state.error` is seen.
+        state.onMonitorsChanged = { [weak self] in self?.overlayManager.rebuild() }
         state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
 
         Task {

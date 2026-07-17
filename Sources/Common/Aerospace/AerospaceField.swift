@@ -14,6 +14,11 @@ public enum AerospaceField: String, CaseIterable, CodingKey {
     case workspace = "workspace"
     case parentLayout = "window-parent-container-layout"
     case monitorId = "monitor-id"
+    /// AeroSpace's 1-based index of the monitor into `NSScreen.screens`. Unlike
+    /// `monitorId` (numbered geometrically), this maps a workspace directly to the
+    /// physical `NSScreen` it lives on, so a per-screen widget can filter to exactly
+    /// its own display without guessing the NSScreen↔monitor correspondence.
+    case nsScreenId = "monitor-appkit-nsscreen-screens-id"
 
     /// The `%{field-key}` format token AeroSpace expects for this field.
     public var formatToken: String { "%{\(rawValue)}" }

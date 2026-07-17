@@ -8,8 +8,9 @@ public enum AerospaceCommand {
         .windowId, .appName, .appBundleId, .workspace, .parentLayout, .monitorId,
     ]
 
-    /// Fields requested by `list-workspaces`.
-    public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId]
+    /// Fields requested by `list-workspaces`. `nsScreenId` lets a per-screen widget
+    /// filter to exactly its own display (see `AerospaceField.nsScreenId`).
+    public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId, .nsScreenId]
 
     public static func listWindows() -> [String] {
         ["list-windows", "--all", "--json", "--format", listWindowsFields.formatString]

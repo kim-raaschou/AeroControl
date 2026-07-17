@@ -56,15 +56,18 @@ public struct DecodedWindow: Decodable, Equatable {
 public struct WorkspaceMonitor: Decodable, Equatable {
     public let workspace: String
     @TolerantInt public var monitorId: Int
+    @TolerantInt public var nsScreenId: Int
 
     private enum CodingKeys: String, CodingKey {
         case workspace
         case monitorId = "monitor-id"
+        case nsScreenId = "monitor-appkit-nsscreen-screens-id"
     }
 
-    public init(workspace: String, monitorId: Int) {
+    public init(workspace: String, monitorId: Int, nsScreenId: Int = 1) {
         self.workspace = workspace
         self.monitorId = monitorId
+        self.nsScreenId = nsScreenId
     }
 }
 
@@ -111,7 +114,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
         WorkspaceInfo(
             name: wm.workspace,
             windows: byWorkspace[wm.workspace]?.map(\.window) ?? [],
-            monitorId: wm.monitorId
+            monitorId: wm.monitorId,
+            nsScreenId: wm.nsScreenId
         )
     }
 
