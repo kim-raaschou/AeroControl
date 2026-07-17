@@ -1,10 +1,10 @@
 import AppKit
 import AeroControlKit
 
-/// Owns every "quit trigger" — the distinct ways the app can be asked to close —
-/// and funnels them all through a single `onQuit` callback. Extracted from the
-/// AppDelegate so the composition root only wires and routes. Also builds the
-/// menu-bar (status item) menu that carries the app's settings and Quit.
+/// Owns the menu-bar control surface — the status-item menu that carries the app's
+/// settings (Screen, Icon Size, Position), "Reset settings", and "Quit" — together with
+/// the always-on signal triggers that toggle or quit the resident daemon. Extracted from
+/// the AppDelegate so the composition root only wires and routes.
 ///
 /// The overview is a summoned floating widget that never becomes the key/active app,
 /// so it is dismissed deliberately: pressing the global toggle keybind again shows or
@@ -14,7 +14,7 @@ import AeroControlKit
 /// stay wired to a clean quit so a logout or `kill` still terminates the app — toggle
 /// and quit are kept as distinct signals.
 @MainActor
-final class QuitTriggerController: NSObject, NSMenuDelegate {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private let onQuit: () -> Void
     /// Shows/hides the widget — the summon keybind relaunches the binary, whose
     /// second instance signals SIGUSR1 to the running one.
@@ -133,10 +133,7 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        // The menu-bar dock position forces a native icon size, so the presets are
-        // locked (shown disabled) while it is selected.
-        let iconSizeLocked = settings.edge.isMenuBar
-        menu.addItem(sectionHeader(iconSizeLocked ? "Icon Size — native (Menu Bar)" : "Icon Size"))
+        menu.addItem(sectionHeader("Icon Size"))
         for preset in SettingsStore.iconSizePresets {
             let item = NSMenuItem(
                 title: iconSizeLabel(for: preset),
@@ -145,7 +142,6 @@ final class QuitTriggerController: NSObject, NSMenuDelegate {
             )
             item.target = self
             item.tag = Int(preset)
-            item.isEnabled = !iconSizeLocked
             item.state = abs(settings.iconSize - preset) < 0.5 ? .on : .off
             menu.addItem(item)
         }

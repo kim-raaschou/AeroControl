@@ -17,7 +17,7 @@ struct AeroControlApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: OverviewStore!
     private var overlayManager: OverlayWindowManager!
-    private var quitController: QuitTriggerController!
+    private var menuBarController: MenuBarController!
     private var settings: SettingsStore!
     private let instanceGuard = SingleInstanceGuard()
     /// Menu-bar control surface — the resident daemon's only reachable UI while the
@@ -56,7 +56,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // settings are read from there, defaulting on first launch.
         settings = SettingsStore()
 
-        quitController = QuitTriggerController(
+        menuBarController = MenuBarController(
             onQuit: { [weak self] in self?.quit() },
             // The summon keybind relaunches the binary; the second instance signals
             // SIGUSR1, which toggles the widget's visibility.
@@ -95,7 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.activate(ignoringOtherApps: true)
 
-        quitController.install()
+        menuBarController.install()
     }
 
     /// Installs the always-visible menu-bar icon whose menu carries the app's settings
@@ -111,7 +111,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             image?.isTemplate = true
             button.image = image
         }
-        item.menu = quitController.settingsMenu()
+        item.menu = menuBarController.settingsMenu()
         statusItem = item
     }
 
@@ -119,7 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Order: remove quit triggers → stop the store → drop the overlay windows →
     /// remove the menu-bar item.
     @MainActor private func performTeardown() {
-        quitController?.teardown()
+        menuBarController?.teardown()
         state?.stop()
         overlayManager?.removeAll()
         if let statusItem {
