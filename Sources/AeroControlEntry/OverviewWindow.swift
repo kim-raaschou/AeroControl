@@ -34,7 +34,7 @@ class OverviewWindow: NSPanel {
         level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         titlebarAppearsTransparent = true
         acceptsMouseMovedEvents = true
         collectionBehavior = [

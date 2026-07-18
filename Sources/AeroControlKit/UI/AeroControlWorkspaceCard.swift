@@ -152,26 +152,19 @@ private struct FocusPlate: ViewModifier {
                 }
         } else {
             content
-                .glassEffect(.clear, in: .rect(cornerRadius: cornerRadius))
-                .overlay {
-                    shape.fill(frostBody).allowsHitTesting(false)
+                .background {
+                    Color.clear.glassEffect(.clear, in: shape).opacity(0.55)
+                    if isFocused { shape.fill(Color.accentColor.opacity(0.22)) }
                 }
                 .overlay {
-                    shape.strokeBorder(
-                        isFocused ? Color.accentColor.opacity(0.95) : crispEdge,
-                        lineWidth: isFocused ? 1.75 : 1.25
-                    )
-                    .allowsHitTesting(false)
+                    shape.strokeBorder(isFocused ? Color.accentColor : hairline, lineWidth: 0.5)
+                        .allowsHitTesting(false)
                 }
         }
     }
 
-    private var frostBody: Color {
-        colorScheme == .dark ? .white.opacity(0.08) : .white.opacity(0.12)
-    }
-
-    private var crispEdge: Color {
-        colorScheme == .dark ? .white.opacity(0.45) : .white.opacity(0.65)
+    private var hairline: Color {
+        .white.opacity(colorScheme == .dark ? 0.25 : 0.35)
     }
 
     private var opaqueBase: Color {
