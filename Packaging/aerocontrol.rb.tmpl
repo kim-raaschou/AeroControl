@@ -23,8 +23,9 @@ cask "aerocontrol" do
     AeroControl is a companion for AeroSpace and needs AeroSpace >= 0.21.1-Beta:
       brew install --cask nikitabobko/tap/aerospace
 
-    Launch AeroControl.app once from Finder to grant Accessibility permission,
-    then wire it into ~/.aerospace.toml. See the README for details.
+    Launch AeroControl.app once from Finder (Gatekeeper), then wire it into
+    ~/.aerospace.toml. No Accessibility or other permissions are required.
+    See the README for details.
   EOS
 
   zap trash: [

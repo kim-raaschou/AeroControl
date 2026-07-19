@@ -101,9 +101,15 @@ boundary** — decode what it explicitly emits strictly. It does **NOT** elimina
 
 Defensive code guarding those three is **load-bearing — do not delete it as "paranoia":**
 
-- `OverviewStore.suppressingDeadWindows` (+ its empty-live-set guard) — dead-tile race.
-- `pendingCloseIds` suppression + the bounded close-grace poll — optimistic-close vs teardown.
-- `requestRefresh` coalescing loop — ordered, storm-collapsing reloads.
+- `requestRefresh` **cancel-and-reload** with the `refreshGeneration` guard — the store owns
+  no optimistic local state; every event/doorbell cancels any in-flight reload and re-derives
+  truth from AeroSpace, and the generation counter drops stale results. This is how dead-tile
+  and close-vs-teardown races are handled now (it **replaced** the old optimistic-suppression
+  machinery — `suppressingDeadWindows` / `pendingCloseIds` / the close-grace poll are **gone**;
+  do not reintroduce them).
+- The window-close **doorbell** (`NativeApiBridge.windowCloseSignals` global `NSEvent` monitor
+  → `.localWindowClosed` → `requestRefresh`) — AeroSpace emits no event for title-bar closes of
+  background windows, so this permission-free signal triggers a reload.
 - `initialLoad` retry/backoff — transient CLI unavailability at startup.
 - Runner `run()` timeout + non-zero-exit handling.
 - `TolerantInt` — `NULL-MONITOR*` string sentinels are **valid runtime values** on any
