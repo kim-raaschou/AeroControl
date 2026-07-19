@@ -93,13 +93,10 @@ final class OverlayWindowManager {
         let config = settings.config(forKey: screen.displayUUID, isBuiltin: screen.isBuiltin)
         let window = OverviewWindow(targetScreen: screen, edge: config.edge)
         let hostingView = InteractiveHostingView(rootView: makePanel(for: screen, availableSize: availableSize))
-        hostingView.sizingOptions = [.intrinsicContentSize]
+        hostingView.sizingOptions = []
         window.installFloatingContent(hosting: hostingView)
         let seed = AeroControlMetrics(iconSize: config.iconSize).cardHeight + 4
         window.showFloating(contentSize: NSSize(width: seed, height: seed))
-        hostingView.onContentResize = { [weak window] size in
-            window?.resizeFloating(toContent: size)
-        }
         if hidden { window.orderOut(nil) }
         windows[screen.displayUUID] = window
     }

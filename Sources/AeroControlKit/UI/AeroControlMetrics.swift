@@ -51,7 +51,7 @@ public struct AeroControlMetrics: Equatable, Sendable {
         (focusPlatePadding - tileCellPadding) + focusPlatePanelGap
     }
 
-    public var cardSpacing: CGFloat { 8 * scale }
+    public var cardSpacing: CGFloat { 10 * scale }
 
     public var emptyCardWidth: CGFloat { tileHeight + 2 * cardHorizontalPadding }
 

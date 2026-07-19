@@ -8,7 +8,7 @@ public enum Orientation: String, Equatable, Sendable {
 }
 
 public enum DockEdge: String, Equatable, Sendable, CaseIterable, Codable {
-    case top, bottom, left, right, center, menuBar
+    case menuBar, top, bottom, left, right, center
 
     public var orientation: Orientation {
         switch self {

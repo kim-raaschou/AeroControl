@@ -42,23 +42,26 @@ struct AeroControlWorkspaceCard: View {
 
     private var emptyPill: some View {
         withFocusPlate {
-            if isVertical {
-                Color.clear
-                    .frame(height: metrics.emptyCardWidth)
-                    .frame(maxWidth: .infinity)
-            } else {
-                Color.clear
-                    .frame(width: metrics.emptyCardWidth)
-                    .frame(maxHeight: .infinity)
-            }
+            Color.black.opacity(0.001)
+                .frame(width: isVertical ? nil : metrics.emptyCardWidth,
+                       height: isVertical ? metrics.emptyCardWidth : nil)
+                .frame(maxWidth: isVertical ? .infinity : nil,
+                       maxHeight: isVertical ? nil : .infinity)
         }
+        .overlay(alignment: .topLeading) { badge.allowsHitTesting(false) }
         .contentShape(Rectangle())
         .onTapGesture(perform: onFocusWorkspace)
     }
 
+    private var numberText: some View {
+        Text(workspace.name)
+            .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
+            .lineLimit(1)
+            .truncationMode(.tail)
+    }
+
     @ViewBuilder private func withFocusPlate(@ViewBuilder _ content: () -> some View) -> some View {
         content()
-            .overlay(alignment: .topLeading) { badge.allowsHitTesting(false) }
             .modifier(FocusPlate(isFocused: isFocused, cornerRadius: cornerRadius))
             .overlay(dropTargetHint.allowsHitTesting(false))
     }
@@ -75,32 +78,23 @@ struct AeroControlWorkspaceCard: View {
                     alignment: isVertical ? .leading : .top
                 )
                 .background {
-                    Color.clear
+                    Color.black.opacity(0.001)
                         .contentShape(Rectangle())
                         .onTapGesture(perform: onFocusWorkspace)
                 }
         }
+        .overlay(alignment: .topLeading) { badge.allowsHitTesting(false) }
     }
 
     private var badge: some View {
-        Text(workspace.name)
-            .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
-            .lineLimit(1)
-            .truncationMode(.tail)
+        numberText
             .foregroundStyle(.primary)
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.55 : 0.18), radius: 1.5, x: 0, y: 0.5)
             .padding(.horizontal, metrics.badgePaddingH)
             .padding(.vertical, metrics.badgePaddingV)
             .background(badgeFill, in: Capsule())
-            .overlay(
-                Capsule().strokeBorder(
-                    .white.opacity(colorScheme == .dark ? 0.25 : 0.4),
-                    lineWidth: 1
-                )
-            )
-            .padding(.leading, metrics.badgeInset)
-            .padding(.top, metrics.badgeInset)
-            .padding(.trailing, metrics.badgeInset)
+            .overlay(Capsule().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
+            .padding([.leading, .top, .trailing], metrics.badgeInset)
             .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
@@ -150,21 +144,14 @@ private struct FocusPlate: ViewModifier {
                         .fill(opaqueBase)
                         .overlay { if isFocused { shape.fill(Color.accentColor.opacity(0.5)) } }
                 }
-        } else {
+        } else if isFocused {
             content
                 .background {
-                    Color.clear.glassEffect(.clear, in: shape).opacity(0.55)
-                    if isFocused { shape.fill(Color.accentColor.opacity(0.22)) }
+                    shape.fill(Color.accentColor.opacity(0.22)).padding(.vertical, 3)
                 }
-                .overlay {
-                    shape.strokeBorder(isFocused ? Color.accentColor : hairline, lineWidth: 0.5)
-                        .allowsHitTesting(false)
-                }
+        } else {
+            content
         }
-    }
-
-    private var hairline: Color {
-        .white.opacity(colorScheme == .dark ? 0.25 : 0.35)
     }
 
     private var opaqueBase: Color {

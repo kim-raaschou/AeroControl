@@ -3,18 +3,9 @@ import AeroControlKit
 import SwiftUI
 
 final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
-    var onContentResize: ((NSSize) -> Void)?
-
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override var mouseDownCanMoveWindow: Bool { false }
-
-    override func layout() {
-        super.layout()
-        if let onContentResize {
-            onContentResize(fittingSize)
-        }
-    }
 }
 
 class OverviewWindow: NSPanel {
@@ -42,20 +33,54 @@ class OverviewWindow: NSPanel {
             .fullScreenAuxiliary,
             .stationary,
         ]
+        delegate = self
     }
 
     override var canBecomeKey: Bool { false }
 
     private weak var floatingHostingView: NSView?
+    private var glassWindow: NSWindow?
 
     func installFloatingContent(hosting: NSView) {
         contentView = hosting
         floatingHostingView = hosting
+        let gw = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        gw.isOpaque = false
+        gw.backgroundColor = .clear
+        gw.ignoresMouseEvents = true
+        gw.level = level
+        gw.collectionBehavior = collectionBehavior
+        gw.contentView = Self.makeGlassBackdrop()
+        addChildWindow(gw, ordered: .below)
+        glassWindow = gw
+    }
+
+    private static func makeGlassBackdrop() -> NSGlassEffectView {
+        let glass = NSGlassEffectView()
+        glass.style = .clear
+        let sel = NSSelectorFromString("set_variant:")
+        if let method = class_getInstanceMethod(object_getClass(glass), sel) {
+            typealias Fn = @convention(c) (AnyObject, Selector, Int) -> Void
+            unsafeBitCast(method_getImplementation(method), to: Fn.self)(glass, sel, 3)
+        }
+        return glass
+    }
+
+    private func setFloatingSize(_ size: NSSize) {
+        setFrame(NSRect(origin: clampedOrigin(for: size), size: size), display: true)
+        syncGlassFrame()
+    }
+
+    private func syncGlassFrame() {
+        guard let glass = glassWindow else { return }
+        glass.setFrame(frame, display: true)
+        let ref = AeroControlMetrics(iconSize: 100)
+        let inner = max(0, frame.height - 2 * AeroControlPanel.floatingMargin)
+        (glass.contentView as? NSGlassEffectView)?.cornerRadius = inner * (ref.cornerRadius / ref.cardHeight)
     }
 
     func showFloating(contentSize: NSSize) {
-        let origin = clampedOrigin(for: contentSize)
-        setFrame(NSRect(origin: origin, size: contentSize), display: true)
+        setFloatingSize(contentSize)
         if hasFadedIn {
             if isVisible { orderFrontRegardless() }
         } else {
@@ -68,15 +93,6 @@ class OverviewWindow: NSPanel {
                 animator().alphaValue = 1
             }
         }
-    }
-
-    func resizeFloating(toContent contentSize: NSSize) {
-        guard contentSize.width > 0, contentSize.height > 0 else { return }
-        guard abs(contentSize.width - frame.width) > 0.5 || abs(contentSize.height - frame.height) > 0.5 else {
-            return
-        }
-        let origin = clampedOrigin(for: contentSize)
-        setFrame(NSRect(origin: origin, size: contentSize), display: true)
     }
 
     func revealFloating() {
@@ -127,4 +143,12 @@ class OverviewWindow: NSPanel {
         originY = minY <= maxY ? min(max(originY, minY), maxY) : maxY
         return CGPoint(x: originX, y: originY)
     }
+}
+
+extension OverviewWindow: NSWindowDelegate {
+    func windowDidResize(_ notification: Notification) {
+        setFrameOrigin(clampedOrigin(for: frame.size))
+        syncGlassFrame()
+    }
+    func windowDidMove(_ notification: Notification) { syncGlassFrame() }
 }
