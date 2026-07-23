@@ -22,6 +22,12 @@ let package = Package(
             path: "Sources/AeroControlEntry",
             swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
         ),
+        .executableTarget(
+            name: "PerfBench",
+            dependencies: ["Common", "AeroControlKit"],
+            path: "Benchmarks/PerfBench",
+            swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
+        ),
         .testTarget(
             name: "AeroControlTests",
             dependencies: ["Common", "AeroControlKit"],

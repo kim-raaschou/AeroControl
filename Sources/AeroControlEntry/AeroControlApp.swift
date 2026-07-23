@@ -35,7 +35,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.setActivationPolicy(.accessory)
 
-        let runner = AerospaceProcessRunnerCli()
+        let runner = AerospaceSocketRunner()
         let nativeSystem = NativeApiBridgeAdapter()
 
         state = OverviewStore(runner: runner, nativeSystem: nativeSystem)

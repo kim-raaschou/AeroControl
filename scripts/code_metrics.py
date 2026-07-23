@@ -54,11 +54,23 @@ def layer_for(path: str) -> str:
         ("Sources/Common/Aerospace/", "Common · Aerospace (CLI parsing)"),
         ("Sources/Common/Domain/", "Common · Domain (models)"),
         ("Tests/", "Tests"),
+        ("Benchmarks/", BENCH_LAYER),
     ]
     for prefix, name in mapping:
         if path.startswith(prefix):
             return name
     return "Other"
+
+
+# Development-only performance harness. It is committed but ships nothing to
+# users, so it is excluded from the gated size/complexity totals (like Tests).
+BENCH_LAYER = "Tools · Benchmarks (perf harness)"
+NON_PROD_LAYERS = ("Tests", BENCH_LAYER)
+
+
+def counts_toward_gate(layer: str) -> bool:
+    """Benchmarks are not part of the shipped product; keep them out of the gate."""
+    return layer != BENCH_LAYER
 
 
 # Architecture guardrail: files under Common/ are the pure domain and must not
@@ -178,9 +190,9 @@ def build_payload() -> dict:
     deepest = max(rows, key=lambda r: r["maxDepth"], default=None)
 
     test_code = sum(r["code"] for r in rows if r["layer"] == "Tests")
-    prod_code = sum(r["code"] for r in rows if r["layer"] != "Tests")
+    prod_code = sum(r["code"] for r in rows if r["layer"] not in NON_PROD_LAYERS)
     test_complexity = sum(r["complexity"] for r in rows if r["layer"] == "Tests")
-    prod_complexity = sum(r["complexity"] for r in rows if r["layer"] != "Tests")
+    prod_complexity = sum(r["complexity"] for r in rows if r["layer"] not in NON_PROD_LAYERS)
     duplicates = duplicate_summary(files)
 
     return {
@@ -188,7 +200,7 @@ def build_payload() -> dict:
         "totals": {
             "files": len(rows),
             "total": sum(r["total"] for r in rows),
-            "code": sum(r["code"] for r in rows),
+            "code": sum(r["code"] for r in rows if counts_toward_gate(r["layer"])),
             "complexity": sum(r["complexity"] for r in rows),
             "prodComplexity": prod_complexity,
             "testComplexity": test_complexity,
@@ -250,9 +262,11 @@ def totals_at_commit(sha: str) -> dict | None:
         )
         stats = lizard_file_stats(rel, text)
         totals["total"] += stats["total"]
-        totals["code"] += stats["code"]
+        layer = layer_for(rel)
+        if counts_toward_gate(layer):
+            totals["code"] += stats["code"]
         totals["complexity"] += stats["complexity"]
-        if layer_for(rel) != "Tests":
+        if layer not in NON_PROD_LAYERS:
             totals["prodComplexity"] += stats["complexity"]
         totals["files"] += 1
     return totals
