@@ -105,6 +105,10 @@ public struct AeroControlPanel: View {
             }
         }
         .fixedSize()
+        .padding(
+            vertical ? .vertical : .horizontal,
+            metrics.cardSpacing - Self.floatingMargin + AeroControlWorkspaceCard.focusPlateEdgeInset
+        )
     }
 
     private func groupSeparator(vertical: Bool, metrics: AeroControlMetrics) -> some View {

@@ -48,20 +48,21 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var cornerRadius: CGFloat { focusPlateRadius + focusPlateToCardGap }
 
     public var cardHorizontalPadding: CGFloat {
-        (focusPlatePadding - tileCellPadding) + focusPlatePanelGap
+        (focusPlatePadding - tileCellPadding) + focusPlatePanelGap * 1.4
     }
 
     public var cardSpacing: CGFloat { 10 * scale }
 
-    public var emptyCardWidth: CGFloat { tileHeight + 2 * cardHorizontalPadding }
+    public var emptyCardWidth: CGFloat { iconSize + 2 * focusPlatePadding }
 
-    public var badgeFontSize: CGFloat { max(Self.minTextSize, 9 * scale) }
-    public var badgePaddingH: CGFloat { 6 * scale }
-    public var badgePaddingV: CGFloat { 2 * scale }
-    public var badgeInset: CGFloat { 2 * scale + cornerRadius * 0.293 }
+    public var badgeFontSize: CGFloat { max(9, iconSize * 0.20) }
+    public var badgePaddingH: CGFloat { 2.5 * scale }
+    public var badgePaddingV: CGFloat { 1.5 * scale }
+    public var badgeInset: CGFloat { 8 * scale }
+    public var badgeMaxWidth: CGFloat { iconSize * 0.95 }
 
-    public var cardTopPadding: CGFloat { cardHorizontalPadding }
-    public var cardBottomPadding: CGFloat { cardHorizontalPadding }
+    public var cardTopPadding: CGFloat { focusPlatePanelGap * 0.8 }
+    public var cardBottomPadding: CGFloat { focusPlatePanelGap * 0.8 }
 
     public var cardHeight: CGFloat {
         cardTopPadding + tileHeight + cardBottomPadding

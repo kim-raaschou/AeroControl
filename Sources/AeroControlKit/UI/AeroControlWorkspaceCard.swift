@@ -22,6 +22,14 @@ struct AeroControlWorkspaceCard: View {
     private var metrics: AeroControlMetrics { AeroControlMetrics(iconSize: iconSize) }
     private var cornerRadius: CGFloat { metrics.cornerRadius }
 
+    /// Vertical inset between the focus plate and the card content edge. Combined
+    /// with the panel's floating margin it is the small breathing gap the plate
+    /// keeps to the glass edge top/bottom (≈5pt). Horizontally the plate instead
+    /// overhangs into the inter-card gap (see `overhang`), menu-bar style, so the
+    /// focused workspace "owns" most of the shared spacing and neighbours read as
+    /// nearly flush — a deliberately wider-than-tall expression.
+    static let focusPlateEdgeInset: CGFloat = 3
+
     var body: some View {
         content
             .dropDestination(for: WindowDragData.self) { items, _ in
@@ -30,6 +38,8 @@ struct AeroControlWorkspaceCard: View {
                 onMoveWindow(item.windowId, workspace.name)
                 return true
             } isTargeted: { isDropTarget = $0 }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onFocusWorkspace)
     }
 
     @ViewBuilder private var content: some View {
@@ -47,10 +57,8 @@ struct AeroControlWorkspaceCard: View {
                        height: isVertical ? metrics.emptyCardWidth : nil)
                 .frame(maxWidth: isVertical ? .infinity : nil,
                        maxHeight: isVertical ? nil : .infinity)
+                .overlay(alignment: .leading) { badge.allowsHitTesting(false) }
         }
-        .overlay(alignment: .topLeading) { badge.allowsHitTesting(false) }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onFocusWorkspace)
     }
 
     private var numberText: some View {
@@ -58,11 +66,19 @@ struct AeroControlWorkspaceCard: View {
             .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
             .lineLimit(1)
             .truncationMode(.tail)
+            .frame(maxWidth: metrics.badgeMaxWidth)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private func withFocusPlate(@ViewBuilder _ content: () -> some View) -> some View {
         content()
-            .modifier(FocusPlate(isFocused: isFocused, cornerRadius: cornerRadius))
+            .modifier(FocusPlate(
+                isFocused: isFocused,
+                cornerRadius: cornerRadius,
+                overhang: metrics.cardSpacing - AeroControlPanel.floatingMargin,
+                edgeInset: Self.focusPlateEdgeInset,
+                vertical: isVertical
+            ))
             .overlay(dropTargetHint.allowsHitTesting(false))
     }
 
@@ -77,13 +93,8 @@ struct AeroControlWorkspaceCard: View {
                     maxHeight: isVertical ? nil : .infinity,
                     alignment: isVertical ? .leading : .top
                 )
-                .background {
-                    Color.black.opacity(0.001)
-                        .contentShape(Rectangle())
-                        .onTapGesture(perform: onFocusWorkspace)
-                }
+                .overlay(alignment: .leading) { badge.allowsHitTesting(false) }
         }
-        .overlay(alignment: .topLeading) { badge.allowsHitTesting(false) }
     }
 
     private var badge: some View {
@@ -94,8 +105,7 @@ struct AeroControlWorkspaceCard: View {
             .padding(.vertical, metrics.badgePaddingV)
             .background(badgeFill, in: Capsule())
             .overlay(Capsule().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
-            .padding([.leading, .top, .trailing], metrics.badgeInset)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .offset(x: -metrics.badgeInset)
     }
 
     private var badgeFill: Color {
@@ -132,6 +142,9 @@ struct AeroControlWorkspaceCard: View {
 private struct FocusPlate: ViewModifier {
     let isFocused: Bool
     let cornerRadius: CGFloat
+    let overhang: CGFloat
+    let edgeInset: CGFloat
+    let vertical: Bool
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
 
@@ -147,7 +160,9 @@ private struct FocusPlate: ViewModifier {
         } else if isFocused {
             content
                 .background {
-                    shape.fill(Color.accentColor.opacity(0.22)).padding(.vertical, 3)
+                    shape.fill(Color.accentColor.opacity(0.22))
+                        .padding(.vertical, edgeInset)
+                        .padding(vertical ? .vertical : .horizontal, -overhang)
                 }
         } else {
             content

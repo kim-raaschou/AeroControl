@@ -29,8 +29,8 @@ struct AeroControlMetricsTests {
         #expect(tiny.cornerRadius < big.cornerRadius)
         #expect(big.cornerRadius > big.focusPlateRadius)
         #expect(tiny.cornerRadius > tiny.focusPlateRadius)
-        // Text stays legible at tiny sizes (floored at 7pt), yet grows with the icon.
-        #expect(tiny.badgeFontSize == 7)
+        // Text stays legible at tiny sizes (floored at 9pt), yet grows with the icon.
+        #expect(tiny.badgeFontSize == 9)
         #expect(big.badgeFontSize > tiny.badgeFontSize)
         #expect(big.appRowSpacing > tiny.appRowSpacing)
     }
@@ -41,7 +41,7 @@ struct AeroControlMetricsTests {
         // derived from the focus-plate geometry (concentric corners), not plain
         // design values (see AeroControlMetrics).
         let m = AeroControlMetrics(iconSize: AeroControlMetrics.defaultIconSize)
-        #expect(m.badgeFontSize == 9)
+        #expect(m.badgeFontSize == AeroControlMetrics.defaultIconSize * 0.20)
         #expect(m.appRowSpacing == 8)
         #expect(m.tileCellPadding == 2)
     }
