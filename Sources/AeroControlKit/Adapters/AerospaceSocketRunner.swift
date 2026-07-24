@@ -33,14 +33,38 @@ public enum AerospaceSocketError: Error, CustomStringConvertible {
 /// background thread. We trust AeroSpace as the source of truth: the only guard
 /// is the protocol-version handshake, and any transport failure surfaces as a
 /// thrown error rather than a fallback.
+///
+/// The blocking `connect`/`send`/`recv` syscalls run on a private concurrent
+/// `DispatchQueue`, never on the Swift cooperative pool: those calls have no
+/// timeout (we trust AeroSpace), so an alive-but-hung daemon would otherwise
+/// park a fixed cooperative thread — and `Task` cancellation can't interrupt a
+/// blocking `recv`. Offloading confines that cost to an elastic GCD worker.
 public struct AerospaceSocketRunner: AerospaceProcessRunner {
     private let socketPath: String
+
+    /// Concurrent queue for blocking socket round-trips, keeping them off the
+    /// cooperative pool. Elastic: each in-flight `run` gets its own worker.
+    private static let ioQueue = DispatchQueue(
+        label: "com.aerocontrol.aerospace-socket.run",
+        attributes: .concurrent
+    )
 
     public init(socketPath: String? = nil) {
         self.socketPath = socketPath ?? AerospaceSocket.defaultSocketPath()
     }
 
     public func run(_ args: [String]) async throws -> String {
+        let socketPath = socketPath
+        return try await withCheckedThrowingContinuation { continuation in
+            Self.ioQueue.async {
+                continuation.resume(with: Result {
+                    try AerospaceSocketRunner.runBlocking(socketPath: socketPath, args: args)
+                })
+            }
+        }
+    }
+
+    private static func runBlocking(socketPath: String, args: [String]) throws -> String {
         let fd = try AerospaceSocket.connectAndHandshake(socketPath)
         defer { Darwin.close(fd) }
         try AerospaceSocket.writeFrame(fd, AerospaceSocket.encodeRequest(args))

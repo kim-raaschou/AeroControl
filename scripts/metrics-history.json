@@ -187,5 +187,14 @@
     "complexity": 508,
     "prodComplexity": 313,
     "files": 38
+  },
+  {
+    "timestamp": "2026-07-23T21:50:00+02:00",
+    "commit": "4e56ca7",
+    "subject": "Replace aerospace CLI transport with direct Unix-socket runner",
+    "code": 3657,
+    "complexity": 551,
+    "prodComplexity": 319,
+    "files": 39
   }
 ]
