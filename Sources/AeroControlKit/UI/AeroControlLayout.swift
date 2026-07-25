@@ -13,7 +13,7 @@ public enum AeroControlLayout {
             } else {
                 let n = CGFloat(count)
                 let tileWidth = m.iconSize + 2 * m.tileCellPadding
-                total += 2 * m.cardHorizontalPadding
+                total += m.cardHorizontalPadding + m.badgeGutter
                     + n * tileWidth
                     + (n - 1) * m.appRowSpacing
             }

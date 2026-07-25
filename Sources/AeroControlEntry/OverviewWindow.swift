@@ -75,8 +75,17 @@ class OverviewWindow: NSPanel {
         guard let glass = glassWindow else { return }
         glass.setFrame(frame, display: true)
         let ref = AeroControlMetrics(iconSize: 100)
-        let inner = max(0, frame.height - 2 * AeroControlPanel.floatingMargin)
-        (glass.contentView as? NSGlassEffectView)?.cornerRadius = inner * (ref.cornerRadius / ref.cardHeight)
+        // The panel is exactly one card tall on its short side, and cardHeight is
+        // exactly proportional to iconSize, so invert it to recover the rendered
+        // icon size. Keep the glass corners concentric with the workspace focus
+        // plate: its radius plus the plate's fixed ~5pt gap to the glass edge
+        // (floatingMargin 2 + focusPlateEdgeInset 3).
+        let shortSide = min(frame.width, frame.height)
+        let inner = max(0, shortSide - 2 * AeroControlPanel.floatingMargin)
+        let rendered = AeroControlMetrics(iconSize: inner / ref.cardHeight * 100)
+        let plateToGlassGap = AeroControlPanel.floatingMargin + 3
+        (glass.contentView as? NSGlassEffectView)?.cornerRadius =
+            rendered.cornerRadius + plateToGlassGap
     }
 
     func showFloating(contentSize: NSSize) {

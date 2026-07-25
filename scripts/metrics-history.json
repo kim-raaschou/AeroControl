@@ -196,5 +196,14 @@
     "complexity": 551,
     "prodComplexity": 319,
     "files": 39
+  },
+  {
+    "timestamp": "2026-07-25T07:05:18+02:00",
+    "commit": "28f3d00",
+    "subject": "Use a round monogram badge for workspace labels",
+    "code": 3674,
+    "complexity": 553,
+    "prodComplexity": 321,
+    "files": 39
   }
 ]

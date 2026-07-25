@@ -57,7 +57,7 @@ struct AeroControlWorkspaceCard: View {
                        height: isVertical ? metrics.emptyCardWidth : nil)
                 .frame(maxWidth: isVertical ? .infinity : nil,
                        maxHeight: isVertical ? nil : .infinity)
-                .overlay(alignment: .leading) { badge.allowsHitTesting(false) }
+                .overlay(alignment: .leading) { badge }
         }
     }
 
@@ -84,13 +84,14 @@ struct AeroControlWorkspaceCard: View {
             appRow
                 .padding(.top, metrics.cardTopPadding)
                 .padding(.bottom, metrics.cardBottomPadding)
-                .padding(.horizontal, metrics.cardHorizontalPadding)
+                .padding(.leading, metrics.badgeGutter)
+                .padding(.trailing, metrics.cardHorizontalPadding)
                 .frame(
                     maxWidth: isVertical ? .infinity : nil,
                     maxHeight: isVertical ? nil : .infinity,
                     alignment: isVertical ? .leading : .top
                 )
-                .overlay(alignment: .leading) { badge.allowsHitTesting(false) }
+                .overlay(alignment: .leading) { badge }
         }
     }
 
@@ -101,7 +102,9 @@ struct AeroControlWorkspaceCard: View {
             .frame(width: metrics.badgeDiameter, height: metrics.badgeDiameter)
             .background(badgeFill, in: Circle())
             .overlay(Circle().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
-            .offset(x: -metrics.badgeInset)
+            .contentShape(Circle())
+            .onTapGesture(perform: onFocusWorkspace)
+            .offset(x: metrics.badgeLeadingMargin)
             .help(workspace.name)
     }
 
