@@ -21,6 +21,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: SettingsStore!
     private let instanceGuard = SingleInstanceGuard()
     private var statusItem: NSStatusItem?
+    private var workspaceObservers: [NSObjectProtocol] = []
+    private var fullscreenRefreshTimer: DispatchSourceTimer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let lockName = "com.aerocontrol.single-instance.lock"
@@ -59,6 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlayManager.activateInitialScreen()
 
         installStatusItem()
+        installWorkspaceObservers()
 
         state.onMonitorsChanged = { [weak self] in self?.overlayManager.rebuild() }
         state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
@@ -87,6 +90,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @MainActor private func performTeardown() {
+        fullscreenRefreshTimer?.cancel()
+        fullscreenRefreshTimer = nil
+        for observer in workspaceObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        workspaceObservers.removeAll()
         menuBarController?.teardown()
         state?.stop()
         overlayManager?.removeAll()
@@ -104,5 +113,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         performTeardown()
+    }
+
+    @MainActor private func installWorkspaceObservers() {
+        let center = NSWorkspace.shared.notificationCenter
+        let onSpaceChange = center.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshFullscreenVisibility() }
+        }
+        let onAppActivate = center.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.refreshFullscreenVisibility() }
+        }
+        workspaceObservers = [onSpaceChange, onAppActivate]
+        installFullscreenRefreshTimer()
+    }
+
+    @MainActor private func refreshFullscreenVisibility() {
+        overlayManager.applyFullscreenVisibility()
+    }
+
+    @MainActor private func installFullscreenRefreshTimer() {
+        fullscreenRefreshTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + .milliseconds(300), repeating: .milliseconds(400))
+        timer.setEventHandler { [weak self] in
+            MainActor.assumeIsolated {
+                self?.refreshFullscreenVisibility()
+            }
+        }
+        timer.resume()
+        fullscreenRefreshTimer = timer
     }
 }

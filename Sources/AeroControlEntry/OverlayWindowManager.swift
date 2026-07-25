@@ -8,6 +8,7 @@ final class OverlayWindowManager {
     private let settings: SettingsStore
 
     private var windows: [String: OverviewWindow] = [:]
+    private var requestedVisible = true
 
     init(
         state: OverviewStore,
@@ -46,10 +47,14 @@ final class OverlayWindowManager {
 
     func rebuild() {
         reconcileActiveDisplay()
-        let hidden = !windows.isEmpty && windows.values.allSatisfy { !$0.isVisible }
+        let screens = desiredScreens()
+        let suppressed = requestedVisible ? fullscreenSuppressedDisplays(in: screens) : Set<String>()
         for window in windows.values { window.orderOut(nil) }
         windows.removeAll()
-        for screen in desiredScreens() { makeWindow(for: screen, hidden: hidden) }
+        for screen in screens {
+            let hidden = !requestedVisible || suppressed.contains(screen.displayUUID)
+            makeWindow(for: screen, hidden: hidden)
+        }
     }
 
     func showErrorFallbackIfNeeded() {
@@ -58,17 +63,20 @@ final class OverlayWindowManager {
     }
 
     func removeAll() {
-        for window in windows.values { window.orderOut(nil) }
+        for window in windows.values { window.hideFloating() }
         windows.removeAll()
     }
 
     func toggleVisibility() {
-        if windows.values.contains(where: { $0.isVisible }) {
-            for window in windows.values { window.orderOut(nil) }
+        if requestedVisible {
+            requestedVisible = false
+            for window in windows.values { window.hideFloating() }
         } else if windows.isEmpty {
+            requestedVisible = true
             rebuild()
         } else {
-            for window in windows.values { window.revealFloating() }
+            requestedVisible = true
+            revealNonSuppressedWindows()
         }
     }
 
@@ -86,6 +94,21 @@ final class OverlayWindowManager {
     func selectEdge(_ edge: DockEdge) {
         settings.setEdge(edge)
         windows[settings.activeDisplayKey]?.applyEdge(edge)
+        applyFullscreenVisibility()
+    }
+
+    func applyFullscreenVisibility() {
+        guard requestedVisible else { return }
+        let screens = desiredScreens()
+        let suppressed = fullscreenSuppressedDisplays(in: screens)
+        for screen in screens {
+            guard let window = windows[screen.displayUUID] else { continue }
+            if suppressed.contains(screen.displayUUID) {
+                window.hideFloating()
+            } else if !window.isVisible {
+                window.revealFloating()
+            }
+        }
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) {
@@ -99,6 +122,53 @@ final class OverlayWindowManager {
         window.showFloating(contentSize: NSSize(width: seed, height: seed))
         if hidden { window.orderOut(nil) }
         windows[screen.displayUUID] = window
+    }
+
+    private func revealNonSuppressedWindows() {
+        let suppressed = fullscreenSuppressedDisplays(in: desiredScreens())
+        for screen in desiredScreens() {
+            guard let window = windows[screen.displayUUID] else { continue }
+            if suppressed.contains(screen.displayUUID) {
+                window.hideFloating()
+            } else {
+                window.revealFloating()
+            }
+        }
+    }
+
+    private func fullscreenSuppressedDisplays(in screens: [NSScreen]) -> Set<String> {
+        let ownPid = getpid()
+        guard let raw = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else {
+            return []
+        }
+
+        let candidates = raw.compactMap { info -> (CGRect, pid_t)? in
+            guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
+                  let ownerPid = info[kCGWindowOwnerPID as String] as? Int, ownerPid != ownPid,
+                  let bounds = info[kCGWindowBounds as String] as? [String: Any],
+                  let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary),
+                  rect.width > 0, rect.height > 0 else {
+                return nil
+            }
+            return (rect, pid_t(ownerPid))
+        }
+
+        var suppressed: Set<String> = []
+        for screen in screens {
+            let screenRect = screen.frame
+            let screenArea = max(1, screenRect.width * screenRect.height)
+            if candidates.contains(where: { rect, _ in
+                let intersection = rect.intersection(screenRect)
+                let covered = intersection.width > 0 && intersection.height > 0
+                    ? (intersection.width * intersection.height) / screenArea
+                    : 0
+                return covered >= 0.92
+            }) {
+                suppressed.insert(screen.displayUUID)
+            }
+        }
+        return suppressed
     }
 
     private func activeScreen() -> NSScreen {

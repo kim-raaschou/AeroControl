@@ -9,6 +9,7 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 }
 
 class OverviewWindow: NSPanel {
+    private static let fadeDuration: TimeInterval = 0.05
     private let targetScreen: NSScreen
     private var hasFadedIn = false
     private var placementEdge: DockEdge
@@ -97,7 +98,7 @@ class OverviewWindow: NSPanel {
             alphaValue = 0
             orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.12
+                context.duration = Self.fadeDuration
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 animator().alphaValue = 1
             }
@@ -108,9 +109,24 @@ class OverviewWindow: NSPanel {
         alphaValue = 0
         orderFrontRegardless()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
+            context.duration = Self.fadeDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             animator().alphaValue = 1
+        }
+    }
+
+    func hideFloating() {
+        guard isVisible else { return }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fadeDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.orderOut(nil)
+                self.alphaValue = 1
+            }
         }
     }
 
