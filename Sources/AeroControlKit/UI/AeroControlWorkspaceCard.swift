@@ -62,12 +62,9 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private var numberText: some View {
-        Text(workspace.name)
+        Text(String(workspace.name.prefix(1)))
             .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
             .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(maxWidth: metrics.badgeMaxWidth)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private func withFocusPlate(@ViewBuilder _ content: () -> some View) -> some View {
@@ -101,11 +98,11 @@ struct AeroControlWorkspaceCard: View {
         numberText
             .foregroundStyle(.primary)
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.55 : 0.18), radius: 1.5, x: 0, y: 0.5)
-            .padding(.horizontal, metrics.badgePaddingH)
-            .padding(.vertical, metrics.badgePaddingV)
-            .background(badgeFill, in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
+            .frame(width: metrics.badgeDiameter, height: metrics.badgeDiameter)
+            .background(badgeFill, in: Circle())
+            .overlay(Circle().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
             .offset(x: -metrics.badgeInset)
+            .help(workspace.name)
     }
 
     private var badgeFill: Color {

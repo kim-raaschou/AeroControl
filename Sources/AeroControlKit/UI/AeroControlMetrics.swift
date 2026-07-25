@@ -56,10 +56,8 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var emptyCardWidth: CGFloat { iconSize + 2 * focusPlatePadding }
 
     public var badgeFontSize: CGFloat { max(9, iconSize * 0.20) }
-    public var badgePaddingH: CGFloat { 2.5 * scale }
-    public var badgePaddingV: CGFloat { 1.5 * scale }
-    public var badgeInset: CGFloat { 8 * scale }
-    public var badgeMaxWidth: CGFloat { iconSize * 0.95 }
+    public var badgeDiameter: CGFloat { max(15, iconSize * 0.34) }
+    public var badgeInset: CGFloat { badgeDiameter * 0.55 }
 
     public var cardTopPadding: CGFloat { focusPlatePanelGap * 0.8 }
     public var cardBottomPadding: CGFloat { focusPlatePanelGap * 0.8 }
