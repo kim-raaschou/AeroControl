@@ -11,11 +11,11 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ## Features
 
 - Live workspace mirror across monitors.
+- Windows shown in the order they sit on screen, not alphabetically.
 - Click app icon to focus window.
 - Click workspace card/badge to focus workspace.
 - Drag app icon to move window between workspaces.
 - Hover app icon to reveal close action.
-- Auto-hides when a fullscreen app covers the display, then reappears when fullscreen ends.
 - Single-instance toggle: launching AeroControl again toggles visibility instantly.
 - Multi-screen support: one selected screen or all screens.
 - Menu-bar configuration with persisted settings.
@@ -37,6 +37,10 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ```bash
 brew install --cask nikitabobko/tap/aerospace
 ```
+
+On-screen window ordering uses `list-windows --sort-by dfs`, which is not in a released
+AeroSpace yet ([PR #2207](https://github.com/nikitabobko/AeroSpace/pull/2207)). Until it
+lands, AeroControl falls back to AeroSpace's own ordering.
 
 ## Install
 
@@ -87,6 +91,17 @@ make run
 make test
 make clean
 ```
+
+## Release
+
+```bash
+make release VERSION=0.1.2 PUBLISH=1
+```
+
+Builds a version-stamped, ad-hoc signed bundle, publishes the GitHub Release, and writes
+a Homebrew cask to `.release/aerocontrol.rb`. Copy that cask to
+[kim-raaschou/homebrew-tap](https://github.com/kim-raaschou/homebrew-tap) as
+`Casks/aerocontrol.rb` and commit it. Omit `PUBLISH=1` for a dry run.
 
 ## License
 

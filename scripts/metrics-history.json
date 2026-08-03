@@ -205,5 +205,14 @@
     "complexity": 553,
     "prodComplexity": 321,
     "files": 39
+  },
+  {
+    "timestamp": "2026-08-03T06:37:54+02:00",
+    "commit": "9c1fea8",
+    "subject": "Bump version to 0.1.1",
+    "code": 3700,
+    "complexity": 557,
+    "prodComplexity": 325,
+    "files": 39
   }
 ]
