@@ -44,7 +44,7 @@ lands, AeroControl falls back to AeroSpace's own ordering.
 
 ## Install
 
-### Homebrew (recommended)
+### Homebrew cask (preferred)
 
 ```bash
 brew install --cask kim-raaschou/tap/aerocontrol

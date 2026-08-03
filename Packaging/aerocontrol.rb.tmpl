@@ -8,7 +8,7 @@ cask "aerocontrol" do
   homepage "https://github.com/kim-raaschou/AeroControl"
 
   # AeroControl requires macOS 26 (Tahoe) — it uses SwiftUI Liquid Glass.
-  depends_on macos: ">= :tahoe"
+  depends_on macos: :tahoe
 
   app "AeroControl-v#{version}/AeroControl.app"
 
