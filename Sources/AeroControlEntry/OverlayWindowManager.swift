@@ -60,6 +60,11 @@ final class OverlayWindowManager {
         requestedVisible = true
         if state.previewsAvailable {
             state.capturePreviews(maxSize: Self.previewCaptureSize)
+        } else {
+            // Ask macOS for Screen Recording on the first summon without it. The system
+            // shows its dialog once per app; afterwards this is a silent no-op and the
+            // menu item / System Settings is the way in. Icons are shown meanwhile.
+            state.requestPreviewAccess()
         }
         if !settings.multiScreenEnabled, let screen = screenUnderMouse() {
             settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
