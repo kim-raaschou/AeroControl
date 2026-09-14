@@ -24,11 +24,20 @@ struct AeroControlWorkspaceCard: View {
 
     private static let cornerRadius: CGFloat = 18
 
+    /// Narrow cards (empty workspaces) show only the badge, centered.
+    private var isCompact: Bool { size.width < AeroControlLayout.minCardWidth }
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-        VStack(alignment: .leading, spacing: 0) {
-            header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if isCompact {
+                badge.frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
+                    tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
@@ -94,8 +103,7 @@ struct AeroControlWorkspaceCard: View {
             Color.clear
         } else {
             let aspect: CGFloat = showPreviews ? AeroControlLayout.tileAspect : 1
-            let tileWidth = AeroControlLayout.tileWidth(windowCount: windows.count, card: size, aspect: aspect)
-            let columns = AeroControlLayout.columns(forCount: windows.count)
+            let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
             let metrics = showPreviews
                 ? AeroControlMetrics(iconSize: tileWidth / 3, previews: true)
                 : AeroControlMetrics(iconSize: tileWidth)

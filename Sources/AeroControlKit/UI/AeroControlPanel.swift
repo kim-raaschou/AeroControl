@@ -48,18 +48,20 @@ public struct AeroControlPanel: View {
 
     private var grid: some View {
         let all = workspaces
-        let columns = AeroControlLayout.columns(forCount: all.count)
         let usable = CGSize(
             width: availableWidth * AeroControlLayout.usableScreenFraction,
             height: availableHeight * AeroControlLayout.usableScreenFraction
         )
-        let cardSize = AeroControlLayout.cardSize(count: all.count, available: usable)
-        let rows = stride(from: 0, to: all.count, by: columns).map { Array(all[$0..<min($0 + columns, all.count)]) }
+        let sizes = AeroControlLayout.cardSizes(windowCounts: all.map { $0.windows.count }, available: usable)
+        var index = 0
+        let rows: [[(WorkspaceInfo, CGSize)]] = sizes.map { row in
+            row.map { size in defer { index += 1 }; return (all[index], size) }
+        }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
-                    ForEach(row) { workspace in
-                        card(for: workspace, size: cardSize)
+                    ForEach(row, id: \.0.id) { workspace, size in
+                        card(for: workspace, size: size)
                     }
                 }
             }

@@ -14,9 +14,11 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 - One shot, Mission-Control style: a full-screen blurred overlay on the screen under the
   mouse. Starts hidden, summoned by launching it again (bind that to a key), dismissed as
   soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
-- One equal-sized card per workspace, laid out in a near-square grid (5 workspaces → 3 on
-  top, 2 below, centered). Inside a card the windows sit in a grid of 3:2 tiles sized to
-  fill the card, in the order they sit on screen.
+- Space follows content, Mission-Control style: one card per workspace, its width
+  proportional to √(windows); empty workspaces shrink to a badge. Rows are balanced by
+  weight and share the height by weight too, so a workspace with many windows gets most of
+  the screen. Inside a card the windows fill it as a grid of 3:2 tiles (column count chosen
+  for the largest tiles), in the order they sit on screen.
 - **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
   works for windows AeroSpace has parked off-screen). Needs the Screen Recording permission;
   without it the overview shows app icons instead, and the menu offers to request it.

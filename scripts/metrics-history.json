@@ -241,5 +241,14 @@
     "complexity": 567,
     "prodComplexity": 310,
     "files": 41
+  },
+  {
+    "timestamp": "2026-09-14T23:00:05+02:00",
+    "commit": "2d1ef1f",
+    "subject": "Cards use the whole available screen area",
+    "code": 3925,
+    "complexity": 592,
+    "prodComplexity": 333,
+    "files": 41
   }
 ]
