@@ -3,6 +3,14 @@ BUILD_DIR = .build/release
 APP_BUNDLE = $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR = /Applications
 
+# Command Line Tools 27 ship a macOS 27 SDK in which SwiftUI's @State is a macro whose
+# plugin only comes with Xcode. Build against the bundled macOS 26 SDK when it exists
+# (Package.swift targets macOS 26 anyway). Override with SDKROOT=... if needed.
+SDK26 := /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+ifneq ($(wildcard $(SDK26)),)
+export SDKROOT ?= $(SDK26)
+endif
+
 .PHONY: build bundle install run clean test release
 
 run:
@@ -38,6 +46,9 @@ release:
 	@test -n "$(VERSION)" || { echo "usage: make release VERSION=x.y.z[-Beta] [PUBLISH=1]"; exit 2; }
 	script/release.sh "$(VERSION)" $(if $(PUBLISH),--publish,)
 
+# Swift Testing's macro plugin must be pointed at explicitly when building against a
+# different SDK than the toolchain's own (see SDKROOT above).
+TESTING_PLUGINS := /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
 test:
-	swift test
+	swift test $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
 

@@ -1,54 +1,62 @@
-import XCTest
+import Foundation
+import Testing
 @testable import AeroControlKit
 
-final class SingleInstanceGuardTests: XCTestCase {
-    private func uniqueName() -> String {
-        "aerocontrol.test.\(UUID().uuidString).lock"
-    }
+private func uniqueName() -> String {
+    "aerocontrol.test.\(UUID().uuidString).lock"
+}
 
-    func testFirstAcquireSucceeds() {
+@Suite("SingleInstanceGuard")
+struct SingleInstanceGuardTests {
+
+    @Test("first acquire succeeds")
+    func firstAcquireSucceeds() {
         let guard1 = SingleInstanceGuard()
-        XCTAssertTrue(guard1.tryAcquire(name: uniqueName()))
+        #expect(guard1.tryAcquire(name: uniqueName()))
     }
 
-    func testSecondAcquireOnSameNameFails() {
+    @Test("second acquire on the same name fails while the first is alive")
+    func secondAcquireOnSameNameFails() {
         let name = uniqueName()
         let guard1 = SingleInstanceGuard()
-        XCTAssertTrue(guard1.tryAcquire(name: name))
+        #expect(guard1.tryAcquire(name: name))
 
         let guard2 = SingleInstanceGuard()
-        XCTAssertFalse(guard2.tryAcquire(name: name))
+        #expect(!guard2.tryAcquire(name: name))
 
         // Keep guard1 alive until after the second attempt.
         withExtendedLifetime(guard1) {}
     }
 
-    func testAcquireSucceedsAgainAfterFirstGuardReleased() {
+    @Test("acquire succeeds again after the first guard is released")
+    func acquireSucceedsAgainAfterFirstGuardReleased() {
         let name = uniqueName()
 
         do {
             let guard1 = SingleInstanceGuard()
-            XCTAssertTrue(guard1.tryAcquire(name: name))
+            #expect(guard1.tryAcquire(name: name))
         } // guard1 deinit's here, releasing the lock
 
         let guard2 = SingleInstanceGuard()
-        XCTAssertTrue(guard2.tryAcquire(name: name))
+        #expect(guard2.tryAcquire(name: name))
     }
 
-    func testRunningInstancePIDReturnsHolderPID() {
+    @Test("runningInstancePID returns the holder's pid")
+    func runningInstancePIDReturnsHolderPID() {
         let name = uniqueName()
         let guard1 = SingleInstanceGuard()
-        XCTAssertTrue(guard1.tryAcquire(name: name))
+        #expect(guard1.tryAcquire(name: name))
 
         // A second invocation can discover the running instance's PID to signal it.
         let guard2 = SingleInstanceGuard()
-        XCTAssertEqual(guard2.runningInstancePID(name: name), getpid())
+        #expect(guard2.runningInstancePID(name: name) == getpid())
 
         withExtendedLifetime(guard1) {}
     }
 
-    func testRunningInstancePIDNilWhenNoLockFile() {
+    @Test("runningInstancePID is nil when there is no lock file")
+    func runningInstancePIDNilWhenNoLockFile() {
         let guard1 = SingleInstanceGuard()
-        XCTAssertNil(guard1.runningInstancePID(name: uniqueName()))
+        #expect(guard1.runningInstancePID(name: uniqueName()) == nil)
     }
 }
