@@ -53,7 +53,10 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     public var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
 
-    public func requestPreviewAccess() { _ = CGRequestScreenCaptureAccess() }
+    public func requestPreviewAccess() {
+        let granted = CGRequestScreenCaptureAccess()
+        log.notice("previews: Screen Recording not granted; requested access -> \(granted)")
+    }
 
     /// Captures each window once, sequentially (a handful of ~10-30 ms captures; a task
     /// group would only buy complexity). Off-screen windows parked by AeroSpace still
