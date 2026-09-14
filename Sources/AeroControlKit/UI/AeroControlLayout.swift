@@ -2,6 +2,9 @@ import CoreGraphics
 
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.8
+    /// Preferred icon size in the full-screen presentation; previews are 3:2 of it
+    /// (240x160 pt) and the width fit shrinks it when a row would not fit.
+    public static let fullscreenIconSize: CGFloat = 80
 
     public static func rowWidth(iconSize: CGFloat, windowCounts: [Int], previews: Bool = false) -> CGFloat {
         guard !windowCounts.isEmpty else { return 0 }

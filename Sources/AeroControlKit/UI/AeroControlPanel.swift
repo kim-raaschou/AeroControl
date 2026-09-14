@@ -9,6 +9,9 @@ public struct AeroControlPanel: View {
     let screenFilter: Int?
     let availableWidth: CGFloat
     let availableHeight: CGFloat
+    /// Full-screen presentation: tiles scale up to use the screen instead of the
+    /// configured icon size.
+    let fullscreen: Bool
     /// Called after an action that completes the "one shot" (focus a window or a
     /// workspace); the host hides the overview.
     let onDismiss: () -> Void
@@ -21,6 +24,7 @@ public struct AeroControlPanel: View {
         screenFilter: Int? = nil,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
+        fullscreen: Bool = false,
         onDismiss: @escaping () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
@@ -30,6 +34,7 @@ public struct AeroControlPanel: View {
         self.screenFilter = screenFilter
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
+        self.fullscreen = fullscreen
         self.onDismiss = onDismiss
     }
 
@@ -43,6 +48,7 @@ public struct AeroControlPanel: View {
     }
 
     private var resolvedIconSize: CGFloat {
+        if fullscreen { return AeroControlLayout.fullscreenIconSize }
         if let displayKey {
             return settings.config(forKey: displayKey, isBuiltin: displayIsBuiltin).iconSize
         }

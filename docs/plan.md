@@ -17,11 +17,11 @@ Done (see `docs/prompt-oneshot-overview.md` for the brief): build on CLT 27 via 
 macOS 26 SDK; window titles from `list-windows`; `mergeWorkspace` expanded by the reducer
 into an ordered `runSequence` of quiet moves + focus; ScreenCaptureKit previews captured
 at summon and dropped on hide, icon fallback without Screen Recording, menu item to request
-it; workspace-badge drag → merge; overview starts hidden and dismisses on focus actions.
+it; workspace-badge drag → merge; overview is a full-screen blurred overlay on the screen under the mouse, starts hidden, dismisses on focus actions, Escape or backdrop click.
 
 Open follow-ups (deliberately not in v1): capture denylist for sensitive apps; merge
 confirmation above N windows (currently none — merges are reversible by dragging back);
-Esc to dismiss (the panel is non-activating, so it gets no key events); keyboard navigation.
+keyboard navigation between tiles (Escape already dismisses).
 The code-metrics baseline was re-anchored once for this feature (previews + drag targets).
 
 ## 1. Homebrew distribution — pipeline built; awaiting first publish

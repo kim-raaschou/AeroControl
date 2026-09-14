@@ -11,7 +11,7 @@ final class OverlayWindowManager {
     /// One-shot overview: starts hidden, summoned by the toggle.
     private var requestedVisible = false
     /// Previews are captured to fit this box (points); tiles are drawn at 3:2 of the icon size.
-    private static let previewCaptureSize = CGSize(width: 480, height: 320)
+    private static let previewCaptureSize = CGSize(width: 720, height: 480)
 
     init(
         state: OverviewStore,
@@ -45,6 +45,7 @@ final class OverlayWindowManager {
             screenFilter: screenFilter(for: screen),
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
+            fullscreen: true,
             onDismiss: { [weak self] in self?.hide() }
         )
     }
@@ -53,19 +54,26 @@ final class OverlayWindowManager {
         guard requestedVisible else { return }
         requestedVisible = false
         state.clearPreviews()
-        for window in windows.values { window.hideFloating() }
+        for window in windows.values { window.dismiss() }
     }
 
+    /// Like Mission Control: single-screen mode opens on the screen under the mouse.
+    /// Windows are rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
+    /// screen changes and settings changes free of special cases.
     private func show() {
         requestedVisible = true
         if state.previewsAvailable {
             state.capturePreviews(maxSize: Self.previewCaptureSize)
         }
-        if windows.isEmpty {
-            rebuild()
-        } else {
-            for window in windows.values { window.revealFloating() }
+        if !settings.multiScreenEnabled, let screen = screenUnderMouse() {
+            settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
         }
+        rebuild()
+    }
+
+    private func screenUnderMouse() -> NSScreen? {
+        let point = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
     }
 
     func rebuild() {
@@ -84,7 +92,7 @@ final class OverlayWindowManager {
     }
 
     func removeAll() {
-        for window in windows.values { window.hideFloating() }
+        for window in windows.values { window.dismiss() }
         windows.removeAll()
     }
 
@@ -103,22 +111,24 @@ final class OverlayWindowManager {
         rebuild()
     }
 
+    /// Only the orientation of the card row (horizontal/vertical) matters in the
+    /// full-screen presentation; the panel observes settings and re-lays out itself.
     func selectEdge(_ edge: DockEdge) {
         settings.setEdge(edge)
-        windows[settings.activeDisplayKey]?.applyEdge(edge)
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) {
-        let availableSize = screen.visibleFrame.size
-        let config = settings.config(forKey: screen.displayUUID, isBuiltin: screen.isBuiltin)
-        let window = OverviewWindow(targetScreen: screen, edge: config.edge)
+        let window = OverviewWindow(targetScreen: screen)
         window.previews = state.previewsAvailable
-        let hostingView = InteractiveHostingView(rootView: makePanel(for: screen, availableSize: availableSize))
+        window.onDismiss = { [weak self] in self?.hide() }
+        let root = OverviewRoot(
+            panel: makePanel(for: screen, availableSize: screen.frame.size),
+            onDismiss: { [weak self] in self?.hide() }
+        )
+        let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []
-        window.installFloatingContent(hosting: hostingView)
-        let seed = AeroControlMetrics(iconSize: config.iconSize, previews: state.previewsAvailable).cardHeight + 4
-        window.showFloating(contentSize: NSSize(width: seed, height: seed))
-        if hidden { window.orderOut(nil) }
+        window.installContent(hosting: hostingView)
+        if !hidden { window.reveal() }
         windows[screen.displayUUID] = window
     }
 

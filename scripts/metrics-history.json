@@ -223,5 +223,14 @@
     "complexity": 614,
     "prodComplexity": 353,
     "files": 41
+  },
+  {
+    "timestamp": "2026-09-14T22:38:49+02:00",
+    "commit": "3467b2c",
+    "subject": "One-shot overview: window previews, workspace merge by drag, summon/dismiss",
+    "code": 4011,
+    "complexity": 601,
+    "prodComplexity": 340,
+    "files": 41
   }
 ]

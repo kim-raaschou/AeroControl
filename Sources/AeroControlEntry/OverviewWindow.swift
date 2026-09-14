@@ -8,19 +8,20 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }
 
+/// Mission-Control-style presentation: one borderless panel covering the whole screen,
+/// with a blurred, dimmed backdrop and the workspace cards centered on it. Escape or a
+/// click on the backdrop dismisses; the app stays an accessory (non-activating panel).
 class OverviewWindow: NSPanel {
-    private static let fadeDuration: TimeInterval = 0.05
+    private static let fadeDuration: TimeInterval = 0.12
     private let targetScreen: NSScreen
-    private var hasFadedIn = false
-    private var placementEdge: DockEdge
-    /// Whether tiles are previews (3:2) or icons; needed to invert cardHeight below.
+    /// Whether tiles are previews (3:2) or icons.
     var previews = false
+    var onDismiss: (() -> Void)?
 
-    init(targetScreen: NSScreen, edge: DockEdge = .top) {
+    init(targetScreen: NSScreen) {
         self.targetScreen = targetScreen
-        self.placementEdge = edge
         super.init(
-            contentRect: .zero,
+            contentRect: targetScreen.frame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
@@ -29,87 +30,28 @@ class OverviewWindow: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        titlebarAppearsTransparent = true
         acceptsMouseMovedEvents = true
-        collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-        ]
-        delegate = self
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
     }
 
-    override var canBecomeKey: Bool { false }
+    /// Key so Escape reaches us; non-activating so the app never takes over the menu bar.
+    override var canBecomeKey: Bool { true }
 
-    private weak var floatingHostingView: NSView?
-    private var glassWindow: NSWindow?
+    override func cancelOperation(_ sender: Any?) { onDismiss?() }
 
-    func installFloatingContent(hosting: NSView) {
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }
+    }
+
+    func installContent(hosting: NSView) {
         contentView = hosting
-        floatingHostingView = hosting
-        let gw = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-        gw.isOpaque = false
-        gw.backgroundColor = .clear
-        gw.ignoresMouseEvents = true
-        gw.level = level
-        gw.collectionBehavior = collectionBehavior
-        gw.contentView = Self.makeGlassBackdrop()
-        addChildWindow(gw, ordered: .below)
-        glassWindow = gw
+        setFrame(targetScreen.frame, display: false)
     }
 
-    private static func makeGlassBackdrop() -> NSGlassEffectView {
-        let glass = NSGlassEffectView()
-        glass.style = .clear
-        let sel = NSSelectorFromString("set_variant:")
-        if let method = class_getInstanceMethod(object_getClass(glass), sel) {
-            typealias Fn = @convention(c) (AnyObject, Selector, Int) -> Void
-            unsafeBitCast(method_getImplementation(method), to: Fn.self)(glass, sel, 3)
-        }
-        return glass
-    }
-
-    private func setFloatingSize(_ size: NSSize) {
-        setFrame(NSRect(origin: clampedOrigin(for: size), size: size), display: true)
-        syncGlassFrame()
-    }
-
-    private func syncGlassFrame() {
-        guard let glass = glassWindow else { return }
-        glass.setFrame(frame, display: true)
-        let ref = AeroControlMetrics(iconSize: 100, previews: previews)
-        // The panel is exactly one card tall on its short side, and cardHeight is
-        // exactly proportional to iconSize, so invert it to recover the rendered
-        // icon size. Keep the glass corners concentric with the workspace focus
-        // plate: its radius plus the plate's fixed ~5pt gap to the glass edge
-        // (floatingMargin 2 + focusPlateEdgeInset 3).
-        let shortSide = min(frame.width, frame.height)
-        let inner = max(0, shortSide - 2 * AeroControlPanel.floatingMargin)
-        let rendered = AeroControlMetrics(iconSize: inner / ref.cardHeight * 100, previews: previews)
-        let plateToGlassGap = AeroControlPanel.floatingMargin + 3
-        (glass.contentView as? NSGlassEffectView)?.cornerRadius =
-            rendered.cornerRadius + plateToGlassGap
-    }
-
-    func showFloating(contentSize: NSSize) {
-        setFloatingSize(contentSize)
-        if hasFadedIn {
-            if isVisible { orderFrontRegardless() }
-        } else {
-            hasFadedIn = true
-            alphaValue = 0
-            orderFrontRegardless()
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = Self.fadeDuration
-                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                animator().alphaValue = 1
-            }
-        }
-    }
-
-    func revealFloating() {
+    func reveal() {
+        setFrame(targetScreen.frame, display: true)
         alphaValue = 0
-        orderFrontRegardless()
+        makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Self.fadeDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -117,7 +59,7 @@ class OverviewWindow: NSPanel {
         }
     }
 
-    func hideFloating() {
+    func dismiss() {
         guard isVisible else { return }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Self.fadeDuration
@@ -131,51 +73,35 @@ class OverviewWindow: NSPanel {
             }
         }
     }
+}
 
-    func applyEdge(_ edge: DockEdge) {
-        placementEdge = edge
-        floatingHostingView?.needsLayout = true
-        floatingHostingView?.layoutSubtreeIfNeeded()
-        let content = floatingHostingView?.fittingSize ?? frame.size
-        showFloating(contentSize: content)
-    }
+/// The full-screen root: blurred backdrop (click to dismiss) with the panel centered.
+struct OverviewRoot: View {
+    let panel: AeroControlPanel
+    let onDismiss: () -> Void
 
-    private func clampedOrigin(for size: NSSize) -> CGPoint {
-        let screenFrame = targetScreen.frame
-        let visible = targetScreen.visibleFrame
-        let inset: CGFloat = 4
-        let desiredTopLeft: CGPoint
-        switch placementEdge {
-        case .top:
-            desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: visible.maxY - inset)
-        case .bottom:
-            desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: visible.minY + size.height + inset)
-        case .left:
-            desiredTopLeft = CGPoint(x: visible.minX + inset, y: visible.midY + size.height / 2)
-        case .right:
-            desiredTopLeft = CGPoint(x: visible.maxX - size.width - inset, y: visible.midY + size.height / 2)
-        case .center:
-            desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: visible.midY + size.height / 2)
-        case .menuBar:
-            let bandMidY = (visible.maxY + screenFrame.maxY) / 2
-            desiredTopLeft = CGPoint(x: visible.midX - size.width / 2, y: bandMidY + size.height / 2)
+    var body: some View {
+        ZStack {
+            BackdropBlur()
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onDismiss)
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            panel
         }
-        var originX = desiredTopLeft.x
-        var originY = desiredTopLeft.y - size.height
-        let minX = screenFrame.minX
-        let maxX = screenFrame.maxX - size.width
-        let minY = screenFrame.minY
-        let maxY = screenFrame.maxY - size.height
-        originX = minX <= maxX ? min(max(originX, minX), maxX) : minX
-        originY = minY <= maxY ? min(max(originY, minY), maxY) : maxY
-        return CGPoint(x: originX, y: originY)
     }
 }
 
-extension OverviewWindow: NSWindowDelegate {
-    func windowDidResize(_ notification: Notification) {
-        setFrameOrigin(clampedOrigin(for: frame.size))
-        syncGlassFrame()
+private struct BackdropBlur: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .fullScreenUI
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
     }
-    func windowDidMove(_ notification: Notification) { syncGlassFrame() }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
