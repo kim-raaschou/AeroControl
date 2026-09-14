@@ -9,6 +9,8 @@ struct AeroControlWorkspaceCard: View {
     let focusedWindowId: Int
     let icons: [Int: NSImage]
     let previews: [Int: NSImage]
+    /// Preview tiles (3:2 snapshots) when Screen Recording is granted, plain icons otherwise.
+    let showPreviews: Bool
     let size: CGSize
     let onFocusWorkspace: () -> Void
     let onFocusWindow: (Int) -> Void
@@ -91,9 +93,12 @@ struct AeroControlWorkspaceCard: View {
         if windows.isEmpty {
             Color.clear
         } else {
-            let tileWidth = AeroControlLayout.tileWidth(windowCount: windows.count, card: size)
+            let aspect: CGFloat = showPreviews ? AeroControlLayout.tileAspect : 1
+            let tileWidth = AeroControlLayout.tileWidth(windowCount: windows.count, card: size, aspect: aspect)
             let columns = AeroControlLayout.columns(forCount: windows.count)
-            let metrics = AeroControlMetrics(iconSize: tileWidth / 3, previews: true)
+            let metrics = showPreviews
+                ? AeroControlMetrics(iconSize: tileWidth / 3, previews: true)
+                : AeroControlMetrics(iconSize: tileWidth)
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
                 spacing: AeroControlLayout.tileSpacing

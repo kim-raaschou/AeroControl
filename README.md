@@ -73,6 +73,21 @@ make install
 
 `make install` builds and installs `AeroControl.app` to `/Applications`.
 
+macOS ties the Screen Recording grant to the app's code signature, and an ad-hoc
+signature changes with every build. To keep the grant across rebuilds, create a
+self-signed code-signing certificate named `AeroControl Dev` once; the Makefile picks it
+up automatically (no trust settings needed):
+
+```bash
+T=$(mktemp -d) && cd "$T" && printf '[req]\ndistinguished_name=dn\nx509_extensions=v3\nprompt=no\n[dn]\nCN=AeroControl Dev\n[v3]\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=critical,codeSigning\nbasicConstraints=critical,CA:false\n' > ext.cnf && \
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes -keyout key.pem -out cert.pem -config ext.cnf && \
+openssl pkcs12 -export -inkey key.pem -in cert.pem -name "AeroControl Dev" -out dev.p12 -passout pass:x && \
+security import dev.p12 -k ~/Library/Keychains/login.keychain-db -P x -T /usr/bin/codesign && cd - && rm -rf "$T"
+```
+
+After switching signatures, re-grant Screen Recording once (System Settings ▸ Privacy &
+Security ▸ Screen & System Audio Recording) and relaunch AeroControl.
+
 ### Summon it from AeroSpace
 
 Launching AeroControl while it runs toggles the overview, so bind a key to a new launch:

@@ -19,15 +19,21 @@ run:
 build:
 	swift build -c release --product AeroControl
 
+# Sign with a stable identity when one exists: macOS ties privacy grants (Screen
+# Recording for previews) to the code signature, and an ad-hoc signature changes with
+# every build, which silently revokes the grant. Create it once (self-signed, no
+# trust needed): see README "Build from source". Falls back to ad-hoc.
+SIGN_IDENTITY ?= $(shell security find-identity -p codesigning 2>/dev/null | grep -q '"AeroControl Dev"' && echo "AeroControl Dev" || echo "-")
+
 # Assemble a proper .app bundle (accessory agent, LSUIElement) around the release
-# binary, with a stable bundle identifier so the Accessibility grant sticks, then
-# ad-hoc codesign it.
+# binary, with a stable bundle identifier, then codesign it (see SIGN_IDENTITY).
 bundle: build
 	rm -rf "$(APP_BUNDLE)"
 	mkdir -p "$(APP_BUNDLE)/Contents/MacOS"
 	cp "$(BUILD_DIR)/$(APP_NAME)" "$(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)"
 	cp Packaging/Info.plist "$(APP_BUNDLE)/Contents/Info.plist"
-	codesign --force --sign - "$(APP_BUNDLE)"
+	codesign --force --sign "$(SIGN_IDENTITY)" "$(APP_BUNDLE)"
+	@echo "Signed with identity: $(SIGN_IDENTITY)"
 	@echo "Built $(APP_BUNDLE)"
 
 # Build the bundle and install it to /Applications.

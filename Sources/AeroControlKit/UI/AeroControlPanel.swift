@@ -73,6 +73,7 @@ public struct AeroControlPanel: View {
             focusedWindowId: state.model.focusedWindowId,
             icons: state.icons,
             previews: state.previews,
+            showPreviews: state.previewsAvailable,
             size: size,
             onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
             onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },

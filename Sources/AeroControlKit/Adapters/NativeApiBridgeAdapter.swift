@@ -1,6 +1,9 @@
 import AppKit
 import Common
+import OSLog
 import ScreenCaptureKit
+
+private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "previews")
 
 public final class NativeApiBridgeAdapter: NativeApiBridge {
     private var iconCache: [String: NSImage] = [:]
@@ -56,9 +59,15 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     /// group would only buy complexity). Off-screen windows parked by AeroSpace still
     /// have content and capture fine. AeroSpace window ids are CGWindowIDs.
     public func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
-        guard canCapturePreviews, !windowIds.isEmpty,
-              let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        else { return [:] }
+        guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return [:] }
+        guard !windowIds.isEmpty else { return [:] }
+        let content: SCShareableContent
+        do {
+            content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        } catch {
+            log.error("previews: shareable content failed: \(error.localizedDescription, privacy: .public)")
+            return [:]
+        }
         let wanted = Set(windowIds.map { CGWindowID($0) })
         var result: [Int: NSImage] = [:]
         for window in content.windows where wanted.contains(window.windowID) {
@@ -66,6 +75,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
                 result[Int(window.windowID)] = image
             }
         }
+        log.notice("previews: requested \(windowIds.count) matched \(content.windows.filter { wanted.contains($0.windowID) }.count) captured \(result.count)")
         return result
     }
 
@@ -78,7 +88,11 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         config.height = max(1, Int(frame.height * scale * 2))
         config.showsCursor = false
         let filter = SCContentFilter(desktopIndependentWindow: window)
-        guard let cgImage = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else {
+        let cgImage: CGImage
+        do {
+            cgImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        } catch {
+            log.error("previews: capture of window \(window.windowID) failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
         return NSImage(cgImage: cgImage, size: NSSize(width: frame.width * scale, height: frame.height * scale))

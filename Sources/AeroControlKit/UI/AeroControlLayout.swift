@@ -35,14 +35,20 @@ public enum AeroControlLayout {
         return CGSize(width: (height / cardAspect).rounded(.down), height: height.rounded(.down))
     }
 
+    /// Largest square icon tile; icons bigger than this stop looking like icons.
+    public static let maxIconTile: CGFloat = 128
+
     /// Width of one window tile so `windowCount` tiles fill the card's inner area.
-    public static func tileWidth(windowCount: Int, card: CGSize) -> CGFloat {
+    /// `aspect` is the tile's height/width: `tileAspect` for previews, 1 for icons.
+    public static func tileWidth(windowCount: Int, card: CGSize, aspect: CGFloat = tileAspect) -> CGFloat {
         guard windowCount > 0 else { return 0 }
         let columns = columns(forCount: windowCount), rows = rows(forCount: windowCount)
         let innerWidth = card.width - 2 * cardPadding
         let innerHeight = card.height - cardPadding - badgeLane
         let byWidth = (innerWidth - CGFloat(columns - 1) * tileSpacing) / CGFloat(columns)
-        let byHeight = ((innerHeight - CGFloat(rows - 1) * tileSpacing) / CGFloat(rows)) / tileAspect
-        return max(minTileWidth, min(byWidth, byHeight).rounded(.down))
+        let byHeight = ((innerHeight - CGFloat(rows - 1) * tileSpacing) / CGFloat(rows)) / aspect
+        var width = min(byWidth, byHeight)
+        if aspect == 1 { width = min(width, maxIconTile) }
+        return max(minTileWidth, width.rounded(.down))
     }
 }
