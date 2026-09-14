@@ -1,58 +1,29 @@
 import SwiftUI
 import Common
 
+/// The full-screen overview content: all workspaces (optionally only one screen's) as a
+/// centered near-square grid of equal cards; the last row is centered when it is short.
 public struct AeroControlPanel: View {
     @Bindable var state: OverviewStore
-    let settings: SettingsStore
-    let displayKey: String?
-    let displayIsBuiltin: Bool
     let screenFilter: Int?
     let availableWidth: CGFloat
     let availableHeight: CGFloat
-    /// Full-screen presentation: tiles scale up to use the screen instead of the
-    /// configured icon size.
-    let fullscreen: Bool
     /// Called after an action that completes the "one shot" (focus a window or a
     /// workspace); the host hides the overview.
     let onDismiss: () -> Void
 
     public init(
         state: OverviewStore,
-        settings: SettingsStore,
-        displayKey: String? = nil,
-        displayIsBuiltin: Bool = true,
         screenFilter: Int? = nil,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
-        fullscreen: Bool = false,
         onDismiss: @escaping () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
-        self.settings = settings
-        self.displayKey = displayKey
-        self.displayIsBuiltin = displayIsBuiltin
         self.screenFilter = screenFilter
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
-        self.fullscreen = fullscreen
         self.onDismiss = onDismiss
-    }
-
-    private var previews: Bool { state.previewsAvailable }
-
-    private var resolvedOrientation: Orientation {
-        if let displayKey {
-            return settings.config(forKey: displayKey, isBuiltin: displayIsBuiltin).edge.orientation
-        }
-        return settings.orientation
-    }
-
-    private var resolvedIconSize: CGFloat {
-        if fullscreen { return AeroControlLayout.fullscreenIconSize }
-        if let displayKey {
-            return settings.config(forKey: displayKey, isBuiltin: displayIsBuiltin).iconSize
-        }
-        return settings.effectiveIconSize
     }
 
     private var workspaces: [WorkspaceInfo] {
@@ -62,15 +33,6 @@ public struct AeroControlPanel: View {
         return state.model.workspaces
     }
 
-    private var visibleMonitors: [MonitorInfo] {
-        if screenFilter != nil {
-            return Array(Set(workspaces.map(\.monitorId))).sorted().map(MonitorInfo.init)
-        }
-        return state.model.monitors
-    }
-
-    public static let floatingMargin: CGFloat = 2
-
     public var body: some View {
         Group {
             if let errorMsg = state.error {
@@ -78,72 +40,40 @@ public struct AeroControlPanel: View {
             } else if workspaces.isEmpty {
                 Color.clear.frame(width: 0, height: 0)
             } else {
-                cardRow(iconSize: renderedIconSize)
-            }
-        }
-        .padding(Self.floatingMargin)
-        .fixedSize()
-    }
-
-    private var renderedIconSize: CGFloat {
-        let extent = resolvedOrientation.isVertical ? availableHeight : availableWidth
-        guard extent > 0 else { return resolvedIconSize }
-        let counts = workspaces.map { $0.windows.count }
-        return AeroControlLayout.effectiveIconSize(
-            preferred: resolvedIconSize,
-            availableWidth: extent * AeroControlLayout.usableScreenFraction,
-            windowCounts: counts,
-            previews: previews
-        )
-    }
-
-    private func cardRow(iconSize: CGFloat) -> some View {
-        let metrics = AeroControlMetrics(iconSize: iconSize, previews: previews)
-        let vertical = resolvedOrientation.isVertical
-        let layout = vertical
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: metrics.cardSpacing))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: metrics.cardSpacing))
-        return layout {
-            ForEach(Array(visibleMonitors.enumerated()), id: \.element.id) { index, monitor in
-                if index > 0 {
-                    groupSeparator(vertical: vertical, metrics: metrics)
-                }
-                ForEach(state.model.workspaces(forMonitor: monitor.monitorId)) { workspace in
-                    card(for: workspace, iconSize: iconSize)
-                        .fixedSize(horizontal: !vertical, vertical: vertical)
-                        .frame(
-                            width: vertical ? metrics.cardHeight : nil,
-                            height: vertical ? nil : metrics.cardHeight
-                        )
-                }
+                grid
             }
         }
         .fixedSize()
-        .padding(
-            vertical ? .vertical : .horizontal,
-            metrics.cardSpacing - Self.floatingMargin + AeroControlWorkspaceCard.focusPlateEdgeInset
+    }
+
+    private var grid: some View {
+        let all = workspaces
+        let columns = AeroControlLayout.columns(forCount: all.count)
+        let usable = CGSize(
+            width: availableWidth * AeroControlLayout.usableScreenFraction,
+            height: availableHeight * AeroControlLayout.usableScreenFraction
         )
+        let cardSize = AeroControlLayout.cardSize(count: all.count, available: usable)
+        let rows = stride(from: 0, to: all.count, by: columns).map { Array(all[$0..<min($0 + columns, all.count)]) }
+        return VStack(spacing: AeroControlLayout.cardGap) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: AeroControlLayout.cardGap) {
+                    ForEach(row) { workspace in
+                        card(for: workspace, size: cardSize)
+                    }
+                }
+            }
+        }
     }
 
-    private func groupSeparator(vertical: Bool, metrics: AeroControlMetrics) -> some View {
-        let thickness: CGFloat = 3
-        return Color.clear
-            .frame(
-                width: vertical ? metrics.cardHeight : thickness,
-                height: vertical ? thickness : metrics.cardHeight
-            )
-            .glassEffect(.regular, in: .capsule)
-            .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
-    }
-
-    private func card(for workspace: WorkspaceInfo, iconSize: CGFloat) -> some View {
+    private func card(for workspace: WorkspaceInfo, size: CGSize) -> some View {
         AeroControlWorkspaceCard(
             workspace: workspace,
             isFocused: workspace.name == state.model.focusedWorkspace,
             focusedWindowId: state.model.focusedWindowId,
             icons: state.icons,
             previews: state.previews,
-            metrics: AeroControlMetrics(iconSize: iconSize, previews: previews),
+            size: size,
             onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
             onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },
             onMoveWindow: { windowId, target in
@@ -152,10 +82,9 @@ public struct AeroControlPanel: View {
             onMergeWorkspace: { source, target in
                 send(.mergeWorkspace(source: source, into: target))
             },
-            onCloseWindow: { windowId in send(.closeWindow(windowId)) },
-            isVertical: resolvedOrientation.isVertical
+            onCloseWindow: { windowId in send(.closeWindow(windowId)) }
         )
-        .transition(unsafe .opacity.combined(with: .scale(scale: 0.92)))
+        .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
     }
 
     private func send(_ action: AeroControlAction) {

@@ -1,120 +1,83 @@
 import SwiftUI
 import Common
 
+/// One "desktop" card: badge at the top-left, the workspace's windows as 3:2 tiles in a
+/// grid below. Drop target for window tiles (move) and workspace badges (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
     let isFocused: Bool
     let focusedWindowId: Int
     let icons: [Int: NSImage]
     let previews: [Int: NSImage]
-    let metrics: AeroControlMetrics
+    let size: CGSize
     let onFocusWorkspace: () -> Void
     let onFocusWindow: (Int) -> Void
     let onMoveWindow: (Int, String) -> Void
     /// (source workspace, target workspace): merge every window of source into target.
     let onMergeWorkspace: (String, String) -> Void
     let onCloseWindow: (Int) -> Void
-    var isVertical: Bool = false
 
     @State private var isDropTarget = false
     @Environment(\.colorScheme) private var colorScheme
 
-    @ScaledMetric(relativeTo: .caption) private var typeScale: CGFloat = 1
-    private var clampedTypeScale: CGFloat { min(max(typeScale, 1), 1.5) }
-
-    private var iconSize: CGFloat { metrics.iconSize }
-    private var cornerRadius: CGFloat { metrics.cornerRadius }
-
-    /// Vertical inset between the focus plate and the card content edge. Combined
-    /// with the panel's floating margin it is the small breathing gap the plate
-    /// keeps to the glass edge top/bottom (≈5pt). Horizontally the plate instead
-    /// overhangs into the inter-card gap (see `overhang`), menu-bar style, so the
-    /// focused workspace "owns" most of the shared spacing and neighbours read as
-    /// nearly flush — a deliberately wider-than-tall expression.
-    static let focusPlateEdgeInset: CGFloat = 3
+    private static let cornerRadius: CGFloat = 18
 
     var body: some View {
-        content
-            .dropDestination(for: OverviewDragPayload.self) { items, _ in
-                guard let item = items.first else { return false }
-                isDropTarget = false
-                switch item {
-                case .window(let id):
-                    onMoveWindow(id, workspace.name)
-                case .workspace(let source):
-                    guard source != workspace.name else { return false }
-                    onMergeWorkspace(source, workspace.name)
-                }
-                return true
-            } isTargeted: { isDropTarget = $0 }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onFocusWorkspace)
-    }
-
-    @ViewBuilder private var content: some View {
-        if workspace.windows.isEmpty {
-            emptyPill
-        } else {
-            cardContent
+        let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+        VStack(alignment: .leading, spacing: 0) {
+            header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
+            tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .padding(AeroControlLayout.cardPadding)
+        .frame(width: size.width, height: size.height)
+        .background(shape.fill(.regularMaterial))
+        .overlay(shape.strokeBorder(borderColor, lineWidth: isFocused ? 3 : 1))
+        .overlay(dropTargetHint.allowsHitTesting(false))
+        .clipShape(shape)
+        .contentShape(shape)
+        .onTapGesture(perform: onFocusWorkspace)
+        .dropDestination(for: OverviewDragPayload.self) { items, _ in
+            guard let item = items.first else { return false }
+            isDropTarget = false
+            switch item {
+            case .window(let id):
+                onMoveWindow(id, workspace.name)
+            case .workspace(let source):
+                guard source != workspace.name else { return false }
+                onMergeWorkspace(source, workspace.name)
+            }
+            return true
+        } isTargeted: { isDropTarget = $0 }
     }
 
-    private var emptyPill: some View {
-        withFocusPlate {
-            Color.black.opacity(0.001)
-                .frame(width: isVertical ? nil : metrics.emptyCardWidth,
-                       height: isVertical ? metrics.emptyCardWidth : nil)
-                .frame(maxWidth: isVertical ? .infinity : nil,
-                       maxHeight: isVertical ? nil : .infinity)
-                .overlay(alignment: .leading) { badge }
-        }
+    private var borderColor: Color {
+        if isFocused { return .accentColor }
+        return colorScheme == .dark ? .white.opacity(0.18) : .black.opacity(0.12)
     }
 
-    private var numberText: some View {
-        Text(String(workspace.name.prefix(1)))
-            .font(.system(size: metrics.badgeFontSize * clampedTypeScale, weight: .bold, design: .rounded))
-            .lineLimit(1)
-    }
-
-    @ViewBuilder private func withFocusPlate(@ViewBuilder _ content: () -> some View) -> some View {
-        content()
-            .modifier(FocusPlate(
-                isFocused: isFocused,
-                cornerRadius: cornerRadius,
-                overhang: metrics.cardSpacing - AeroControlPanel.floatingMargin,
-                edgeInset: Self.focusPlateEdgeInset,
-                vertical: isVertical
-            ))
-            .overlay(dropTargetHint.allowsHitTesting(false))
-    }
-
-    private var cardContent: some View {
-        withFocusPlate {
-            appRow
-                .padding(.top, metrics.cardTopPadding)
-                .padding(.bottom, metrics.cardBottomPadding)
-                .padding(.leading, metrics.badgeGutter)
-                .padding(.trailing, metrics.cardHorizontalPadding)
-                .frame(
-                    maxWidth: isVertical ? .infinity : nil,
-                    maxHeight: isVertical ? nil : .infinity,
-                    alignment: isVertical ? .leading : .top
-                )
-                .overlay(alignment: .leading) { badge }
+    private var header: some View {
+        HStack(spacing: 10) {
+            badge
+            Text(workspace.windows.isEmpty ? "Empty" : "\(workspace.windows.count) window\(workspace.windows.count == 1 ? "" : "s")")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
         }
     }
 
     private var badge: some View {
-        numberText
-            .foregroundStyle(.primary)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.55 : 0.18), radius: 1.5, x: 0, y: 0.5)
-            .frame(width: metrics.badgeDiameter, height: metrics.badgeDiameter)
-            .background(badgeFill, in: Circle())
+        Text(workspace.name)
+            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .lineLimit(1)
+            .foregroundStyle(isFocused ? Color.white : .primary)
+            .frame(width: 26, height: 26)
+            .background(isFocused ? Color.accentColor : badgeFill, in: Circle())
             .overlay(Circle().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)
-            .draggable(OverviewDragPayload.workspace(name: workspace.name)) { numberText.padding(6) }
-            .offset(x: metrics.badgeLeadingMargin)
+            .draggable(OverviewDragPayload.workspace(name: workspace.name)) {
+                Text(workspace.name).font(.system(size: 14, weight: .bold, design: .rounded)).padding(8)
+            }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
                   : "Workspace \(workspace.name) — drag onto another workspace to merge")
     }
@@ -123,65 +86,39 @@ struct AeroControlWorkspaceCard: View {
         colorScheme == .dark ? .black.opacity(0.45) : .white.opacity(0.72)
     }
 
-    private var appRow: some View {
-        let layout = isVertical
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: metrics.appRowSpacing))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: metrics.appRowSpacing))
-        return layout {
-            ForEach(workspace.windows, id: \.windowId) { window in
-                AeroControlAppTile(
-                    window: window,
-                    image: icons[window.windowId],
-                    preview: previews[window.windowId],
-                    isFocused: window.windowId == focusedWindowId,
-                    onFocusWindow: { onFocusWindow(window.windowId) },
-                    onCloseWindow: { onCloseWindow(window.windowId) },
-                    metrics: metrics
-                )
+    @ViewBuilder private var tiles: some View {
+        let windows = workspace.windows
+        if windows.isEmpty {
+            Color.clear
+        } else {
+            let tileWidth = AeroControlLayout.tileWidth(windowCount: windows.count, card: size)
+            let columns = AeroControlLayout.columns(forCount: windows.count)
+            let metrics = AeroControlMetrics(iconSize: tileWidth / 3, previews: true)
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
+                spacing: AeroControlLayout.tileSpacing
+            ) {
+                ForEach(windows, id: \.windowId) { window in
+                    AeroControlAppTile(
+                        window: window,
+                        image: icons[window.windowId],
+                        preview: previews[window.windowId],
+                        isFocused: window.windowId == focusedWindowId,
+                        onFocusWindow: { onFocusWindow(window.windowId) },
+                        onCloseWindow: { onCloseWindow(window.windowId) },
+                        metrics: metrics
+                    )
+                }
             }
+            .animation(.easeInOut(duration: 0.15), value: windows)
         }
-        .animation(.easeInOut(duration: 0.15), value: workspace.windows)
     }
 
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .strokeBorder(Color.accentColor.opacity(0.7), lineWidth: 2)
+            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 3)
+                .background(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous).fill(Color.accentColor.opacity(0.12)))
         }
-    }
-}
-
-private struct FocusPlate: ViewModifier {
-    let isFocused: Bool
-    let cornerRadius: CGFloat
-    let overhang: CGFloat
-    let edgeInset: CGFloat
-    let vertical: Bool
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-        if reduceTransparency {
-            content
-                .background {
-                    shape
-                        .fill(opaqueBase)
-                        .overlay { if isFocused { shape.fill(Color.accentColor.opacity(0.5)) } }
-                }
-        } else if isFocused {
-            content
-                .background {
-                    shape.fill(Color.accentColor.opacity(0.22))
-                        .padding(.vertical, edgeInset)
-                        .padding(vertical ? .vertical : .horizontal, -overhang)
-                }
-        } else {
-            content
-        }
-    }
-
-    private var opaqueBase: Color {
-        colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.90)
     }
 }

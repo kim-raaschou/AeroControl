@@ -5,7 +5,6 @@ import AeroControlKit
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let onQuit: () -> Void
     private let onToggle: () -> Void
-    private let onSelectEdge: (DockEdge) -> Void
     private let onSelectScreen: (NSScreen) -> Void
     private let onToggleMultiScreen: () -> Void
     private let onReset: () -> Void
@@ -18,7 +17,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(
         onQuit: @escaping () -> Void,
         onToggle: @escaping () -> Void,
-        onSelectEdge: @escaping (DockEdge) -> Void,
         onSelectScreen: @escaping (NSScreen) -> Void,
         onToggleMultiScreen: @escaping () -> Void,
         onReset: @escaping () -> Void,
@@ -28,7 +26,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     ) {
         self.onQuit = onQuit
         self.onToggle = onToggle
-        self.onSelectEdge = onSelectEdge
         self.onSelectScreen = onSelectScreen
         self.onToggleMultiScreen = onToggleMultiScreen
         self.onReset = onReset
@@ -112,34 +109,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(multiScreenItem)
 
         menu.addItem(.separator())
-        menu.addItem(sectionHeader("Icon Size"))
-        for preset in SettingsStore.iconSizePresets {
-            let item = NSMenuItem(
-                title: iconSizeLabel(for: preset),
-                action: #selector(setIconSizeFromMenu(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.tag = Int(preset)
-            item.state = abs(settings.iconSize - preset) < 0.5 ? .on : .off
-            menu.addItem(item)
-        }
-
-        menu.addItem(.separator())
-        menu.addItem(sectionHeader("Position"))
-        for edge in DockEdge.allCases {
-            let item = NSMenuItem(
-                title: edgeLabel(for: edge),
-                action: #selector(setPositionFromMenu(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = edge.rawValue
-            item.state = settings.edge == edge ? .on : .off
-            menu.addItem(item)
-        }
-
-        menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
         if previewsAvailable() {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
@@ -185,29 +154,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    private func iconSizeLabel(for preset: CGFloat) -> String {
-        let name: String
-        switch preset {
-        case ...16: name = "Extra Small"
-        case ...24: name = "Small"
-        case ...32: name = "Medium"
-        case ...48: name = "Large"
-        default: name = "Extra Large"
-        }
-        return "\(name) (\(Int(preset)))"
-    }
-
-    private func edgeLabel(for edge: DockEdge) -> String {
-        switch edge {
-        case .top: return "Top"
-        case .bottom: return "Bottom"
-        case .left: return "Left"
-        case .right: return "Right"
-        case .center: return "Center"
-        case .menuBar: return "Menu Bar"
-        }
-    }
-
     private func screenLabel(for screen: NSScreen, among screens: [NSScreen]) -> String {
         let name = screen.localizedName
         let sameName = screens.filter { $0.localizedName == name }
@@ -225,16 +171,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleMultiScreenFromMenu() {
         onToggleMultiScreen()
-    }
-
-    @objc private func setIconSizeFromMenu(_ sender: NSMenuItem) {
-        settings.setIconSize(CGFloat(sender.tag))
-    }
-
-    @objc private func setPositionFromMenu(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let edge = DockEdge(rawValue: raw) else { return }
-        onSelectEdge(edge)
     }
 
     @objc private func quitFromMenu() {

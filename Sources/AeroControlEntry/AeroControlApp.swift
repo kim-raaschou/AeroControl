@@ -45,7 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(
             onQuit: { [weak self] in self?.quit() },
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
-            onSelectEdge: { [weak self] edge in self?.overlayManager.selectEdge(edge) },
             onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
             onToggleMultiScreen: { [weak self] in self?.overlayManager.toggleMultiScreen() },
             onReset: { [weak self] in self?.overlayManager.rebuild() },

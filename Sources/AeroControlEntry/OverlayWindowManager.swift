@@ -39,13 +39,9 @@ final class OverlayWindowManager {
     private func makePanel(for screen: NSScreen, availableSize: NSSize) -> AeroControlPanel {
         AeroControlPanel(
             state: state,
-            settings: settings,
-            displayKey: screen.displayUUID,
-            displayIsBuiltin: screen.isBuiltin,
             screenFilter: screenFilter(for: screen),
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
-            fullscreen: true,
             onDismiss: { [weak self] in self?.hide() }
         )
     }
@@ -109,12 +105,6 @@ final class OverlayWindowManager {
         settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
         guard !settings.multiScreenEnabled else { return }
         rebuild()
-    }
-
-    /// Only the orientation of the card row (horizontal/vertical) matters in the
-    /// full-screen presentation; the panel observes settings and re-lays out itself.
-    func selectEdge(_ edge: DockEdge) {
-        settings.setEdge(edge)
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) {

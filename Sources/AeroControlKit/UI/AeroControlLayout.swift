@@ -1,49 +1,48 @@
 import CoreGraphics
 
+/// Pure layout math for the full-screen overview: workspaces in a near-square grid of
+/// equal cards (5 → 3 + 2), and each card's windows in a near-square grid of 3:2 tiles
+/// sized to fill the card. Everything here is unit-tested; the views only draw.
 public enum AeroControlLayout {
-    public static let usableScreenFraction: CGFloat = 0.8
-    /// Preferred icon size in the full-screen presentation; previews are 3:2 of it
-    /// (240x160 pt) and the width fit shrinks it when a row would not fit.
-    public static let fullscreenIconSize: CGFloat = 80
+    public static let usableScreenFraction: CGFloat = 0.86
+    public static let cardGap: CGFloat = 28
+    /// Card height as a fraction of its width (a 16:10-ish "desktop").
+    public static let cardAspect: CGFloat = 0.62
+    /// Tile height as a fraction of its width.
+    public static let tileAspect: CGFloat = 2.0 / 3.0
+    public static let tileSpacing: CGFloat = 14
+    public static let cardPadding: CGFloat = 18
+    /// Vertical room reserved at the top of a card for the workspace badge.
+    public static let badgeLane: CGFloat = 44
+    public static let minTileWidth: CGFloat = 36
 
-    public static func rowWidth(iconSize: CGFloat, windowCounts: [Int], previews: Bool = false) -> CGFloat {
-        guard !windowCounts.isEmpty else { return 0 }
-        let m = AeroControlMetrics(iconSize: iconSize, previews: previews)
-        var total: CGFloat = 0
-        for count in windowCounts {
-            if count <= 0 {
-                total += m.emptyCardWidth
-            } else {
-                let n = CGFloat(count)
-                let tileWidth = m.tileWidth
-                total += m.cardHorizontalPadding + m.badgeGutter
-                    + n * tileWidth
-                    + (n - 1) * m.appRowSpacing
-            }
-        }
-        total += CGFloat(windowCounts.count - 1) * m.cardSpacing
-        return total
+    public static func columns(forCount count: Int) -> Int {
+        count <= 0 ? 0 : Int(Double(count).squareRoot().rounded(.up))
     }
 
-    public static func effectiveIconSize(
-        preferred: CGFloat,
-        availableWidth: CGFloat,
-        windowCounts: [Int],
-        previews: Bool = false
-    ) -> CGFloat {
-        let pref = AeroControlMetrics.sanitizedIconSize(preferred)
-        guard availableWidth > 0, !windowCounts.isEmpty else { return pref }
-        let floorSize = AeroControlMetrics.focusPlateFloorIconSize
-        let slopeAbove = rowWidth(iconSize: floorSize, windowCounts: windowCounts, previews: previews) / floorSize
-        guard slopeAbove > 0 else { return pref }
-        let fitAbove = availableWidth / slopeAbove
-        if fitAbove >= floorSize { return min(pref, fitAbove) }
-        let widthAtHalf = rowWidth(iconSize: floorSize / 2, windowCounts: windowCounts, previews: previews)
-        let widthAtFloor = rowWidth(iconSize: floorSize, windowCounts: windowCounts, previews: previews)
-        let slopeBelow = (widthAtFloor - widthAtHalf) / (floorSize / 2)
-        guard slopeBelow > 0 else { return min(pref, fitAbove) }
-        let intercept = widthAtFloor - slopeBelow * floorSize
-        let fitBelow = (availableWidth - intercept) / slopeBelow
-        return min(pref, max(1, fitBelow))
+    public static func rows(forCount count: Int) -> Int {
+        let columns = columns(forCount: count)
+        return columns == 0 ? 0 : Int((Double(count) / Double(columns)).rounded(.up))
+    }
+
+    /// Equal card size so `count` cards fit `available` in the near-square grid.
+    public static func cardSize(count: Int, available: CGSize) -> CGSize {
+        let columns = columns(forCount: count), rows = rows(forCount: count)
+        guard columns > 0, available.width > 0, available.height > 0 else { return .zero }
+        let width = (available.width - CGFloat(columns - 1) * cardGap) / CGFloat(columns)
+        let heightByRows = (available.height - CGFloat(rows - 1) * cardGap) / CGFloat(rows)
+        let height = min(heightByRows, width * cardAspect)
+        return CGSize(width: (height / cardAspect).rounded(.down), height: height.rounded(.down))
+    }
+
+    /// Width of one window tile so `windowCount` tiles fill the card's inner area.
+    public static func tileWidth(windowCount: Int, card: CGSize) -> CGFloat {
+        guard windowCount > 0 else { return 0 }
+        let columns = columns(forCount: windowCount), rows = rows(forCount: windowCount)
+        let innerWidth = card.width - 2 * cardPadding
+        let innerHeight = card.height - cardPadding - badgeLane
+        let byWidth = (innerWidth - CGFloat(columns - 1) * tileSpacing) / CGFloat(columns)
+        let byHeight = ((innerHeight - CGFloat(rows - 1) * tileSpacing) / CGFloat(rows)) / tileAspect
+        return max(minTileWidth, min(byWidth, byHeight).rounded(.down))
     }
 }

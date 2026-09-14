@@ -22,7 +22,9 @@ it; workspace-badge drag → merge; overview is a full-screen blurred overlay on
 Open follow-ups (deliberately not in v1): capture denylist for sensitive apps; merge
 confirmation above N windows (currently none — merges are reversible by dragging back);
 keyboard navigation between tiles (Escape already dismisses).
-The code-metrics baseline was re-anchored once for this feature (previews + drag targets).
+The code-metrics baseline was re-anchored once for this feature (previews + drag targets) and
+then ratcheted back down when the floating-panel layout, icon-size and position menus went.
+Cleanup left: `SettingsStore` still persists `edge`/`iconSize` (unused now) — remove with its tests.
 
 ## 1. Homebrew distribution — pipeline built; awaiting first publish
 

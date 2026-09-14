@@ -14,7 +14,9 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 - One shot, Mission-Control style: a full-screen blurred overlay on the screen under the
   mouse. Starts hidden, summoned by launching it again (bind that to a key), dismissed as
   soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
-- Live workspace mirror across monitors, windows in the order they sit on screen.
+- One equal-sized card per workspace, laid out in a near-square grid (5 workspaces → 3 on
+  top, 2 below, centered). Inside a card the windows sit in a grid of 3:2 tiles sized to
+  fill the card, in the order they sit on screen.
 - **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
   works for windows AeroSpace has parked off-screen). Needs the Screen Recording permission;
   without it the overview shows app icons instead, and the menu offers to request it.
@@ -84,9 +86,6 @@ cmd-ctrl-alt-space = ['exec-and-forget open -n /Applications/AeroControl.app']
 Use the menu-bar icon for all in-app configuration:
 
 - **Screen**: choose active display or **Show on All Screens**.
-- **Icon Size**: 16 / 24 / 32 / 48 / 96.
-- **Position**: only the orientation matters in the full-screen overlay — Left/Right stack
-  the workspace cards vertically, everything else lays them out in a row.
 - **Reset settings** and **Quit**.
 
 Selections persist automatically (`UserDefaults`).

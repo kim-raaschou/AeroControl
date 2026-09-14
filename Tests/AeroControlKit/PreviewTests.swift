@@ -24,16 +24,39 @@ struct PreviewMetricsTests {
         #expect(m.focusPlateRect == CGSize(width: m.focusPlateSize, height: m.focusPlateSize))
     }
 
-    @Test("row width grows with previews and the fit shrinks the icon size accordingly")
-    func layoutFit() {
-        let counts = [3, 1, 0, 2]
-        let plain = AeroControlLayout.rowWidth(iconSize: 48, windowCounts: counts)
-        let wide = AeroControlLayout.rowWidth(iconSize: 48, windowCounts: counts, previews: true)
-        #expect(wide > plain)
-        let fitPlain = AeroControlLayout.effectiveIconSize(preferred: 48, availableWidth: 900, windowCounts: counts)
-        let fitWide = AeroControlLayout.effectiveIconSize(preferred: 48, availableWidth: 900, windowCounts: counts, previews: true)
-        #expect(fitWide < fitPlain)
-        #expect(AeroControlLayout.rowWidth(iconSize: fitWide, windowCounts: counts, previews: true) <= 900.5)
+    @Test("5 workspaces lay out as 3 + 2 in equal cards that fit the screen")
+    func fiveWorkspaces() {
+        #expect(AeroControlLayout.columns(forCount: 5) == 3)
+        #expect(AeroControlLayout.rows(forCount: 5) == 2)
+        let card = AeroControlLayout.cardSize(count: 5, available: CGSize(width: 1486, height: 960))
+        let gap = AeroControlLayout.cardGap
+        #expect(card.width * 3 + gap * 2 <= 1486)
+        #expect(card.height * 2 + gap <= 960)
+        #expect(abs(card.height / card.width - AeroControlLayout.cardAspect) < 0.02)
+    }
+
+    @Test("grid shape for other counts")
+    func gridShapes() {
+        #expect(AeroControlLayout.columns(forCount: 1) == 1 && AeroControlLayout.rows(forCount: 1) == 1)
+        #expect(AeroControlLayout.columns(forCount: 2) == 2 && AeroControlLayout.rows(forCount: 2) == 1)
+        #expect(AeroControlLayout.columns(forCount: 4) == 2 && AeroControlLayout.rows(forCount: 4) == 2)
+        #expect(AeroControlLayout.columns(forCount: 9) == 3 && AeroControlLayout.rows(forCount: 9) == 3)
+        #expect(AeroControlLayout.columns(forCount: 0) == 0 && AeroControlLayout.cardSize(count: 0, available: CGSize(width: 100, height: 100)) == .zero)
+    }
+
+    @Test("tiles inside a card fill it and never overflow")
+    func tilesFitCard() {
+        let card = CGSize(width: 470, height: 291)
+        for count in 1...9 {
+            let w = AeroControlLayout.tileWidth(windowCount: count, card: card)
+            let cols = AeroControlLayout.columns(forCount: count), rows = AeroControlLayout.rows(forCount: count)
+            let totalW = CGFloat(cols) * w + CGFloat(cols - 1) * AeroControlLayout.tileSpacing
+            let totalH = CGFloat(rows) * w * AeroControlLayout.tileAspect + CGFloat(rows - 1) * AeroControlLayout.tileSpacing
+            #expect(w >= AeroControlLayout.minTileWidth)
+            #expect(totalW <= card.width - 2 * AeroControlLayout.cardPadding + 1 || w == AeroControlLayout.minTileWidth)
+            #expect(totalH <= card.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane + 1 || w == AeroControlLayout.minTileWidth)
+        }
+        #expect(AeroControlLayout.tileWidth(windowCount: 0, card: card) == 0)
     }
 }
 
