@@ -9,6 +9,9 @@ public struct AeroControlPanel: View {
     let screenFilter: Int?
     let availableWidth: CGFloat
     let availableHeight: CGFloat
+    /// Called after an action that completes the "one shot" (focus a window or a
+    /// workspace); the host hides the overview.
+    let onDismiss: () -> Void
 
     public init(
         state: OverviewStore,
@@ -17,7 +20,8 @@ public struct AeroControlPanel: View {
         displayIsBuiltin: Bool = true,
         screenFilter: Int? = nil,
         availableWidth: CGFloat = 0,
-        availableHeight: CGFloat = 0
+        availableHeight: CGFloat = 0,
+        onDismiss: @escaping () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
         self.settings = settings
@@ -26,7 +30,10 @@ public struct AeroControlPanel: View {
         self.screenFilter = screenFilter
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
+        self.onDismiss = onDismiss
     }
+
+    private var previews: Bool { state.previewsAvailable }
 
     private var resolvedOrientation: Orientation {
         if let displayKey {
@@ -79,12 +86,13 @@ public struct AeroControlPanel: View {
         return AeroControlLayout.effectiveIconSize(
             preferred: resolvedIconSize,
             availableWidth: extent * AeroControlLayout.usableScreenFraction,
-            windowCounts: counts
+            windowCounts: counts,
+            previews: previews
         )
     }
 
     private func cardRow(iconSize: CGFloat) -> some View {
-        let metrics = AeroControlMetrics(iconSize: iconSize)
+        let metrics = AeroControlMetrics(iconSize: iconSize, previews: previews)
         let vertical = resolvedOrientation.isVertical
         let layout = vertical
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: metrics.cardSpacing))
@@ -128,11 +136,15 @@ public struct AeroControlPanel: View {
             isFocused: workspace.name == state.model.focusedWorkspace,
             focusedWindowId: state.model.focusedWindowId,
             icons: state.icons,
-            iconSize: iconSize,
-            onFocusWorkspace: { send(.focusWorkspace(workspace.name)) },
-            onFocusWindow: { windowId in send(.focusWindow(windowId)) },
+            previews: state.previews,
+            metrics: AeroControlMetrics(iconSize: iconSize, previews: previews),
+            onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
+            onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },
             onMoveWindow: { windowId, target in
                 send(.moveWindow(windowId: windowId, toWorkspace: target))
+            },
+            onMergeWorkspace: { source, target in
+                send(.mergeWorkspace(source: source, into: target))
             },
             onCloseWindow: { windowId in send(.closeWindow(windowId)) },
             isVertical: resolvedOrientation.isVertical

@@ -9,6 +9,8 @@ public class OverviewStore {
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
     private(set) var icons: [Int: NSImage] = [:]
+    /// Window previews, captured when the overview is summoned and dropped when it hides.
+    public private(set) var previews: [Int: NSImage] = [:]
     public private(set) var error: String?
 
     public var onLoaded: (@MainActor () -> Void)?
@@ -22,6 +24,7 @@ public class OverviewStore {
     private var terminationTask: Task<Void, Never>?
     private var windowCloseTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var previewTask: Task<Void, Never>?
 
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
@@ -83,6 +86,34 @@ public class OverviewStore {
         windowCloseTask = nil
         refreshTask?.cancel()
         refreshTask = nil
+        previewTask?.cancel()
+        previewTask = nil
+    }
+
+    // MARK: Window previews
+
+    /// True when macOS lets us capture windows; decides the tile layout up front so the
+    /// overview does not jump when the images arrive.
+    public var previewsAvailable: Bool { nativeSystem.canCapturePreviews }
+
+    public func requestPreviewAccess() { nativeSystem.requestPreviewAccess() }
+
+    /// Capture previews for every window currently in the model. Called at summon time.
+    public func capturePreviews(maxSize: CGSize) {
+        let ids = model.workspaces.flatMap(\.windows).map(\.windowId)
+        previewTask?.cancel()
+        previewTask = Task { [weak self] in
+            guard let self else { return }
+            let images = await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize)
+            guard !Task.isCancelled else { return }
+            self.previews = images
+        }
+    }
+
+    public func clearPreviews() {
+        previewTask?.cancel()
+        previewTask = nil
+        previews = [:]
     }
 
     public func dispatch(_ action: AeroControlAction) async {
@@ -166,6 +197,7 @@ public class OverviewStore {
             switch effect {
             case .windowRemoved(let id):
                 icons.removeValue(forKey: id)
+                previews.removeValue(forKey: id)
             case .loadIcons(let windows):
                 var added: [Int: NSImage] = [:]
                 for window in windows where icons[window.windowId] == nil {

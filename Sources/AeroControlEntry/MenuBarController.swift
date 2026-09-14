@@ -9,6 +9,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onSelectScreen: (NSScreen) -> Void
     private let onToggleMultiScreen: () -> Void
     private let onReset: () -> Void
+    private let previewsAvailable: () -> Bool
+    private let onRequestPreviewAccess: () -> Void
     private let settings: SettingsStore
 
     private var signalSources: [DispatchSourceSignal] = []
@@ -20,6 +22,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         onSelectScreen: @escaping (NSScreen) -> Void,
         onToggleMultiScreen: @escaping () -> Void,
         onReset: @escaping () -> Void,
+        previewsAvailable: @escaping () -> Bool,
+        onRequestPreviewAccess: @escaping () -> Void,
         settings: SettingsStore
     ) {
         self.onQuit = onQuit
@@ -28,6 +32,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.onSelectScreen = onSelectScreen
         self.onToggleMultiScreen = onToggleMultiScreen
         self.onReset = onReset
+        self.previewsAvailable = previewsAvailable
+        self.onRequestPreviewAccess = onRequestPreviewAccess
         self.settings = settings
     }
 
@@ -134,6 +140,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
+        menu.addItem(sectionHeader("Window Previews"))
+        if previewsAvailable() {
+            menu.addItem(sectionHeader("On — Screen Recording granted"))
+        } else {
+            let grant = NSMenuItem(
+                title: "Enable window previews (Screen Recording)…",
+                action: #selector(requestPreviewAccessFromMenu),
+                keyEquivalent: ""
+            )
+            grant.target = self
+            grant.toolTip = "Previews capture each window once when the overview opens. Without the permission the overview shows app icons."
+            menu.addItem(grant)
+        }
+
+        menu.addItem(.separator())
         let resetSettingsItem = NSMenuItem(
             title: "Reset settings",
             action: #selector(resetSettingsFromMenu),
@@ -218,6 +239,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func quitFromMenu() {
         onQuit()
+    }
+
+    @objc private func requestPreviewAccessFromMenu() {
+        onRequestPreviewAccess()
     }
 
     @objc private func resetSettingsFromMenu() {

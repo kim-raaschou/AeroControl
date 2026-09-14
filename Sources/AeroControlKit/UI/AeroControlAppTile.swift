@@ -5,36 +5,42 @@ struct AeroControlAppTile: View {
     @Environment(\.colorScheme) private var colorScheme
     let window: WindowInfo
     let image: NSImage?
+    /// Window snapshot; when present the tile is a 3:2 preview with the app icon badged
+    /// in its corner, otherwise the plain app icon.
+    let preview: NSImage?
     let isFocused: Bool
     let onFocusWindow: () -> Void
     let onCloseWindow: () -> Void
 
     @State private var isHovering = false
 
-    let iconSize: CGFloat
-    private var metrics: AeroControlMetrics { AeroControlMetrics(iconSize: iconSize) }
+    let metrics: AeroControlMetrics
+    private var iconSize: CGFloat { metrics.iconSize }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
     private var plateRadius: CGFloat { metrics.iconArtworkRadius }
+    private var tileSize: CGSize { metrics.tileSize }
 
     init(
         window: WindowInfo,
         image: NSImage?,
+        preview: NSImage? = nil,
         isFocused: Bool,
         onFocusWindow: @escaping () -> Void,
         onCloseWindow: @escaping () -> Void = {},
-        iconSize: CGFloat = 32
+        metrics: AeroControlMetrics = AeroControlMetrics(iconSize: 32)
     ) {
         self.window = window
         self.image = image
+        self.preview = preview
         self.isFocused = isFocused
         self.onFocusWindow = onFocusWindow
         self.onCloseWindow = onCloseWindow
-        self.iconSize = iconSize
+        self.metrics = metrics
     }
 
     var body: some View {
-        icon
-            .frame(width: iconSize, height: iconSize)
+        tile
+            .frame(width: tileSize.width, height: tileSize.height)
             .shadow(color: .black.opacity(isFocused ? 0 : 0.12), radius: 2, y: 1)
             .overlay(alignment: .topTrailing) { closeButton }
             .padding(cellPadding)
@@ -43,11 +49,35 @@ struct AeroControlAppTile: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
             .onHover { isHovering = $0 }
-            .draggable(WindowDragData(windowId: window.windowId, appName: window.appName)) {
-                icon
-                    .frame(width: iconSize, height: iconSize)
+            .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
+            .draggable(OverviewDragPayload.window(id: window.windowId)) {
+                tile
+                    .frame(width: tileSize.width, height: tileSize.height)
                     .onAppear { isHovering = false }
             }
+    }
+
+    @ViewBuilder private var tile: some View {
+        if metrics.previews {
+            let shape = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+            ZStack(alignment: .bottomLeading) {
+                shape.fill(.quaternary)
+                if let preview {
+                    Image(nsImage: preview)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: tileSize.width, height: tileSize.height)
+                }
+                icon
+                    .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)
+                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                    .padding(metrics.previewBadgeSize * 0.2)
+            }
+            .clipShape(shape)
+        } else {
+            icon
+        }
     }
 
     @ViewBuilder private var icon: some View {
@@ -65,12 +95,12 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
-            let side = metrics.focusPlateSize
+            let size = metrics.focusPlateRect
             let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
             shape
                 .fill(.regularMaterial)
                 .overlay { shape.fill(plateLighten) }
-                .frame(width: side, height: side)
+                .frame(width: size.width, height: size.height)
         }
     }
 
@@ -80,7 +110,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var floatingHint: some View {
         if window.isFloating && !isFocused {
-            let side = metrics.focusPlateSize
+            let size = metrics.focusPlateRect
             let dot = max(1, iconSize * 0.05)
             let gap = iconSize * 0.09
             RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
@@ -88,7 +118,7 @@ struct AeroControlAppTile: View {
                     floatingStroke,
                     style: StrokeStyle(lineWidth: dot, lineCap: .round, dash: [0.01, gap])
                 )
-                .frame(width: side, height: side)
+                .frame(width: size.width, height: size.height)
         }
     }
 

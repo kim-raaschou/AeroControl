@@ -6,10 +6,13 @@ struct AeroControlWorkspaceCard: View {
     let isFocused: Bool
     let focusedWindowId: Int
     let icons: [Int: NSImage]
-    let iconSize: CGFloat
+    let previews: [Int: NSImage]
+    let metrics: AeroControlMetrics
     let onFocusWorkspace: () -> Void
     let onFocusWindow: (Int) -> Void
     let onMoveWindow: (Int, String) -> Void
+    /// (source workspace, target workspace): merge every window of source into target.
+    let onMergeWorkspace: (String, String) -> Void
     let onCloseWindow: (Int) -> Void
     var isVertical: Bool = false
 
@@ -19,7 +22,7 @@ struct AeroControlWorkspaceCard: View {
     @ScaledMetric(relativeTo: .caption) private var typeScale: CGFloat = 1
     private var clampedTypeScale: CGFloat { min(max(typeScale, 1), 1.5) }
 
-    private var metrics: AeroControlMetrics { AeroControlMetrics(iconSize: iconSize) }
+    private var iconSize: CGFloat { metrics.iconSize }
     private var cornerRadius: CGFloat { metrics.cornerRadius }
 
     /// Vertical inset between the focus plate and the card content edge. Combined
@@ -32,10 +35,16 @@ struct AeroControlWorkspaceCard: View {
 
     var body: some View {
         content
-            .dropDestination(for: WindowDragData.self) { items, _ in
+            .dropDestination(for: OverviewDragPayload.self) { items, _ in
                 guard let item = items.first else { return false }
                 isDropTarget = false
-                onMoveWindow(item.windowId, workspace.name)
+                switch item {
+                case .window(let id):
+                    onMoveWindow(id, workspace.name)
+                case .workspace(let source):
+                    guard source != workspace.name else { return false }
+                    onMergeWorkspace(source, workspace.name)
+                }
                 return true
             } isTargeted: { isDropTarget = $0 }
             .contentShape(Rectangle())
@@ -104,8 +113,10 @@ struct AeroControlWorkspaceCard: View {
             .overlay(Circle().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)
+            .draggable(OverviewDragPayload.workspace(name: workspace.name)) { numberText.padding(6) }
             .offset(x: metrics.badgeLeadingMargin)
-            .help(workspace.name)
+            .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
+                  : "Workspace \(workspace.name) — drag onto another workspace to merge")
     }
 
     private var badgeFill: Color {
@@ -121,10 +132,11 @@ struct AeroControlWorkspaceCard: View {
                 AeroControlAppTile(
                     window: window,
                     image: icons[window.windowId],
+                    preview: previews[window.windowId],
                     isFocused: window.windowId == focusedWindowId,
                     onFocusWindow: { onFocusWindow(window.windowId) },
                     onCloseWindow: { onCloseWindow(window.windowId) },
-                    iconSize: iconSize
+                    metrics: metrics
                 )
             }
         }

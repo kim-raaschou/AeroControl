@@ -1,5 +1,6 @@
 import AppKit
 import Common
+import ScreenCaptureKit
 
 public final class NativeApiBridgeAdapter: NativeApiBridge {
     private var iconCache: [String: NSImage] = [:]
@@ -43,6 +44,44 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     private func removeCloseMonitor() {
         if let closeMonitor { NSEvent.removeMonitor(closeMonitor) }
         closeMonitor = nil
+    }
+
+    // MARK: Window previews (ScreenCaptureKit)
+
+    public var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
+
+    public func requestPreviewAccess() { _ = CGRequestScreenCaptureAccess() }
+
+    /// Captures each window once, sequentially (a handful of ~10-30 ms captures; a task
+    /// group would only buy complexity). Off-screen windows parked by AeroSpace still
+    /// have content and capture fine. AeroSpace window ids are CGWindowIDs.
+    public func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
+        guard canCapturePreviews, !windowIds.isEmpty,
+              let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        else { return [:] }
+        let wanted = Set(windowIds.map { CGWindowID($0) })
+        var result: [Int: NSImage] = [:]
+        for window in content.windows where wanted.contains(window.windowID) {
+            if let image = await Self.capture(window, maxSize: maxSize) {
+                result[Int(window.windowID)] = image
+            }
+        }
+        return result
+    }
+
+    private static func capture(_ window: SCWindow, maxSize: CGSize) async -> NSImage? {
+        let frame = window.frame
+        guard frame.width > 1, frame.height > 1 else { return nil }
+        let scale = min(maxSize.width / frame.width, maxSize.height / frame.height, 1)
+        let config = SCStreamConfiguration()
+        config.width = max(1, Int(frame.width * scale * 2))    // 2x: keep previews crisp on Retina
+        config.height = max(1, Int(frame.height * scale * 2))
+        config.showsCursor = false
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        guard let cgImage = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else {
+            return nil
+        }
+        return NSImage(cgImage: cgImage, size: NSSize(width: frame.width * scale, height: frame.height * scale))
     }
 
     private static func loadIcon(bundleId: String) -> NSImage {

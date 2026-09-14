@@ -4,10 +4,18 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public static let defaultIconSize: CGFloat = 48
 
     public let iconSize: CGFloat
+    /// With previews on, a tile is a 3:2 window snapshot instead of a square app icon.
+    public let previews: Bool
 
-    public init(iconSize: CGFloat) {
+    public init(iconSize: CGFloat, previews: Bool = false) {
         self.iconSize = Self.sanitizedIconSize(iconSize)
+        self.previews = previews
     }
+
+    public var previewSize: CGSize { CGSize(width: iconSize * 3, height: iconSize * 2) }
+
+    /// The drawn tile, before cell padding: the preview box or the square icon.
+    public var tileSize: CGSize { previews ? previewSize : CGSize(width: iconSize, height: iconSize) }
 
     public static func sanitizedIconSize(_ value: CGFloat) -> CGFloat {
         (value.isFinite && value > 0) ? value : defaultIconSize
@@ -20,7 +28,11 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var tileCellPadding: CGFloat { 2 * scale }
 
     public var tileHeight: CGFloat {
-        iconSize + 2 * tileCellPadding
+        tileSize.height + 2 * tileCellPadding
+    }
+
+    public var tileWidth: CGFloat {
+        tileSize.width + 2 * tileCellPadding
     }
 
     public var appRowSpacing: CGFloat { 8 * scale }
@@ -41,6 +53,12 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     public var focusPlateSize: CGFloat { iconSize - 2 * iconArtworkInset + 2 * focusPlatePadding }
 
+    /// Selection plate around a tile; equals a `focusPlateSize` square for icon tiles.
+    public var focusPlateRect: CGSize {
+        CGSize(width: tileSize.width - 2 * iconArtworkInset + 2 * focusPlatePadding,
+               height: tileSize.height - 2 * iconArtworkInset + 2 * focusPlatePadding)
+    }
+
     public var focusPlatePanelGap: CGFloat { iconSize * 0.12 }
 
     public var focusPlateToCardGap: CGFloat { focusPlatePanelGap + iconArtworkInset }
@@ -54,6 +72,9 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var cardSpacing: CGFloat { 10 * scale }
 
     public var emptyCardWidth: CGFloat { iconSize + 2 * focusPlatePadding }
+
+    /// Small app-icon badge drawn in a preview's corner.
+    public var previewBadgeSize: CGFloat { max(12, iconSize * 0.5) }
 
     // Large "peer chip" workspace badge (crew UX): ~0.75x the icon so it reads as
     // an identity element beside the app icons, not a tiny superscript. Kept purely

@@ -13,6 +13,8 @@ class OverviewWindow: NSPanel {
     private let targetScreen: NSScreen
     private var hasFadedIn = false
     private var placementEdge: DockEdge
+    /// Whether tiles are previews (3:2) or icons; needed to invert cardHeight below.
+    var previews = false
 
     init(targetScreen: NSScreen, edge: DockEdge = .top) {
         self.targetScreen = targetScreen
@@ -75,7 +77,7 @@ class OverviewWindow: NSPanel {
     private func syncGlassFrame() {
         guard let glass = glassWindow else { return }
         glass.setFrame(frame, display: true)
-        let ref = AeroControlMetrics(iconSize: 100)
+        let ref = AeroControlMetrics(iconSize: 100, previews: previews)
         // The panel is exactly one card tall on its short side, and cardHeight is
         // exactly proportional to iconSize, so invert it to recover the rendered
         // icon size. Keep the glass corners concentric with the workspace focus
@@ -83,7 +85,7 @@ class OverviewWindow: NSPanel {
         // (floatingMargin 2 + focusPlateEdgeInset 3).
         let shortSide = min(frame.width, frame.height)
         let inner = max(0, shortSide - 2 * AeroControlPanel.floatingMargin)
-        let rendered = AeroControlMetrics(iconSize: inner / ref.cardHeight * 100)
+        let rendered = AeroControlMetrics(iconSize: inner / ref.cardHeight * 100, previews: previews)
         let plateToGlassGap = AeroControlPanel.floatingMargin + 3
         (glass.contentView as? NSGlassEffectView)?.cornerRadius =
             rendered.cornerRadius + plateToGlassGap

@@ -11,6 +11,19 @@ that history lives in git and the durable architecture/principles live in `AGENT
 
 ---
 
+## 0. One-shot overview with previews & merge — shipped on `feature/oneshot-overview`
+
+Done (see `docs/prompt-oneshot-overview.md` for the brief): build on CLT 27 via the
+macOS 26 SDK; window titles from `list-windows`; `mergeWorkspace` expanded by the reducer
+into an ordered `runSequence` of quiet moves + focus; ScreenCaptureKit previews captured
+at summon and dropped on hide, icon fallback without Screen Recording, menu item to request
+it; workspace-badge drag → merge; overview starts hidden and dismisses on focus actions.
+
+Open follow-ups (deliberately not in v1): capture denylist for sensitive apps; merge
+confirmation above N windows (currently none — merges are reversible by dragging back);
+Esc to dismiss (the panel is non-activating, so it gets no key events); keyboard navigation.
+The code-metrics baseline was re-anchored once for this feature (previews + drag targets).
+
 ## 1. Homebrew distribution — pipeline built; awaiting first publish
 
 Ship AeroControl via `brew install --cask kim-raaschou/tap/aerocontrol`, mirroring

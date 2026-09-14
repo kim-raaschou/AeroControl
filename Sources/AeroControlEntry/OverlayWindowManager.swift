@@ -8,7 +8,10 @@ final class OverlayWindowManager {
     private let settings: SettingsStore
 
     private var windows: [String: OverviewWindow] = [:]
-    private var requestedVisible = true
+    /// One-shot overview: starts hidden, summoned by the toggle.
+    private var requestedVisible = false
+    /// Previews are captured to fit this box (points); tiles are drawn at 3:2 of the icon size.
+    private static let previewCaptureSize = CGSize(width: 480, height: 320)
 
     init(
         state: OverviewStore,
@@ -41,8 +44,28 @@ final class OverlayWindowManager {
             displayIsBuiltin: screen.isBuiltin,
             screenFilter: screenFilter(for: screen),
             availableWidth: availableSize.width,
-            availableHeight: availableSize.height
+            availableHeight: availableSize.height,
+            onDismiss: { [weak self] in self?.hide() }
         )
+    }
+
+    private func hide() {
+        guard requestedVisible else { return }
+        requestedVisible = false
+        state.clearPreviews()
+        for window in windows.values { window.hideFloating() }
+    }
+
+    private func show() {
+        requestedVisible = true
+        if state.previewsAvailable {
+            state.capturePreviews(maxSize: Self.previewCaptureSize)
+        }
+        if windows.isEmpty {
+            rebuild()
+        } else {
+            for window in windows.values { window.revealFloating() }
+        }
     }
 
     func rebuild() {
@@ -66,16 +89,7 @@ final class OverlayWindowManager {
     }
 
     func toggleVisibility() {
-        if requestedVisible {
-            requestedVisible = false
-            for window in windows.values { window.hideFloating() }
-        } else if windows.isEmpty {
-            requestedVisible = true
-            rebuild()
-        } else {
-            requestedVisible = true
-            for window in windows.values { window.revealFloating() }
-        }
+        if requestedVisible { hide() } else { show() }
     }
 
     func toggleMultiScreen() {
@@ -98,10 +112,11 @@ final class OverlayWindowManager {
         let availableSize = screen.visibleFrame.size
         let config = settings.config(forKey: screen.displayUUID, isBuiltin: screen.isBuiltin)
         let window = OverviewWindow(targetScreen: screen, edge: config.edge)
+        window.previews = state.previewsAvailable
         let hostingView = InteractiveHostingView(rootView: makePanel(for: screen, availableSize: availableSize))
         hostingView.sizingOptions = []
         window.installFloatingContent(hosting: hostingView)
-        let seed = AeroControlMetrics(iconSize: config.iconSize).cardHeight + 4
+        let seed = AeroControlMetrics(iconSize: config.iconSize, previews: state.previewsAvailable).cardHeight + 4
         window.showFloating(contentSize: NSSize(width: seed, height: seed))
         if hidden { window.orderOut(nil) }
         windows[screen.displayUUID] = window

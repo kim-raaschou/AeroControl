@@ -3,16 +3,16 @@ import CoreGraphics
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.8
 
-    public static func rowWidth(iconSize: CGFloat, windowCounts: [Int]) -> CGFloat {
+    public static func rowWidth(iconSize: CGFloat, windowCounts: [Int], previews: Bool = false) -> CGFloat {
         guard !windowCounts.isEmpty else { return 0 }
-        let m = AeroControlMetrics(iconSize: iconSize)
+        let m = AeroControlMetrics(iconSize: iconSize, previews: previews)
         var total: CGFloat = 0
         for count in windowCounts {
             if count <= 0 {
                 total += m.emptyCardWidth
             } else {
                 let n = CGFloat(count)
-                let tileWidth = m.iconSize + 2 * m.tileCellPadding
+                let tileWidth = m.tileWidth
                 total += m.cardHorizontalPadding + m.badgeGutter
                     + n * tileWidth
                     + (n - 1) * m.appRowSpacing
@@ -25,17 +25,18 @@ public enum AeroControlLayout {
     public static func effectiveIconSize(
         preferred: CGFloat,
         availableWidth: CGFloat,
-        windowCounts: [Int]
+        windowCounts: [Int],
+        previews: Bool = false
     ) -> CGFloat {
         let pref = AeroControlMetrics.sanitizedIconSize(preferred)
         guard availableWidth > 0, !windowCounts.isEmpty else { return pref }
         let floorSize = AeroControlMetrics.focusPlateFloorIconSize
-        let slopeAbove = rowWidth(iconSize: floorSize, windowCounts: windowCounts) / floorSize
+        let slopeAbove = rowWidth(iconSize: floorSize, windowCounts: windowCounts, previews: previews) / floorSize
         guard slopeAbove > 0 else { return pref }
         let fitAbove = availableWidth / slopeAbove
         if fitAbove >= floorSize { return min(pref, fitAbove) }
-        let widthAtHalf = rowWidth(iconSize: floorSize / 2, windowCounts: windowCounts)
-        let widthAtFloor = rowWidth(iconSize: floorSize, windowCounts: windowCounts)
+        let widthAtHalf = rowWidth(iconSize: floorSize / 2, windowCounts: windowCounts, previews: previews)
+        let widthAtFloor = rowWidth(iconSize: floorSize, windowCounts: windowCounts, previews: previews)
         let slopeBelow = (widthAtFloor - widthAtHalf) / (floorSize / 2)
         guard slopeBelow > 0 else { return min(pref, fitAbove) }
         let intercept = widthAtFloor - slopeBelow * floorSize

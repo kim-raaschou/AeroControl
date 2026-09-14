@@ -2,24 +2,28 @@
 
 [![CI](https://github.com/kim-raaschou/AeroControl/actions/workflows/ci.yml/badge.svg)](https://github.com/kim-raaschou/AeroControl/actions/workflows/ci.yml)
 
-A floating workspace overview for [AeroSpace](https://github.com/nikitabobko/AeroSpace).
+A one-shot workspace overview for [AeroSpace](https://github.com/nikitabobko/AeroSpace).
 
-Summon it to see all workspaces across your monitors with live app icons. Click to focus windows, click workspaces to jump, drag icons to move windows, and hover to close.
+Summon it, see every workspace across your monitors with window previews, do one thing —
+focus a window, jump to a workspace, move a window, merge two workspaces — and it is gone.
 
 All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, focus, move, close).
 
 ## Features
 
-- Live workspace mirror across monitors.
-- Windows shown in the order they sit on screen, not alphabetically.
-- Click app icon to focus window.
-- Click workspace card/badge to focus workspace.
-- Drag app icon to move window between workspaces.
-- Hover app icon to reveal close action.
-- Single-instance toggle: launching AeroControl again toggles visibility instantly.
+- One shot: starts hidden, summoned by launching it again (bind that to a key), dismissed
+  as soon as you focus a window or a workspace.
+- Live workspace mirror across monitors, windows in the order they sit on screen.
+- **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
+  works for windows AeroSpace has parked off-screen). Needs the Screen Recording permission;
+  without it the overview shows app icons instead, and the menu offers to request it.
+- Click a tile to focus the window; click a workspace badge to focus the workspace.
+- Drag a tile onto another workspace to move the window there.
+- **Merge**: drag a workspace *badge* onto another workspace to move all of its windows there,
+  in on-screen order, then focus the target. No undo — drag them back.
+- Hover a tile to reveal the close action.
 - Multi-screen support: one selected screen or all screens.
 - Menu-bar configuration with persisted settings.
-- No extra macOS privacy permissions required for AeroControl itself.
 
 ## Gallery
 
@@ -33,6 +37,8 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 
 - macOS 26+
 - [AeroSpace](https://nikitabobko.github.io/AeroSpace/guide#installation) 0.21.1 or newer
+- Optional: Screen Recording permission for AeroControl (window previews). Everything else
+  works without any privacy permission.
 
 ```bash
 brew install --cask nikitabobko/tap/aerospace
@@ -52,7 +58,9 @@ brew install --cask kim-raaschou/tap/aerocontrol
 
 ### Build from source
 
-Requires Swift 6.2 (Xcode 26 or [swift.org](https://www.swift.org/install/macos/)) and `make`.
+Requires Swift 6.2+ and `make`. Plain Command Line Tools work: the Makefile builds against
+the bundled macOS 26 SDK (CLT 27's macOS 27 SDK needs Xcode's SwiftUI macro plugin) and
+points `swift test` at the Swift Testing plugin. Set `SDKROOT` yourself to override.
 
 ```bash
 git clone https://github.com/kim-raaschou/AeroControl.git
@@ -61,6 +69,14 @@ make install
 ```
 
 `make install` builds and installs `AeroControl.app` to `/Applications`.
+
+### Summon it from AeroSpace
+
+Launching AeroControl while it runs toggles the overview, so bind a key to a new launch:
+
+```toml
+cmd-ctrl-alt-space = ['exec-and-forget open -n /Applications/AeroControl.app']
+```
 
 ## Configure it from the menu bar
 

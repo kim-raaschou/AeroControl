@@ -214,5 +214,14 @@
     "complexity": 557,
     "prodComplexity": 325,
     "files": 39
+  },
+  {
+    "timestamp": "2026-09-14T22:32:08+02:00",
+    "commit": "3316054",
+    "subject": "Domain: window titles, quiet moves and an ordered merge action",
+    "code": 4074,
+    "complexity": 614,
+    "prodComplexity": 353,
+    "files": 41
   }
 ]
