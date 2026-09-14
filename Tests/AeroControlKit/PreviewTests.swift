@@ -30,9 +30,9 @@ struct PreviewMetricsTests {
         #expect(AeroControlLayout.rows(forCount: 5) == 2)
         let card = AeroControlLayout.cardSize(count: 5, available: CGSize(width: 1486, height: 960))
         let gap = AeroControlLayout.cardGap
-        #expect(card.width * 3 + gap * 2 <= 1486)
-        #expect(card.height * 2 + gap <= 960)
-        #expect(abs(card.height / card.width - AeroControlLayout.cardAspect) < 0.02)
+        // Uses the whole area: within a point of the width and height in both directions.
+        #expect(card.width * 3 + gap * 2 <= 1486 && card.width * 3 + gap * 2 > 1486 - 3)
+        #expect(card.height * 2 + gap <= 960 && card.height * 2 + gap > 960 - 3)
     }
 
     @Test("grid shape for other counts")
@@ -46,7 +46,7 @@ struct PreviewMetricsTests {
 
     @Test("tiles inside a card fill it and never overflow")
     func tilesFitCard() {
-        let card = CGSize(width: 470, height: 291)
+        let card = CGSize(width: 479, height: 468)
         for count in 1...9 {
             let w = AeroControlLayout.tileWidth(windowCount: count, card: card)
             let cols = AeroControlLayout.columns(forCount: count), rows = AeroControlLayout.rows(forCount: count)

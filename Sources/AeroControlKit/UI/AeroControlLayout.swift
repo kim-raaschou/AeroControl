@@ -4,10 +4,8 @@ import CoreGraphics
 /// equal cards (5 → 3 + 2), and each card's windows in a near-square grid of 3:2 tiles
 /// sized to fill the card. Everything here is unit-tested; the views only draw.
 public enum AeroControlLayout {
-    public static let usableScreenFraction: CGFloat = 0.86
-    public static let cardGap: CGFloat = 28
-    /// Card height as a fraction of its width (a 16:10-ish "desktop").
-    public static let cardAspect: CGFloat = 0.62
+    public static let usableScreenFraction: CGFloat = 0.94
+    public static let cardGap: CGFloat = 24
     /// Tile height as a fraction of its width.
     public static let tileAspect: CGFloat = 2.0 / 3.0
     public static let tileSpacing: CGFloat = 14
@@ -25,14 +23,14 @@ public enum AeroControlLayout {
         return columns == 0 ? 0 : Int((Double(count) / Double(columns)).rounded(.up))
     }
 
-    /// Equal card size so `count` cards fit `available` in the near-square grid.
+    /// Equal card size so `count` cards use all of `available` in the near-square grid:
+    /// the columns share the width and the rows share the height.
     public static func cardSize(count: Int, available: CGSize) -> CGSize {
         let columns = columns(forCount: count), rows = rows(forCount: count)
         guard columns > 0, available.width > 0, available.height > 0 else { return .zero }
         let width = (available.width - CGFloat(columns - 1) * cardGap) / CGFloat(columns)
-        let heightByRows = (available.height - CGFloat(rows - 1) * cardGap) / CGFloat(rows)
-        let height = min(heightByRows, width * cardAspect)
-        return CGSize(width: (height / cardAspect).rounded(.down), height: height.rounded(.down))
+        let height = (available.height - CGFloat(rows - 1) * cardGap) / CGFloat(rows)
+        return CGSize(width: width.rounded(.down), height: height.rounded(.down))
     }
 
     /// Largest square icon tile; icons bigger than this stop looking like icons.
