@@ -2,7 +2,7 @@ import Foundation
 
 public enum AerospaceCommand {
     public static let listWindowsFields: [AerospaceField] = [
-        .windowId, .appName, .appBundleId, .workspace, .parentLayout, .monitorId,
+        .windowId, .appName, .appBundleId, .windowTitle, .workspace, .parentLayout, .monitorId,
     ]
 
     public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId, .nsScreenId]
@@ -27,8 +27,10 @@ public enum AerospaceCommand {
         ["focus", "--window-id", String(windowId)]
     }
 
-    public static func moveWindowToWorkspace(_ windowId: Int, workspace: String) -> [String] {
-        ["move-node-to-workspace", "--window-id", String(windowId), "--focus-follows-window", workspace]
+    public static func moveWindowToWorkspace(_ windowId: Int, workspace: String, followFocus: Bool = true) -> [String] {
+        ["move-node-to-workspace", "--window-id", String(windowId)]
+            + (followFocus ? ["--focus-follows-window"] : [])
+            + [workspace]
     }
 
     public static func closeWindow(_ windowId: Int) -> [String] {
@@ -43,6 +45,12 @@ public enum AerospaceCommand {
             focusWindow(windowId)
         case .moveWindow(let windowId, let workspace):
             moveWindowToWorkspace(windowId, workspace: workspace)
+        case .moveWindowQuietly(let windowId, let workspace):
+            moveWindowToWorkspace(windowId, workspace: workspace, followFocus: false)
+        case .mergeWorkspace(_, let target):
+            // Expanded by the reducer into a runSequence of quiet moves; only the final
+            // focus switch remains if this argv is ever requested directly.
+            focusWorkspace(target)
         case .closeWindow(let windowId):
             closeWindow(windowId)
         }

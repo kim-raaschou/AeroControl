@@ -22,6 +22,7 @@ public struct DecodedWindow: Decodable, Equatable {
     public let windowId: Int
     public let appName: String
     public let appBundleId: String
+    public var windowTitle: String?
     public let workspace: String
     public let parentLayout: String
     @TolerantInt public var monitorId: Int
@@ -30,6 +31,7 @@ public struct DecodedWindow: Decodable, Equatable {
         case windowId = "window-id"
         case appName = "app-name"
         case appBundleId = "app-bundle-id"
+        case windowTitle = "window-title"
         case workspace
         case parentLayout = "window-parent-container-layout"
         case monitorId = "monitor-id"
@@ -75,7 +77,8 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 windowId: dw.windowId,
                 appName: dw.appName,
                 bundleId: dw.appBundleId,
-                isFloating: dw.parentLayout == "floating"
+                isFloating: dw.parentLayout == "floating",
+                title: dw.windowTitle ?? ""
             ),
             workspace: dw.workspace,
             monitorId: dw.monitorId

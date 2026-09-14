@@ -4,6 +4,7 @@ public enum AerospaceField: String, CaseIterable, CodingKey {
     case windowId = "window-id"
     case appName = "app-name"
     case appBundleId = "app-bundle-id"
+    case windowTitle = "window-title"
     case workspace = "workspace"
     case parentLayout = "window-parent-container-layout"
     case monitorId = "monitor-id"

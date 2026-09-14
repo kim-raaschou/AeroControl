@@ -10,7 +10,7 @@ struct AerospaceCommandArgvTests {
     func listWindows() {
         #expect(AerospaceCommand.listWindows() == [
             "list-windows", "--all", "--json", "--format",
-            "%{window-id} %{app-name} %{app-bundle-id} %{workspace} %{window-parent-container-layout} %{monitor-id}",
+            "%{window-id} %{app-name} %{app-bundle-id} %{window-title} %{workspace} %{window-parent-container-layout} %{monitor-id}",
         ])
     }
 
@@ -38,6 +38,7 @@ private func sentinel(for field: AerospaceField) -> Any {
     case .windowId: return 111
     case .appName: return "app"
     case .appBundleId: return "bundle"
+    case .windowTitle: return "title"
     case .workspace: return "ws"
     case .parentLayout: return "pl"
     case .monitorId: return 222
@@ -62,6 +63,7 @@ struct AerospaceFieldDriftGuardTests {
         #expect(w.windowId == 111)
         #expect(w.appName == "app")
         #expect(w.appBundleId == "bundle")
+        #expect(w.windowTitle == "title")
         #expect(w.workspace == "ws")
         #expect(w.parentLayout == "pl")
         #expect(w.monitorId == 222)

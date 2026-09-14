@@ -180,6 +180,8 @@ public class OverviewStore {
                 onMonitorsChanged?()
             case .runAction(let action):
                 runAction(action)
+            case .runSequence(let actions):
+                runSequence(actions)
             }
         }
     }
@@ -189,11 +191,24 @@ public class OverviewStore {
             guard let self else { return }
             _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
             switch action {
-            case .moveWindow, .closeWindow:
+            case .moveWindow, .moveWindowQuietly, .closeWindow:
                 self.requestRefresh()
             default:
                 break
             }
+        }
+    }
+
+    /// Runs actions strictly one after another (a merge must keep the tiling order and
+    /// switch focus last), then reloads once. A failing step does not stop the rest:
+    /// AeroSpace stays the source of truth and the reload shows what actually happened.
+    private func runSequence(_ actions: [AeroControlAction]) {
+        Task { [weak self] in
+            guard let self else { return }
+            for action in actions {
+                _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
+            }
+            self.requestRefresh()
         }
     }
 

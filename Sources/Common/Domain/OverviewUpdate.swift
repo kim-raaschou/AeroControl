@@ -40,6 +40,8 @@ public enum OverviewEffect: Equatable {
     case refresh
     case monitorsChanged
     case runAction(AeroControlAction)
+    /// Actions that must run one after another, in order (e.g. a merge).
+    case runSequence([AeroControlAction])
 }
 
 public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (OverviewModel, [OverviewEffect]) {
@@ -54,7 +56,16 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
 }
 
 private func applyAction(_ state: OverviewModel, _ action: AeroControlAction) -> (OverviewModel, [OverviewEffect]) {
-    (state, [.runAction(action)])
+    guard case .mergeWorkspace(let source, let target) = action else {
+        return (state, [.runAction(action)])
+    }
+    guard source != target,
+          let windows = state.workspaces.first(where: { $0.name == source })?.windows,
+          !windows.isEmpty else {
+        return (state, [])
+    }
+    let moves = windows.map { AeroControlAction.moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) }
+    return (state, [.runSequence(moves + [.focusWorkspace(target)])])
 }
 
 private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (OverviewModel, [OverviewEffect]) {

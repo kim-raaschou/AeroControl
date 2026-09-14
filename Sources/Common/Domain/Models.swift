@@ -5,12 +5,14 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let appName: String
     public let bundleId: String
     public let isFloating: Bool
+    public let title: String
 
-    public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false) {
+    public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false, title: String = "") {
         self.windowId = windowId
         self.appName = appName
         self.bundleId = bundleId
         self.isFloating = isFloating
+        self.title = title
     }
 }
 
