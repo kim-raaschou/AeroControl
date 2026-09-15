@@ -71,32 +71,47 @@ public enum AeroControlLayout {
     /// Card sizes per row for `windowCounts` (in AeroSpace order) inside `available`.
     /// Empty workspaces get `emptyCardWidth`; the rest share the remaining width by weight,
     /// never below `minCardWidth` when the row allows it.
-    /// Snapshot cells are shaped like the screen the windows live on.
+    /// Snapshot cells are shaped like the screen when nothing better is known.
     public static func previewAspect(for available: CGSize) -> CGFloat {
         available.width > 0 ? available.height / available.width : tileAspect
     }
 
+    /// Cell aspect (height/width) for one workspace: the median of its snapshots' aspects,
+    /// so four tall columns get tall cells and one full-width window a wide one. Mixed
+    /// workspaces get a middle ground; every snapshot still fits inside its cell.
+    public static func cellAspect(snapshotSizes: [CGSize], fallback: CGFloat) -> CGFloat {
+        let aspects = snapshotSizes.filter { $0.width > 0 && $0.height > 0 }.map { $0.height / $0.width }.sorted()
+        guard !aspects.isEmpty else { return fallback }
+        return aspects[aspects.count / 2]
+    }
+
     public static func cardSizes(windowCounts: [Int], available: CGSize) -> [[CGSize]] {
-        let n = windowCounts.count
-        guard n > 0, available.width > 0, available.height > 0 else { return [] }
         let aspect = previewAspect(for: available)
+        return cardSizes(windowCounts: windowCounts, aspects: windowCounts.map { _ in aspect }, available: available)
+    }
+
+    /// `aspects` is the cell aspect per workspace, in the same order as `windowCounts`.
+    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat], available: CGSize) -> [[CGSize]] {
+        let n = windowCounts.count
+        guard n > 0, aspects.count == n, available.width > 0, available.height > 0 else { return [] }
         let weights = windowCounts.map(weight(windowCount:))
         let rows = partition(weights: weights, rowCount: rowCount(forCount: n))
         let counts = rows.map { Array(windowCounts[$0]) }
+        let rowAspects = rows.map { Array(aspects[$0]) }
         let widths = counts.map { rowWidths(windowCounts: $0, rowWidth: available.width) }
         let start = rowHeights(rowWeights: rows.map { weights[$0].reduce(0, +) }, totalHeight: available.height)
-        let heights = rowHeights(windowCounts: counts, widths: widths, start: start, aspect: aspect)
+        let heights = rowHeights(windowCounts: counts, widths: widths, aspects: rowAspects, start: start)
         return zip(zip(counts, widths), heights).map { row, height in
             row.1.map { CGSize(width: $0, height: height) }
         }
     }
 
     /// Snapshot area a row of cards yields at `height`: what the height search maximizes.
-    static func snapshotArea(windowCounts: [Int], widths: [CGFloat], height: CGFloat, aspect: CGFloat) -> CGFloat {
-        zip(windowCounts, widths).reduce(0) { sum, card in
-            guard card.0 > 0 else { return sum }
-            let tile = tileGrid(windowCount: card.0, card: CGSize(width: card.1, height: height), aspect: aspect).width
-            return sum + CGFloat(card.0) * tile * tile * aspect
+    static func snapshotArea(windowCounts: [Int], widths: [CGFloat], aspects: [CGFloat], height: CGFloat) -> CGFloat {
+        windowCounts.indices.reduce(0) { sum, i in
+            guard windowCounts[i] > 0 else { return sum }
+            let tile = tileGrid(windowCount: windowCounts[i], card: CGSize(width: widths[i], height: height), aspect: aspects[i]).width
+            return sum + CGFloat(windowCounts[i]) * tile * tile * aspects[i]
         }
     }
 
@@ -104,11 +119,11 @@ public enum AeroControlLayout {
     /// share) and moving height between rows in steps of 2% while that grows the area. A
     /// row whose tiles are limited by width gives height away for free; a row with a 2x2
     /// grid limited by height takes it.
-    static func rowHeights(windowCounts: [[Int]], widths: [[CGFloat]], start: [CGFloat], aspect: CGFloat) -> [CGFloat] {
+    static func rowHeights(windowCounts: [[Int]], widths: [[CGFloat]], aspects: [[CGFloat]], start: [CGFloat]) -> [CGFloat] {
         var heights = start
         let step = (start.reduce(0, +) / 50).rounded(.down)
         func area(_ h: [CGFloat]) -> CGFloat {
-            h.indices.reduce(0) { $0 + snapshotArea(windowCounts: windowCounts[$1], widths: widths[$1], height: h[$1], aspect: aspect) }
+            h.indices.reduce(0) { $0 + snapshotArea(windowCounts: windowCounts[$1], widths: widths[$1], aspects: aspects[$1], height: h[$1]) }
         }
         var best = area(heights), improved = step > 0
         while improved {

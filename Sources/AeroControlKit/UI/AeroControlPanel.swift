@@ -51,9 +51,17 @@ public struct AeroControlPanel: View {
                height: availableHeight * AeroControlLayout.usableScreenFraction)
     }
 
+    /// Cell aspect per workspace from the snapshots already captured; the screen's when none.
+    private func cellAspect(_ workspace: WorkspaceInfo) -> CGFloat {
+        let sizes = workspace.windows.compactMap { state.previews[$0.windowId]?.size }
+        return AeroControlLayout.cellAspect(snapshotSizes: sizes, fallback: AeroControlLayout.previewAspect(for: usable))
+    }
+
     private var grid: some View {
         let all = workspaces
-        let sizes = AeroControlLayout.cardSizes(windowCounts: all.map { $0.windows.count }, available: usable)
+        let sizes = AeroControlLayout.cardSizes(
+            windowCounts: all.map { $0.windows.count }, aspects: all.map(cellAspect), available: usable
+        )
         var index = 0
         let rows: [[(WorkspaceInfo, CGSize)]] = sizes.map { row in
             row.map { size in defer { index += 1 }; return (all[index], size) }
@@ -77,7 +85,7 @@ public struct AeroControlPanel: View {
             icons: state.icons,
             previews: state.previews,
             showPreviews: state.previewsAvailable,
-            previewAspect: AeroControlLayout.previewAspect(for: usable),
+            previewAspect: cellAspect(workspace),
             size: size,
             onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
             onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },

@@ -107,6 +107,18 @@ struct PreviewMetricsTests {
         #expect(tile.columns == 2 && tile.width > 480)                    // 2x2 with snapshots over 480 pt wide
     }
 
+    @Test("cell aspect is the median snapshot aspect; four tall columns lay out as one row of tall cells")
+    func tallColumns() {
+        let tall = CGSize(width: 860, height: 1440)                             // a quarter of an ultrawide
+        #expect(abs(AeroControlLayout.cellAspect(snapshotSizes: [tall, tall, tall, tall], fallback: 0.5) - 1440.0 / 860.0) < 0.001)
+        #expect(AeroControlLayout.cellAspect(snapshotSizes: [], fallback: 0.5) == 0.5)
+        #expect(AeroControlLayout.cellAspect(snapshotSizes: [.zero], fallback: 0.5) == 0.5)
+        let card = CGSize(width: 2130, height: 900)
+        let grid = AeroControlLayout.tileGrid(windowCount: 4, card: card, aspect: 1440.0 / 860.0)
+        #expect(grid.columns == 4)                                               // like AeroSpace laid them out
+        #expect(grid.width * 1440 / 860 <= card.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane + 1)
+    }
+
     @Test("tile grid picks the column count that maximizes tile size and never overflows")
     func tileGrid() {
         let wide = CGSize(width: 1624, height: 513)
