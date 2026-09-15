@@ -12,7 +12,7 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ## Features
 
 - One shot, Mission-Control style: a full-screen blurred overlay on the screen under the
-  mouse. Starts hidden, summoned by a SIGUSR1 or by launching it again (bind that to a key), dismissed as
+  mouse. Starts hidden, summoned by opening it again (bind that to a key), dismissed as
   soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
 - Space follows content, Mission-Control style: one card per workspace, its width
   proportional to √(windows); empty workspaces shrink to a badge. Rows are balanced by
@@ -92,13 +92,16 @@ Security ▸ Screen & System Audio Recording) and relaunch AeroControl.
 
 ### Summon it from AeroSpace
 
-A running AeroControl toggles the overview on SIGUSR1, and launching it again while it runs
-sends that signal for you. The direct signal skips the second process and shows the overview
-about 200 ms sooner, so bind a key to it and fall back to a launch when it is not running:
+Opening AeroControl while it runs toggles the overview: Launch Services hands the running
+instance a reopen event, no second process is started. When it is not running the same command
+starts it. Bind a key to it:
 
 ```toml
-cmd-ctrl-alt-space = ['exec-and-forget pkill -USR1 -x AeroControl || open -a AeroControl']
+cmd-ctrl-alt-space = ['exec-and-forget open -a AeroControl']
 ```
+
+`open -n` (a forced second instance, which signals the first with SIGUSR1 and exits) still
+works but costs about 200 ms more.
 
 ## Configure it from the menu bar
 

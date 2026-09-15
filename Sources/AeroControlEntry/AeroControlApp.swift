@@ -103,6 +103,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         exit(0)
     }
 
+    /// `open -a AeroControl` (or a Dock/Spotlight launch) while running: toggle the overview.
+    /// No second process, no signal; Launch Services delivers a reopen to this instance.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        overlayManager.toggleVisibility()
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         performTeardown()
     }
