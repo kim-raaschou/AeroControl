@@ -123,7 +123,7 @@ public enum AeroControlLayout {
     /// A grid whose tiles are within this fraction of the largest possible is "as good":
     /// among those the one with more rows wins, so four windows in a wide card become
     /// 2x2 rather than a strip of four with empty space below (Mission Control style).
-    public static let gridTolerance: CGFloat = 0.10
+    public static let gridTolerance: CGFloat = 0.20
 
     /// Column count and tile width for `windowCount` tiles inside the card's inner area:
     /// the largest tiles, with a preference for squarer grids within `gridTolerance`.

@@ -107,10 +107,11 @@ struct PreviewMetricsTests {
         #expect(AeroControlLayout.tileGrid(windowCount: 0, card: wide) == (0, 0))
         // Four windows in a wide card: a 2x2 grid loses a few percent of tile width to a
         // strip of four but fills the card, so it wins within the tolerance.
-        let fourWide = CGSize(width: 1600, height: 562)
-        #expect(AeroControlLayout.tileGrid(windowCount: 4, card: fourWide).columns == 2)
-        #expect(AeroControlLayout.tileGrid(windowCount: 2, card: fourWide).columns == 2)   // 1x2 stays: 2x1 would halve the tiles
-        #expect(AeroControlLayout.tileGrid(windowCount: 3, card: fourWide).columns == 3)   // 1x3 stays for the same reason
+        for fourWide in [CGSize(width: 1600, height: 562), CGSize(width: 2130, height: 650)] {   // the wide ws-1 card as measured
+            #expect(AeroControlLayout.tileGrid(windowCount: 4, card: fourWide).columns == 2)
+            #expect(AeroControlLayout.tileGrid(windowCount: 2, card: fourWide).columns == 2)   // 1x2 stays: 2x1 would halve the tiles
+            #expect(AeroControlLayout.tileGrid(windowCount: 3, card: fourWide).columns == 3)   // 1x3 stays for the same reason
+        }
         #expect(AeroControlLayout.tileGrid(windowCount: 1, card: CGSize(width: 500, height: 500), aspect: 1).width == AeroControlLayout.maxIconTile)
     }
 }
