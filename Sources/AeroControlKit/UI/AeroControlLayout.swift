@@ -120,20 +120,27 @@ public enum AeroControlLayout {
         return widths
     }
 
-    /// Column count and tile width that make `windowCount` tiles as large as possible
-    /// inside the card's inner area. `aspect` is height/width: `tileAspect` or 1 (icons).
+    /// A grid whose tiles are within this fraction of the largest possible is "as good":
+    /// among those the one with more rows wins, so four windows in a wide card become
+    /// 2x2 rather than a strip of four with empty space below (Mission Control style).
+    public static let gridTolerance: CGFloat = 0.10
+
+    /// Column count and tile width for `windowCount` tiles inside the card's inner area:
+    /// the largest tiles, with a preference for squarer grids within `gridTolerance`.
+    /// `aspect` is height/width: `tileAspect` or 1 (icons).
     public static func tileGrid(windowCount: Int, card: CGSize, aspect: CGFloat = tileAspect) -> (columns: Int, width: CGFloat) {
         guard windowCount > 0 else { return (0, 0) }
         let innerWidth = card.width - 2 * cardPadding
         let innerHeight = card.height - cardPadding - badgeLane
-        var best = (columns: 1, width: CGFloat(0))
-        for columns in 1...windowCount {
+        let candidates: [(columns: Int, width: CGFloat)] = (1...windowCount).map { columns in
             let rows = Int((Double(windowCount) / Double(columns)).rounded(.up))
             let byWidth = (innerWidth - CGFloat(columns - 1) * tileSpacing) / CGFloat(columns)
             let byHeight = ((innerHeight - CGFloat(rows - 1) * tileSpacing) / CGFloat(rows)) / aspect
-            let width = min(byWidth, byHeight)
-            if width > best.width { best = (columns, width) }
+            return (columns, min(byWidth, byHeight))
         }
+        let largest = candidates.map(\.width).max() ?? 0
+        // Candidates are in ascending column order, so the first good enough has the most rows.
+        let best = candidates.first { $0.width >= largest * (1 - gridTolerance) } ?? (1, 0)
         var width = best.width
         if aspect == 1 { width = min(width, maxIconTile) }
         return (best.columns, max(minTileWidth, width.rounded(.down)))
