@@ -66,35 +66,34 @@ struct AeroControlWorkspaceCard: View {
         return colorScheme == .dark ? .white.opacity(0.18) : .black.opacity(0.12)
     }
 
+    /// Just the badge; the tiles say how many windows there are.
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 0) {
             badge
-            Text(workspace.windows.isEmpty ? "Empty" : "\(workspace.windows.count) window\(workspace.windows.count == 1 ? "" : "s")")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
             Spacer(minLength: 0)
         }
     }
 
+    /// The workspace name as a quiet monogram: a filled circle with no outline, in the
+    /// accent color for the focused workspace and a faint tint otherwise.
     private var badge: some View {
         Text(workspace.name)
-            .font(.system(size: 14, weight: .bold, design: .rounded))
+            .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
             .lineLimit(1)
-            .foregroundStyle(isFocused ? Color.white : .primary)
-            .frame(width: 26, height: 26)
+            .foregroundStyle(isFocused ? Color.white : .secondary)
+            .frame(width: 24, height: 24)
             .background(isFocused ? Color.accentColor : badgeFill, in: Circle())
-            .overlay(Circle().strokeBorder(.white.opacity(colorScheme == .dark ? 0.25 : 0.4), lineWidth: 1))
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)
             .draggable(OverviewDragPayload.workspace(name: workspace.name)) {
-                Text(workspace.name).font(.system(size: 14, weight: .bold, design: .rounded)).padding(8)
+                Text(workspace.name).font(.system(size: 13, weight: .semibold, design: .rounded)).padding(8)
             }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
                   : "Workspace \(workspace.name) — drag onto another workspace to merge")
     }
 
     private var badgeFill: Color {
-        colorScheme == .dark ? .black.opacity(0.45) : .white.opacity(0.72)
+        colorScheme == .dark ? .white.opacity(0.10) : .black.opacity(0.07)
     }
 
     @ViewBuilder private var tiles: some View {
