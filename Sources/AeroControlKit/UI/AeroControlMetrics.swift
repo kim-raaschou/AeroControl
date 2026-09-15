@@ -90,7 +90,8 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public var emptyCardWidth: CGFloat { iconSize + 2 * focusPlatePadding }
 
     /// Small app-icon badge drawn in a preview's corner.
-    public var previewBadgeSize: CGFloat { max(12, iconSize * 0.5) }
+    /// App icon badged on a snapshot: small enough never to compete with the image.
+    public var previewBadgeSize: CGFloat { min(28, max(16, iconSize * 0.18)) }
 
     // Large "peer chip" workspace badge (crew UX): ~0.75x the icon so it reads as
     // an identity element beside the app icons, not a tiny superscript. Kept purely

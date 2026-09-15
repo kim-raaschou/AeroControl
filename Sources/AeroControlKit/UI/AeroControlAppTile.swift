@@ -142,7 +142,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var closeButton: some View {
         if isHovering {
-            let diameter = max(11, iconSize * 0.32)
+            let diameter: CGFloat = metrics.previews ? 18 : max(11, iconSize * 0.32)
             Button(action: onCloseWindow) {
                 Image(systemName: "xmark")
                     .font(.system(size: diameter * 0.45, weight: .bold))
