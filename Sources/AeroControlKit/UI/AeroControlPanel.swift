@@ -51,41 +51,56 @@ public struct AeroControlPanel: View {
                height: availableHeight * AeroControlLayout.usableScreenFraction)
     }
 
-    /// Cell aspect per workspace from the snapshots already captured; the screen's when none.
-    private func cellAspect(_ workspace: WorkspaceInfo) -> CGFloat {
+    /// A screen map when the store has a frame for exactly this workspace's windows and none
+    /// of them overlap; decided here, once, for both the layout and the card.
+    private func map(_ workspace: WorkspaceInfo, previews: Bool) -> WorkspaceMap? {
+        let ids = workspace.windows.map(\.windowId)
+        guard previews, let cached = state.frames[workspace.name], Set(cached.keys) == Set(ids) else { return nil }
+        let frames = ids.map { cached[$0]! }
+        return AeroControlLayout.mapBounds(frames: frames).map { WorkspaceMap(frames: frames, bounds: $0) }
+    }
+
+    /// Cell aspect of a grid card: the median of its snapshots', the screen's when none.
+    private func gridAspect(_ workspace: WorkspaceInfo) -> CGFloat {
         let sizes = workspace.windows.compactMap { state.previews[$0.windowId]?.size }
         return AeroControlLayout.cellAspect(snapshotSizes: sizes, fallback: AeroControlLayout.previewAspect(for: usable))
     }
 
     private var grid: some View {
         let all = workspaces
+        let previews = state.previewsAvailable
+        let maps = all.map { map($0, previews: previews) }
         let sizes = AeroControlLayout.cardSizes(
-            windowCounts: all.map { $0.windows.count }, aspects: all.map(cellAspect), available: usable
+            windowCounts: all.map { $0.windows.count },
+            aspects: zip(all, maps).map { $1.map { $0.bounds.height / $0.bounds.width } ?? gridAspect($0) },
+            cells: zip(all, maps).map { $1 == nil ? $0.windows.count : 1 },
+            available: usable
         )
         var index = 0
-        let rows: [[(WorkspaceInfo, CGSize)]] = sizes.map { row in
-            row.map { size in defer { index += 1 }; return (all[index], size) }
+        let rows: [[(WorkspaceInfo, CGSize, WorkspaceMap?)]] = sizes.map { row in
+            row.map { size in defer { index += 1 }; return (all[index], size, maps[index]) }
         }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
-                    ForEach(row, id: \.0.id) { workspace, size in
-                        card(for: workspace, size: size)
+                    ForEach(row, id: \.0.id) { workspace, size, map in
+                        card(for: workspace, size: size, map: map, previews: previews)
                     }
                 }
             }
         }
     }
 
-    private func card(for workspace: WorkspaceInfo, size: CGSize) -> some View {
+    private func card(for workspace: WorkspaceInfo, size: CGSize, map: WorkspaceMap?, previews: Bool) -> some View {
         AeroControlWorkspaceCard(
             workspace: workspace,
             isFocused: workspace.name == state.model.focusedWorkspace,
             focusedWindowId: state.model.focusedWindowId,
             icons: state.icons,
             previews: state.previews,
-            showPreviews: state.previewsAvailable,
-            previewAspect: cellAspect(workspace),
+            map: map,
+            showPreviews: previews,
+            previewAspect: gridAspect(workspace),
             size: size,
             onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
             onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },

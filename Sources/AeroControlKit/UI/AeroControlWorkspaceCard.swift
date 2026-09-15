@@ -1,14 +1,24 @@
 import SwiftUI
 import Common
 
-/// One "desktop" card: badge at the top-left, the workspace's windows as 3:2 tiles in a
-/// grid below. Drop target for window tiles (move) and workspace badges (merge).
+/// A workspace drawn as a map of the screen: each window's frame, and the outline of all.
+struct WorkspaceMap {
+    let frames: [CGRect]
+    let bounds: CGRect
+}
+
+/// One "desktop" card: badge at the top-left, the workspace's windows below, as a map of
+/// the screen when their frames are known, otherwise as a grid of snapshot cells or icons.
+/// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
     let isFocused: Bool
     let focusedWindowId: Int
     let icons: [Int: NSImage]
     let previews: [Int: NSImage]
+    /// The windows' on-screen frames (in window order) and their outline, when the card is a
+    /// map of the screen instead of a grid. Decided by the panel, which also sizes the card.
+    let map: WorkspaceMap?
     /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
     let showPreviews: Bool
     /// Height/width of a snapshot cell, the screen's own aspect.
@@ -34,8 +44,7 @@ struct AeroControlWorkspaceCard: View {
         // stack and push the badge out of its corner.
         VStack(alignment: .leading, spacing: 0) {
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            tiles.frame(width: size.width - 2 * AeroControlLayout.cardPadding,
-                        height: size.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane)
+            tiles.frame(width: innerSize.width, height: innerSize.height)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
@@ -104,32 +113,56 @@ struct AeroControlWorkspaceCard: View {
         colorScheme == .dark ? .white.opacity(0.10) : .black.opacity(0.07)
     }
 
+    private var innerSize: CGSize {
+        CGSize(width: size.width - 2 * AeroControlLayout.cardPadding,
+               height: size.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane)
+    }
+
     @ViewBuilder private var tiles: some View {
-        let windows = workspace.windows
-        if windows.isEmpty {
+        if workspace.windows.isEmpty {
             Color.clear
+        } else if let map {
+            screenMap(AeroControlLayout.minimap(frames: map.frames, bounds: map.bounds, in: innerSize))
         } else {
-            let aspect: CGFloat = showPreviews ? previewAspect : 1
-            let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
-            let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews, previewAspect: previewAspect)
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
-                spacing: AeroControlLayout.tileSpacing
-            ) {
-                ForEach(windows, id: \.windowId) { window in
-                    AeroControlAppTile(
-                        window: window,
-                        image: icons[window.windowId],
-                        preview: previews[window.windowId],
-                        isFocused: window.windowId == focusedWindowId,
-                        onFocusWindow: { onFocusWindow(window.windowId) },
-                        onCloseWindow: { onCloseWindow(window.windowId) },
-                        metrics: metrics
-                    )
-                }
-            }
-            .animation(.easeInOut(duration: 0.15), value: windows)
+            grid
         }
+    }
+
+    /// The windows drawn where AeroSpace put them, one cell per window in window order.
+    private func screenMap(_ cells: [CGRect]) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(zip(workspace.windows, cells)), id: \.0.windowId) { window, cell in
+                tile(window, metrics: .fitting(cellWidth: cell.width, previews: true, previewAspect: cell.height / cell.width))
+                    .offset(x: cell.minX, y: cell.minY)
+            }
+        }
+        .frame(width: innerSize.width, height: innerSize.height, alignment: .topLeading)
+    }
+
+    private var grid: some View {
+        let windows = workspace.windows
+        let aspect: CGFloat = showPreviews ? previewAspect : 1
+        let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
+        let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews, previewAspect: previewAspect)
+        return LazyVGrid(
+            columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
+            spacing: AeroControlLayout.tileSpacing
+        ) {
+            ForEach(windows, id: \.windowId) { window in tile(window, metrics: metrics) }
+        }
+        .animation(.easeInOut(duration: 0.15), value: windows)
+    }
+
+    private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
+        AeroControlAppTile(
+            window: window,
+            image: icons[window.windowId],
+            preview: previews[window.windowId],
+            isFocused: window.windowId == focusedWindowId,
+            onFocusWindow: { onFocusWindow(window.windowId) },
+            onCloseWindow: { onCloseWindow(window.windowId) },
+            metrics: metrics
+        )
     }
 
     @ViewBuilder private var dropTargetHint: some View {
