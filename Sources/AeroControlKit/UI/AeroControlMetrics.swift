@@ -25,9 +25,12 @@ public struct AeroControlMetrics: Equatable, Sendable {
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
+    /// Gap between a bare snapshot and its focus ring: a few points, whatever the tile size.
+    public static let snapshotRingGap: CGFloat = 4
+
     /// Focus frame around a bare snapshot of the given drawn size.
     public func focusPlateRect(around content: CGSize) -> CGSize {
-        CGSize(width: content.width + 2 * focusPlatePadding, height: content.height + 2 * focusPlatePadding)
+        CGSize(width: content.width + 2 * Self.snapshotRingGap, height: content.height + 2 * Self.snapshotRingGap)
     }
 
     public static func sanitizedIconSize(_ value: CGFloat) -> CGFloat {

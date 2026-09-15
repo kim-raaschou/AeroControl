@@ -22,7 +22,9 @@ struct AeroControlAppTile: View {
         metrics.previews ? AeroControlMetrics.snapshotRadius : metrics.iconArtworkRadius
     }
     /// The focus ring follows the content radius plus its gap.
-    private var ringRadius: CGFloat { plateRadius + metrics.focusPlatePadding }
+    private var ringRadius: CGFloat {
+        plateRadius + (metrics.previews ? AeroControlMetrics.snapshotRingGap : metrics.focusPlatePadding)
+    }
     private var tileSize: CGSize { metrics.tileSize }
 
     init(

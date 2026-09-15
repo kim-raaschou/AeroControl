@@ -30,8 +30,8 @@ struct PreviewMetricsTests {
         #expect(m.fittedPreviewSize(CGSize(width: 1000, height: 1000)) == CGSize(width: 96, height: 96))
         #expect(m.fittedPreviewSize(CGSize(width: 600, height: 200)) == CGSize(width: 144, height: 48))
         #expect(m.fittedPreviewSize(.zero) == m.previewSize)
-        let pad = m.focusPlatePadding
-        #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * pad, height: 96 + 2 * pad))
+        let gap = AeroControlMetrics.snapshotRingGap
+        #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
     }
 
     @Test("weight follows content: empty < few < many")
