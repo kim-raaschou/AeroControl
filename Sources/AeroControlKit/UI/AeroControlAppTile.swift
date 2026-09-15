@@ -3,6 +3,9 @@ import Common
 
 struct AeroControlAppTile: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.aeroTheme) private var theme
+
+    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
     let image: NSImage?
     /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
@@ -115,8 +118,8 @@ struct AeroControlAppTile: View {
             let size = plateSize
             let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
             shape
-                .strokeBorder(Color.accentColor, lineWidth: AeroControlMetrics.focusRingWidth)
-                .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
+                .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth)
+                .shadow(color: palette.accent.opacity(0.5), radius: 4)
                 .frame(width: size.width, height: size.height)
         }
     }
@@ -139,10 +142,6 @@ struct AeroControlAppTile: View {
         adaptive(dark: 0.33, light: 0.23)
     }
 
-    private var closeButtonFill: Color {
-        colorScheme == .dark ? Color(white: 0.26) : Color(white: 0.92)
-    }
-
     private func adaptive(dark: Double, light: Double) -> Color {
         colorScheme == .dark ? .white.opacity(dark) : .black.opacity(light)
     }
@@ -155,7 +154,7 @@ struct AeroControlAppTile: View {
                     .font(.system(size: diameter * 0.45, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(width: diameter, height: diameter)
-                    .background(closeButtonFill, in: Circle())
+                    .background(palette.closeButtonFill, in: Circle())
                     .overlay(Circle().strokeBorder(.separator, lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
                     .contentShape(Circle())

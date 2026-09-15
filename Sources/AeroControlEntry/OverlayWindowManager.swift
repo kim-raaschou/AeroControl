@@ -121,6 +121,11 @@ final class OverlayWindowManager {
         if requestedVisible { hide(restoreFocus: true) } else { show() }
     }
 
+    func selectTheme(_ theme: AeroControlTheme) {
+        settings.setTheme(theme)
+        rebuild()
+    }
+
     func toggleMultiScreen() {
         settings.setMultiScreenEnabled(!settings.multiScreenEnabled)
         rebuild()
@@ -137,6 +142,7 @@ final class OverlayWindowManager {
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         let root = OverviewRoot(
             panel: makePanel(for: screen, availableSize: screen.frame.size),
+            theme: settings.theme,
             onDismiss: { [weak self] in self?.hide(restoreFocus: true) }
         )
         let hostingView = InteractiveHostingView(rootView: root)

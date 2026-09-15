@@ -33,6 +33,9 @@ struct AeroControlWorkspaceCard: View {
 
     @State private var isDropTarget = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.aeroTheme) private var theme
+
+    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
     private static let cornerRadius: CGFloat = 18
 
@@ -48,8 +51,8 @@ struct AeroControlWorkspaceCard: View {
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
-        .background(shape.fill(.regularMaterial))
-        .overlay(shape.strokeBorder(borderColor, lineWidth: 1))   // focus shows on the badge and the window, not the card
+        .background(cardFill(shape))
+        .overlay(shape.strokeBorder(palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
         .overlay(dropTargetHint.allowsHitTesting(false))
         .clipShape(shape)
         .contentShape(shape)
@@ -71,8 +74,9 @@ struct AeroControlWorkspaceCard: View {
         } isTargeted: { isDropTarget = $0 }
     }
 
-    private var borderColor: Color {
-        colorScheme == .dark ? .white.opacity(0.18) : .black.opacity(0.12)
+    /// A solid themed fill, or the platform's frosted glass when the theme is System.
+    @ViewBuilder private func cardFill(_ shape: RoundedRectangle) -> some View {
+        if let fill = palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
     }
 
     /// Just the badge; the tiles say how many windows there are.
@@ -89,9 +93,9 @@ struct AeroControlWorkspaceCard: View {
         Text(workspace.name)
             .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
             .lineLimit(1)
-            .foregroundStyle(isFocused ? Color.white : .secondary)
+            .foregroundStyle(isFocused ? palette.focusedBadgeText : palette.badgeText)
             .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
-            .background(isFocused ? Color.accentColor : badgeFill, in: Circle())
+            .background(isFocused ? palette.accent : palette.badgeFill, in: Circle())
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
@@ -102,14 +106,10 @@ struct AeroControlWorkspaceCard: View {
     private var dragPreview: some View {
         Text(workspace.name)
             .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
-            .foregroundStyle(Color.white)
+            .foregroundStyle(palette.focusedBadgeText)
             .frame(width: 32, height: 32)
-            .background(Color.accentColor, in: Circle())
+            .background(palette.accent, in: Circle())
             .padding(6)
-    }
-
-    private var badgeFill: Color {
-        colorScheme == .dark ? .white.opacity(0.10) : .black.opacity(0.07)
     }
 
     private var innerSize: CGSize {
@@ -167,8 +167,8 @@ struct AeroControlWorkspaceCard: View {
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
             RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-                .strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 3)
-                .background(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous).fill(Color.accentColor.opacity(0.12)))
+                .strokeBorder(palette.accent.opacity(0.9), lineWidth: 3)
+                .background(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous).fill(palette.accent.opacity(0.12)))
         }
     }
 }

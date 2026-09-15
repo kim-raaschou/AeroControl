@@ -7,6 +7,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onToggle: () -> Void
     private let onSelectScreen: (NSScreen) -> Void
     private let onToggleMultiScreen: () -> Void
+    private let onSelectTheme: (AeroControlTheme) -> Void
     private let onReset: () -> Void
     private let previewsAvailable: () -> Bool
     private let onRequestPreviewAccess: () -> Void
@@ -19,6 +20,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         onToggle: @escaping () -> Void,
         onSelectScreen: @escaping (NSScreen) -> Void,
         onToggleMultiScreen: @escaping () -> Void,
+        onSelectTheme: @escaping (AeroControlTheme) -> Void,
         onReset: @escaping () -> Void,
         previewsAvailable: @escaping () -> Bool,
         onRequestPreviewAccess: @escaping () -> Void,
@@ -28,6 +30,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.onToggle = onToggle
         self.onSelectScreen = onSelectScreen
         self.onToggleMultiScreen = onToggleMultiScreen
+        self.onSelectTheme = onSelectTheme
         self.onReset = onReset
         self.previewsAvailable = previewsAvailable
         self.onRequestPreviewAccess = onRequestPreviewAccess
@@ -109,6 +112,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(multiScreenItem)
 
         menu.addItem(.separator())
+        menu.addItem(sectionHeader("Theme"))
+        for theme in AeroControlTheme.allCases {
+            let item = NSMenuItem(title: theme.name, action: #selector(setThemeFromMenu(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = theme.rawValue
+            item.state = settings.theme == theme ? .on : .off
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
         if previewsAvailable() {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
@@ -167,6 +180,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func setScreenFromMenu(_ sender: NSMenuItem) {
         guard let screen = sender.representedObject as? NSScreen else { return }
         onSelectScreen(screen)
+    }
+
+    @objc private func setThemeFromMenu(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let theme = AeroControlTheme(rawValue: raw) else { return }
+        onSelectTheme(theme)
     }
 
     @objc private func toggleMultiScreenFromMenu() {

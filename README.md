@@ -109,6 +109,9 @@ works but costs about 200 ms more.
 Use the menu-bar icon for all in-app configuration:
 
 - **Screen**: choose active display or **Show on All Screens**.
+- **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards) or
+  **Tokyo Night**, a fixed palette that looks the same in both appearances.
+- **Window Previews**: grant Screen Recording when it is missing.
 - **Reset settings** and **Quit**.
 
 Selections persist automatically (`UserDefaults`).

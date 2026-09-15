@@ -99,7 +99,10 @@ class OverviewWindow: NSPanel {
 /// The full-screen root: blurred backdrop (click to dismiss) with the panel centered.
 struct OverviewRoot: View {
     let panel: AeroControlPanel
+    let theme: AeroControlTheme
     let onDismiss: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -107,11 +110,12 @@ struct OverviewRoot: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onDismiss)
-            Color.black.opacity(0.35)
+            theme.palette(for: colorScheme).backdrop
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             panel
         }
+        .environment(\.aeroTheme, theme)
     }
 }
 

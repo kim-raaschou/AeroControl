@@ -47,6 +47,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
             onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
             onToggleMultiScreen: { [weak self] in self?.overlayManager.toggleMultiScreen() },
+            onSelectTheme: { [weak self] theme in self?.overlayManager.selectTheme(theme) },
             onReset: { [weak self] in self?.overlayManager.rebuild() },
             previewsAvailable: { [weak self] in self?.state.previewsAvailable ?? false },
             onRequestPreviewAccess: { [weak self] in self?.state.requestPreviewAccess() },

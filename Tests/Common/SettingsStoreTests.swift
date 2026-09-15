@@ -22,6 +22,17 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).activeDisplayKey == "external")
     }
 
+    @Test func themePersistsAndResetReturnsToSystem() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.theme == .system)
+        store.setTheme(.tokyoNight)
+        #expect(SettingsStore(defaults: defaults).theme == .tokyoNight)
+        store.reset()
+        #expect(store.theme == .system)
+        #expect(SettingsStore(defaults: defaults).theme == .system)
+    }
+
     @Test func multiScreenPersistsAndResetTurnsItOff() {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)
