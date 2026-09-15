@@ -161,7 +161,8 @@ struct AeroControlAppTile: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .offset(x: diameter * 0.15, y: -diameter * 0.15)
+            .padding(metrics.previews ? 6 : 0)                  // inside the snapshot's corner, clear of the focus ring
+            .offset(x: metrics.previews ? 0 : diameter * 0.15, y: metrics.previews ? 0 : -diameter * 0.15)
             .help("Close window")
         }
     }

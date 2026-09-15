@@ -42,15 +42,28 @@ final class OverlayWindowManager {
             screenFilter: screenFilter(for: screen),
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
-            onDismiss: { [weak self] in self?.hide() }
+            onDismiss: { [weak self] in self?.hide(restoreFocus: false) }   // the action focused something
         )
     }
 
-    private func hide() {
+    /// Escape and the backdrop dismiss without choosing anything; then the keyboard goes
+    /// back to the app that owns the focused window, since summoning leaves AeroControl
+    /// as the frontmost app. AeroSpace cannot do this for us: the window is already its
+    /// focused one, so `focus` is a no-op there.
+    private func hide(restoreFocus: Bool) {
         guard requestedVisible else { return }
         requestedVisible = false
         state.clearPreviews()
         for window in windows.values { window.dismiss() }
+        guard restoreFocus, let owner = focusedWindowOwner() else { return }
+        owner.activate()
+    }
+
+    private func focusedWindowOwner() -> NSRunningApplication? {
+        let focused = state.model.focusedWindowId
+        let window = state.model.workspaces.flatMap(\.windows).first { $0.windowId == focused }
+        guard let bundleId = window?.bundleId else { return nil }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
     }
 
     /// Like Mission Control: single-screen mode opens on the screen under the mouse.
@@ -105,7 +118,7 @@ final class OverlayWindowManager {
     }
 
     func toggleVisibility() {
-        if requestedVisible { hide() } else { show() }
+        if requestedVisible { hide(restoreFocus: true) } else { show() }
     }
 
     func toggleMultiScreen() {
@@ -122,10 +135,10 @@ final class OverlayWindowManager {
     private func makeWindow(for screen: NSScreen, hidden: Bool) {
         let window = OverviewWindow(targetScreen: screen)
         window.previews = state.previewsAvailable
-        window.onDismiss = { [weak self] in self?.hide() }
+        window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         let root = OverviewRoot(
             panel: makePanel(for: screen, availableSize: screen.frame.size),
-            onDismiss: { [weak self] in self?.hide() }
+            onDismiss: { [weak self] in self?.hide(restoreFocus: true) }
         )
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []

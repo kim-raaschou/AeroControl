@@ -1,6 +1,9 @@
 import AppKit
 import AeroControlKit
+import OSLog
 import SwiftUI
+
+private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "overview")
 
 final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -17,6 +20,7 @@ class OverviewWindow: NSPanel {
     /// Whether tiles are previews (3:2) or icons.
     var previews = false
     var onDismiss: (() -> Void)?
+    private var isDismissing = false
 
     init(targetScreen: NSScreen) {
         self.targetScreen = targetScreen
@@ -37,10 +41,26 @@ class OverviewWindow: NSPanel {
     /// Key so Escape reaches us; non-activating so the app never takes over the menu bar.
     override var canBecomeKey: Bool { true }
 
-    override func cancelOperation(_ sender: Any?) { onDismiss?() }
+    override func cancelOperation(_ sender: Any?) {
+        log.debug("overview: cancelOperation")
+        onDismiss?()
+    }
 
     override func keyDown(with event: NSEvent) {
+        log.debug("overview: keyDown \(event.keyCode)")
         if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }
+    }
+
+    /// While the overview is up it owns the keyboard: if another app takes key status
+    /// (activation shuffles after the summon), take it back so Escape keeps working.
+    override func resignKey() {
+        super.resignKey()
+        guard isVisible, !isDismissing else { return }
+        log.notice("overview: lost key status while visible; retaking")
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isVisible, !self.isDismissing else { return }
+            self.makeKey()
+        }
     }
 
     func installContent(hosting: NSView) {
@@ -49,9 +69,11 @@ class OverviewWindow: NSPanel {
     }
 
     func reveal() {
+        isDismissing = false
         setFrame(targetScreen.frame, display: true)
         alphaValue = 0
         makeKeyAndOrderFront(nil)
+        log.notice("overview: revealed, isKeyWindow=\(self.isKeyWindow), appActive=\(NSApp.isActive)")
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Self.fadeDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -61,6 +83,7 @@ class OverviewWindow: NSPanel {
 
     func dismiss() {
         guard isVisible else { return }
+        isDismissing = true
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Self.fadeDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
