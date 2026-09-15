@@ -74,7 +74,7 @@ struct AeroControlWorkspaceCard: View {
             .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
             .lineLimit(1)
             .foregroundStyle(isFocused ? Color.white : .secondary)
-            .frame(width: 24, height: 24)
+            .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
             .background(isFocused ? Color.accentColor : badgeFill, in: Circle())
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)

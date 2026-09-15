@@ -19,8 +19,11 @@ public enum AeroControlLayout {
     public static let maxIconTile: CGFloat = 128
     /// Narrowest card that still shows windows; below this only the badge is drawn.
     public static let minCardWidth: CGFloat = 150
-    /// Width of an empty workspace's card: just the badge.
-    public static let emptyCardWidth: CGFloat = 84
+    /// Diameter of the workspace badge in the card header.
+    public static let badgeSize: CGFloat = 24
+    /// An empty card is exactly the badge plus the card padding on both sides, so the badge
+    /// sits in the same corner as on full cards and is centered in the narrow card as well.
+    public static let emptyCardWidth: CGFloat = badgeSize + 2 * cardPadding
     public static let emptyWeight: CGFloat = 0.35
 
     /// How much width a workspace deserves relative to the others.
