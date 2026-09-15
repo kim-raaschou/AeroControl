@@ -24,20 +24,13 @@ struct AeroControlWorkspaceCard: View {
 
     private static let cornerRadius: CGFloat = 18
 
-    /// Narrow cards (empty workspaces) show only the badge, centered.
-    private var isCompact: Bool { size.width < AeroControlLayout.minCardWidth }
-
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-        Group {
-            if isCompact {
-                badge.frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-                    tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
+        // Same header lane on every card, so the badge sits in the same corner whether the
+        // workspace is empty (a narrow card) or full.
+        VStack(alignment: .leading, spacing: 0) {
+            header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
+            tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
