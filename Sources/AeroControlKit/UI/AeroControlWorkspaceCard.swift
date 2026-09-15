@@ -49,7 +49,7 @@ struct AeroControlWorkspaceCard: View {
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
         .background(shape.fill(.regularMaterial))
-        .overlay(shape.strokeBorder(borderColor, lineWidth: isFocused ? AeroControlMetrics.focusRingWidth : 1))
+        .overlay(shape.strokeBorder(borderColor, lineWidth: 1))   // focus shows on the badge and the window, not the card
         .overlay(dropTargetHint.allowsHitTesting(false))
         .clipShape(shape)
         .contentShape(shape)
@@ -72,8 +72,7 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private var borderColor: Color {
-        if isFocused { return .accentColor }
-        return colorScheme == .dark ? .white.opacity(0.18) : .black.opacity(0.12)
+        colorScheme == .dark ? .white.opacity(0.18) : .black.opacity(0.12)
     }
 
     /// Just the badge; the tiles say how many windows there are.
