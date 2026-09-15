@@ -28,9 +28,12 @@ struct AeroControlWorkspaceCard: View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         // Same header lane on every card, so the badge sits in the same corner whether the
         // workspace is empty (a narrow card) or full.
+        // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
+        // stack and push the badge out of its corner.
         VStack(alignment: .leading, spacing: 0) {
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            tiles.frame(maxWidth: .infinity, maxHeight: .infinity)
+            tiles.frame(width: size.width - 2 * AeroControlLayout.cardPadding,
+                        height: size.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
@@ -96,9 +99,7 @@ struct AeroControlWorkspaceCard: View {
         } else {
             let aspect: CGFloat = showPreviews ? AeroControlLayout.tileAspect : 1
             let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
-            let metrics = showPreviews
-                ? AeroControlMetrics(iconSize: tileWidth / 3, previews: true)
-                : AeroControlMetrics(iconSize: tileWidth)
+            let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews)
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
                 spacing: AeroControlLayout.tileSpacing

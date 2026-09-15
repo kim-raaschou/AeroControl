@@ -24,6 +24,15 @@ struct PreviewMetricsTests {
         #expect(m.focusPlateRect == CGSize(width: m.focusPlateSize, height: m.focusPlateSize))
     }
 
+    @Test("fitting metrics make the padded tile exactly the requested cell width")
+    func fittingCell() {
+        for previews in [true, false] {
+            let m = AeroControlMetrics.fitting(cellWidth: 300, previews: previews)
+            #expect(abs(m.tileWidth - 300) < 0.001)
+        }
+        #expect(AeroControlMetrics.fitting(cellWidth: 300, previews: true).iconSize < 100)
+    }
+
     @Test("a snapshot is fitted into the 3:2 cell with its own aspect ratio, and the focus frame hugs it")
     func fittedPreview() {
         let m = AeroControlMetrics(iconSize: 48, previews: true)

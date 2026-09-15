@@ -14,6 +14,14 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     public var previewSize: CGSize { CGSize(width: iconSize * 3, height: iconSize * 2) }
 
+    /// Metrics whose padded tile (`tileWidth`) is exactly `cellWidth`, so a grid of such
+    /// cells fills the card's inner width without overflowing it. Both the tile and its
+    /// cell padding are linear in the icon size: 3s + 4s/48 for previews, s + 4s/48 for icons.
+    public static func fitting(cellWidth: CGFloat, previews: Bool) -> AeroControlMetrics {
+        let perIcon = (previews ? 3 : 1) + 4 / defaultIconSize
+        return AeroControlMetrics(iconSize: cellWidth / perIcon, previews: previews)
+    }
+
     /// The drawn tile, before cell padding: the preview box or the square icon.
     public var tileSize: CGSize { previews ? previewSize : CGSize(width: iconSize, height: iconSize) }
 
