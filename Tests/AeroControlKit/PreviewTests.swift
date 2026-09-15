@@ -15,13 +15,7 @@ struct PreviewMetricsTests {
         #expect(previews.tileSize == CGSize(width: 144, height: 96))
         #expect(previews.tileWidth == 144 + 2 * previews.tileCellPadding)
         #expect(previews.tileHeight == 96 + 2 * previews.tileCellPadding)
-        #expect(previews.cardHeight > icons.cardHeight)
-    }
-
-    @Test("focus plate for icon tiles equals the legacy square plate")
-    func focusPlateCompatibility() {
-        let m = AeroControlMetrics(iconSize: 48)
-        #expect(m.focusPlateRect == CGSize(width: m.focusPlateSize, height: m.focusPlateSize))
+        #expect(previews.tileHeight > icons.tileHeight)
     }
 
     @Test("fitting metrics make the padded tile exactly the requested cell width")

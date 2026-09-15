@@ -17,8 +17,6 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 class OverviewWindow: NSPanel {
     private static let fadeDuration: TimeInterval = 0.2
     private let targetScreen: NSScreen
-    /// Whether tiles are previews (3:2) or icons.
-    var previews = false
     var onDismiss: (() -> Void)?
     private var isDismissing = false
 
