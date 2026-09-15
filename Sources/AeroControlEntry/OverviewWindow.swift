@@ -12,7 +12,7 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 /// with a blurred, dimmed backdrop and the workspace cards centered on it. Escape or a
 /// click on the backdrop dismisses; the app stays an accessory (non-activating panel).
 class OverviewWindow: NSPanel {
-    private static let fadeDuration: TimeInterval = 0.12
+    private static let fadeDuration: TimeInterval = 0.2
     private let targetScreen: NSScreen
     /// Whether tiles are previews (3:2) or icons.
     var previews = false

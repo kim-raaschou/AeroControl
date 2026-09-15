@@ -24,7 +24,8 @@ public class OverviewStore {
     private var terminationTask: Task<Void, Never>?
     private var windowCloseTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
-    private var previewTask: Task<Void, Never>?
+    /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
+    private var captureGeneration = 0
 
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
@@ -86,8 +87,7 @@ public class OverviewStore {
         windowCloseTask = nil
         refreshTask?.cancel()
         refreshTask = nil
-        previewTask?.cancel()
-        previewTask = nil
+        captureGeneration += 1
     }
 
     // MARK: Window previews
@@ -98,21 +98,20 @@ public class OverviewStore {
 
     public func requestPreviewAccess() { nativeSystem.requestPreviewAccess() }
 
-    /// Capture previews for every window currently in the model. Called at summon time.
-    public func capturePreviews(maxSize: CGSize) {
+    /// Capture previews for every window currently in the model and store them. Returns
+    /// when they are in, so the caller can reveal the overview with the images already
+    /// there. A `clearPreviews()` in the meantime discards the result.
+    public func capturePreviews(maxSize: CGSize) async {
         let ids = model.workspaces.flatMap(\.windows).map(\.windowId)
-        previewTask?.cancel()
-        previewTask = Task { [weak self] in
-            guard let self else { return }
-            let images = await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize)
-            guard !Task.isCancelled else { return }
-            self.previews = images
-        }
+        captureGeneration += 1
+        let generation = captureGeneration
+        let images = await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize)
+        guard generation == captureGeneration else { return }
+        previews = images
     }
 
     public func clearPreviews() {
-        previewTask?.cancel()
-        previewTask = nil
+        captureGeneration += 1
         previews = [:]
     }
 

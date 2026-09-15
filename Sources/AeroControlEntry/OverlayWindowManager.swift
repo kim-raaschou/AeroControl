@@ -58,18 +58,25 @@ final class OverlayWindowManager {
     /// screen changes and settings changes free of special cases.
     private func show() {
         requestedVisible = true
-        if state.previewsAvailable {
-            state.capturePreviews(maxSize: Self.previewCaptureSize)
-        } else {
+        if !settings.multiScreenEnabled, let screen = screenUnderMouse() {
+            settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
+        }
+        guard state.previewsAvailable else {
             // Ask macOS for Screen Recording on the first summon without it. The system
             // shows its dialog once per app; afterwards this is a silent no-op and the
             // menu item / System Settings is the way in. Icons are shown meanwhile.
             state.requestPreviewAccess()
+            rebuild()
+            return
         }
-        if !settings.multiScreenEnabled, let screen = screenUnderMouse() {
-            settings.setActiveDisplay(key: screen.displayUUID, isBuiltin: screen.isBuiltin)
+        // Nothing is shown until the snapshots are in: one fade-in with the images in
+        // place instead of icons that get replaced a moment later.
+        Task { [weak self] in
+            guard let self else { return }
+            await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
+            guard self.requestedVisible else { return }   // toggled away while capturing
+            self.rebuild()
         }
-        rebuild()
     }
 
     private func screenUnderMouse() -> NSScreen? {

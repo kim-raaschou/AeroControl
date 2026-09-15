@@ -137,15 +137,6 @@ private let twoWindows = """
 """
 
 @MainActor
-private func waitUntil(_ cond: () -> Bool) async {
-    let deadline = ContinuousClock.now + .seconds(2)
-    while ContinuousClock.now < deadline {
-        if cond() { return }
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-}
-
-@MainActor
 @Suite("OverviewStore — previews")
 struct OverviewStorePreviewTests {
     @Test("capturePreviews asks the bridge for exactly the model's windows and stores the images")
@@ -154,8 +145,8 @@ struct OverviewStorePreviewTests {
         let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: bridge)
         await store.start()
         #expect(store.previewsAvailable)
-        store.capturePreviews(maxSize: CGSize(width: 480, height: 320))
-        await waitUntil { store.previews.count == 2 }
+        await store.capturePreviews(maxSize: CGSize(width: 480, height: 320))
+        #expect(store.previews.count == 2)
         #expect(bridge.captured == [[1, 2]])
         #expect(Set(store.previews.keys) == [1, 2])
         store.clearPreviews()
@@ -183,8 +174,7 @@ struct OverviewStorePreviewTests {
         let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: Plain())
         await store.start()
         #expect(!store.previewsAvailable)
-        store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
-        try? await Task.sleep(for: .milliseconds(50))
+        await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
         #expect(store.previews.isEmpty)
         store.stop()
     }
