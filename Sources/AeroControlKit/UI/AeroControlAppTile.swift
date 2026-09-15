@@ -101,19 +101,17 @@ struct AeroControlAppTile: View {
         }
     }
 
+    /// Focus: a thin accent ring with a small gap around the drawn content and a soft glow,
+    /// matching the focused workspace card's accent border.
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
             let size = plateSize
             let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
             shape
-                .fill(.regularMaterial)
-                .overlay { shape.fill(plateLighten) }
+                .strokeBorder(Color.accentColor, lineWidth: AeroControlMetrics.focusRingWidth)
+                .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
                 .frame(width: size.width, height: size.height)
         }
-    }
-
-    private var plateLighten: Color {
-        colorScheme == .dark ? .white.opacity(0.18) : .white.opacity(0.30)
     }
 
     @ViewBuilder private var floatingHint: some View {

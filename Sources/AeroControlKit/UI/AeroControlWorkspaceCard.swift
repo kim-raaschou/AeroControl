@@ -42,7 +42,7 @@ struct AeroControlWorkspaceCard: View {
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
         .background(shape.fill(.regularMaterial))
-        .overlay(shape.strokeBorder(borderColor, lineWidth: isFocused ? 3 : 1))
+        .overlay(shape.strokeBorder(borderColor, lineWidth: isFocused ? AeroControlMetrics.focusRingWidth : 1))
         .overlay(dropTargetHint.allowsHitTesting(false))
         .clipShape(shape)
         .contentShape(shape)
