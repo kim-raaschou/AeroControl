@@ -5,8 +5,8 @@ struct AeroControlAppTile: View {
     @Environment(\.colorScheme) private var colorScheme
     let window: WindowInfo
     let image: NSImage?
-    /// Window snapshot; when present the tile is a 3:2 preview with the app icon badged
-    /// in its corner, otherwise the plain app icon.
+    /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
+    /// with its own aspect ratio and the app icon badged in its corner, otherwise the app icon.
     let preview: NSImage?
     let isFocused: Bool
     let onFocusWindow: () -> Void
@@ -38,11 +38,24 @@ struct AeroControlAppTile: View {
         self.metrics = metrics
     }
 
+    /// What is actually drawn: the fitted snapshot, or the whole cell for icons.
+    private var contentSize: CGSize {
+        guard metrics.previews else { return tileSize }
+        guard let preview else { return CGSize(width: tileSize.height, height: tileSize.height) }
+        return metrics.fittedPreviewSize(preview.size)
+    }
+
+    /// The focus frame hugs the drawn content, not the cell.
+    private var plateSize: CGSize {
+        metrics.previews ? metrics.focusPlateRect(around: contentSize) : metrics.focusPlateRect
+    }
+
     var body: some View {
         tile
-            .frame(width: tileSize.width, height: tileSize.height)
+            .frame(width: contentSize.width, height: contentSize.height)
             .shadow(color: .black.opacity(isFocused ? 0 : 0.12), radius: 2, y: 1)
             .overlay(alignment: .topTrailing) { closeButton }
+            .frame(width: tileSize.width, height: tileSize.height)
             .padding(cellPadding)
             .background(selectionPlate)
             .overlay(floatingHint)
@@ -52,29 +65,24 @@ struct AeroControlAppTile: View {
             .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
             .draggable(OverviewDragPayload.window(id: window.windowId)) {
                 tile
-                    .frame(width: tileSize.width, height: tileSize.height)
+                    .frame(width: contentSize.width, height: contentSize.height)
                     .onAppear { isHovering = false }
             }
     }
 
     @ViewBuilder private var tile: some View {
-        if metrics.previews {
-            let shape = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+        if metrics.previews, let preview {
             ZStack(alignment: .bottomLeading) {
-                shape.fill(.quaternary)
-                if let preview {
-                    Image(nsImage: preview)
-                        .resizable()
-                        .interpolation(.high)
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: tileSize.width, height: tileSize.height)
-                }
+                Image(nsImage: preview)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
                 icon
                     .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .padding(metrics.previewBadgeSize * 0.2)
             }
-            .clipShape(shape)
+            .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
         } else {
             icon
         }
@@ -95,7 +103,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
-            let size = metrics.focusPlateRect
+            let size = plateSize
             let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
             shape
                 .fill(.regularMaterial)
@@ -110,7 +118,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var floatingHint: some View {
         if window.isFloating && !isFocused {
-            let size = metrics.focusPlateRect
+            let size = plateSize
             let dot = max(1, iconSize * 0.05)
             let gap = iconSize * 0.09
             RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)

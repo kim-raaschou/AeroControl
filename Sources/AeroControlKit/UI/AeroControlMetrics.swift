@@ -17,6 +17,19 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// The drawn tile, before cell padding: the preview box or the square icon.
     public var tileSize: CGSize { previews ? previewSize : CGSize(width: iconSize, height: iconSize) }
 
+    /// A window snapshot scaled to fit inside `previewSize`, keeping its own aspect ratio.
+    /// The snapshot is drawn bare, so this is what the focus frame hugs.
+    public func fittedPreviewSize(_ imageSize: CGSize) -> CGSize {
+        guard imageSize.width > 0, imageSize.height > 0 else { return previewSize }
+        let scale = min(previewSize.width / imageSize.width, previewSize.height / imageSize.height)
+        return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
+    /// Focus frame around a bare snapshot of the given drawn size.
+    public func focusPlateRect(around content: CGSize) -> CGSize {
+        CGSize(width: content.width + 2 * focusPlatePadding, height: content.height + 2 * focusPlatePadding)
+    }
+
     public static func sanitizedIconSize(_ value: CGFloat) -> CGFloat {
         (value.isFinite && value > 0) ? value : defaultIconSize
     }

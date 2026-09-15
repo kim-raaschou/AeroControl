@@ -24,6 +24,16 @@ struct PreviewMetricsTests {
         #expect(m.focusPlateRect == CGSize(width: m.focusPlateSize, height: m.focusPlateSize))
     }
 
+    @Test("a snapshot is fitted into the 3:2 cell with its own aspect ratio, and the focus frame hugs it")
+    func fittedPreview() {
+        let m = AeroControlMetrics(iconSize: 48, previews: true)
+        #expect(m.fittedPreviewSize(CGSize(width: 1000, height: 1000)) == CGSize(width: 96, height: 96))
+        #expect(m.fittedPreviewSize(CGSize(width: 600, height: 200)) == CGSize(width: 144, height: 48))
+        #expect(m.fittedPreviewSize(.zero) == m.previewSize)
+        let pad = m.focusPlatePadding
+        #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * pad, height: 96 + 2 * pad))
+    }
+
     @Test("weight follows content: empty < few < many")
     func weights() {
         #expect(AeroControlLayout.weight(windowCount: 0) < AeroControlLayout.weight(windowCount: 1))
