@@ -17,7 +17,12 @@ struct AeroControlAppTile: View {
     let metrics: AeroControlMetrics
     private var iconSize: CGFloat { metrics.iconSize }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
-    private var plateRadius: CGFloat { metrics.iconArtworkRadius }
+    /// Corner radius of the drawn content: gentle on snapshots, the icon's own on icons.
+    private var plateRadius: CGFloat {
+        metrics.previews ? AeroControlMetrics.snapshotRadius : metrics.iconArtworkRadius
+    }
+    /// The focus ring follows the content radius plus its gap.
+    private var ringRadius: CGFloat { plateRadius + metrics.focusPlatePadding }
     private var tileSize: CGSize { metrics.tileSize }
 
     init(
@@ -72,17 +77,17 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var tile: some View {
         if metrics.previews, let preview {
-            ZStack(alignment: .bottomLeading) {
-                Image(nsImage: preview)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                icon
-                    .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)
-                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                    .padding(metrics.previewBadgeSize * 0.2)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
+            Image(nsImage: preview)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
+                .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the image
+                    icon
+                        .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)
+                        .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                        .padding(metrics.previewBadgeSize * 0.2)
+                }
         } else {
             icon
         }
@@ -106,7 +111,7 @@ struct AeroControlAppTile: View {
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
             let size = plateSize
-            let shape = RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
             shape
                 .strokeBorder(Color.accentColor, lineWidth: AeroControlMetrics.focusRingWidth)
                 .shadow(color: Color.accentColor.opacity(0.5), radius: 4)
@@ -119,7 +124,7 @@ struct AeroControlAppTile: View {
             let size = plateSize
             let dot = max(1, iconSize * 0.05)
             let gap = iconSize * 0.09
-            RoundedRectangle(cornerRadius: metrics.focusPlateRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
                 .strokeBorder(
                     floatingStroke,
                     style: StrokeStyle(lineWidth: dot, lineCap: .round, dash: [0.01, gap])

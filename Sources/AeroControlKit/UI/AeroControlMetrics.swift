@@ -67,6 +67,9 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// Stroke of the focus ring around a tile: a hairline that does not scale with the tile.
     public static let focusRingWidth: CGFloat = 2
 
+    /// Corner radius of a bare window snapshot; small, like a real window's corners.
+    public static let snapshotRadius: CGFloat = 6
+
     public var focusPlateSize: CGFloat { iconSize - 2 * iconArtworkInset + 2 * focusPlatePadding }
 
     /// Selection plate around a tile; equals a `focusPlateSize` square for icon tiles.
