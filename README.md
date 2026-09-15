@@ -24,8 +24,9 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   without it the overview shows app icons instead, and the menu offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.
 - Drag a tile onto another workspace to move the window there.
-- **Merge**: drag a workspace *badge* onto another workspace to move all of its windows there,
-  in on-screen order, then focus the target. No undo — drag them back.
+- **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to
+  move all of its windows there, in on-screen order, then focus the target. No undo — drag
+  them back.
 - Hover a tile to reveal the close action.
 - Multi-screen support: one selected screen or all screens.
 - Menu-bar configuration with persisted settings.

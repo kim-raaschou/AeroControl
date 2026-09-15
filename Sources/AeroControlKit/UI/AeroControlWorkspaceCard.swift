@@ -45,6 +45,9 @@ struct AeroControlWorkspaceCard: View {
         .clipShape(shape)
         .contentShape(shape)
         .onTapGesture(perform: onFocusWorkspace)
+        // Grab the card anywhere outside a tile and drop it on another card to merge the
+        // workspace into it. Tiles keep their own drag (a single window).
+        .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
         .dropDestination(for: OverviewDragPayload.self) { items, _ in
             guard let item = items.first else { return false }
             isDropTarget = false
@@ -83,11 +86,18 @@ struct AeroControlWorkspaceCard: View {
             .background(isFocused ? Color.accentColor : badgeFill, in: Circle())
             .contentShape(Circle())
             .onTapGesture(perform: onFocusWorkspace)
-            .draggable(OverviewDragPayload.workspace(name: workspace.name)) {
-                Text(workspace.name).font(.system(size: 13, weight: .semibold, design: .rounded)).padding(8)
-            }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
-                  : "Workspace \(workspace.name) — drag onto another workspace to merge")
+                  : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
+    }
+
+    /// What follows the cursor while a workspace is dragged: its badge, a little larger.
+    private var dragPreview: some View {
+        Text(workspace.name)
+            .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
+            .foregroundStyle(Color.white)
+            .frame(width: 32, height: 32)
+            .background(Color.accentColor, in: Circle())
+            .padding(6)
     }
 
     private var badgeFill: Color {
