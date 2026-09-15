@@ -4,22 +4,28 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public static let defaultIconSize: CGFloat = 48
 
     public let iconSize: CGFloat
-    /// With previews on, a tile is a 3:2 window snapshot instead of a square app icon.
+    /// With previews on, a tile is a window snapshot cell instead of a square app icon.
     public let previews: Bool
+    /// Height/width of a snapshot cell. Windows are shaped like the screen they live on,
+    /// so the cell follows the screen's aspect; 2:3 is the neutral default.
+    public let previewAspect: CGFloat
 
-    public init(iconSize: CGFloat, previews: Bool = false) {
+    public static let defaultPreviewAspect: CGFloat = 2.0 / 3.0
+
+    public init(iconSize: CGFloat, previews: Bool = false, previewAspect: CGFloat = defaultPreviewAspect) {
         self.iconSize = Self.sanitizedIconSize(iconSize)
         self.previews = previews
+        self.previewAspect = previewAspect
     }
 
-    public var previewSize: CGSize { CGSize(width: iconSize * 3, height: iconSize * 2) }
+    public var previewSize: CGSize { CGSize(width: iconSize * 3, height: iconSize * 3 * previewAspect) }
 
     /// Metrics whose padded tile (`tileWidth`) is exactly `cellWidth`, so a grid of such
     /// cells fills the card's inner width without overflowing it. Both the tile and its
     /// cell padding are linear in the icon size: 3s + 4s/48 for previews, s + 4s/48 for icons.
-    public static func fitting(cellWidth: CGFloat, previews: Bool) -> AeroControlMetrics {
+    public static func fitting(cellWidth: CGFloat, previews: Bool, previewAspect: CGFloat = defaultPreviewAspect) -> AeroControlMetrics {
         let perIcon = (previews ? 3 : 1) + 4 / defaultIconSize
-        return AeroControlMetrics(iconSize: cellWidth / perIcon, previews: previews)
+        return AeroControlMetrics(iconSize: cellWidth / perIcon, previews: previews, previewAspect: previewAspect)
     }
 
     /// The drawn tile, before cell padding: the preview box or the square icon.

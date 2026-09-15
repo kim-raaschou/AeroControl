@@ -94,6 +94,19 @@ struct PreviewMetricsTests {
         #expect(abs(w[1] / w[0] - 2) < 0.05)                           // √4 : √1
     }
 
+    @Test("row heights follow the snapshots: a 2x2 row takes height a one-row row does not need")
+    func heightsFollowSnapshots() {
+        // Today's five workspaces on the 3440x1440 display: [4, 2] on top, [3, 0, 1] below.
+        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1], available: CGSize(width: 3300, height: 1300))
+        #expect(rows.count == 2)
+        let top = rows[0][0].height, bottom = rows[1][0].height
+        #expect(top > bottom * 1.2)                                       // clearly taller, not the near-even weight split
+        #expect(top + bottom + AeroControlLayout.cardGap <= 1300 + 1)
+        #expect(bottom >= AeroControlLayout.minRowHeight)
+        let tile = AeroControlLayout.tileGrid(windowCount: 4, card: rows[0][0])
+        #expect(tile.columns == 2 && tile.width > 480)                    // 2x2 with snapshots over 480 pt wide
+    }
+
     @Test("tile grid picks the column count that maximizes tile size and never overflows")
     func tileGrid() {
         let wide = CGSize(width: 1624, height: 513)

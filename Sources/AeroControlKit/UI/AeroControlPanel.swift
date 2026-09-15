@@ -46,12 +46,13 @@ public struct AeroControlPanel: View {
         .fixedSize()
     }
 
+    private var usable: CGSize {
+        CGSize(width: availableWidth * AeroControlLayout.usableScreenFraction,
+               height: availableHeight * AeroControlLayout.usableScreenFraction)
+    }
+
     private var grid: some View {
         let all = workspaces
-        let usable = CGSize(
-            width: availableWidth * AeroControlLayout.usableScreenFraction,
-            height: availableHeight * AeroControlLayout.usableScreenFraction
-        )
         let sizes = AeroControlLayout.cardSizes(windowCounts: all.map { $0.windows.count }, available: usable)
         var index = 0
         let rows: [[(WorkspaceInfo, CGSize)]] = sizes.map { row in
@@ -76,6 +77,7 @@ public struct AeroControlPanel: View {
             icons: state.icons,
             previews: state.previews,
             showPreviews: state.previewsAvailable,
+            previewAspect: AeroControlLayout.previewAspect(for: usable),
             size: size,
             onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
             onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },

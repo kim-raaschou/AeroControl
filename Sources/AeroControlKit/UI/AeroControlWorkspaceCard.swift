@@ -9,8 +9,10 @@ struct AeroControlWorkspaceCard: View {
     let focusedWindowId: Int
     let icons: [Int: NSImage]
     let previews: [Int: NSImage]
-    /// Preview tiles (3:2 snapshots) when Screen Recording is granted, plain icons otherwise.
+    /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
     let showPreviews: Bool
+    /// Height/width of a snapshot cell, the screen's own aspect.
+    let previewAspect: CGFloat
     let size: CGSize
     let onFocusWorkspace: () -> Void
     let onFocusWindow: (Int) -> Void
@@ -97,9 +99,9 @@ struct AeroControlWorkspaceCard: View {
         if windows.isEmpty {
             Color.clear
         } else {
-            let aspect: CGFloat = showPreviews ? AeroControlLayout.tileAspect : 1
+            let aspect: CGFloat = showPreviews ? previewAspect : 1
             let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
-            let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews)
+            let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews, previewAspect: previewAspect)
             LazyVGrid(
                 columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
                 spacing: AeroControlLayout.tileSpacing
