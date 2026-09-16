@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The overview's colors. `system` follows macOS (accent color, appearance, frosted glass);
-/// the others are fixed palettes that look the same in light and dark mode.
+/// the others are fixed palettes that look the same whatever the system appearance is.
 public enum AeroControlTheme: String, CaseIterable, Sendable {
     case system
     case tokyoNight
@@ -10,6 +10,15 @@ public enum AeroControlTheme: String, CaseIterable, Sendable {
         switch self {
         case .system: "System"
         case .tokyoNight: "Tokyo Night"
+        }
+    }
+
+    /// The appearance a fixed palette needs macOS to draw its own parts (the backdrop blur,
+    /// system materials) in; nil means "follow the system", which is what `system` wants.
+    public var enforcedAppearance: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .tokyoNight: .dark
         }
     }
 
@@ -48,13 +57,15 @@ public struct AeroControlPalette: Sendable {
     }
 
     /// Tokyo Night (the "night" variant), by the palette's own names:
-    /// bg #1a1b26, bg_highlight #292e42, border #414868, fg #c0caf5, comment #565f89, blue #7aa2f7.
+    /// bg #1a1b26, bg_highlight #292e42, border #414868, fg #c0caf5, blue #7aa2f7.
+    /// Secondary text is fg_dark #a9b1d6, not the palette's comment #565f89: comment on bg
+    /// is 2.8:1, below the 4.5:1 that small text needs to stay readable.
     static let tokyoNight = AeroControlPalette(
         accent: Color(hex: 0x7AA2F7),
         cardFill: Color(hex: 0x1A1B26).opacity(0.92),
         cardBorder: Color(hex: 0x414868),
         badgeFill: Color(hex: 0x292E42),
-        badgeText: Color(hex: 0x565F89),
+        badgeText: Color(hex: 0xA9B1D6),
         focusedBadgeText: Color(hex: 0x1A1B26),
         closeButtonFill: Color(hex: 0x414868),
         backdrop: Color(hex: 0x16161E).opacity(0.62)

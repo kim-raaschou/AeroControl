@@ -61,6 +61,13 @@ class OverviewWindow: NSPanel {
         }
     }
 
+    /// A fixed palette also needs the parts macOS draws itself — the backdrop blur, any
+    /// system material — in its own appearance; otherwise Tokyo Night sits on a light blur
+    /// while the system is in light mode.
+    func applyAppearance(_ scheme: ColorScheme?) {
+        appearance = scheme.map { NSAppearance(named: $0 == .dark ? .darkAqua : .aqua) } ?? nil
+    }
+
     func installContent(hosting: NSView) {
         contentView = hosting
         setFrame(targetScreen.frame, display: false)

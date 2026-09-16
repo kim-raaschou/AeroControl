@@ -107,6 +107,7 @@ final class OverlayWindowManager {
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
+        window.applyAppearance(settings.theme.enforcedAppearance)
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         let root = OverviewRoot(
             panel: makePanel(availableSize: screen.frame.size),
