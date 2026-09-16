@@ -71,6 +71,7 @@ public struct AeroControlPanel: View {
             windowCounts: all.map { $0.windows.count },
             aspects: zip(all, maps).map { $1.map { $0.bounds.height / $0.bounds.width } ?? gridAspect($0) },
             cells: zip(all, maps).map { $1 == nil ? $0.windows.count : 1 },
+            emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
             available: usable
         )
         var index = 0
@@ -82,7 +83,7 @@ public struct AeroControlPanel: View {
                 HStack(spacing: AeroControlLayout.cardGap) {
                     ForEach(row, id: \.0.id) { workspace, size, map in
                         card(for: workspace, size: size, map: map, previews: previews,
-                             monitor: namesMonitors ? workspace.monitorName : nil)
+                             monitor: namesMonitors ? workspace.monitorShortName : nil)
                     }
                 }
             }

@@ -86,7 +86,7 @@ struct AeroControlWorkspaceCard: View {
     private var header: some View {
         HStack(spacing: 6) {
             badge
-            if let monitorName, !monitorName.isEmpty, size.width >= AeroControlLayout.minCardWidth {
+            if let monitorName, !monitorName.isEmpty {
                 Label(monitorName, systemImage: "display")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(palette.badgeText)

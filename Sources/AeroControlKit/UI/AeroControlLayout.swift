@@ -24,6 +24,9 @@ public enum AeroControlLayout {
     /// An empty card is exactly the badge plus the card padding on both sides, so the badge
     /// sits in the same corner as on full cards and is centered in the narrow card as well.
     public static let emptyCardWidth: CGFloat = badgeSize + 2 * cardPadding
+    /// Wider empty card: room for the badge AND the display name beside it, used when the
+    /// workspaces span more than one display.
+    public static let namedEmptyCardWidth: CGFloat = emptyCardWidth + 82
     public static let emptyWeight: CGFloat = 0.35
 
     /// How much width a workspace deserves relative to the others.
@@ -92,13 +95,14 @@ public enum AeroControlLayout {
 
     /// `aspects` is the cell aspect per workspace and `cells` how many cells its card draws
     /// (the window count for a grid, 1 for a screen map), both in `windowCounts` order.
-    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat], cells: [Int], available: CGSize) -> [[CGSize]] {
+    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat], cells: [Int],
+                                 emptyWidth: CGFloat = emptyCardWidth, available: CGSize) -> [[CGSize]] {
         let n = windowCounts.count
         guard n > 0, aspects.count == n, cells.count == n, available.width > 0, available.height > 0 else { return [] }
         let weights = windowCounts.map(weight(windowCount:))
         let rows = partition(weights: weights, rowCount: rowCount(forCount: n))
         let counts = rows.map { Array(windowCounts[$0]) }
-        let widths = counts.map { rowWidths(windowCounts: $0, rowWidth: available.width) }
+        let widths = counts.map { rowWidths(windowCounts: $0, rowWidth: available.width, emptyWidth: emptyWidth) }
         let start = rowHeights(rowWeights: rows.map { weights[$0].reduce(0, +) }, totalHeight: available.height)
         let heights = rowHeights(cells: rows.map { Array(cells[$0]) }, widths: widths, aspects: rows.map { Array(aspects[$0]) }, start: start)
         return zip(zip(counts, widths), heights).map { row, height in
@@ -185,9 +189,9 @@ public enum AeroControlLayout {
         return heights.map { $0.rounded(.down) }
     }
 
-    static func rowWidths(windowCounts: [Int], rowWidth: CGFloat) -> [CGFloat] {
+    static func rowWidths(windowCounts: [Int], rowWidth: CGFloat, emptyWidth: CGFloat = emptyCardWidth) -> [CGFloat] {
         let usable = rowWidth - CGFloat(windowCounts.count - 1) * cardGap
-        var widths = windowCounts.map { $0 <= 0 ? emptyCardWidth : CGFloat(0) }
+        var widths = windowCounts.map { $0 <= 0 ? emptyWidth : CGFloat(0) }
         let flexible = windowCounts.indices.filter { windowCounts[$0] > 0 }
         guard !flexible.isEmpty else {
             return widths.map { _ in (usable / CGFloat(windowCounts.count)).rounded(.down) }

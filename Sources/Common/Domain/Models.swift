@@ -25,6 +25,13 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     /// there is more than one.
     public var monitorName: String
 
+    /// The first word of the display's name: "Built-in Retina Display" -> "Built-in",
+    /// "BenQ RD280U" -> "BenQ". Enough to tell two displays apart in a card header, and
+    /// short enough to fit beside the badge.
+    public var monitorShortName: String {
+        String(monitorName.split(separator: " ").first ?? "")
+    }
+
     public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "") {
         self.name = name
         self.windows = windows
