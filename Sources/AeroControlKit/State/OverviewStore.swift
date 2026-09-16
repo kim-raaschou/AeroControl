@@ -11,11 +11,6 @@ public class OverviewStore {
     private(set) var icons: [Int: NSImage] = [:]
     /// Window previews, captured when the overview is summoned and dropped when it hides.
     public private(set) var previews: [Int: NSImage] = [:]
-    /// Per workspace, the frames of its windows as last seen while they were all on screen
-    /// (global, top-left origin). A workspace's entry is replaced whole, never patched, so a
-    /// window moved in while the workspace is hidden cannot mix stale and fresh geometry:
-    /// the card compares the cached ids with the current ones before drawing a map.
-    public private(set) var frames: [String: [Int: CGRect]] = [:]
     public private(set) var error: String?
 
     public var onLoaded: (@MainActor () -> Void)?
@@ -107,22 +102,11 @@ public class OverviewStore {
     /// there. A `clearPreviews()` in the meantime discards the result.
     public func capturePreviews(maxSize: CGSize) async {
         let ids = model.workspaces.flatMap(\.windows).map(\.windowId)
-        refreshFrames()
         captureGeneration += 1
         let generation = captureGeneration
         let images = await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize)
         guard generation == captureGeneration else { return }
         previews = images
-    }
-
-    /// Record the frames of every workspace whose windows are all on a display right now;
-    /// hidden workspaces (parked windows) keep what was recorded when they were visible.
-    private func refreshFrames() {
-        let onScreen = nativeSystem.windowFrames(windowIds: model.workspaces.flatMap(\.windows).map(\.windowId))
-        for workspace in model.workspaces where !workspace.windows.isEmpty {
-            let own = onScreen.filter { id, _ in workspace.windows.contains { $0.windowId == id } }
-            if own.count == workspace.windows.count { frames[workspace.name] = own }
-        }
     }
 
     public func clearPreviews() {
@@ -201,7 +185,6 @@ public class OverviewStore {
                 model = newState
             }
         }
-        refreshFrames()   // also on an unchanged model: a resize or layout change moves windows, not ids
         DispatchQueue.main.async { [self] in
             self.executeEffects(effects)
         }

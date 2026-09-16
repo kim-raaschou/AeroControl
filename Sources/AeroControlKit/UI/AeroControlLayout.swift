@@ -90,21 +90,20 @@ public enum AeroControlLayout {
 
     public static func cardSizes(windowCounts: [Int], available: CGSize) -> [[CGSize]] {
         let aspect = previewAspect(for: available)
-        return cardSizes(windowCounts: windowCounts, aspects: windowCounts.map { _ in aspect }, cells: windowCounts, available: available)
+        return cardSizes(windowCounts: windowCounts, aspects: windowCounts.map { _ in aspect }, available: available)
     }
 
-    /// `aspects` is the cell aspect per workspace and `cells` how many cells its card draws
-    /// (the window count for a grid, 1 for a screen map), both in `windowCounts` order.
-    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat], cells: [Int],
+    /// `aspects` is the cell aspect per workspace, in `windowCounts` order.
+    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat],
                                  emptyWidth: CGFloat = emptyCardWidth, available: CGSize) -> [[CGSize]] {
         let n = windowCounts.count
-        guard n > 0, aspects.count == n, cells.count == n, available.width > 0, available.height > 0 else { return [] }
+        guard n > 0, aspects.count == n, available.width > 0, available.height > 0 else { return [] }
         let weights = windowCounts.map(weight(windowCount:))
         let rows = partition(weights: weights, rowCount: rowCount(forCount: n))
         let counts = rows.map { Array(windowCounts[$0]) }
         let widths = counts.map { rowWidths(windowCounts: $0, rowWidth: available.width, emptyWidth: emptyWidth) }
         let start = rowHeights(rowWeights: rows.map { weights[$0].reduce(0, +) }, totalHeight: available.height)
-        let heights = rowHeights(cells: rows.map { Array(cells[$0]) }, widths: widths, aspects: rows.map { Array(aspects[$0]) }, start: start)
+        let heights = rowHeights(cells: counts, widths: widths, aspects: rows.map { Array(aspects[$0]) }, start: start)
         return zip(zip(counts, widths), heights).map { row, height in
             row.1.map { CGSize(width: $0, height: height) }
         }
@@ -116,39 +115,6 @@ public enum AeroControlLayout {
             guard cells[i] > 0 else { return sum }
             let tile = tileGrid(windowCount: cells[i], card: CGSize(width: widths[i], height: height), aspect: aspects[i]).width
             return sum + CGFloat(cells[i]) * tile * tile * aspects[i]
-        }
-    }
-
-    // MARK: Screen map
-
-    /// The outline of a workspace's windows, or `nil` when a faithful map is not possible:
-    /// no frames, or *tiled* windows that overlap (accordion, fullscreen), where a grid tells
-    /// more than a pile. A floating window overlapping the tiles is not a broken map — that is
-    /// exactly where it sits — so it is excluded from the test and drawn on top.
-    public static func mapBounds(frames: [CGRect], floating: [Bool] = []) -> CGRect? {
-        guard let first = frames.first else { return nil }
-        let bounds = frames.dropFirst().reduce(first) { $0.union($1) }
-        let tiled = frames.indices.filter { floating.indices.contains($0) ? !floating[$0] : true }
-        guard bounds.width > 0, bounds.height > 0, !overlapping(tiled.map { frames[$0] }) else { return nil }
-        return bounds
-    }
-
-    /// Two windows overlap when the shared area exceeds a fifth of the smaller one; AeroSpace
-    /// gaps never touch, accordion and fullscreen windows cover each other almost entirely.
-    static func overlapping(_ frames: [CGRect]) -> Bool {
-        frames.indices.contains { i in
-            frames[(i + 1)...].contains { frames[i].intersection($0).area > min(frames[i].area, $0.area) * 0.2 }
-        }
-    }
-
-    /// The windows' frames (outline `bounds`, from `mapBounds`) mapped into `box`, keeping
-    /// arrangement and proportions, centered.
-    public static func minimap(frames: [CGRect], bounds: CGRect, in box: CGSize) -> [CGRect] {
-        let scale = min(box.width / bounds.width, box.height / bounds.height)
-        let origin = CGPoint(x: (box.width - bounds.width * scale) / 2, y: (box.height - bounds.height * scale) / 2)
-        return frames.map { f in
-            CGRect(x: origin.x + (f.minX - bounds.minX) * scale, y: origin.y + (f.minY - bounds.minY) * scale,
-                   width: f.width * scale, height: f.height * scale)
         }
     }
 
@@ -240,6 +206,3 @@ public enum AeroControlLayout {
     }
 }
 
-extension CGRect {
-    var area: CGFloat { width * height }   // .null has zero extent, so it contributes nothing
-}

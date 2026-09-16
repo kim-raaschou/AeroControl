@@ -113,58 +113,14 @@ struct PreviewMetricsTests {
         #expect(grid.width * 1440 / 860 <= card.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane + 1)
     }
 
-    @Test("screen map keeps AeroSpace's arrangement: three columns, the middle one split")
-    func screenMap() {
-        // Workspace 1 as measured: Arc | Code over Teams | Rio, 16 pt gaps, on 3440x1440.
-        let arc = CGRect(x: 16, y: 48, width: 1130, height: 1375)
-        let code = CGRect(x: 1162, y: 48, width: 1130, height: 681)
-        let teams = CGRect(x: 1162, y: 745, width: 1130, height: 678)
-        let rio = CGRect(x: 2308, y: 48, width: 1130, height: 1375)
-        let frames = [arc, code, teams, rio]
-        let outline = AeroControlLayout.mapBounds(frames: frames)!
-        let cells = AeroControlLayout.minimap(frames: frames, bounds: outline, in: CGSize(width: 1000, height: 500))
-        #expect(cells.count == 4)
-        #expect(abs(cells[0].minX) < 0.01 && abs(cells[3].maxX - 1000) < 0.01)      // spans the box's width
-        #expect(cells[0].height > 400 && abs(cells[0].height - cells[3].height) < 0.01) // full-height columns, centered vertically
-        #expect(abs(cells[1].minX - cells[2].minX) < 0.01 && cells[2].minY > cells[1].maxY) // Code over Teams
-        #expect(cells[1].maxX < cells[3].minX && cells[0].maxX < cells[1].minX)
-        let bounds = AeroControlLayout.mapBounds(frames: [arc, code, teams, rio])!
-        #expect(abs(bounds.height / bounds.width - 1375.0 / 3422.0) < 0.001)
-    }
 
-    @Test("no map for overlapping windows (accordion, fullscreen) or without frames")
-    func noMapWhenOverlapping() {
-        let full = CGRect(x: 16, y: 48, width: 3408, height: 1375)
-        let shifted = CGRect(x: 46, y: 48, width: 3378, height: 1375)                  // accordion padding
-        #expect(AeroControlLayout.mapBounds(frames: [full, shifted]) == nil)
-        #expect(AeroControlLayout.mapBounds(frames: []) == nil)
-        #expect(AeroControlLayout.mapBounds(frames: [full]) == full)
-        // Side by side with a gap: no overlap, so a map.
-        let left = CGRect(x: 0, y: 0, width: 100, height: 100), right = CGRect(x: 116, y: 0, width: 100, height: 100)
-        #expect(AeroControlLayout.mapBounds(frames: [left, right]) == CGRect(x: 0, y: 0, width: 216, height: 100))
-    }
 
-    @Test("a floating window may overlap the tiles without costing the workspace its map")
-    func floatingDoesNotBreakTheMap() {
-        let left = CGRect(x: 0, y: 0, width: 100, height: 100)
-        let right = CGRect(x: 116, y: 0, width: 100, height: 100)
-        let floater = CGRect(x: 60, y: 20, width: 100, height: 60)        // lies over both
-        #expect(AeroControlLayout.mapBounds(frames: [left, right, floater]) == nil)   // no flags: a pile
-        let bounds = AeroControlLayout.mapBounds(frames: [left, right, floater],
-                                                 floating: [false, false, true])
-        #expect(bounds == CGRect(x: 0, y: 0, width: 216, height: 100))     // the floater is inside it
-        // Two tiles that genuinely overlap still fall back to the grid, floating or not.
-        #expect(AeroControlLayout.mapBounds(frames: [left, left], floating: [false, false]) == nil)
-    }
 
-    @Test("a map card scores as one screen-shaped cell, worth more height than a grid of four")
-    func mapCardIsOneCell() {
-        let asGrid = AeroControlLayout.snapshotArea(cells: [4], widths: [2000], aspects: [0.4], height: 700)
-        let asMap = AeroControlLayout.snapshotArea(cells: [1], widths: [2000], aspects: [0.4], height: 700)
-        #expect(asMap > asGrid)
-        // Two rows: the map row takes height from the grid row when that grows the total area.
+    @Test("rows share the height by what their cards can show, not by window count alone")
+    func rowHeightsFollowContent() {
         let available = CGSize(width: 3300, height: 1300)
-        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1], aspects: [0.4, 0.4, 0.4, 0.4, 0.4], cells: [1, 1, 3, 0, 1], available: available)
+        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1],
+                                               aspects: [0.4, 0.4, 0.4, 0.4, 0.4], available: available)
         #expect(rows.count == 2 && rows[0][0].height > rows[1][0].height)
     }
 
@@ -219,12 +175,6 @@ private final class PreviewBridge: NativeApiBridge {
         captured.append(windowIds)
         return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, NSImage(size: maxSize)) })
     }
-    /// Ids in `parked` are off screen (a hidden workspace) and get no frame.
-    var parked: Set<Int> = []
-    func windowFrames(windowIds: [Int]) -> [Int: CGRect] {
-        Dictionary(uniqueKeysWithValues: windowIds.filter { !parked.contains($0) }
-            .map { ($0, CGRect(x: 100 * $0, y: 0, width: 100, height: 50)) })
-    }
 }
 
 private let twoWindows = """
@@ -244,28 +194,12 @@ struct OverviewStorePreviewTests {
         await store.capturePreviews(maxSize: CGSize(width: 480, height: 320))
         #expect(store.previews.count == 2)
         #expect(bridge.captured == [[1, 2]])
-        #expect(store.frames["1"]?.keys.sorted() == [1, 2])            // both windows were on screen: workspace recorded
         #expect(Set(store.previews.keys) == [1, 2])
         store.clearPreviews()
         #expect(store.previews.isEmpty)
         store.stop()
     }
 
-    @Test("a hidden workspace keeps the frames from when it was visible; a partly parked one is not recorded")
-    func framesSurviveParking() async {
-        let bridge = PreviewBridge()
-        bridge.parked = [2]                                             // window 2 parked from the start
-        let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: bridge)
-        await store.start()
-        #expect(store.frames["1"] == nil)                               // not all windows on screen: nothing recorded
-        bridge.parked = []
-        await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))   // refreshes frames
-        #expect(store.frames["1"]?.count == 2)
-        bridge.parked = [1, 2]                                          // the workspace is hidden now
-        await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
-        #expect(store.frames["1"]?.count == 2)                          // last visible layout survives
-        store.stop()
-    }
 
     @Test("without Screen Recording the store reports previews unavailable and asks on request")
     func permission() async {

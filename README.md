@@ -19,8 +19,8 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   weight and share the height by weight too, so a workspace with many windows gets most of
   the screen. Inside a card the windows fill it as a grid of 3:2 tiles (column count chosen
   for the largest tiles), in the order they sit on screen.
-- **Floating windows** are drawn where they really are — on top of the tiling layout, raised
-  by a shadow — instead of forcing the workspace into a plain grid.
+- **Floating windows** are marked by a raised shadow, so a window that is not part of the
+  tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
   works for windows AeroSpace has parked off-screen). Needs the Screen Recording permission;
   without it the overview shows app icons instead, and the menu offers to request it.

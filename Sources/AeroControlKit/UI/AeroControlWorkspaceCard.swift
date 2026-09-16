@@ -1,14 +1,8 @@
 import SwiftUI
 import Common
 
-/// A workspace drawn as a map of the screen: each window's frame, and the outline of all.
-struct WorkspaceMap {
-    let frames: [CGRect]
-    let bounds: CGRect
-}
-
-/// One "desktop" card: badge at the top-left, the workspace's windows below, as a map of
-/// the screen when their frames are known, otherwise as a grid of snapshot cells or icons.
+/// One "desktop" card: badge at the top-left, the workspace's windows below as a grid of
+/// snapshot cells (or app icons without Screen Recording).
 /// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
@@ -18,9 +12,6 @@ struct AeroControlWorkspaceCard: View {
     let focusedWindowId: Int
     let icons: [Int: NSImage]
     let previews: [Int: NSImage]
-    /// The windows' on-screen frames (in window order) and their outline, when the card is a
-    /// map of the screen instead of a grid. Decided by the panel, which also sizes the card.
-    let map: WorkspaceMap?
     /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
     let showPreviews: Bool
     /// Height/width of a snapshot cell, the screen's own aspect.
@@ -128,26 +119,7 @@ struct AeroControlWorkspaceCard: View {
     }
 
     @ViewBuilder private var tiles: some View {
-        if workspace.windows.isEmpty {
-            Color.clear
-        } else if let map {
-            screenMap(AeroControlLayout.minimap(frames: map.frames, bounds: map.bounds, in: innerSize))
-        } else {
-            grid
-        }
-    }
-
-    /// The windows drawn where AeroSpace put them. Floating windows come last so they lie on
-    /// top of the tiles they cover on the real screen, which is the whole point of floating.
-    private func screenMap(_ cells: [CGRect]) -> some View {
-        let placed = zip(workspace.windows, cells).sorted { !$0.0.isFloating && $1.0.isFloating }
-        return ZStack(alignment: .topLeading) {
-            ForEach(Array(placed), id: \.0.windowId) { window, cell in
-                tile(window, metrics: .fitting(cellWidth: cell.width, previews: true, previewAspect: cell.height / cell.width))
-                    .offset(x: cell.minX, y: cell.minY)
-            }
-        }
-        .frame(width: innerSize.width, height: innerSize.height, alignment: .topLeading)
+        if workspace.windows.isEmpty { Color.clear } else { grid }
     }
 
     private var grid: some View {
