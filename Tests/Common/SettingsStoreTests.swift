@@ -13,16 +13,7 @@ struct SettingsStoreTests {
         return defaults
     }
 
-    @Test func startsEmptyAndRemembersTheActiveDisplay() {
-        let defaults = makeDefaults()
-        let store = SettingsStore(defaults: defaults)
-        #expect(store.activeDisplayKey.isEmpty)
-        #expect(!store.multiScreenEnabled)
-        store.setActiveDisplay(key: "external", isBuiltin: false)
-        #expect(SettingsStore(defaults: defaults).activeDisplayKey == "external")
-    }
-
-    @Test func themePersistsAndResetReturnsToSystem() {
+    @Test func themeDefaultsToSystemAndPersists() {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)
         #expect(store.theme == .system)
@@ -33,13 +24,12 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).theme == .system)
     }
 
-    @Test func multiScreenPersistsAndResetTurnsItOff() {
+    @Test func resetClearsTheKeysOfOlderVersions() {
         let defaults = makeDefaults()
-        let store = SettingsStore(defaults: defaults)
-        store.setMultiScreenEnabled(true)
-        #expect(SettingsStore(defaults: defaults).multiScreenEnabled)
-        store.reset()
-        #expect(!store.multiScreenEnabled)
-        #expect(!SettingsStore(defaults: defaults).multiScreenEnabled)
+        defaults.set(true, forKey: "settings.multiScreenEnabled")
+        defaults.set("uuid", forKey: "settings.activeDisplay")
+        SettingsStore(defaults: defaults).reset()
+        #expect(defaults.object(forKey: "settings.multiScreenEnabled") == nil)
+        #expect(defaults.object(forKey: "settings.activeDisplay") == nil)
     }
 }

@@ -19,7 +19,6 @@ public class OverviewStore {
     public private(set) var error: String?
 
     public var onLoaded: (@MainActor () -> Void)?
-    public var onMonitorsChanged: (@MainActor () -> Void)?
 
     private let inbox: AsyncStream<OverviewInput>
     private let inboxContinuation: AsyncStream<OverviewInput>.Continuation
@@ -224,8 +223,6 @@ public class OverviewStore {
                 }
             case .refresh:
                 requestRefresh()
-            case .monitorsChanged:
-                onMonitorsChanged?()
             case .runAction(let action):
                 runAction(action)
             case .runSequence(let actions):

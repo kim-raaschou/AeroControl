@@ -28,7 +28,8 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   move all of its windows there, in on-screen order, then focus the target. No undo — drag
   them back.
 - Hover a tile to reveal the close action.
-- Multi-screen support: one selected screen or all screens.
+- Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
+  on, and the overlay itself always opens on the one screen under the mouse.
 - Menu-bar configuration with persisted settings.
 
 ## Gallery
@@ -37,7 +38,7 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 *Overview overlay with live workspace/app state.*
 
 ![AeroControl menu items](docs/media/gallery-menu-items.png)
-*Open menu showing screen selection, icon size, position, reset, and quit.*
+*Open menu showing theme, the Screen Recording prompt, reset, and quit.*
 
 ## Requirements
 
@@ -108,7 +109,6 @@ works but costs about 200 ms more.
 
 Use the menu-bar icon for all in-app configuration:
 
-- **Screen**: choose active display or **Show on All Screens**.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards) or
   **Tokyo Night**, a fixed palette that looks the same in both appearances.
 - **Window Previews**: grant Screen Recording when it is missing.

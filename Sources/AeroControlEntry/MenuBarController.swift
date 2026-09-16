@@ -5,8 +5,6 @@ import AeroControlKit
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let onQuit: () -> Void
     private let onToggle: () -> Void
-    private let onSelectScreen: (NSScreen) -> Void
-    private let onToggleMultiScreen: () -> Void
     private let onSelectTheme: (AeroControlTheme) -> Void
     private let onReset: () -> Void
     private let previewsAvailable: () -> Bool
@@ -18,8 +16,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(
         onQuit: @escaping () -> Void,
         onToggle: @escaping () -> Void,
-        onSelectScreen: @escaping (NSScreen) -> Void,
-        onToggleMultiScreen: @escaping () -> Void,
         onSelectTheme: @escaping (AeroControlTheme) -> Void,
         onReset: @escaping () -> Void,
         previewsAvailable: @escaping () -> Bool,
@@ -28,8 +24,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     ) {
         self.onQuit = onQuit
         self.onToggle = onToggle
-        self.onSelectScreen = onSelectScreen
-        self.onToggleMultiScreen = onToggleMultiScreen
         self.onSelectTheme = onSelectTheme
         self.onReset = onReset
         self.previewsAvailable = previewsAvailable
@@ -87,30 +81,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
         menu.addItem(.separator())
 
-        let multi = settings.multiScreenEnabled
-        let screens = NSScreen.screens
-        menu.addItem(sectionHeader(multi ? "Configure Screen" : "Screen"))
-        for screen in screens {
-            let item = NSMenuItem(
-                title: screenLabel(for: screen, among: screens),
-                action: #selector(setScreenFromMenu(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = screen
-            item.state = screen.displayUUID == settings.activeDisplayKey ? .on : .off
-            menu.addItem(item)
-        }
-
-        let multiScreenItem = NSMenuItem(
-            title: "Show on All Screens",
-            action: #selector(toggleMultiScreenFromMenu),
-            keyEquivalent: ""
-        )
-        multiScreenItem.target = self
-        multiScreenItem.state = multi ? .on : .off
-        menu.addItem(multiScreenItem)
-
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Theme"))
         for theme in AeroControlTheme.allCases {
@@ -167,29 +137,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    private func screenLabel(for screen: NSScreen, among screens: [NSScreen]) -> String {
-        let name = screen.localizedName
-        let sameName = screens.filter { $0.localizedName == name }
-        guard sameName.count > 1,
-              let position = sameName.firstIndex(where: { $0.displayUUID == screen.displayUUID }) else {
-            return name
-        }
-        return "\(name) (\(position + 1))"
-    }
 
-    @objc private func setScreenFromMenu(_ sender: NSMenuItem) {
-        guard let screen = sender.representedObject as? NSScreen else { return }
-        onSelectScreen(screen)
-    }
 
     @objc private func setThemeFromMenu(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let theme = AeroControlTheme(rawValue: raw) else { return }
         onSelectTheme(theme)
     }
 
-    @objc private func toggleMultiScreenFromMenu() {
-        onToggleMultiScreen()
-    }
 
     @objc private func quitFromMenu() {
         onQuit()

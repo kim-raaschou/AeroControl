@@ -89,7 +89,7 @@ private final class ScriptableBridge: NativeApiBridge {
 }
 
 /// Records the store's host-reaction callbacks for assertions.
-private enum HostSignal: Equatable { case loaded, monitorsChanged }
+private enum HostSignal: Equatable { case loaded }
 
 private final class OutputCollector: @unchecked Sendable {
     private let lock = NSLock()
@@ -108,7 +108,6 @@ private final class OutputCollector: @unchecked Sendable {
 @MainActor private func collect(_ store: OverviewStore) -> OutputCollector {
     let outputs = OutputCollector()
     store.onLoaded = { outputs.append(.loaded) }
-    store.onMonitorsChanged = { outputs.append(.monitorsChanged) }
     return outputs
 }
 
@@ -135,17 +134,6 @@ private func result(_ spec: [(String, [Int])]) -> OverviewResult {
     })
 }
 
-/// Builds a typed load result placing each workspace on a specific monitor: a list of
-/// `(workspaceName, monitorId, [windowId])`. Lets a test grow/shrink the *monitor set*.
-private func resultM(_ spec: [(String, Int, [Int])]) -> OverviewResult {
-    OverviewResult(workspaces: spec.map { name, monitorId, ids in
-        WorkspaceInfo(
-            name: name,
-            windows: ids.map { WindowInfo(windowId: $0, appName: "App", bundleId: "com.app") },
-            monitorId: monitorId
-        )
-    })
-}
 
 @MainActor
 private func windowIds(_ store: OverviewStore) -> [Int] {
@@ -437,40 +425,10 @@ struct StoreIngressIntegrationTests {
 
     // MARK: Output contract — the seam that drives OverlayWindowManager
     //
-    // The store's host-reaction callbacks are the egress that `AeroControlApp` maps to
-    // window-management calls: `.monitorsChanged` → `rebuild()` (rebuild for the current
-    // display set), `.loaded` → `showErrorFallbackIfNeeded()`. Asserting them here
-    // integration-tests *what* OverlayWindowManager is told to do, deterministically and
-    // without AppKit.
+    // `.loaded` is the store's host-reaction callback that `AeroControlApp` maps to
+    // `showErrorFallbackIfNeeded()`. Asserting it here integration-tests *what*
+    // OverlayWindowManager is told to do, deterministically and without AppKit.
 
-    @Test("a monitor-set change emits monitorsChanged; a same-monitor change does not")
-    func monitorSetChangeEmitsMonitorsChanged() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
-        let outputs = collect(store)
-        await store.start()
-        // The initial load ([] → [1]) emits one `.monitorsChanged` asynchronously; wait
-        // for it to settle so `before` captures a stable baseline.
-        await waitUntil { outputs.count(of: .monitorsChanged) >= 1 }
-
-        let before = outputs.count(of: .monitorsChanged)
-
-        // A workspace appears on a SECOND monitor: the monitor set grows [1] → [1, 2], so the
-        // host must re-sync the window. Exactly one `.monitorsChanged` for the set change.
-        store.send(.loaded(resultM([("1", 1, [1]), ("5", 2, [5])])))
-        await waitUntil { store.model.monitors.count == 2 }
-        #expect(outputs.count(of: .monitorsChanged) - before == 1)
-
-        // A same-monitor content change (a new window on monitor 1) must NOT re-emit
-        // monitorsChanged — the monitor set is unchanged, so no window re-sync is needed.
-        let afterGrow = outputs.count(of: .monitorsChanged)
-        store.send(.loaded(resultM([("1", 1, [1, 2]), ("5", 2, [5])])))
-        await waitUntil { windowIds(store) == [1, 2, 5] }
-        #expect(outputs.count(of: .monitorsChanged) == afterGrow)
-
-        store.stop()
-    }
 
     @Test("the initial load emits loaded so the host can reveal or show an error")
     func initialLoadEmitsLoaded() async {

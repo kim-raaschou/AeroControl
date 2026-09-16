@@ -45,8 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(
             onQuit: { [weak self] in self?.quit() },
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
-            onSelectScreen: { [weak self] screen in self?.overlayManager.selectScreen(screen) },
-            onToggleMultiScreen: { [weak self] in self?.overlayManager.toggleMultiScreen() },
             onSelectTheme: { [weak self] theme in self?.overlayManager.selectTheme(theme) },
             onReset: { [weak self] in self?.overlayManager.rebuild() },
             previewsAvailable: { [weak self] in self?.state.previewsAvailable ?? false },
@@ -58,11 +56,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             state: state,
             settings: settings
         )
-        overlayManager.activateInitialScreen()
 
         installStatusItem()
 
-        state.onMonitorsChanged = { [weak self] in self?.overlayManager.rebuild() }
         state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
 
         Task {

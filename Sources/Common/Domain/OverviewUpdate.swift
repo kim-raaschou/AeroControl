@@ -15,17 +15,6 @@ public struct OverviewModel: Equatable {
         self.focusedWorkspace = focusedWorkspace
     }
 
-    public var monitors: [MonitorInfo] {
-        Array(Set(workspaces.map(\.monitorId))).sorted().map { MonitorInfo(monitorId: $0) }
-    }
-
-    public func workspaces(forMonitor monitorId: Int) -> [WorkspaceInfo] {
-        workspaces.filter { $0.monitorId == monitorId }
-    }
-
-    public func workspaces(forScreen nsScreenId: Int) -> [WorkspaceInfo] {
-        workspaces.filter { $0.nsScreenId == nsScreenId }
-    }
 }
 
 public enum OverviewInput: Sendable {
@@ -38,7 +27,6 @@ public enum OverviewEffect: Equatable {
     case windowRemoved(Int)
     case loadIcons([WindowInfo])
     case refresh
-    case monitorsChanged
     case runAction(AeroControlAction)
     /// Actions that must run one after another, in order (e.g. a merge).
     case runSequence([AeroControlAction])
@@ -80,9 +68,6 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
     let allWindows = new.workspaces.flatMap(\.windows)
     if !allWindows.isEmpty {
         effects.append(.loadIcons(allWindows))
-    }
-    if new.monitors != state.monitors {
-        effects.append(.monitorsChanged)
     }
     return (new, effects)
 }

@@ -1,11 +1,10 @@
 import SwiftUI
 import Common
 
-/// The full-screen overview content: all workspaces (optionally only one screen's) as a
-/// centered near-square grid of equal cards; the last row is centered when it is short.
+/// The full-screen overview content: every workspace as a card, in rows sized by how much
+/// each one holds.
 public struct AeroControlPanel: View {
     @Bindable var state: OverviewStore
-    let screenFilter: Int?
     let availableWidth: CGFloat
     let availableHeight: CGFloat
     /// Called after an action that completes the "one shot" (focus a window or a
@@ -14,24 +13,18 @@ public struct AeroControlPanel: View {
 
     public init(
         state: OverviewStore,
-        screenFilter: Int? = nil,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
         onDismiss: @escaping () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
-        self.screenFilter = screenFilter
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
         self.onDismiss = onDismiss
     }
 
-    private var workspaces: [WorkspaceInfo] {
-        if let screenFilter {
-            return state.model.workspaces(forScreen: screenFilter)
-        }
-        return state.model.workspaces
-    }
+    /// Every workspace, whichever monitor it lives on: the overview is one window.
+    private var workspaces: [WorkspaceInfo] { state.model.workspaces }
 
     public var body: some View {
         Group {

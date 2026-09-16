@@ -18,7 +18,7 @@ struct AerospaceCommandArgvTests {
     func listWorkspaces() {
         #expect(AerospaceCommand.listWorkspaces() == [
             "list-workspaces", "--monitor", "all", "--json", "--format",
-            "%{workspace} %{monitor-id} %{monitor-appkit-nsscreen-screens-id}",
+            "%{workspace} %{monitor-id}",
         ])
     }
 
@@ -42,7 +42,6 @@ private func sentinel(for field: AerospaceField) -> Any {
     case .workspace: return "ws"
     case .parentLayout: return "pl"
     case .monitorId: return 222
-    case .nsScreenId: return 333
     }
 }
 
@@ -74,7 +73,6 @@ struct AerospaceFieldDriftGuardTests {
         let m = try #require(try parseWorkspaces(json: sentinelJSON(for: AerospaceCommand.listWorkspacesFields)).first)
         #expect(m.workspace == "ws")
         #expect(m.monitorId == 222)
-        #expect(m.nsScreenId == 333)
     }
 }
 

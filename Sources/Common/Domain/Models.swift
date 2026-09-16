@@ -21,24 +21,14 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let name: String
     public var windows: [WindowInfo]
     public var monitorId: Int
-    public var nsScreenId: Int
 
-    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, nsScreenId: Int = 1) {
+    public init(name: String, windows: [WindowInfo], monitorId: Int = 1) {
         self.name = name
         self.windows = windows
         self.monitorId = monitorId
-        self.nsScreenId = nsScreenId
     }
 }
 
-public struct MonitorInfo: Equatable, Hashable, Identifiable, Sendable {
-    public var id: Int { monitorId }
-    public let monitorId: Int
-
-    public init(monitorId: Int) {
-        self.monitorId = monitorId
-    }
-}
 
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
