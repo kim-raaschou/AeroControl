@@ -124,27 +124,21 @@ struct AeroControlAppTile: View {
         }
     }
 
+    /// A floating window is marked the way a focused one is — the same ring, the same
+    /// hairline weight — only dashed and in the theme's muted color instead of the accent.
     @ViewBuilder private var floatingHint: some View {
         if window.isFloating && !isFocused {
             let size = plateSize
-            let dot = max(1, iconSize * 0.05)
-            let gap = iconSize * 0.09
             RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
                 .strokeBorder(
-                    floatingStroke,
-                    style: StrokeStyle(lineWidth: dot, lineCap: .round, dash: [0.01, gap])
+                    palette.badgeText.opacity(0.75),
+                    style: StrokeStyle(lineWidth: AeroControlMetrics.focusRingWidth,
+                                       lineCap: .round, dash: [0.01, 5])
                 )
                 .frame(width: size.width, height: size.height)
         }
     }
 
-    private var floatingStroke: Color {
-        adaptive(dark: 0.33, light: 0.23)
-    }
-
-    private func adaptive(dark: Double, light: Double) -> Color {
-        colorScheme == .dark ? .white.opacity(dark) : .black.opacity(light)
-    }
 
     @ViewBuilder private var closeButton: some View {
         if isHovering {

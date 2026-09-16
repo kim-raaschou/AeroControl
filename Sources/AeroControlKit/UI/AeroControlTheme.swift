@@ -87,7 +87,7 @@ public struct AeroControlPalette: Sendable {
 
     init(base: BasePalette) {
         accent = Color(hex: base.accent)
-        cardFill = Color(hex: base.background).opacity(0.92)
+        cardFill = Color(hex: base.background).opacity(0.78)
         cardBorder = Color(hex: base.border)
         badgeFill = Color(hex: base.surface)
         badgeText = Color(hex: base.muted)

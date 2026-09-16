@@ -80,17 +80,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
         menu.addItem(.separator())
-
-        menu.addItem(.separator())
-        menu.addItem(sectionHeader("Theme"))
+        // A submenu, not nine items: the palette list would otherwise be most of the menu.
+        // The parent carries the current theme's name and swatch, so the choice is visible
+        // without opening it.
+        let themeItem = NSMenuItem(title: "Theme: \(settings.theme.name)", action: nil, keyEquivalent: "")
+        themeItem.image = swatch(for: settings.theme)
+        let themeMenu = NSMenu()
         for theme in AeroControlTheme.all {
             let item = NSMenuItem(title: theme.name, action: #selector(setThemeFromMenu(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = theme.id
             item.state = settings.theme == theme ? .on : .off
             item.image = swatch(for: theme)
-            menu.addItem(item)
+            themeMenu.addItem(item)
         }
+        themeItem.submenu = themeMenu
+        menu.addItem(themeItem)
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
