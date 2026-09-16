@@ -41,15 +41,20 @@ public struct DecodedWindow: Decodable, Equatable {
 public struct WorkspaceMonitor: Decodable, Equatable {
     public let workspace: String
     @TolerantInt public var monitorId: Int
+    /// Optional so a missing field never fails the whole load: an AeroSpace that does not
+    /// emit it just leaves the display unnamed.
+    public let monitorName: String?
 
     private enum CodingKeys: String, CodingKey {
         case workspace
         case monitorId = "monitor-id"
+        case monitorName = "monitor-name"
     }
 
-    public init(workspace: String, monitorId: Int) {
+    public init(workspace: String, monitorId: Int, monitorName: String? = nil) {
         self.workspace = workspace
         self.monitorId = monitorId
+        self.monitorName = monitorName
     }
 }
 
@@ -95,7 +100,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
         WorkspaceInfo(
             name: wm.workspace,
             windows: byWorkspace[wm.workspace]?.map(\.window) ?? [],
-            monitorId: wm.monitorId
+            monitorId: wm.monitorId,
+            monitorName: wm.monitorName ?? ""
         )
     }
 

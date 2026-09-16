@@ -8,6 +8,7 @@ public enum AerospaceField: String, CaseIterable, CodingKey {
     case workspace = "workspace"
     case parentLayout = "window-parent-container-layout"
     case monitorId = "monitor-id"
+    case monitorName = "monitor-name"
 
     public var formatToken: String { "%{\(rawValue)}" }
 }

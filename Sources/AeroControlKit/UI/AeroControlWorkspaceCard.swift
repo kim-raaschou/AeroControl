@@ -12,6 +12,8 @@ struct WorkspaceMap {
 /// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
+    /// The display this workspace lives on; nil with a single display, where naming it is noise.
+    let monitorName: String?
     let isFocused: Bool
     let focusedWindowId: Int
     let icons: [Int: NSImage]
@@ -79,10 +81,18 @@ struct AeroControlWorkspaceCard: View {
         if let fill = palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
     }
 
-    /// Just the badge; the tiles say how many windows there are.
+    /// The badge, and with more than one display the name of this workspace's. The tiles
+    /// say how many windows there are.
     private var header: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 6) {
             badge
+            if let monitorName, !monitorName.isEmpty, size.width >= AeroControlLayout.minCardWidth {
+                Label(monitorName, systemImage: "display")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(palette.badgeText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
             Spacer(minLength: 0)
         }
     }

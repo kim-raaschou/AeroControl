@@ -17,6 +17,12 @@ public struct OverviewModel: Equatable {
 
 }
 
+public extension OverviewModel {
+    /// True when the workspaces span more than one display, the only case where naming a
+    /// workspace's display tells the reader anything.
+    var spansMonitors: Bool { Set(workspaces.map(\.monitorId)).count > 1 }
+}
+
 public enum OverviewInput: Sendable {
     case loaded(OverviewResult)
     case event(AerospaceEvent)

@@ -26,6 +26,9 @@ public struct AeroControlPanel: View {
     /// Every workspace, whichever monitor it lives on: the overview is one window.
     private var workspaces: [WorkspaceInfo] { state.model.workspaces }
 
+    /// With one display the cards say nothing about it; with several, each card names its own.
+    private var namesMonitors: Bool { state.model.spansMonitors }
+
     public var body: some View {
         Group {
             if let errorMsg = state.error {
@@ -62,6 +65,7 @@ public struct AeroControlPanel: View {
     private var grid: some View {
         let all = workspaces
         let previews = state.previewsAvailable
+        let namesMonitors = self.namesMonitors
         let maps = all.map { map($0, previews: previews) }
         let sizes = AeroControlLayout.cardSizes(
             windowCounts: all.map { $0.windows.count },
@@ -77,16 +81,19 @@ public struct AeroControlPanel: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
                     ForEach(row, id: \.0.id) { workspace, size, map in
-                        card(for: workspace, size: size, map: map, previews: previews)
+                        card(for: workspace, size: size, map: map, previews: previews,
+                             monitor: namesMonitors ? workspace.monitorName : nil)
                     }
                 }
             }
         }
     }
 
-    private func card(for workspace: WorkspaceInfo, size: CGSize, map: WorkspaceMap?, previews: Bool) -> some View {
+    private func card(for workspace: WorkspaceInfo, size: CGSize, map: WorkspaceMap?,
+                      previews: Bool, monitor: String?) -> some View {
         AeroControlWorkspaceCard(
             workspace: workspace,
+            monitorName: monitor,
             isFocused: workspace.name == state.model.focusedWorkspace,
             focusedWindowId: state.model.focusedWindowId,
             icons: state.icons,

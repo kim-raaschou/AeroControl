@@ -29,7 +29,8 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   them back.
 - Hover a tile to reveal the close action.
 - Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
-  on, and the overlay itself always opens on the one screen under the mouse.
+  on, and the overlay itself always opens on the one screen under the mouse. With more
+  than one display each card names its own; with a single display nothing is shown.
 - Menu-bar configuration with persisted settings.
 
 ## Gallery

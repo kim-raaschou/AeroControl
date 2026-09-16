@@ -384,3 +384,19 @@ struct ActionTests {
         #expect(effects == [.runAction(.moveWindow(windowId: 1, toWorkspace: "2"))])
     }
 }
+
+@Suite("update — monitors")
+struct MonitorNamingTests {
+    private func ws(_ name: String, monitor: Int) -> WorkspaceInfo {
+        WorkspaceInfo(name: name, windows: [], monitorId: monitor, monitorName: "Display \(monitor)")
+    }
+
+    @Test("a workspace carries its display's name, and cards name it only when displays differ")
+    func spansMonitors() {
+        #expect(!OverviewModel().spansMonitors)                                  // nothing loaded
+        #expect(!OverviewModel(workspaces: [ws("1", monitor: 1), ws("2", monitor: 1)]).spansMonitors)
+        let two = OverviewModel(workspaces: [ws("1", monitor: 1), ws("5", monitor: 2)])
+        #expect(two.spansMonitors)
+        #expect(two.workspaces.map(\.monitorName) == ["Display 1", "Display 2"])
+    }
+}

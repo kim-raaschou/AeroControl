@@ -5,7 +5,7 @@ public enum AerospaceCommand {
         .windowId, .appName, .appBundleId, .windowTitle, .workspace, .parentLayout, .monitorId,
     ]
 
-    public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId]
+    public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId, .monitorName]
 
     public static func listWindows() -> [String] {
         ["list-windows", "--all", "--json", "--format", listWindowsFields.formatString]
