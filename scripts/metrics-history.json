@@ -259,5 +259,14 @@
     "complexity": 636,
     "prodComplexity": 378,
     "files": 42
+  },
+  {
+    "timestamp": "2026-09-16T18:11:56+02:00",
+    "commit": "4320124",
+    "subject": "Roll back the screen map; cards are a grid again",
+    "code": 3804,
+    "complexity": 567,
+    "prodComplexity": 310,
+    "files": 41
   }
 ]

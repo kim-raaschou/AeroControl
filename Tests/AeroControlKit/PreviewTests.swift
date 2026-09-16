@@ -37,13 +37,6 @@ struct PreviewMetricsTests {
         #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
     }
 
-    @Test("weight follows content: empty < few < many")
-    func weights() {
-        #expect(AeroControlLayout.weight(windowCount: 0) < AeroControlLayout.weight(windowCount: 1))
-        #expect(AeroControlLayout.weight(windowCount: 1) < AeroControlLayout.weight(windowCount: 4))
-        #expect(AeroControlLayout.weight(windowCount: 4) == 2)
-    }
-
     @Test("row count: 1-3 one row, 4-6 two, 7-12 three")
     func rowCounts() {
         #expect([1, 2, 3].map(AeroControlLayout.rowCount(forCount:)) == [1, 1, 1])
@@ -52,53 +45,50 @@ struct PreviewMetricsTests {
         #expect(AeroControlLayout.rowCount(forCount: 0) == 0)
     }
 
-    @Test("partition keeps order, uses every row, and balances weight")
+    @Test("partition keeps order and splits as evenly as it can, remainder on top")
     func partitioning() {
-        let rows = AeroControlLayout.partition(weights: [4.2, 0.35, 1, 0.35, 0.35], rowCount: 2)
-        #expect(rows == [0..<1, 1..<5])                       // the heavy workspace gets its own row
-        let even = AeroControlLayout.partition(weights: [1, 1, 1, 1], rowCount: 2)
-        #expect(even == [0..<2, 2..<4])
-        let many = AeroControlLayout.partition(weights: [1, 1, 1], rowCount: 5)
+        #expect(AeroControlLayout.partition(count: 7, rowCount: 3) == [0..<3, 3..<5, 5..<7])
+        #expect(AeroControlLayout.partition(count: 4, rowCount: 2) == [0..<2, 2..<4])
+        let many = AeroControlLayout.partition(count: 3, rowCount: 5)
         #expect(many.count == 3 && many.allSatisfy { !$0.isEmpty })
+        #expect(AeroControlLayout.partition(count: 0, rowCount: 3).isEmpty)
     }
 
-    @Test("5 workspaces (18, 0, 1, 0, 0 windows): heavy one alone on top, the rest below, all width used")
+    @Test("5 workspaces (18, 0, 1, 0, 0 windows): even rows, empties narrow, all width used")
     func fiveWorkspaces() {
         let available = CGSize(width: 1624, height: 1050)
         let rows = AeroControlLayout.cardSizes(windowCounts: [18, 0, 1, 0, 0], available: available)
         #expect(rows.count == 2)
-        #expect(rows[0].count == 1 && rows[0][0].width == 1624)
-        #expect(rows[1].count == 4)
+        #expect(rows.map(\.count) == [3, 2])
         let gap = AeroControlLayout.cardGap
-        let bottom = rows[1].map(\.width).reduce(0, +) + 3 * gap
-        #expect(bottom <= available.width && bottom > available.width - 4)
-        #expect(rows[1][0].width == AeroControlLayout.emptyCardWidth)     // empty: badge only
-        #expect(rows[1][1].width > AeroControlLayout.minCardWidth)         // the one with a window is wide
+        for row in rows {
+            let used = row.map(\.width).reduce(0, +) + CGFloat(row.count - 1) * gap
+            #expect(used <= available.width && used > available.width - 4)
+        }
+        #expect(rows[0][1].width == AeroControlLayout.emptyCardWidth)     // empty: badge only
+        #expect(rows[0][0].width == rows[0][2].width)                     // 18 windows and 1: same card
         let heights = rows[0][0].height + rows[1][0].height + gap
         #expect(heights <= available.height && heights > available.height - 4)
-        #expect(rows[0][0].height > rows[1][0].height)                     // the heavy row is taller
-        #expect(rows[1][0].height >= AeroControlLayout.minRowHeight)
+        #expect(rows[0][0].height == rows[1][0].height)                   // every row the same height
     }
 
-    @Test("all workspaces non-empty share the width by weight")
-    func proportional() {
+    @Test("cards that hold windows share a row equally, whatever they hold")
+    func equalWidths() {
         let rows = AeroControlLayout.cardSizes(windowCounts: [1, 4], available: CGSize(width: 1000, height: 500))
         #expect(rows.count == 1)
-        let w = rows[0].map(\.width)
-        #expect(abs(w[1] / w[0] - 2) < 0.05)                           // √4 : √1
+        #expect(rows[0][0].width == rows[0][1].width)
+        #expect(rows[0].map(\.width).reduce(0, +) + AeroControlLayout.cardGap <= 1000)
     }
 
-    @Test("row heights follow the snapshots: a 2x2 row takes height a one-row row does not need")
-    func heightsFollowSnapshots() {
-        // Today's five workspaces on the 3440x1440 display: [4, 2] on top, [3, 0, 1] below.
-        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1], available: CGSize(width: 3300, height: 1300))
-        #expect(rows.count == 2)
-        let top = rows[0][0].height, bottom = rows[1][0].height
-        #expect(top > bottom * 1.2)                                       // clearly taller, not the near-even weight split
-        #expect(top + bottom + AeroControlLayout.cardGap <= 1300 + 1)
-        #expect(bottom >= AeroControlLayout.minRowHeight)
+    @Test("the layout ignores the snapshots: same counts, same cards")
+    func layoutIsPredictable() {
+        let available = CGSize(width: 3300, height: 1300)
+        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1], available: available)
+        #expect(rows.count == 2 && rows.map(\.count) == [3, 2])
+        #expect(rows[0][0].height == rows[1][0].height)
+        #expect(rows[0][0].height * 2 + AeroControlLayout.cardGap <= available.height + 1)
         let tile = AeroControlLayout.tileGrid(windowCount: 4, card: rows[0][0])
-        #expect(tile.columns == 2 && tile.width > 480)                    // 2x2 with snapshots over 480 pt wide
+        #expect(tile.columns == 2 && tile.width > 400)                    // 2x2 with roomy snapshots
     }
 
     @Test("cell aspect is the median snapshot aspect; four tall columns lay out as one row of tall cells")
@@ -115,14 +105,6 @@ struct PreviewMetricsTests {
 
 
 
-
-    @Test("rows share the height by what their cards can show, not by window count alone")
-    func rowHeightsFollowContent() {
-        let available = CGSize(width: 3300, height: 1300)
-        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1],
-                                               aspects: [0.4, 0.4, 0.4, 0.4, 0.4], available: available)
-        #expect(rows.count == 2 && rows[0][0].height > rows[1][0].height)
-    }
 
     @Test("tile grid picks the column count that maximizes tile size and never overflows")
     func tileGrid() {

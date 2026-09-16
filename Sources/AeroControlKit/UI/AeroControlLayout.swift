@@ -1,10 +1,11 @@
 import CoreGraphics
 
-/// Pure layout math for the full-screen overview, Mission-Control style: space follows
-/// content. Cards are laid out in rows; within a row each card's width is proportional
-/// to its weight (≈ √windows, empty workspaces get a badge-sized sliver), rows are
-/// balanced by weight, and a card's windows fill it as a grid of 3:2 tiles (or square
-/// icons) using whichever column count yields the largest tiles. All unit-tested.
+/// Pure layout math for the full-screen overview, Mission-Control style: the grid is the
+/// same shape whatever the workspaces hold. Cards are split into rows of as equal length
+/// as possible, every row is the same height, and within a row every card that holds
+/// windows is the same width (empty workspaces keep a badge-wide sliver). A card's windows
+/// fill it as a grid of 3:2 tiles (or square icons) using whichever column count yields
+/// the largest tiles. All unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     public static let cardGap: CGFloat = 24
@@ -17,8 +18,6 @@ public enum AeroControlLayout {
     public static let minTileWidth: CGFloat = 36
     /// Largest square icon tile; icons bigger than this stop looking like icons.
     public static let maxIconTile: CGFloat = 128
-    /// Narrowest card that still shows windows; below this only the badge is drawn.
-    public static let minCardWidth: CGFloat = 150
     /// Diameter of the workspace badge in the card header.
     public static let badgeSize: CGFloat = 24
     /// An empty card is exactly the badge plus the card padding on both sides, so the badge
@@ -27,12 +26,6 @@ public enum AeroControlLayout {
     /// Wider empty card: room for the badge AND the display name beside it, used when the
     /// workspaces span more than one display.
     public static let namedEmptyCardWidth: CGFloat = emptyCardWidth + 82
-    public static let emptyWeight: CGFloat = 0.35
-
-    /// How much width a workspace deserves relative to the others.
-    public static func weight(windowCount: Int) -> CGFloat {
-        windowCount <= 0 ? emptyWeight : CGFloat(Double(windowCount).squareRoot())
-    }
 
     /// Number of rows for `count` cards: 1–3 → 1, 4–6 → 2, 7–12 → 3, then 4 per row.
     public static func rowCount(forCount count: Int) -> Int {
@@ -45,35 +38,22 @@ public enum AeroControlLayout {
         }
     }
 
-    /// Smallest row height; keeps a row of empty workspaces readable.
-    public static let minRowHeight: CGFloat = 120
-
-    /// Splits `weights` into `rowCount` contiguous, non-empty groups (order preserved),
-    /// closing a row when the next card would move its weight further from the ideal
-    /// share than leaving it out, while always keeping one card for every later row.
-    public static func partition(weights: [CGFloat], rowCount: Int) -> [Range<Int>] {
-        guard rowCount > 0, !weights.isEmpty else { return [] }
-        let rows = min(rowCount, weights.count)
-        let target = weights.reduce(0, +) / CGFloat(rows)
+    /// Splits `count` cards into `rowCount` contiguous rows of as equal length as possible,
+    /// order preserved; a remainder goes to the top rows (7 in 3 rows → 3, 2, 2).
+    public static func partition(count: Int, rowCount: Int) -> [Range<Int>] {
+        guard rowCount > 0, count > 0 else { return [] }
+        let rows = min(rowCount, count)
+        let (length, remainder) = (count / rows, count % rows)
         var result: [Range<Int>] = []
-        var start = 0, sum: CGFloat = 0
-        for (i, w) in weights.enumerated() {
-            let rowsLeft = rows - result.count
-            let itemsLeft = weights.count - i
-            let mustClose = itemsLeft == rowsLeft - 1
-            let worse = i > start && rowsLeft > 1 && abs(sum + w - target) > abs(sum - target)
-            if mustClose || worse {
-                result.append(start..<i); start = i; sum = 0
-            }
-            sum += w
+        var start = 0
+        for row in 0..<rows {
+            let end = start + length + (row < remainder ? 1 : 0)
+            result.append(start..<end)
+            start = end
         }
-        result.append(start..<weights.count)
         return result
     }
 
-    /// Card sizes per row for `windowCounts` (in AeroSpace order) inside `available`.
-    /// Empty workspaces get `emptyCardWidth`; the rest share the remaining width by weight,
-    /// never below `minCardWidth` when the row allows it.
     /// Snapshot cells are shaped like the screen when nothing better is known.
     public static func previewAspect(for available: CGSize) -> CGFloat {
         available.width > 0 ? available.height / available.width : tileAspect
@@ -88,95 +68,31 @@ public enum AeroControlLayout {
         return aspects[aspects.count / 2]
     }
 
-    public static func cardSizes(windowCounts: [Int], available: CGSize) -> [[CGSize]] {
-        let aspect = previewAspect(for: available)
-        return cardSizes(windowCounts: windowCounts, aspects: windowCounts.map { _ in aspect }, available: available)
-    }
-
-    /// `aspects` is the cell aspect per workspace, in `windowCounts` order.
-    public static func cardSizes(windowCounts: [Int], aspects: [CGFloat],
-                                 emptyWidth: CGFloat = emptyCardWidth, available: CGSize) -> [[CGSize]] {
-        let n = windowCounts.count
-        guard n > 0, aspects.count == n, available.width > 0, available.height > 0 else { return [] }
-        let weights = windowCounts.map(weight(windowCount:))
-        let rows = partition(weights: weights, rowCount: rowCount(forCount: n))
-        let counts = rows.map { Array(windowCounts[$0]) }
-        let widths = counts.map { rowWidths(windowCounts: $0, rowWidth: available.width, emptyWidth: emptyWidth) }
-        let start = rowHeights(rowWeights: rows.map { weights[$0].reduce(0, +) }, totalHeight: available.height)
-        let heights = rowHeights(cells: counts, widths: widths, aspects: rows.map { Array(aspects[$0]) }, start: start)
-        return zip(zip(counts, widths), heights).map { row, height in
-            row.1.map { CGSize(width: $0, height: height) }
+    /// Card sizes per row for `windowCounts` (in AeroSpace order) inside `available`:
+    /// even rows, equal row heights, equal widths for the cards that hold windows.
+    public static func cardSizes(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
+                                 available: CGSize) -> [[CGSize]] {
+        let count = windowCounts.count
+        guard count > 0, available.width > 0, available.height > 0 else { return [] }
+        let rows = partition(count: count, rowCount: rowCount(forCount: count))
+        let height = ((available.height - CGFloat(rows.count - 1) * cardGap) / CGFloat(rows.count)).rounded(.down)
+        return rows.map { range in
+            rowWidths(windowCounts: Array(windowCounts[range]), rowWidth: available.width, emptyWidth: emptyWidth)
+                .map { CGSize(width: $0, height: height) }
         }
     }
 
-    /// Snapshot area a row of cards yields at `height`: what the height search maximizes.
-    static func snapshotArea(cells: [Int], widths: [CGFloat], aspects: [CGFloat], height: CGFloat) -> CGFloat {
-        cells.indices.reduce(0) { sum, i in
-            guard cells[i] > 0 else { return sum }
-            let tile = tileGrid(windowCount: cells[i], card: CGSize(width: widths[i], height: height), aspect: aspects[i]).width
-            return sum + CGFloat(cells[i]) * tile * tile * aspects[i]
-        }
-    }
-
-    /// Row heights that maximize the total snapshot area, starting from `start` (the weight
-    /// share) and moving height between rows in steps of 2% while that grows the area. A
-    /// row whose tiles are limited by width gives height away for free; a row with a 2x2
-    /// grid limited by height takes it.
-    static func rowHeights(cells: [[Int]], widths: [[CGFloat]], aspects: [[CGFloat]], start: [CGFloat]) -> [CGFloat] {
-        var heights = start
-        let step = (start.reduce(0, +) / 50).rounded(.down)
-        func area(_ h: [CGFloat]) -> CGFloat {
-            h.indices.reduce(0) { $0 + snapshotArea(cells: cells[$1], widths: widths[$1], aspects: aspects[$1], height: h[$1]) }
-        }
-        var best = area(heights), improved = step > 0
-        while improved {
-            improved = false
-            for from in heights.indices where heights[from] - step >= minRowHeight {
-                for to in heights.indices where to != from {
-                    var trial = heights
-                    trial[from] -= step; trial[to] += step
-                    let score = area(trial)
-                    if score > best { best = score; heights = trial; improved = true }
-                }
-            }
-        }
-        return heights
-    }
-
-    /// Rows share the height by their weight sums, each at least `minRowHeight`.
-    static func rowHeights(rowWeights: [CGFloat], totalHeight: CGFloat) -> [CGFloat] {
-        let usable = totalHeight - CGFloat(rowWeights.count - 1) * cardGap
-        let total = rowWeights.reduce(0, +)
-        var heights = rowWeights.map { max(minRowHeight, (usable * $0 / total)) }
-        let overflow = heights.reduce(0, +) - usable
-        if overflow > 0 {   // clamping pushed us over: take it back from the rows above the minimum
-            let flexible = heights.indices.filter { heights[$0] > minRowHeight }
-            let flexTotal = flexible.map { heights[$0] - minRowHeight }.reduce(0, +)
-            for i in flexible where flexTotal > 0 { heights[i] -= overflow * (heights[i] - minRowHeight) / flexTotal }
-        }
-        return heights.map { $0.rounded(.down) }
-    }
-
+    /// Widths inside one row: empty workspaces take `emptyWidth`, the cards that hold
+    /// windows split what is left equally, so a card's size never depends on its neighbours.
     static func rowWidths(windowCounts: [Int], rowWidth: CGFloat, emptyWidth: CGFloat = emptyCardWidth) -> [CGFloat] {
         let usable = rowWidth - CGFloat(windowCounts.count - 1) * cardGap
-        var widths = windowCounts.map { $0 <= 0 ? emptyWidth : CGFloat(0) }
-        let flexible = windowCounts.indices.filter { windowCounts[$0] > 0 }
-        guard !flexible.isEmpty else {
-            return widths.map { _ in (usable / CGFloat(windowCounts.count)).rounded(.down) }
+        let filled = windowCounts.count { $0 > 0 }
+        guard filled > 0 else {
+            return windowCounts.map { _ in (usable / CGFloat(windowCounts.count)).rounded(.down) }
         }
-        var remaining = usable - widths.reduce(0, +)
-        var pool = flexible
-        // Give every flexible card at least minCardWidth first, then share the rest by weight.
-        while !pool.isEmpty {
-            let totalWeight = pool.map { weight(windowCount: windowCounts[$0]) }.reduce(0, +)
-            let tooSmall = pool.filter { remaining * weight(windowCount: windowCounts[$0]) / totalWeight < minCardWidth }
-            if tooSmall.isEmpty || tooSmall.count == pool.count { break }
-            for i in tooSmall { widths[i] = minCardWidth; remaining -= minCardWidth }
-            pool.removeAll { tooSmall.contains($0) }
-        }
-        let totalWeight = pool.map { weight(windowCount: windowCounts[$0]) }.reduce(0, +)
-        for i in pool { widths[i] = (remaining * weight(windowCount: windowCounts[i]) / totalWeight).rounded(.down) }
-        return widths
+        let empties = CGFloat(windowCounts.count - filled) * emptyWidth
+        let each = max(0, (usable - empties) / CGFloat(filled)).rounded(.down)
+        return windowCounts.map { $0 > 0 ? each : emptyWidth }
     }
 
     /// A grid whose tiles are within this fraction of the largest possible is "as good":
@@ -205,4 +121,3 @@ public enum AeroControlLayout {
         return (best.columns, max(minTileWidth, width.rounded(.down)))
     }
 }
-

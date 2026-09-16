@@ -1,8 +1,8 @@
 import SwiftUI
 import Common
 
-/// The full-screen overview content: every workspace as a card, in rows sized by how much
-/// each one holds.
+/// The full-screen overview content: every workspace as a card, in even rows of equal-sized
+/// cards.
 public struct AeroControlPanel: View {
     @Bindable var state: OverviewStore
     let availableWidth: CGFloat
@@ -59,7 +59,6 @@ public struct AeroControlPanel: View {
         let namesMonitors = self.namesMonitors
         let sizes = AeroControlLayout.cardSizes(
             windowCounts: all.map { $0.windows.count },
-            aspects: all.map(gridAspect),
             emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
             available: usable
         )
