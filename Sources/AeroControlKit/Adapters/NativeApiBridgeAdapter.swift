@@ -83,13 +83,19 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     }
 
     /// Window-server bounds, kept when at least half of the window lies on one display.
+    ///
+    /// The whole list is asked for and filtered, rather than the narrower
+    /// `CGWindowListCreateDescriptionFromArray`: that call returns nothing at all here
+    /// (measured on macOS 26, both with a bridged Swift array and with hand-built CFNumbers),
+    /// which silently left every workspace without frames and so without a screen map.
     public func windowFrames(windowIds: [Int]) -> [Int: CGRect] {
-        let ids = windowIds.map { CGWindowID($0) } as CFArray
-        guard let list = CGWindowListCreateDescriptionFromArray(ids) as? [[String: Any]] else { return [:] }
+        let wanted = Set(windowIds)
+        guard !wanted.isEmpty,
+              let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return [:] }
         let displays = Self.displayBounds()
         var result: [Int: CGRect] = [:]
         for info in list {
-            guard let id = info[kCGWindowNumber as String] as? Int,
+            guard let id = info[kCGWindowNumber as String] as? Int, wanted.contains(id),
                   let bounds = info[kCGWindowBounds as String] as? NSDictionary,
                   let frame = CGRect(dictionaryRepresentation: bounds), frame.width > 1, frame.height > 1,
                   displays.contains(where: { frame.intersection($0).area >= frame.area / 2 }) else { continue }
