@@ -11,33 +11,41 @@ struct ThemeTests {
         #expect(light.cardFill == nil && dark.cardFill == nil)      // nil means the frosted material
         #expect(light.accent == .accentColor)
         #expect(light.cardBorder != dark.cardBorder)
+        #expect(AeroControlTheme.system.enforcedAppearance == nil)
     }
 
-    @Test("a fixed palette ignores the appearance and paints its own card")
-    func tokyoNightIsFixed() {
-        let light = AeroControlTheme.tokyoNight.palette(for: .light)
-        let dark = AeroControlTheme.tokyoNight.palette(for: .dark)
-        #expect(light.cardFill != nil)
-        #expect(light.accent == dark.accent && light.cardBorder == dark.cardBorder)
-        #expect(light.accent == Color(hex: 0x7AA2F7))               // Tokyo Night blue
+    @Test("a fixed palette ignores the appearance and pins the one macOS draws in")
+    func fixedPalettesAreFixed() {
+        for theme in AeroControlTheme.all where theme != .system {
+            let light = theme.palette(for: .light), dark = theme.palette(for: .dark)
+            #expect(light.cardFill != nil, "\(theme.name) should paint its own card")
+            #expect(light.accent == dark.accent, "\(theme.name) should not follow the appearance")
+            #expect(theme.enforcedAppearance != nil, "\(theme.name) must pin an appearance")
+        }
     }
 
-    @Test("a fixed palette keeps small text readable and pins the appearance macOS draws in")
-    func fixedThemeIsReadableAndPinned() {
-        #expect(AeroControlTheme.system.enforcedAppearance == nil)          // follows macOS
-        #expect(AeroControlTheme.tokyoNight.enforcedAppearance == .dark)
-        // Secondary text on the card: 4.5:1 is the floor for small text.
-        #expect(contrast(0xA9B1D6, on: 0x1A1B26) > 4.5)
-        #expect(contrast(0x565F89, on: 0x1A1B26) < 4.5)                     // the palette's own comment color
+    /// The reason the palettes are stored as six published colors: every theme can be held to
+    /// the same floor, so a new one cannot ship with text nobody can read.
+    @Test("every theme keeps text, secondary text and the accent readable on its own card")
+    func everyThemeIsReadable() {
+        for theme in AeroControlTheme.all {
+            guard let base = theme.base else { continue }             // system: macOS's own colors
+            #expect(contrast(base.text, on: base.background) >= 7, "\(theme.name) text")
+            #expect(contrast(base.muted, on: base.background) >= 4.5, "\(theme.name) secondary text")
+            #expect(contrast(base.accent, on: base.background) >= 3, "\(theme.name) accent")
+            #expect(contrast(base.background, on: base.accent) >= 3, "\(theme.name) focused badge digit")
+        }
     }
 
-    @Test("every theme is selectable by its stored name")
-    func roundTripsThroughSettings() {
-        for theme in AeroControlTheme.allCases {
-            #expect(AeroControlTheme(rawValue: theme.rawValue) == theme)
+    @Test("themes are identified by a stable id, and the stored one round-trips")
+    func idsAreStable() {
+        #expect(AeroControlTheme.all.count >= 8)
+        #expect(Set(AeroControlTheme.all.map(\.id)).count == AeroControlTheme.all.count)
+        for theme in AeroControlTheme.all {
+            #expect(AeroControlTheme.named(theme.id) == theme)
             #expect(!theme.name.isEmpty)
         }
-        #expect(AeroControlTheme.allCases.count == 2)
+        #expect(AeroControlTheme.named("nope") == nil)               // a removed theme falls back
     }
 }
 

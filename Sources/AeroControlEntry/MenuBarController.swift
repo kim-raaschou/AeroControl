@@ -83,11 +83,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Theme"))
-        for theme in AeroControlTheme.allCases {
+        for theme in AeroControlTheme.all {
             let item = NSMenuItem(title: theme.name, action: #selector(setThemeFromMenu(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = theme.rawValue
+            item.representedObject = theme.id
             item.state = settings.theme == theme ? .on : .off
+            item.image = swatch(for: theme)
             menu.addItem(item)
         }
 
@@ -139,8 +140,26 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 
 
+    /// A dot in the theme's accent on its own background, so the list can be read at a glance
+    /// instead of by name alone.
+    private func swatch(for theme: AeroControlTheme) -> NSImage {
+        let side: CGFloat = 12
+        return NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            let palette = theme.palette(for: .dark)
+            (NSColor(palette.cardFill ?? .clear)).setFill()
+            NSBezierPath(ovalIn: rect).fill()
+            NSColor(palette.accent).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: side * 0.3, dy: side * 0.3)).fill()
+            NSColor(palette.cardBorder).setStroke()
+            let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
+            ring.lineWidth = 1
+            ring.stroke()
+            return true
+        }
+    }
+
     @objc private func setThemeFromMenu(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let theme = AeroControlTheme(rawValue: raw) else { return }
+        guard let id = sender.representedObject as? String, let theme = AeroControlTheme.named(id) else { return }
         onSelectTheme(theme)
     }
 

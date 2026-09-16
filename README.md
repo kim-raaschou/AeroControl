@@ -110,8 +110,10 @@ works but costs about 200 ms more.
 
 Use the menu-bar icon for all in-app configuration:
 
-- **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards) or
-  **Tokyo Night**, a fixed palette that looks the same in both appearances.
+- **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
+  of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
+  Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
+  looks the same whatever the system appearance is.
 - **Window Previews**: grant Screen Recording when it is missing.
 - **Reset settings** and **Quit**.
 

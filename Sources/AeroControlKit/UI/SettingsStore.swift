@@ -9,13 +9,13 @@ public final class SettingsStore {
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.theme = defaults.string(forKey: themeKey).flatMap(AeroControlTheme.init(rawValue:)) ?? .system
+        self.theme = defaults.string(forKey: themeKey).flatMap(AeroControlTheme.named) ?? .system
     }
 
     public func setTheme(_ value: AeroControlTheme) {
         guard theme != value else { return }
         theme = value
-        defaults.set(value.rawValue, forKey: themeKey)
+        defaults.set(value.id, forKey: themeKey)
     }
 
     public func reset() {
