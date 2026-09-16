@@ -144,6 +144,19 @@ struct PreviewMetricsTests {
         #expect(AeroControlLayout.mapBounds(frames: [left, right]) == CGRect(x: 0, y: 0, width: 216, height: 100))
     }
 
+    @Test("a floating window may overlap the tiles without costing the workspace its map")
+    func floatingDoesNotBreakTheMap() {
+        let left = CGRect(x: 0, y: 0, width: 100, height: 100)
+        let right = CGRect(x: 116, y: 0, width: 100, height: 100)
+        let floater = CGRect(x: 60, y: 20, width: 100, height: 60)        // lies over both
+        #expect(AeroControlLayout.mapBounds(frames: [left, right, floater]) == nil)   // no flags: a pile
+        let bounds = AeroControlLayout.mapBounds(frames: [left, right, floater],
+                                                 floating: [false, false, true])
+        #expect(bounds == CGRect(x: 0, y: 0, width: 216, height: 100))     // the floater is inside it
+        // Two tiles that genuinely overlap still fall back to the grid, floating or not.
+        #expect(AeroControlLayout.mapBounds(frames: [left, left], floating: [false, false]) == nil)
+    }
+
     @Test("a map card scores as one screen-shaped cell, worth more height than a grid of four")
     func mapCardIsOneCell() {
         let asGrid = AeroControlLayout.snapshotArea(cells: [4], widths: [2000], aspects: [0.4], height: 700)

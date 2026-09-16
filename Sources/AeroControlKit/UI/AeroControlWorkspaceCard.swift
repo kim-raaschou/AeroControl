@@ -137,10 +137,12 @@ struct AeroControlWorkspaceCard: View {
         }
     }
 
-    /// The windows drawn where AeroSpace put them, one cell per window in window order.
+    /// The windows drawn where AeroSpace put them. Floating windows come last so they lie on
+    /// top of the tiles they cover on the real screen, which is the whole point of floating.
     private func screenMap(_ cells: [CGRect]) -> some View {
-        ZStack(alignment: .topLeading) {
-            ForEach(Array(zip(workspace.windows, cells)), id: \.0.windowId) { window, cell in
+        let placed = zip(workspace.windows, cells).sorted { !$0.0.isFloating && $1.0.isFloating }
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(placed), id: \.0.windowId) { window, cell in
                 tile(window, metrics: .fitting(cellWidth: cell.width, previews: true, previewAspect: cell.height / cell.width))
                     .offset(x: cell.minX, y: cell.minY)
             }

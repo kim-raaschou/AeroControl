@@ -53,7 +53,9 @@ public struct AeroControlPanel: View {
         let ids = workspace.windows.map(\.windowId)
         guard previews, let cached = state.frames[workspace.name], Set(cached.keys) == Set(ids) else { return nil }
         let frames = ids.map { cached[$0]! }
-        return AeroControlLayout.mapBounds(frames: frames).map { WorkspaceMap(frames: frames, bounds: $0) }
+        let floating = workspace.windows.map(\.isFloating)
+        return AeroControlLayout.mapBounds(frames: frames, floating: floating)
+            .map { WorkspaceMap(frames: frames, bounds: $0) }
     }
 
     /// Cell aspect of a grid card: the median of its snapshots', the screen's when none.

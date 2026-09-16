@@ -63,12 +63,11 @@ struct AeroControlAppTile: View {
     var body: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
-            .shadow(color: .black.opacity(isFocused ? 0 : 0.12), radius: 2, y: 1)
+            .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .frame(width: tileSize.width, height: tileSize.height)
             .padding(cellPadding)
             .background(selectionPlate)
-            .overlay(floatingHint)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
             .onHover { isHovering = $0 }
@@ -113,6 +112,14 @@ struct AeroControlAppTile: View {
 
     /// Focus: a thin accent ring with a small gap around the drawn content and a soft glow,
     /// matching the focused workspace card's accent border.
+    /// A floating window is not in the tiling layout: it lies on top of it. The map already
+    /// draws it there, so the tile only has to look raised — a real shadow, no extra outline
+    /// competing with the focus ring. Focused floating windows keep both.
+    private var shadow: (opacity: Double, radius: CGFloat, offset: CGFloat) {
+        if window.isFloating { return (0.5, 12, 5) }
+        return (isFocused ? 0 : 0.12, 2, 1)
+    }
+
     @ViewBuilder private var selectionPlate: some View {
         if isFocused {
             let size = plateSize
@@ -123,22 +130,6 @@ struct AeroControlAppTile: View {
                 .frame(width: size.width, height: size.height)
         }
     }
-
-    /// A floating window is marked the way a focused one is — the same ring, the same
-    /// hairline weight — only dashed and in the theme's muted color instead of the accent.
-    @ViewBuilder private var floatingHint: some View {
-        if window.isFloating && !isFocused {
-            let size = plateSize
-            RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
-                .strokeBorder(
-                    palette.badgeText.opacity(0.75),
-                    style: StrokeStyle(lineWidth: AeroControlMetrics.focusRingWidth,
-                                       lineCap: .round, dash: [0.01, 5])
-                )
-                .frame(width: size.width, height: size.height)
-        }
-    }
-
 
     @ViewBuilder private var closeButton: some View {
         if isHovering {

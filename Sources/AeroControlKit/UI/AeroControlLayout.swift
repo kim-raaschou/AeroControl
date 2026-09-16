@@ -122,12 +122,14 @@ public enum AeroControlLayout {
     // MARK: Screen map
 
     /// The outline of a workspace's windows, or `nil` when a faithful map is not possible:
-    /// no frames, or windows that overlap (accordion, fullscreen, a floating window over the
-    /// tiles), where a grid tells more than a pile.
-    public static func mapBounds(frames: [CGRect]) -> CGRect? {
+    /// no frames, or *tiled* windows that overlap (accordion, fullscreen), where a grid tells
+    /// more than a pile. A floating window overlapping the tiles is not a broken map — that is
+    /// exactly where it sits — so it is excluded from the test and drawn on top.
+    public static func mapBounds(frames: [CGRect], floating: [Bool] = []) -> CGRect? {
         guard let first = frames.first else { return nil }
         let bounds = frames.dropFirst().reduce(first) { $0.union($1) }
-        guard bounds.width > 0, bounds.height > 0, !overlapping(frames) else { return nil }
+        let tiled = frames.indices.filter { floating.indices.contains($0) ? !floating[$0] : true }
+        guard bounds.width > 0, bounds.height > 0, !overlapping(tiled.map { frames[$0] }) else { return nil }
         return bounds
     }
 
