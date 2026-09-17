@@ -109,15 +109,9 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
 }
 
 public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
-    async let windowsJson = listWindowsJson(using: runner)
+    async let windowsJson = runner.run(AerospaceCommand.listWindows())
     async let workspacesJson = runner.run(AerospaceCommand.listWorkspaces())
     let windows = try parseWindows(json: try await windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await workspacesJson)
     return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors)
-}
-
-private func listWindowsJson(using runner: AerospaceProcessRunner) async throws -> String {
-    let argv = AerospaceCommand.listWindows()
-    if let sorted = try? await runner.run(argv + ["--sort-by", "dfs"]) { return sorted }
-    return try await runner.run(argv)
 }
