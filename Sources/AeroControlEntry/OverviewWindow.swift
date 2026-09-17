@@ -44,6 +44,24 @@ class OverviewWindow: NSPanel {
         onDismiss?()
     }
 
+    /// Keys that leave the overview without choosing anything, beyond Escape.
+    private static let dismissKeyEquivalents: Set<String> = ["q", "w"]
+
+    /// While the overview is up, AeroControl owns the menu bar — including the Quit item
+    /// SwiftUI installs by default. A stray Cmd-Q therefore killed the whole agent: the
+    /// overlay vanished, the app underneath came to the front, and the summon keybind
+    /// silently did nothing until AeroControl was launched again. A one-shot overlay
+    /// behaves like Spotlight instead, and Quit stays in the menu bar item.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+        let onlyCommand = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+        guard onlyCommand, Self.dismissKeyEquivalents.contains(key) else {
+            return super.performKeyEquivalent(with: event)
+        }
+        onDismiss?()
+        return true
+    }
+
     override func keyDown(with event: NSEvent) {
         log.debug("overview: keyDown \(event.keyCode)")
         if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }

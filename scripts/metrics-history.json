@@ -277,5 +277,14 @@
     "complexity": 517,
     "prodComplexity": 309,
     "files": 40
+  },
+  {
+    "timestamp": "2026-09-17T17:46:20+02:00",
+    "commit": "0a52f24",
+    "subject": "Ratchet the metrics baseline to 3642",
+    "code": 3652,
+    "complexity": 519,
+    "prodComplexity": 311,
+    "files": 40
   }
 ]
