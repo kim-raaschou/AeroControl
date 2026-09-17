@@ -268,5 +268,14 @@
     "complexity": 567,
     "prodComplexity": 310,
     "files": 41
+  },
+  {
+    "timestamp": "2026-09-17T17:44:46+02:00",
+    "commit": "3adcf88",
+    "subject": "Ask AeroSpace for exactly the keys we decode",
+    "code": 3642,
+    "complexity": 517,
+    "prodComplexity": 309,
+    "files": 40
   }
 ]
