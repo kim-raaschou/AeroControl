@@ -295,5 +295,14 @@
     "complexity": 526,
     "prodComplexity": 318,
     "files": 40
+  },
+  {
+    "timestamp": "2026-09-17T18:54:49+02:00",
+    "commit": "ea6c35e",
+    "subject": "Cmd-Q quits the app you are pointing at",
+    "code": 3194,
+    "complexity": 467,
+    "prodComplexity": 306,
+    "files": 39
   }
 ]

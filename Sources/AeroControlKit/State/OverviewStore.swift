@@ -16,15 +16,11 @@ public class OverviewStore {
     /// does: the overview is a place you point at windows, so pointing is the selection.
     public var hoveredWindowId: Int?
 
-    public var onLoaded: (@MainActor () -> Void)?
-
     private let inbox: AsyncStream<OverviewInput>
     private let inboxContinuation: AsyncStream<OverviewInput>.Continuation
 
     private var inboxTask: Task<Void, Never>?
     private var subscribeTask: Task<Void, Never>?
-    private var terminationTask: Task<Void, Never>?
-    private var windowCloseTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private var captureGeneration = 0
@@ -39,42 +35,35 @@ public class OverviewStore {
         inboxContinuation.yield(input)
     }
 
-    public func start() async {
-        await initialLoad()
+    public func start() {
         startInbox()
+    }
+
+    /// Reads AeroSpace's whole state and applies it. The overview is a one shot: the host
+    /// awaits this at summon, so what is drawn is what AeroSpace says right now.
+    public func reload() async {
+        do {
+            let result = try await loadOverview(using: runner)
+            apply(.loaded(result), animated: false)
+            error = nil
+        } catch {
+            self.error = "Load error: \(error.localizedDescription)"
+        }
+    }
+
+    /// While the overview is on screen it follows AeroSpace live; while it is hidden there
+    /// is nothing to keep in sync, so the subscription is scoped to visibility rather than
+    /// to the process. Nothing reads the model between summons.
+    public func startFollowingAerospace() {
+        guard subscribeTask == nil else { return }
         startSubscribeListener()
-        startTerminationListener()
-        startWindowCloseListener()
-        fireLoadedAfterEffects()
     }
 
-    private func fireLoadedAfterEffects() {
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated {
-                self.onLoaded?()
-            }
-        }
-    }
-
-    private func initialLoad() async {
-        let maxAttempts = 5
-        var lastError: Error?
-        for attempt in 1...maxAttempts {
-            do {
-                let result = try await loadOverview(using: runner)
-                apply(.loaded(result), animated: false)
-                self.error = nil
-                return
-            } catch {
-                lastError = error
-                if attempt < maxAttempts {
-                    try? await Task.sleep(for: .milliseconds(200 * attempt))
-                }
-            }
-        }
-        if let lastError {
-            self.error = "Load error: \(lastError.localizedDescription)"
-        }
+    public func stopFollowingAerospace() {
+        subscribeTask?.cancel()
+        subscribeTask = nil
+        refreshTask?.cancel()
+        refreshTask = nil
     }
 
     public func stop() {
@@ -83,10 +72,6 @@ public class OverviewStore {
         inboxTask = nil
         subscribeTask?.cancel()
         subscribeTask = nil
-        terminationTask?.cancel()
-        terminationTask = nil
-        windowCloseTask?.cancel()
-        windowCloseTask = nil
         refreshTask?.cancel()
         refreshTask = nil
         captureGeneration += 1
@@ -146,32 +131,6 @@ public class OverviewStore {
                 } catch {}
                 guard !Task.isCancelled else { return }
                 try? await Task.sleep(for: .seconds(1))
-            }
-        }
-    }
-
-    private func startTerminationListener() {
-        guard terminationTask == nil else { return }
-        terminationTask = Task { [weak self] in
-            guard let self else { return }
-            for await _ in self.nativeSystem.appTerminations() {
-                guard !Task.isCancelled else { return }
-                self.send(.event(.localWindowClosed))
-                Task { [weak self] in
-                    try? await Task.sleep(for: .milliseconds(150))
-                    self?.send(.event(.localWindowClosed))
-                }
-            }
-        }
-    }
-
-    private func startWindowCloseListener() {
-        guard windowCloseTask == nil else { return }
-        windowCloseTask = Task { [weak self] in
-            guard let self else { return }
-            for await _ in self.nativeSystem.windowCloseSignals() {
-                guard !Task.isCancelled else { return }
-                self.send(.event(.localWindowClosed))
             }
         }
     }

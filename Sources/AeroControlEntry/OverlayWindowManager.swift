@@ -39,6 +39,7 @@ final class OverlayWindowManager {
     private func hide(restoreFocus: Bool) {
         guard requestedVisible else { return }
         requestedVisible = false
+        state.stopFollowingAerospace()      // nothing to stay in sync with while hidden
         state.clearPreviews()
         window?.dismiss()
         guard restoreFocus, let owner = focusedWindowOwner() else { return }
@@ -69,20 +70,23 @@ final class OverlayWindowManager {
     /// display changes and settings changes free of special cases.
     private func show() {
         requestedVisible = true
-        guard state.previewsAvailable else {
-            // Ask macOS for Screen Recording on the first summon without it. The system
-            // shows its dialog once per app; afterwards this is a silent no-op and the
-            // menu item / System Settings is the way in. Icons are shown meanwhile.
-            state.requestPreviewAccess()
-            rebuild()
-            return
-        }
-        // Nothing is shown until the snapshots are in: one fade-in with the images in
-        // place instead of icons that get replaced a moment later.
+        // Read AeroSpace's whole state, then snapshot what it listed, then follow it live
+        // for as long as the overview is up. Nothing is drawn until both are in: one
+        // fade-in with the real state and the images already in place.
         Task { [weak self] in
             guard let self else { return }
-            await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
-            guard self.requestedVisible else { return }   // toggled away while capturing
+            await self.state.reload()
+            guard self.requestedVisible else { return }   // toggled away while loading
+            if self.state.previewsAvailable {
+                await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
+                guard self.requestedVisible else { return }
+            } else {
+                // Ask macOS for Screen Recording on the first summon without it. The system
+                // shows its dialog once per app; afterwards this is a silent no-op and the
+                // menu item / System Settings is the way in. Icons are shown meanwhile.
+                self.state.requestPreviewAccess()
+            }
+            self.state.startFollowingAerospace()
             self.rebuild()
         }
     }
@@ -96,12 +100,6 @@ final class OverlayWindowManager {
     func rebuild() {
         window?.orderOut(nil)
         window = makeWindow(for: targetScreen(), hidden: !requestedVisible)
-    }
-
-    func showErrorFallbackIfNeeded() {
-        guard state.error != nil, window == nil else { return }
-        requestedVisible = true          // so Escape and the backdrop can dismiss it again
-        window = makeWindow(for: targetScreen(), hidden: false)
     }
 
     func removeAll() {

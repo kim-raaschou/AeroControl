@@ -59,11 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         installStatusItem()
 
-        state.onLoaded = { [weak self] in self?.overlayManager.showErrorFallbackIfNeeded() }
-
-        Task {
-            await state.start()
-        }
+        state.start()
 
         NSApp.activate(ignoringOtherApps: true)
 

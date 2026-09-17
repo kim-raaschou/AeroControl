@@ -18,8 +18,20 @@ public enum AerospaceCommand {
         ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
     }
 
+    /// `--focused` answers with at most one row, and none when nothing is focused.
+    public static func listFocusedWindow() -> [String] {
+        ["list-windows", "--focused", "--json", "--format", listWindowsFields]
+    }
+
+    public static func listFocusedWorkspace() -> [String] {
+        ["list-workspaces", "--focused", "--json", "--format", listWorkspacesFields]
+    }
+
+    /// `--no-send-initial`: AeroSpace otherwise replays the current focus/workspace/monitor
+    /// state on every connect, which would fire three redundant reloads right after the
+    /// summon load has already read everything.
     public static func subscribe() -> [String] {
-        ["subscribe", "--all"]
+        ["subscribe", "--all", "--no-send-initial"]
     }
 
     public static func focusWorkspace(_ name: String) -> [String] {

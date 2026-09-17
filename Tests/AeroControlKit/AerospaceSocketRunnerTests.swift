@@ -90,6 +90,19 @@ import Testing
         #expect(received == events)
     }
 
+    /// The whole read path against the running AeroSpace: both lists and both `--focused`
+    /// reads, decoded into the model the overview draws. This is the one place that proves
+    /// AeroSpace answers `--focused` the way we parse it.
+    @Test func liveLoadOverviewReadsFocus() async throws {
+        guard FileManager.default.fileExists(atPath: AerospaceSocket.defaultSocketPath()) else { return }
+        let result = try await loadOverview(using: AerospaceSocketRunner())
+
+        #expect(!result.workspaces.isEmpty)
+        let focus = try #require(result.focus)
+        #expect(!focus.workspace.isEmpty)
+        #expect(result.workspaces.contains { $0.name == focus.workspace })
+    }
+
     // Talks to the actual AeroSpace socket if it exists on this machine; skipped
     // in environments (like CI) where AeroSpace is not running.
     @Test func liveSmokeAgainstRealAerospace() async throws {

@@ -68,6 +68,10 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
 
     var new = state
     new.workspaces = result.workspaces
+    if let focus = result.focus {
+        new.focusedWindowId = focus.windowId
+        new.focusedWorkspace = focus.workspace
+    }
 
     let removedIds = oldIds.subtracting(freshIds)
     var effects: [OverviewEffect] = removedIds.sorted().map { .windowRemoved($0) }
@@ -80,32 +84,7 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
 
 private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (OverviewModel, [OverviewEffect]) {
     switch event {
-    case .focusChanged(let windowId, let workspace):
-        var new = state
-        new.focusedWindowId = windowId ?? 0
-        new.focusedWorkspace = workspace
-        return (new, [.refresh])
-
-    case .workspaceChanged(let workspace, _):
-        var new = state
-        new.focusedWorkspace = workspace
-        return (new, [.refresh])
-
-    case .monitorChanged(let workspace, _):
-        var new = state
-        new.focusedWorkspace = workspace
-        return (new, [.refresh])
-
-    case .windowDetected:
-        return (state, [.refresh])
-
-    case .localWindowClosed:
-        return (state, [.refresh])
-
-    case .bindingTriggered:
-        return (state, [.refresh])
-
-    case .other:
-        return (state, [])
+    case .changed, .localWindowClosed: (state, [.refresh])
+    case .other: (state, [])
     }
 }

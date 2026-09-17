@@ -1,124 +1,298 @@
 import AppKit
-import Observation
 import Testing
 @testable import AeroControlKit
 @testable import Common
 
-// MARK: - Fake ports
+// The overview is a one shot. It reads AeroSpace's whole state when it is summoned, follows
+// the event stream only while it is on screen, and keeps nothing in sync while hidden. These
+// drive the store through its one entrance (`send`) and its one reading (`reload`).
 
-/// Scriptable stand-in for the aerospace CLI. `run` returns the currently-programmed
-/// list JSON; `subscribe` exposes a continuation so a test can push raw event lines.
 @MainActor
 @Suite("OverviewStore")
 struct OverviewStoreTests {
 
-    @Test("closing a window runs the command and the reload drops the tile")
-    func closeReloadsAndRemovesTile() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(100, "1"), (200, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
-        await store.start()
-
-        // The window is really closed: AeroSpace no longer lists it. The close action runs
-        // the CLI command, then reloads — mirroring AeroSpace, which is the source of truth.
-        runner.setState(windows: windowsJSON([(200, "1")]), workspaces: workspacesJSON(["1"]))
-        await store.dispatch(.closeWindow(100))
-
-        await waitUntil { windowIds(store) == [200] }
-        #expect(windowIds(store) == [200])
+    private func started(_ runner: ScriptRunner, _ bridge: FakeBridge = FakeBridge()) -> OverviewStore {
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        return store
     }
 
-    @Test("a refresh event reloads and applies the latest state")
-    func refreshAppliesFetchedState() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
-        await store.start()
-
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        await waitUntil { runner.isSubscribed }
-        runner.sendEvent("{\"_event\":\"binding-triggered\"}")
-
-        await waitUntil { windowIds(store).contains(2) }
-        #expect(windowIds(store) == [1, 2])
-    }
-
-    @Test("a reload mirrors AeroSpace verbatim — a window it no longer lists disappears")
+    @Test("a reload mirrors AeroSpace verbatim, focus included")
     func reloadMirrorsAerospace() async {
         let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        let store = started(runner)
+
+        await store.reload()
+        #expect(windowIds(store) == [1, 2])
+        #expect(store.model.focusedWindowId == 2)
+        #expect(store.model.focusedWorkspace == "1")
+        #expect(store.error == nil)
+
+        // A window AeroSpace no longer lists disappears on the next reading.
+        runner.setState(windows: windowsJSON([(2, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        await store.reload()
+        #expect(windowIds(store) == [2])
+        store.stop()
+    }
+
+    @Test("a focused workspace with no windows still focuses the workspace")
+    func emptyWorkspaceCanBeFocused() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "4"]))
+        runner.setFocus(windowId: nil, workspace: "4")
+        let store = started(runner)
+
+        await store.reload()
+        #expect(store.model.focusedWorkspace == "4")
+        #expect(store.model.focusedWindowId == 0)
+        store.stop()
+    }
+
+    @Test("a load asks AeroSpace for the lists and for what is focused")
+    func loadReadsFocus() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+
+        #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--all") })
+        #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--focused") })
+        #expect(runner.commandsRun.contains { $0.first == "list-workspaces" && $0.contains("--focused") })
+        store.stop()
+    }
+
+    @Test("a load AeroSpace refuses leaves a readable error, and the next one clears it")
+    func failedLoadSetsError() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+
+        runner.failing = true
+        await store.reload()
+        #expect(store.error?.contains("no aerospace") == true)
+
+        runner.failing = false
+        await store.reload()
+        #expect(store.error == nil)
+        #expect(windowIds(store) == [1])
+        store.stop()
+    }
+
+    @Test("a load whose focus reads fail leaves the focus it already had")
+    func failedFocusReadKeepsFocus() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 1, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+        #expect(store.model.focusedWorkspace == "1")
+
+        // AeroSpace answers the lists but not the focus reads: focus must not be wiped.
+        runner.refuseFocusReads = true
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
-        await store.start()
+        await store.reload()
+        #expect(windowIds(store) == [1, 2])
+        #expect(store.model.focusedWindowId == 1)
+        #expect(store.model.focusedWorkspace == "1")
+        store.stop()
+    }
+
+    // MARK: Following AeroSpace, only while on screen
+
+    @Test("the subscription is scoped to visibility")
+    func followingIsScopedToVisibility() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        #expect(!runner.isSubscribed)             // hidden: nothing to stay in sync with
+
+        store.startFollowingAerospace()
+        await waitUntil { runner.isSubscribed }
+        #expect(runner.isSubscribed)
+
+        store.stopFollowingAerospace()
+        await waitUntil { !runner.isSubscribed }
+        #expect(!runner.isSubscribed)
+        store.stop()
+    }
+
+    @Test("while following, an event reconciles against AeroSpace")
+    func eventReconciles() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+        store.startFollowingAerospace()
+        await waitUntil { runner.isSubscribed }
+
+        // The event says nothing; the reload says everything.
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.sendEvent(#"{"_event":"focus-changed","windowId":1,"workspace":"1"}"#)
+        await waitUntil { windowIds(store) == [1] }
+        #expect(windowIds(store) == [1])
+        store.stop()
+    }
+
+    @Test("an event that moves no window neither changes the model nor reloads")
+    func inertEventIsInert() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+        store.startFollowingAerospace()
+        await waitUntil { runner.isSubscribed }
+        let before = runner.commandsRun.count
+
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.sendEvent(#"{"_event":"mode-changed","mode":"resize"}"#)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(windowIds(store) == [1])
+        #expect(runner.commandsRun.count == before)
+        store.stop()
+    }
+
+    // MARK: Actions
+
+    @Test("typed inputs drive the store through the send() ingress")
+    func typedInputsDriveStore() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+
+        store.send(.loaded(result([("1", [1, 2])])))
+        await waitUntil { windowIds(store) == [1, 2] }
         #expect(windowIds(store) == [1, 2])
 
-        // AeroSpace dropped window 2; the next event-driven reload reflects that exactly —
-        // no CGWindowList cross-check, no suppression. AeroSpace is the source of truth.
+        // An action shares the same ingress: it runs the CLI, then reconciles against
+        // reality. AeroSpace now lists nothing, so the tile drops.
+        runner.setState(windows: "[]", workspaces: workspacesJSON(["1"]))
+        store.send(.action(.closeWindow(1)))
+        await waitUntil { windowIds(store).isEmpty }
+        #expect(runner.didRun(["close", "--window-id", "1"]))
+        #expect(windowIds(store).isEmpty)
+        store.stop()
+    }
+
+    @Test("focus actions run their command and leave the model alone", arguments: [
+        (AeroControlAction.focusWorkspace("2"), ["workspace", "2"]),
+        (AeroControlAction.focusWindow(5), ["focus", "--window-id", "5"]),
+    ])
+    func focusActionsRunCommandOnly(action: AeroControlAction, argv: [String]) async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        let store = started(runner)
+        await store.reload()
+        let before = windowIds(store)
+
+        store.send(.action(action))
+        await waitUntil { runner.didRun(argv) }
+        #expect(runner.didRun(argv))
+        // The overview dismisses on a focus action; there is nothing left to reconcile.
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(windowIds(store) == before)
+        store.stop()
+    }
+
+    @Test("moveWindow runs its command and reconciles the tile to its new workspace")
+    func moveWindowReconciles() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        let store = started(runner)
+        await store.reload()
+        #expect(workspaceOf(store, 1) == "1")
+
+        runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
+        store.send(.action(.moveWindow(windowId: 1, toWorkspace: "2")))
+        await waitUntil { runner.didRun(["move-node-to-workspace", "--window-id", "1", "--focus-follows-window", "2"]) }
+        await waitUntil { workspaceOf(store, 1) == "2" }
+        #expect(workspaceOf(store, 1) == "2")
+        store.stop()
+    }
+
+    @Test("a burst of actions collapses to the latest reality")
+    func burstReconcilesToLatest() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1"), (3, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+        #expect(windowIds(store) == [1, 2, 3])
+
+        // Every reconcile re-reads the SAME latest reality, so the newest-wins generation
+        // stamp collapses the burst to the final state.
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        await waitUntil { runner.isSubscribed }
-        runner.sendEvent("{\"_event\":\"binding-triggered\"}")
+        store.send(.action(.closeWindow(2)))
+        store.send(.action(.closeWindow(3)))
 
         await waitUntil { windowIds(store) == [1] }
         #expect(windowIds(store) == [1])
+        store.stop()
     }
 
-    @Test("a same-monitor content change invalidates the observable model; a no-op reload does not")
+    @Test("a content change invalidates the observable model; a no-op reload does not")
     func contentChangeInvalidatesModel() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
-        await store.start()
+        let store = started(runner)
+        await store.reload()
 
-        // Count how many times the @Observable model would invalidate SwiftUI. This is the
-        // real render trigger now that the hosted NSHostingView auto-observes `model`
-        // (the manual diff/rebuild layer is gone).
-        let invalidations = await ModelInvalidationCounter(store)
+        let invalidations = ModelInvalidationCounter(store)
         try? await Task.sleep(for: .milliseconds(20))
-        let before = await invalidations.count
+        let before = invalidations.count
 
-        // Window 1 moves from ws "1" to ws "2" on the same monitor: AeroSpace now lists it
-        // under "2" and emits a workspace-changed event that drives a reconcile. The panel
-        // auto-observes, so the store just assigns the new model — a real change.
         runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
-        await waitUntil { runner.isSubscribed }
-        runner.sendEvent("{\"_event\":\"focused-workspace-changed\",\"workspace\":\"2\",\"prevWorkspace\":\"1\"}")
-
+        await store.reload()
         await waitUntil { workspaceOf(store, 1) == "2" }
-        #expect(workspaceOf(store, 1) == "2")
-        #expect(await invalidations.count > before)
+        await waitUntil { invalidations.count > before }
+        #expect(invalidations.count > before)
 
         // A reload that returns identical state must not reassign `model`, so no-op
-        // reconciles never re-render the panel (avoids flashing / mid-hover resets).
-        let afterChange = await invalidations.count
-        runner.sendEvent("{\"_event\":\"binding-triggered\"}")
-        try? await Task.sleep(for: .milliseconds(100))
-        #expect(await invalidations.count == afterChange)
+        // readings never re-render the panel (avoids flashing / mid-hover resets).
+        let afterChange = invalidations.count
+        await store.reload()
+        await store.reload()
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(invalidations.count == afterChange)
+        store.stop()
+    }
+}
+
+@MainActor
+@Suite("OverviewStore — previews")
+struct OverviewStorePreviewTests {
+
+    @Test("capturePreviews asks the bridge for exactly the model's windows and stores them")
+    func capturesModelWindows() async {
+        let runner = ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+
+        #expect(store.previewsAvailable)
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        #expect(bridge.captured == [[1, 2]])
+        #expect(store.previews.count == 2)
+
+        store.clearPreviews()
+        #expect(store.previews.isEmpty)
+        store.stop()
     }
 
-    @Test("a burst of reloads to the same state invalidates the model at most once")
-    func rapidRefreshesRenderOnce() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
-        await store.start()
+    @Test("without Screen Recording the store reports previews unavailable and asks on request")
+    func permission() async {
+        let runner = ScriptRunner(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
 
-        let invalidations = await ModelInvalidationCounter(store)
-        try? await Task.sleep(for: .milliseconds(20))
-        let before = await invalidations.count
-
-        // AeroSpace now reports window 1 on ws "2". Fire a burst of refresh-driving events:
-        // every reload re-reads the SAME new state, so only the first apply differs from the
-        // model. Mirroring AeroSpace on every event must not stress the UI — the model is
-        // assigned exactly once for the burst, and no-op reloads never reassign it.
-        runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
-        await waitUntil { runner.isSubscribed }
-        for _ in 0..<5 {
-            runner.sendEvent("{\"_event\":\"binding-triggered\"}")
-        }
-
-        await waitUntil { workspaceOf(store, 1) == "2" }
-        try? await Task.sleep(for: .milliseconds(150))
-        #expect(workspaceOf(store, 1) == "2")
-        let delta = await invalidations.count - before
-        #expect(delta == 1, "burst to one new state must render once, got \(delta)")
+        #expect(!store.previewsAvailable)
+        store.requestPreviewAccess()
+        #expect(bridge.accessRequests == 1)
+        await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
+        #expect(store.previews.isEmpty)
+        store.stop()
     }
 }

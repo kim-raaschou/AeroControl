@@ -41,11 +41,27 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
 }
 
 
+/// What AeroSpace considers focused. Asked for separately from the window list because a
+/// workspace with no windows is still the focused one.
+public struct Focus: Equatable, Sendable {
+    public let windowId: Int
+    public let workspace: String
+
+    public init(windowId: Int = 0, workspace: String = "") {
+        self.windowId = windowId
+        self.workspace = workspace
+    }
+}
+
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
+    /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather
+    /// than wiping it. A present-but-empty `Focus` is an answer: nothing is focused.
+    public let focus: Focus?
 
-    public init(workspaces: [WorkspaceInfo]) {
+    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
         self.workspaces = workspaces
+        self.focus = focus
     }
 }
 

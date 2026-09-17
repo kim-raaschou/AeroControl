@@ -16,6 +16,12 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     private var workspacesJSON = "[]"
     private var subCont: AsyncThrowingStream<String, Error>.Continuation?
     private var ranArgs: [[String]] = []
+    private var focusedWindowJSON = "[]"
+    private var focusedWorkspaceJSON = "[]"
+    /// When set, every command throws — an AeroSpace that is not answering.
+    var failing = false
+    /// Answer the lists but refuse the two `--focused` reads.
+    var refuseFocusReads = false
 
     init(windows: String = "[]", workspaces: String = "[]") {
         windowsJSON = windows
@@ -37,6 +43,14 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
         withLock { windowsJSON = windows; workspacesJSON = workspaces }
     }
 
+    /// What the two `--focused` reads answer.
+    func setFocus(windowId: Int?, workspace: String?) {
+        withLock {
+            focusedWindowJSON = windowId.map { "[\(oneWindow($0, workspace ?? ""))]" } ?? "[]"
+            focusedWorkspaceJSON = workspace.map { "[{\"workspace\":\"\($0)\",\"monitor-id\":1}]" } ?? "[]"
+        }
+    }
+
     /// Delivers a raw event line to the store's subscribe listener.
     func sendEvent(_ line: String) {
         let cont = withLock { subCont }
@@ -45,9 +59,14 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 
     func run(_ args: [String]) async throws -> String {
         withLock { ranArgs.append(args) }
-        switch args.first ?? "" {
-        case "list-workspaces": return withLock { workspacesJSON }
-        case "list-windows": return withLock { windowsJSON }
+        if failing { throw AerospaceSocketError.io("no aerospace") }
+        let focused = args.contains("--focused")
+        if focused, refuseFocusReads { throw AerospaceSocketError.io("no focus") }
+        switch (args.first ?? "", focused) {
+        case ("list-workspaces", true): return withLock { focusedWorkspaceJSON }
+        case ("list-workspaces", false): return withLock { workspacesJSON }
+        case ("list-windows", true): return withLock { focusedWindowJSON }
+        case ("list-windows", false): return withLock { windowsJSON }
         default: return ""
         }
     }
@@ -55,17 +74,14 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { cont in
             self.withLock { self.subCont = cont }
+            cont.onTermination = { [weak self] _ in self?.withLock { self?.subCont = nil } }
         }
     }
 }
 
-/// Native bridge whose every source a test can drive: app terminations, the window-close
-/// doorbell, and preview capture.
+/// Native bridge a test can drive: icons and preview capture.
 @MainActor
 final class FakeBridge: NativeApiBridge {
-    private var cont: AsyncStream<Void>.Continuation?
-    private var closeCont: AsyncStream<Void>.Continuation?
-
     /// Screen Recording granted? Drives `previewsAvailable`.
     var granted = false
     var accessRequests = 0
@@ -73,19 +89,6 @@ final class FakeBridge: NativeApiBridge {
     var captured: [[Int]] = []
 
     func appIcon(bundleId: String) -> NSImage { NSImage() }
-
-    func appTerminations() -> AsyncStream<Void> { AsyncStream { c in self.cont = c } }
-    func windowCloseSignals() -> AsyncStream<Void> { AsyncStream { c in self.closeCont = c } }
-
-    /// True once the store's termination listener has subscribed.
-    var isListening: Bool { cont != nil }
-    /// True once the store's window-close doorbell listener has subscribed.
-    var isWatchingCloses: Bool { closeCont != nil }
-
-    /// Emits one app-termination signal.
-    func terminate() { cont?.yield(()) }
-    /// Rings the window-close doorbell once (a background mouse-up).
-    func ringCloseDoorbell() { closeCont?.yield(()) }
 
     var canCapturePreviews: Bool { granted }
     func requestPreviewAccess() { accessRequests += 1 }
@@ -160,27 +163,4 @@ final class ModelInvalidationCounter {
             }
         }
     }
-}
-
-/// Records the store's host-reaction callbacks for assertions.
-enum HostSignal: Equatable { case loaded }
-
-final class OutputCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [HostSignal] = []
-    func append(_ output: HostSignal) {
-        lock.lock(); defer { lock.unlock() }
-        items.append(output)
-    }
-    func count(of output: HostSignal) -> Int {
-        lock.lock(); defer { lock.unlock() }
-        return items.filter { $0 == output }.count
-    }
-}
-
-/// Wires a collector to a store's host-reaction callbacks.
-@MainActor func collect(_ store: OverviewStore) -> OutputCollector {
-    let outputs = OutputCollector()
-    store.onLoaded = { outputs.append(.loaded) }
-    return outputs
 }

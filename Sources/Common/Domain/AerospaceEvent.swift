@@ -1,12 +1,16 @@
 import Foundation
 
+/// AeroSpace events carry no data. Every field the overview shows — focus included — is
+/// read with a command, so an event only ever means "read again". That keeps a dropped or
+/// out-of-order event costly in latency but never in correctness: a reload is idempotent
+/// and re-derives the truth, where a payload-carrying event would leave a drift that
+/// nothing heals.
 public enum AerospaceEvent: Equatable, Sendable {
-    case focusChanged(windowId: Int?, workspace: String)
-    case workspaceChanged(workspace: String, prevWorkspace: String)
-    case monitorChanged(workspace: String, monitorId: Int?)
-    case windowDetected(windowId: Int, workspace: String?, appBundleId: String?, appName: String?)
-    case bindingTriggered
+    /// Something changed in AeroSpace.
+    case changed
+    /// A window closed without AeroSpace saying so — emulated locally, since stock
+    /// AeroSpace emits no close event.
     case localWindowClosed
+    /// A name we do not act on.
     case other
 }
-
