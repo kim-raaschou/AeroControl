@@ -18,6 +18,8 @@ class OverviewWindow: NSPanel {
     private static let fadeDuration: TimeInterval = 0.2
     private let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
+    /// Cmd-Q: quit the app whose window the mouse is over, Mission-Control style.
+    var onQuitPointedApp: (() -> Void)?
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -44,21 +46,23 @@ class OverviewWindow: NSPanel {
         onDismiss?()
     }
 
-    /// Keys that leave the overview without choosing anything, beyond Escape.
-    private static let dismissKeyEquivalents: Set<String> = ["q", "w"]
-
-    /// While the overview is up, AeroControl owns the menu bar — including the Quit item
-    /// SwiftUI installs by default. A stray Cmd-Q therefore killed the whole agent: the
-    /// overlay vanished, the app underneath came to the front, and the summon keybind
-    /// silently did nothing until AeroControl was launched again. A one-shot overlay
-    /// behaves like Spotlight instead, and Quit stays in the menu bar item.
+    /// Cmd-Q quits the app the mouse is over and leaves the overview up, so several can
+    /// go in one visit — Mission Control's behaviour. Cmd-W just leaves.
+    ///
+    /// Both have to be intercepted here because summoning activates AeroControl, so while
+    /// the overview is up it owns the menu bar, including the Quit item SwiftUI installs by
+    /// default. Left alone, a stray Cmd-Q killed the whole agent: the overlay vanished, the
+    /// app underneath came to the front, and the summon keybind silently did nothing until
+    /// AeroControl was launched again. Quit stays in the menu bar item.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
         let onlyCommand = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
-        guard onlyCommand, Self.dismissKeyEquivalents.contains(key) else {
-            return super.performKeyEquivalent(with: event)
+        guard onlyCommand else { return super.performKeyEquivalent(with: event) }
+        switch key {
+        case "q": onQuitPointedApp?()
+        case "w": onDismiss?()
+        default: return super.performKeyEquivalent(with: event)
         }
-        onDismiss?()
         return true
     }
 

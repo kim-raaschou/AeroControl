@@ -286,5 +286,14 @@
     "complexity": 519,
     "prodComplexity": 311,
     "files": 40
+  },
+  {
+    "timestamp": "2026-09-17T17:52:38+02:00",
+    "commit": "ff3e5bf",
+    "subject": "Cmd-Q leaves the overview; it does not kill the agent",
+    "code": 3673,
+    "complexity": 526,
+    "prodComplexity": 318,
+    "files": 40
   }
 ]

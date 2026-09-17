@@ -23,6 +23,8 @@ struct AeroControlWorkspaceCard: View {
     /// (source workspace, target workspace): merge every window of source into target.
     let onMergeWorkspace: (String, String) -> Void
     let onCloseWindow: (Int) -> Void
+    /// (windowId, isHovered): tells the host which window Cmd-Q would act on.
+    let onHoverWindow: (Int, Bool) -> Void
 
     @State private var isDropTarget = false
     @Environment(\.colorScheme) private var colorScheme
@@ -144,6 +146,7 @@ struct AeroControlWorkspaceCard: View {
             isFocused: window.windowId == focusedWindowId,
             onFocusWindow: { onFocusWindow(window.windowId) },
             onCloseWindow: { onCloseWindow(window.windowId) },
+            onHoverChanged: { onHoverWindow(window.windowId, $0) },
             metrics: metrics
         )
     }

@@ -98,7 +98,11 @@ public struct AeroControlPanel: View {
             onMergeWorkspace: { source, target in
                 send(.mergeWorkspace(source: source, into: target))
             },
-            onCloseWindow: { windowId in send(.closeWindow(windowId)) }
+            onCloseWindow: { windowId in send(.closeWindow(windowId)) },
+            onHoverWindow: { windowId, hovered in
+                if hovered { state.hoveredWindowId = windowId }
+                else if state.hoveredWindowId == windowId { state.hoveredWindowId = nil }
+            }
         )
         .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
     }

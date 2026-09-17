@@ -46,10 +46,23 @@ final class OverlayWindowManager {
     }
 
     private func focusedWindowOwner() -> NSRunningApplication? {
-        let focused = state.model.focusedWindowId
-        let window = state.model.workspaces.flatMap(\.windows).first { $0.windowId == focused }
-        guard let bundleId = window?.bundleId else { return nil }
+        owner(ofWindow: state.model.focusedWindowId)
+    }
+
+    private func owner(ofWindow windowId: Int) -> NSRunningApplication? {
+        let window = state.model.workspaces.flatMap(\.windows).first { $0.windowId == windowId }
+        guard let bundleId = window?.bundleId, bundleId != Bundle.main.bundleIdentifier else { return nil }
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
+    }
+
+    /// Quits the app whose window the mouse is over, falling back to the focused one, and
+    /// leaves the overview up so several can go in one visit. `terminate()` is the polite
+    /// quit macOS sends for Cmd-Q, so an app with unsaved work still gets to ask.
+    func quitPointedApp() {
+        guard requestedVisible else { return }
+        let target = state.hoveredWindowId ?? state.model.focusedWindowId
+        guard let app = owner(ofWindow: target) else { return }
+        app.terminate()
     }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
@@ -109,6 +122,7 @@ final class OverlayWindowManager {
         let window = OverviewWindow(targetScreen: screen)
         window.applyAppearance(settings.theme.enforcedAppearance)
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
+        window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         let root = OverviewRoot(
             panel: makePanel(availableSize: screen.frame.size),
             theme: settings.theme,

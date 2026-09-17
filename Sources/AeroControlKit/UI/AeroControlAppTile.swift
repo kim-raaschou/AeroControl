@@ -14,6 +14,7 @@ struct AeroControlAppTile: View {
     let isFocused: Bool
     let onFocusWindow: () -> Void
     let onCloseWindow: () -> Void
+    let onHoverChanged: (Bool) -> Void
 
     @State private var isHovering = false
 
@@ -37,6 +38,7 @@ struct AeroControlAppTile: View {
         isFocused: Bool,
         onFocusWindow: @escaping () -> Void,
         onCloseWindow: @escaping () -> Void = {},
+        onHoverChanged: @escaping (Bool) -> Void = { _ in },
         metrics: AeroControlMetrics = AeroControlMetrics(iconSize: 32)
     ) {
         self.window = window
@@ -45,6 +47,7 @@ struct AeroControlAppTile: View {
         self.isFocused = isFocused
         self.onFocusWindow = onFocusWindow
         self.onCloseWindow = onCloseWindow
+        self.onHoverChanged = onHoverChanged
         self.metrics = metrics
     }
 
@@ -70,12 +73,12 @@ struct AeroControlAppTile: View {
             .background(selectionPlate)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
-            .onHover { isHovering = $0 }
+            .onHover { isHovering = $0; onHoverChanged($0) }
             .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
             .draggable(OverviewDragPayload.window(id: window.windowId)) {
                 tile
                     .frame(width: contentSize.width, height: contentSize.height)
-                    .onAppear { isHovering = false }
+                    .onAppear { isHovering = false; onHoverChanged(false) }
             }
     }
 

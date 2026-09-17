@@ -12,6 +12,9 @@ public class OverviewStore {
     /// Window previews, captured when the overview is summoned and dropped when it hides.
     public private(set) var previews: [Int: NSImage] = [:]
     public private(set) var error: String?
+    /// The window the mouse is over, if any. Cmd-Q acts on it, the way Mission Control's
+    /// does: the overview is a place you point at windows, so pointing is the selection.
+    public var hoveredWindowId: Int?
 
     public var onLoaded: (@MainActor () -> Void)?
 
