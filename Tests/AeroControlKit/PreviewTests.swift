@@ -130,47 +130,21 @@ struct PreviewMetricsTests {
 
 // MARK: - Store: capture at summon, drop on hide
 
-private final class StubRunner: AerospaceProcessRunner, @unchecked Sendable {
-    let windows: String
-    init(windows: String) { self.windows = windows }
-    func run(_ args: [String]) async throws -> String {
-        switch args.first {
-        case "list-workspaces": return #"[{"workspace":"1","monitor-id":1}]"#
-        case "list-windows": return windows
-        default: return ""
-        }
-    }
-    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> { AsyncThrowingStream { _ in } }
-}
+private let twoWindows = windowsJSON([(1, "1"), (2, "1")])
+private let oneWorkspace = workspacesJSON(["1"])
 
-@MainActor
-private final class PreviewBridge: NativeApiBridge {
-    var granted = true
-    var requested = 0
-    var captured: [[Int]] = []
-    func appIcon(bundleId: String) -> NSImage { NSImage() }
-    func appTerminations() -> AsyncStream<Void> { AsyncStream { _ in } }
-    func windowCloseSignals() -> AsyncStream<Void> { AsyncStream { _ in } }
-    var canCapturePreviews: Bool { granted }
-    func requestPreviewAccess() { requested += 1 }
-    func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
-        captured.append(windowIds)
-        return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, NSImage(size: maxSize)) })
-    }
+@MainActor private func previewStore(_ bridge: FakeBridge) -> OverviewStore {
+    OverviewStore(runner: ScriptRunner(windows: twoWindows, workspaces: oneWorkspace), nativeSystem: bridge)
 }
-
-private let twoWindows = """
-[{"window-id":1,"app-name":"A","app-bundle-id":"a","workspace":"1","window-parent-container-layout":"h_tiles","monitor-id":1},
- {"window-id":2,"app-name":"B","app-bundle-id":"b","workspace":"1","window-parent-container-layout":"h_tiles","monitor-id":1}]
-"""
 
 @MainActor
 @Suite("OverviewStore — previews")
 struct OverviewStorePreviewTests {
     @Test("capturePreviews asks the bridge for exactly the model's windows and stores the images")
     func captures() async {
-        let bridge = PreviewBridge()
-        let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: bridge)
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = previewStore(bridge)
         await store.start()
         #expect(store.previewsAvailable)
         await store.capturePreviews(maxSize: CGSize(width: 480, height: 320))
@@ -185,22 +159,23 @@ struct OverviewStorePreviewTests {
 
     @Test("without Screen Recording the store reports previews unavailable and asks on request")
     func permission() async {
-        let bridge = PreviewBridge()
-        bridge.granted = false
-        let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: bridge)
+        let bridge = FakeBridge()
+        let store = previewStore(bridge)
         #expect(!store.previewsAvailable)
         store.requestPreviewAccess()
-        #expect(bridge.requested == 1)
+        #expect(bridge.accessRequests == 1)
     }
 
     @Test("a bridge without capture support (default protocol extension) yields no previews")
     func defaultBridge() async {
+        // A bridge that implements only `appIcon`, taking the protocol's defaults for the rest.
         @MainActor final class Plain: NativeApiBridge {
             func appIcon(bundleId: String) -> NSImage { NSImage() }
             func appTerminations() -> AsyncStream<Void> { AsyncStream { _ in } }
             func windowCloseSignals() -> AsyncStream<Void> { AsyncStream { _ in } }
         }
-        let store = OverviewStore(runner: StubRunner(windows: twoWindows), nativeSystem: Plain())
+        let store = OverviewStore(runner: ScriptRunner(windows: twoWindows, workspaces: oneWorkspace),
+                                  nativeSystem: Plain())
         await store.start()
         #expect(!store.previewsAvailable)
         await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))

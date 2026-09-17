@@ -1,0 +1,186 @@
+import AppKit
+import Testing
+@testable import AeroControlKit
+@testable import Common
+
+// One set of test doubles and JSON builders for the whole suite. There used to be four
+// hand-rolled runners and three bridges across four files, each a near-copy of the next.
+
+/// Scriptable stand-in for AeroSpace: `run` serves the currently-programmed list JSON and
+/// records every argv, so a test can assert an action's command and tell action commands
+/// apart from the list-* reads of a reload. `subscribe` exposes its continuation so a test
+/// can push raw event lines.
+final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
+    private let lock = NSLock()
+    private var windowsJSON = "[]"
+    private var workspacesJSON = "[]"
+    private var subCont: AsyncThrowingStream<String, Error>.Continuation?
+    private var ranArgs: [[String]] = []
+
+    init(windows: String = "[]", workspaces: String = "[]") {
+        windowsJSON = windows
+        workspacesJSON = workspaces
+    }
+
+    private func withLock<T>(_ body: () -> T) -> T {
+        lock.lock(); defer { lock.unlock() }
+        return body()
+    }
+
+    /// True once the store's subscribe listener has attached.
+    var isSubscribed: Bool { withLock { subCont != nil } }
+
+    var commandsRun: [[String]] { withLock { ranArgs } }
+    func didRun(_ argv: [String]) -> Bool { withLock { ranArgs.contains(argv) } }
+
+    func setState(windows: String, workspaces: String) {
+        withLock { windowsJSON = windows; workspacesJSON = workspaces }
+    }
+
+    /// Delivers a raw event line to the store's subscribe listener.
+    func sendEvent(_ line: String) {
+        let cont = withLock { subCont }
+        cont?.yield(line)
+    }
+
+    func run(_ args: [String]) async throws -> String {
+        withLock { ranArgs.append(args) }
+        switch args.first ?? "" {
+        case "list-workspaces": return withLock { workspacesJSON }
+        case "list-windows": return withLock { windowsJSON }
+        default: return ""
+        }
+    }
+
+    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { cont in
+            self.withLock { self.subCont = cont }
+        }
+    }
+}
+
+/// Native bridge whose every source a test can drive: app terminations, the window-close
+/// doorbell, and preview capture.
+@MainActor
+final class FakeBridge: NativeApiBridge {
+    private var cont: AsyncStream<Void>.Continuation?
+    private var closeCont: AsyncStream<Void>.Continuation?
+
+    /// Screen Recording granted? Drives `previewsAvailable`.
+    var granted = false
+    var accessRequests = 0
+    /// Every window-id list the store has asked to capture.
+    var captured: [[Int]] = []
+
+    func appIcon(bundleId: String) -> NSImage { NSImage() }
+
+    func appTerminations() -> AsyncStream<Void> { AsyncStream { c in self.cont = c } }
+    func windowCloseSignals() -> AsyncStream<Void> { AsyncStream { c in self.closeCont = c } }
+
+    /// True once the store's termination listener has subscribed.
+    var isListening: Bool { cont != nil }
+    /// True once the store's window-close doorbell listener has subscribed.
+    var isWatchingCloses: Bool { closeCont != nil }
+
+    /// Emits one app-termination signal.
+    func terminate() { cont?.yield(()) }
+    /// Rings the window-close doorbell once (a background mouse-up).
+    func ringCloseDoorbell() { closeCont?.yield(()) }
+
+    var canCapturePreviews: Bool { granted }
+    func requestPreviewAccess() { accessRequests += 1 }
+    func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
+        captured.append(windowIds)
+        return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, NSImage(size: maxSize)) })
+    }
+}
+
+// MARK: - JSON and model builders
+
+func oneWindow(_ id: Int, _ ws: String) -> String {
+    "{\"window-id\":\(id),\"app-name\":\"App\",\"app-bundle-id\":\"com.app\","
+        + "\"workspace\":\"\(ws)\",\"window-parent-container-layout\":\"h_tiles\",\"monitor-id\":1}"
+}
+
+func windowsJSON(_ entries: [(Int, String)]) -> String {
+    "[" + entries.map { oneWindow($0.0, $0.1) }.joined(separator: ",") + "]"
+}
+
+func workspacesJSON(_ names: [String]) -> String {
+    "[" + names.map { "{\"workspace\":\"\($0)\",\"monitor-id\":1}" }.joined(separator: ",") + "]"
+}
+
+/// A typed load result from `(workspaceName, [windowId])` pairs.
+func result(_ spec: [(String, [Int])]) -> OverviewResult {
+    OverviewResult(workspaces: spec.map { name, ids in
+        WorkspaceInfo(name: name, windows: ids.map { WindowInfo(windowId: $0, appName: "App", bundleId: "com.app") })
+    })
+}
+
+// MARK: - Store probes
+
+@MainActor
+func windowIds(_ store: OverviewStore) -> [Int] {
+    store.model.workspaces.flatMap { $0.windows.map(\.windowId) }.sorted()
+}
+
+@MainActor
+func workspaceOf(_ store: OverviewStore, _ id: Int) -> String? {
+    store.model.workspaces.first { $0.windows.contains { $0.windowId == id } }?.name
+}
+
+@MainActor
+func waitUntil(_ cond: () -> Bool) async {
+    let deadline = ContinuousClock.now + .seconds(2)
+    while ContinuousClock.now < deadline {
+        if cond() { return }
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+}
+
+/// Counts how many times the store's `@Observable` `model` invalidates — i.e. how many
+/// times SwiftUI's `NSHostingView` would re-render. Re-registers after each change.
+@MainActor
+final class ModelInvalidationCounter {
+    private(set) var count = 0
+    private let store: OverviewStore
+
+    init(_ store: OverviewStore) {
+        self.store = store
+        register()
+    }
+
+    private func register() {
+        withObservationTracking {
+            _ = store.model
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.count += 1
+                self?.register()
+            }
+        }
+    }
+}
+
+/// Records the store's host-reaction callbacks for assertions.
+enum HostSignal: Equatable { case loaded }
+
+final class OutputCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [HostSignal] = []
+    func append(_ output: HostSignal) {
+        lock.lock(); defer { lock.unlock() }
+        items.append(output)
+    }
+    func count(of output: HostSignal) -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return items.filter { $0 == output }.count
+    }
+}
+
+/// Wires a collector to a store's host-reaction callbacks.
+@MainActor func collect(_ store: OverviewStore) -> OutputCollector {
+    let outputs = OutputCollector()
+    store.onLoaded = { outputs.append(.loaded) }
+    return outputs
+}

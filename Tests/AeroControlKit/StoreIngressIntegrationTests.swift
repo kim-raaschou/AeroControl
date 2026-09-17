@@ -9,151 +9,6 @@ import Testing
 // tests drive the store across BOTH sources (and directly via `send`) and assert the
 // reconciled model, exercising the native-bridge path that the unit suite never touched.
 
-// MARK: - Scriptable ports
-
-/// Scriptable stand-in for the aerospace CLI: `run` serves the currently-programmed
-/// list JSON; `subscribe` exposes a continuation so a test can push raw event lines.
-private final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
-    private let lock = NSLock()
-    private var windowsJSON = "[]"
-    private var workspacesJSON = "[]"
-    private var subCont: AsyncThrowingStream<String, Error>.Continuation?
-    private var ranArgs: [[String]] = []
-
-    private func withLock<T>(_ body: () -> T) -> T {
-        lock.lock(); defer { lock.unlock() }
-        return body()
-    }
-
-    var isSubscribed: Bool { withLock { subCont != nil } }
-
-    /// Every argv passed to `run`, in order — lets a test assert an action's CLI command
-    /// (and distinguish action commands from the list-* reload reads).
-    var commandsRun: [[String]] { withLock { ranArgs } }
-    func didRun(_ argv: [String]) -> Bool { withLock { ranArgs.contains(argv) } }
-
-    func setState(windows: String, workspaces: String) {
-        withLock { windowsJSON = windows; workspacesJSON = workspaces }
-    }
-
-    /// Delivers a raw event line to the store's subscribe listener.
-    func sendEvent(_ line: String) {
-        let cont = withLock { subCont }
-        cont?.yield(line)
-    }
-
-    func run(_ args: [String]) async throws -> String {
-        withLock { ranArgs.append(args) }
-        switch args.first ?? "" {
-        case "list-workspaces": return withLock { workspacesJSON }
-        case "list-windows": return withLock { windowsJSON }
-        default: return ""
-        }
-    }
-
-    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { cont in
-            self.withLock { self.subCont = cont }
-        }
-    }
-}
-
-/// Native bridge whose termination stream a test can drive — the second input source,
-/// previously stubbed with an empty stream and therefore never exercised.
-@MainActor
-private final class ScriptableBridge: NativeApiBridge {
-    private var cont: AsyncStream<Void>.Continuation?
-    private var closeCont: AsyncStream<Void>.Continuation?
-
-    func appIcon(bundleId: String) -> NSImage { NSImage() }
-
-    func appTerminations() -> AsyncStream<Void> {
-        AsyncStream { c in self.cont = c }
-    }
-
-    func windowCloseSignals() -> AsyncStream<Void> {
-        AsyncStream { c in self.closeCont = c }
-    }
-
-    /// True once the store's termination listener has subscribed.
-    var isListening: Bool { cont != nil }
-
-    /// True once the store's window-close doorbell listener has subscribed.
-    var isWatchingCloses: Bool { closeCont != nil }
-
-    /// Emits one app-termination signal.
-    func terminate() { cont?.yield(()) }
-
-    /// Rings the window-close doorbell once (a background mouse-up).
-    func ringCloseDoorbell() { closeCont?.yield(()) }
-}
-
-/// Records the store's host-reaction callbacks for assertions.
-private enum HostSignal: Equatable { case loaded }
-
-private final class OutputCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [HostSignal] = []
-    func append(_ output: HostSignal) {
-        lock.lock(); defer { lock.unlock() }
-        items.append(output)
-    }
-    func count(of output: HostSignal) -> Int {
-        lock.lock(); defer { lock.unlock() }
-        return items.filter { $0 == output }.count
-    }
-}
-
-/// Wires a collector to a store's host-reaction callbacks.
-@MainActor private func collect(_ store: OverviewStore) -> OutputCollector {
-    let outputs = OutputCollector()
-    store.onLoaded = { outputs.append(.loaded) }
-    return outputs
-}
-
-
-// MARK: - Helpers
-
-private func oneWindow(_ id: Int, _ ws: String) -> String {
-    "{\"window-id\":\(id),\"app-name\":\"App\",\"app-bundle-id\":\"com.app\","
-        + "\"workspace\":\"\(ws)\",\"window-parent-container-layout\":\"h_tiles\",\"monitor-id\":1}"
-}
-
-private func windowsJSON(_ entries: [(Int, String)]) -> String {
-    "[" + entries.map { oneWindow($0.0, $0.1) }.joined(separator: ",") + "]"
-}
-
-private func workspacesJSON(_ names: [String]) -> String {
-    "[" + names.map { "{\"workspace\":\"\($0)\",\"monitor-id\":1}" }.joined(separator: ",") + "]"
-}
-
-/// Builds a typed load result: a list of `(workspaceName, [windowId])`.
-private func result(_ spec: [(String, [Int])]) -> OverviewResult {
-    OverviewResult(workspaces: spec.map { name, ids in
-        WorkspaceInfo(name: name, windows: ids.map { WindowInfo(windowId: $0, appName: "App", bundleId: "com.app") })
-    })
-}
-
-
-@MainActor
-private func windowIds(_ store: OverviewStore) -> [Int] {
-    store.model.workspaces.flatMap { $0.windows.map(\.windowId) }.sorted()
-}
-
-@MainActor
-private func workspaceOf(_ store: OverviewStore, _ id: Int) -> String? {
-    store.model.workspaces.first { $0.windows.contains { $0.windowId == id } }?.name
-}
-
-@MainActor
-private func waitUntil(_ cond: () -> Bool) async {
-    let deadline = ContinuousClock.now + .seconds(2)
-    while ContinuousClock.now < deadline {
-        if cond() { return }
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-}
-
 // MARK: - Tests
 
 @MainActor
@@ -164,7 +19,7 @@ struct StoreIngressIntegrationTests {
     func nativeTerminationSourceReconciles() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(100, "1"), (200, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = ScriptableBridge()
+        let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.start()
         #expect(windowIds(store) == [100, 200])
@@ -184,7 +39,7 @@ struct StoreIngressIntegrationTests {
     func closeDoorbellReconciles() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(100, "1"), (200, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = ScriptableBridge()
+        let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.start()
         #expect(windowIds(store) == [100, 200])
@@ -205,7 +60,7 @@ struct StoreIngressIntegrationTests {
     func bothSourcesShareOneIngress() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1"), (3, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = ScriptableBridge()
+        let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.start()
         #expect(windowIds(store) == [1, 2, 3])
@@ -229,7 +84,7 @@ struct StoreIngressIntegrationTests {
     func typedInputsDriveStoreThroughOneIngress() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(windowIds(store) == [1])
 
@@ -258,7 +113,7 @@ struct StoreIngressIntegrationTests {
     func focusChangedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         await waitUntil { runner.isSubscribed }
 
@@ -273,7 +128,7 @@ struct StoreIngressIntegrationTests {
     func workspaceChangedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         await waitUntil { runner.isSubscribed }
 
@@ -287,7 +142,7 @@ struct StoreIngressIntegrationTests {
     func monitorChangedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         await waitUntil { runner.isSubscribed }
 
@@ -301,7 +156,7 @@ struct StoreIngressIntegrationTests {
     func windowDetectedEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(windowIds(store) == [1])
         await waitUntil { runner.isSubscribed }
@@ -317,7 +172,7 @@ struct StoreIngressIntegrationTests {
     func bindingTriggeredEvent() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(windowIds(store) == [1, 2])
         await waitUntil { runner.isSubscribed }
@@ -333,7 +188,7 @@ struct StoreIngressIntegrationTests {
     func unknownEventIsInert() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         await waitUntil { runner.isSubscribed }
         let commandsBefore = runner.commandsRun.count
@@ -354,7 +209,7 @@ struct StoreIngressIntegrationTests {
     func focusWorkspaceActionRunsCommandOnly() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         let before = windowIds(store)
 
@@ -371,7 +226,7 @@ struct StoreIngressIntegrationTests {
     func focusWindowActionRunsCommandOnly() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         let before = windowIds(store)
 
@@ -387,7 +242,7 @@ struct StoreIngressIntegrationTests {
     func moveWindowActionRunsAndReconciles() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(workspaceOf(store, 1) == "1")
 
@@ -406,7 +261,7 @@ struct StoreIngressIntegrationTests {
     func burstAcrossSourcesReconcilesToLatest() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1"), (3, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
         await store.start()
         #expect(windowIds(store) == [1, 2, 3])
         await waitUntil { runner.isSubscribed }
@@ -434,7 +289,7 @@ struct StoreIngressIntegrationTests {
     func initialLoadEmitsLoaded() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = OverviewStore(runner: runner, nativeSystem: ScriptableBridge())
+        let store = OverviewStore(runner: runner, nativeSystem: FakeBridge())
 
         // Attach before `start()` so the one-shot `.loaded` (fired on a later main-queue turn,
         // after the load's icon effects) is captured deterministically.
