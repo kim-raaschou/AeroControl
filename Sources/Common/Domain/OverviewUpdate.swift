@@ -84,7 +84,7 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
 
 private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (OverviewModel, [OverviewEffect]) {
     switch event {
-    case .changed, .localWindowClosed: (state, [.refresh])
+    case .changed: (state, [.refresh])
     case .other: (state, [])
     }
 }

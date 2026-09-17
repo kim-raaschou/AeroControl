@@ -8,15 +8,17 @@ public let aerospaceSocketProtocolVersion: UInt32 = 1
 public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError {
     case io(String)
     case protocolMismatch(UInt32)
-    case commandFailed(arguments: [String], exitCode: Int32, stderr: String)
+    case commandFailed(arguments: [String], exitCode: Int32, stderr: String, serverVersion: String?)
 
     public var description: String {
         switch self {
         case .io(let m): "AeroSpace socket: \(m)"
         case .protocolMismatch(let v):
             "AeroSpace socket protocol version \(v) (expected \(aerospaceSocketProtocolVersion))"
-        case .commandFailed(let args, let code, let stderr):
-            "AeroSpace command failed (exit \(code)): \(args.joined(separator: " "))\(stderr.isEmpty ? "" : " — \(stderr)")"
+        case .commandFailed(let args, let code, let stderr, let version):
+            "AeroSpace command failed (exit \(code)): \(args.joined(separator: " "))"
+                + (stderr.isEmpty ? "" : " — \(stderr)")
+                + (version.map { " [AeroSpace \($0)]" } ?? "")
         }
     }
 
@@ -78,7 +80,8 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
             throw AerospaceSocketError.commandFailed(
                 arguments: args,
                 exitCode: answer.exitCode,
-                stderr: answer.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                stderr: answer.stderr.trimmingCharacters(in: .whitespacesAndNewlines),
+                serverVersion: answer.serverVersionAndHash
             )
         }
         return answer.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -96,6 +99,10 @@ enum AerospaceSocket {
         let exitCode: Int32
         let stdout: String
         let stderr: String
+        /// AeroSpace stamps every answer with its own version and commit, e.g.
+        /// "0.21.3-Beta d56e1637c3a1…". It is the only way to learn which AeroSpace we are
+        /// actually talking to, so it goes into the error a user would send us.
+        let serverVersionAndHash: String?
     }
 
     static func defaultSocketPath() -> String {
@@ -145,8 +152,23 @@ enum AerospaceSocket {
                 do {
                     if handle.register(fd) {
                         try writeFrame(fd, encodeRequest(args))
+                        var first = true
                         while !handle.isCancelled {
                             let body = try readFrame(fd)
+                            // A rejected subscribe (an unknown flag, say) is answered with one
+                            // ordinary ServerAnswer frame — and then the daemon never closes the
+                            // connection. Without this the read loop blocks forever, nothing
+                            // throws, and the overview silently stops following AeroSpace for
+                            // the life of the process. Events never decode as a ServerAnswer.
+                            if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) {
+                                throw AerospaceSocketError.commandFailed(
+                                    arguments: args,
+                                    exitCode: answer.exitCode,
+                                    stderr: answer.stderr.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    serverVersion: answer.serverVersionAndHash
+                                )
+                            }
+                            first = false
                             if let line = String(data: body, encoding: .utf8) {
                                 continuation.yield(line)
                             }

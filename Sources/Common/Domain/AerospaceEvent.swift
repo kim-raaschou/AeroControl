@@ -8,9 +8,6 @@ import Foundation
 public enum AerospaceEvent: Equatable, Sendable {
     /// Something changed in AeroSpace.
     case changed
-    /// A window closed without AeroSpace saying so — emulated locally, since stock
-    /// AeroSpace emits no close event.
-    case localWindowClosed
     /// A name we do not act on.
     case other
 }

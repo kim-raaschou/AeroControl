@@ -12,7 +12,7 @@ struct AerospaceCommandArgvTests {
     func listWindows() {
         #expect(AerospaceCommand.listWindows() == [
             "list-windows", "--all", "--json", "--format",
-            "%{window-id} %{app-name} %{app-bundle-id} %{window-title} %{workspace} %{window-parent-container-layout} %{monitor-id}",
+            "%{window-id} %{app-name} %{app-bundle-id} %{window-title} %{workspace} %{window-parent-container-layout}",
         ])
     }
 

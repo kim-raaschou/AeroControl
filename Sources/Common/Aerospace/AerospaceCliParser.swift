@@ -25,7 +25,6 @@ public struct DecodedWindow: Decodable, Equatable {
     public var windowTitle: String?
     public let workspace: String
     public let parentLayout: String
-    @TolerantInt public var monitorId: Int
 
     /// Also the requested `--format`: `AerospaceCommand` builds the token list from these
     /// keys, so a field can never be asked for under one spelling and decoded under another.
@@ -36,7 +35,6 @@ public struct DecodedWindow: Decodable, Equatable {
         case windowTitle = "window-title"
         case workspace
         case parentLayout = "window-parent-container-layout"
-        case monitorId = "monitor-id"
     }
 }
 
@@ -63,12 +61,10 @@ public struct WorkspaceMonitor: Decodable, Equatable {
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String
-    public let monitorId: Int
 
-    public init(window: WindowInfo, workspace: String, monitorId: Int) {
+    public init(window: WindowInfo, workspace: String) {
         self.window = window
         self.workspace = workspace
-        self.monitorId = monitorId
     }
 }
 
@@ -84,8 +80,7 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 isFloating: dw.parentLayout == "floating",
                 title: dw.windowTitle ?? ""
             ),
-            workspace: dw.workspace,
-            monitorId: dw.monitorId
+            workspace: dw.workspace
         )
     }
 }

@@ -120,7 +120,12 @@ public class OverviewStore {
     private func startSubscribeListener() {
         guard subscribeTask == nil else { return }
         subscribeTask = Task.detached(priority: .utility) { [weak self] in
+            var reconnecting = false
             while let self, !Task.isCancelled {
+                // Everything that happened while the stream was down is lost — and we pass
+                // `--no-send-initial`, so AeroSpace will not replay it either. Read once
+                // after a reconnect so a dropped stream costs latency, never correctness.
+                if reconnecting { await self.reload() }
                 do {
                     let stream = self.runner.subscribe(AerospaceCommand.subscribe())
                     for try await line in stream {
@@ -130,6 +135,7 @@ public class OverviewStore {
                     }
                 } catch {}
                 guard !Task.isCancelled else { return }
+                reconnecting = true
                 try? await Task.sleep(for: .seconds(1))
             }
         }

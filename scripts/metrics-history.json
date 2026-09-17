@@ -313,5 +313,14 @@
     "complexity": 470,
     "prodComplexity": 309,
     "files": 39
+  },
+  {
+    "timestamp": "2026-09-17T21:09:38+02:00",
+    "commit": "2954680",
+    "subject": "Views take the store from the environment",
+    "code": 3163,
+    "complexity": 472,
+    "prodComplexity": 311,
+    "files": 39
   }
 ]

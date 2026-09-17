@@ -67,12 +67,10 @@ struct EventTests {
 
     /// Events carry no data: AeroSpace is silent about close, quit, quiet moves and every
     /// layout change, so a reload is mandatory whatever an event might have said.
-    @Test("an event that means something reloads and changes nothing itself", arguments: [
-        AerospaceEvent.changed, .localWindowClosed,
-    ])
-    func eventsOnlyRefresh(event: AerospaceEvent) {
+    @Test("an event that means something reloads and changes nothing itself")
+    func eventsOnlyRefresh() {
         let s = OverviewModel(workspaces: [ws("1", window(1, "A"))], focusedWindowId: 1, focusedWorkspace: "1")
-        let (new, effects) = updateOverview(s, .event(event))
+        let (new, effects) = updateOverview(s, .event(.changed))
         #expect(new == s)
         #expect(effects == [.refresh])
     }

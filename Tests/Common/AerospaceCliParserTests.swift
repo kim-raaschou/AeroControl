@@ -34,18 +34,16 @@ struct ParseWindowsTests {
         #expect(result.isEmpty)
     }
 
-    @Test("tolerates string NULL-MONITOR monitor-id without failing the whole decode")
-    func nullMonitorSentinel() throws {
+    @Test("a window list decodes without a monitor-id, which only list-workspaces carries")
+    func windowsCarryNoMonitor() throws {
         let json = """
         [
-          {"window-id": 1, "app-name": "Firefox", "app-bundle-id": "org.mozilla.firefox", "workspace": "1", "window-parent-container-layout": "h_tiles", "monitor-id": "NULL-MONITOR"},
-          {"window-id": 2, "app-name": "Terminal", "app-bundle-id": "com.apple.Terminal", "workspace": "2", "window-parent-container-layout": "v_accordion", "monitor-id": 2}
+          {"window-id": 1, "app-name": "Firefox", "app-bundle-id": "org.mozilla.firefox", "workspace": "1", "window-parent-container-layout": "h_tiles"}
         ]
         """
         let result = try parseWindows(json: json)
-        #expect(result.count == 2)
-        #expect(result[0].monitorId == 0)
-        #expect(result[1].monitorId == 2)
+        #expect(result.count == 1)
+        #expect(result[0].workspace == "1")
     }
 }
 
@@ -93,9 +91,9 @@ struct BuildOverviewResultTests {
     @Test("groups windows by workspace and sorts numerically")
     func groupsAndSorts() {
         let windows = [
-            ParsedWindow(window: WindowInfo(windowId: 1, appName: "A", bundleId: "a"), workspace: "2", monitorId: 1),
-            ParsedWindow(window: WindowInfo(windowId: 2, appName: "B", bundleId: "b"), workspace: "1", monitorId: 1),
-            ParsedWindow(window: WindowInfo(windowId: 3, appName: "C", bundleId: "c"), workspace: "2", monitorId: 1),
+            ParsedWindow(window: WindowInfo(windowId: 1, appName: "A", bundleId: "a"), workspace: "2"),
+            ParsedWindow(window: WindowInfo(windowId: 2, appName: "B", bundleId: "b"), workspace: "1"),
+            ParsedWindow(window: WindowInfo(windowId: 3, appName: "C", bundleId: "c"), workspace: "2"),
         ]
         let monitors = [
             WorkspaceMonitor(workspace: "1", monitorId: 1),
