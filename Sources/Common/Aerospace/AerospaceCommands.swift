@@ -1,18 +1,21 @@
 import Foundation
 
 public enum AerospaceCommand {
-    public static let listWindowsFields: [AerospaceField] = [
-        .windowId, .appName, .appBundleId, .windowTitle, .workspace, .parentLayout, .monitorId,
-    ]
+    /// The `--format` for a read is its decoder's own coding keys, in declaration order.
+    /// Asking for exactly what we decode makes drift between the two impossible.
+    static func format<K: CodingKey & CaseIterable>(_ keys: K.Type) -> String {
+        K.allCases.map { "%{\($0.stringValue)}" }.joined(separator: " ")
+    }
 
-    public static let listWorkspacesFields: [AerospaceField] = [.workspace, .monitorId, .monitorName]
+    public static let listWindowsFields = format(DecodedWindow.CodingKeys.self)
+    public static let listWorkspacesFields = format(WorkspaceMonitor.CodingKeys.self)
 
     public static func listWindows() -> [String] {
-        ["list-windows", "--all", "--json", "--format", listWindowsFields.formatString]
+        ["list-windows", "--all", "--json", "--format", listWindowsFields]
     }
 
     public static func listWorkspaces() -> [String] {
-        ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields.formatString]
+        ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
     }
 
     public static func subscribe() -> [String] {

@@ -27,7 +27,9 @@ public struct DecodedWindow: Decodable, Equatable {
     public let parentLayout: String
     @TolerantInt public var monitorId: Int
 
-    private enum CodingKeys: String, CodingKey {
+    /// Also the requested `--format`: `AerospaceCommand` builds the token list from these
+    /// keys, so a field can never be asked for under one spelling and decoded under another.
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case windowId = "window-id"
         case appName = "app-name"
         case appBundleId = "app-bundle-id"
@@ -45,7 +47,7 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     /// emit it just leaves the display unnamed.
     public let monitorName: String?
 
-    private enum CodingKeys: String, CodingKey {
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
         case monitorId = "monitor-id"
         case monitorName = "monitor-name"

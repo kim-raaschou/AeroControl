@@ -2,7 +2,9 @@ import Foundation
 import Testing
 @testable import Common
 
-// MARK: - b-argv-pins — the exact wire form of the read/subscribe commands.
+// MARK: - b-argv-pins — the exact wire form of the read/subscribe commands. The format
+// strings are derived from the decoders' coding keys, so these also pin that derivation
+// against the spelling AeroSpace actually answers to.
 
 @Suite("AerospaceCommand argv (list & subscribe)")
 struct AerospaceCommandArgvTests {
@@ -25,56 +27,6 @@ struct AerospaceCommandArgvTests {
     @Test("subscribe argv is pinned")
     func subscribe() {
         #expect(AerospaceCommand.subscribe() == ["subscribe", "--all"])
-    }
-}
-
-// MARK: - b-drift-guard — a command's requested tokens must match its decoder's keys.
-
-/// Distinct, non-fallback sentinel for a field, so that if a decoder's `CodingKeys`
-/// literal drifts from the field's raw value the property falls back and the sentinel
-/// assertion fails (or, for a required field, decode throws).
-private func sentinel(for field: AerospaceField) -> Any {
-    switch field {
-    case .windowId: return 111
-    case .appName: return "app"
-    case .appBundleId: return "bundle"
-    case .windowTitle: return "title"
-    case .workspace: return "ws"
-    case .parentLayout: return "pl"
-    case .monitorId: return 222
-    case .monitorName: return "BenQ RD280U"
-    }
-}
-
-/// One JSON object whose keys are exactly the field tokens `fields` requests, each
-/// carrying its sentinel value.
-private func sentinelJSON(for fields: [AerospaceField]) -> String {
-    let object = Dictionary(uniqueKeysWithValues: fields.map { ($0.rawValue, sentinel(for: $0)) })
-    let data = try! JSONSerialization.data(withJSONObject: [object])
-    return String(decoding: data, as: UTF8.self)
-}
-
-@Suite("field-token / decoder-key drift guard")
-struct AerospaceFieldDriftGuardTests {
-    @Test("every list-windows field lands in a DecodedWindow property")
-    func windows() throws {
-        let json = sentinelJSON(for: AerospaceCommand.listWindowsFields)
-        let w = try #require(try JSONDecoder().decode([DecodedWindow].self, from: Data(json.utf8)).first)
-        #expect(w.windowId == 111)
-        #expect(w.appName == "app")
-        #expect(w.appBundleId == "bundle")
-        #expect(w.windowTitle == "title")
-        #expect(w.workspace == "ws")
-        #expect(w.parentLayout == "pl")
-        #expect(w.monitorId == 222)
-    }
-
-    @Test("every list-workspaces field lands in a WorkspaceMonitor property")
-    func workspaces() throws {
-        let m = try #require(try parseWorkspaces(json: sentinelJSON(for: AerospaceCommand.listWorkspacesFields)).first)
-        #expect(m.workspace == "ws")
-        #expect(m.monitorId == 222)
-        #expect(m.monitorName == "BenQ RD280U")
     }
 }
 
