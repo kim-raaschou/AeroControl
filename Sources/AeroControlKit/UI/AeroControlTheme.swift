@@ -58,7 +58,7 @@ public struct AeroControlTheme: Identifiable, Equatable, Sendable {
     }
 
     public func palette(for scheme: ColorScheme) -> AeroControlPalette {
-        base.map(AeroControlPalette.init(base:)) ?? .system(scheme)
+        base.map(AeroControlPalette.derived(from:)) ?? .system(scheme)
     }
 }
 
@@ -85,17 +85,21 @@ public struct AeroControlPalette: Sendable {
     public let closeButtonFill: Color
     public let backdrop: Color
 
-    init(base: BasePalette) {
-        accent = Color(hex: base.accent)
-        cardFill = Color(hex: base.background).opacity(0.78)
-        cardBorder = Color(hex: base.border)
-        badgeFill = Color(hex: base.surface)
-        badgeText = Color(hex: base.muted)
-        focusedBadgeText = Color(hex: base.background)
-        closeButtonFill = Color(hex: base.border)
-        // The backdrop lies behind every card, so it is the palette's own background, kept
-        // translucent enough for the blur to read through it.
-        backdrop = Color(hex: base.background).opacity(base.isDark ? 0.62 : 0.5)
+    /// A factory rather than an `init`, so the struct keeps its synthesized memberwise
+    /// initializer and `system(_:)` below needs no hand-written one.
+    static func derived(from base: BasePalette) -> AeroControlPalette {
+        AeroControlPalette(
+            accent: Color(hex: base.accent),
+            cardFill: Color(hex: base.background).opacity(0.78),
+            cardBorder: Color(hex: base.border),
+            badgeFill: Color(hex: base.surface),
+            badgeText: Color(hex: base.muted),
+            focusedBadgeText: Color(hex: base.background),
+            closeButtonFill: Color(hex: base.border),
+            // The backdrop lies behind every card, so it is the palette's own background,
+            // kept translucent enough for the blur to read through it.
+            backdrop: Color(hex: base.background).opacity(base.isDark ? 0.62 : 0.5)
+        )
     }
 
     static func system(_ scheme: ColorScheme) -> AeroControlPalette {
@@ -112,17 +116,6 @@ public struct AeroControlPalette: Sendable {
         )
     }
 
-    private init(accent: Color, cardFill: Color?, cardBorder: Color, badgeFill: Color,
-                 badgeText: Color, focusedBadgeText: Color, closeButtonFill: Color, backdrop: Color) {
-        self.accent = accent
-        self.cardFill = cardFill
-        self.cardBorder = cardBorder
-        self.badgeFill = badgeFill
-        self.badgeText = badgeText
-        self.focusedBadgeText = focusedBadgeText
-        self.closeButtonFill = closeButtonFill
-        self.backdrop = backdrop
-    }
 }
 
 extension Color {
@@ -145,5 +138,18 @@ public extension EnvironmentValues {
     var aeroTheme: AeroControlTheme {
         get { self[AeroThemeKey.self] }
         set { self[AeroThemeKey.self] = newValue }
+    }
+}
+
+/// The host's "the one shot is over, hide the overview" callback. Lives in the environment
+/// because the views that fire it are the tiles and badges, three levels down.
+private struct AeroDismissKey: EnvironmentKey {
+    static var defaultValue: @MainActor () -> Void { {} }
+}
+
+public extension EnvironmentValues {
+    @MainActor var aeroDismiss: @MainActor () -> Void {
+        get { self[AeroDismissKey.self] }
+        set { self[AeroDismissKey.self] = newValue }
     }
 }

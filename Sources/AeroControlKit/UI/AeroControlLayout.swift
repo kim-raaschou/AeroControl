@@ -68,18 +68,35 @@ public enum AeroControlLayout {
         return aspects[aspects.count / 2]
     }
 
-    /// Card sizes per row for `windowCounts` (in AeroSpace order) inside `available`:
-    /// even rows, equal row heights, equal widths for the cards that hold windows.
-    public static func cardSizes(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
-                                 available: CGSize) -> [[CGSize]] {
+    /// One card in a laid-out row: which workspace it is (an index into `windowCounts`) and
+    /// how big it is. Carrying the index means the caller never has to re-derive the row
+    /// split to know whose card it is holding.
+    public struct Cell: Equatable, Identifiable {
+        public let index: Int
+        public let size: CGSize
+        public var id: Int { index }
+    }
+
+    /// Cards per row for `windowCounts` (in AeroSpace order) inside `available`: even rows,
+    /// equal row heights, equal widths for the cards that hold windows.
+    public static func cardRows(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
+                                available: CGSize) -> [[Cell]] {
         let count = windowCounts.count
         guard count > 0, available.width > 0, available.height > 0 else { return [] }
         let rows = partition(count: count, rowCount: rowCount(forCount: count))
         let height = ((available.height - CGFloat(rows.count - 1) * cardGap) / CGFloat(rows.count)).rounded(.down)
         return rows.map { range in
-            rowWidths(windowCounts: Array(windowCounts[range]), rowWidth: available.width, emptyWidth: emptyWidth)
-                .map { CGSize(width: $0, height: height) }
+            let widths = rowWidths(windowCounts: Array(windowCounts[range]),
+                                   rowWidth: available.width, emptyWidth: emptyWidth)
+            return zip(range, widths).map { Cell(index: $0, size: CGSize(width: $1, height: height)) }
         }
+    }
+
+    /// Just the sizes, for the layout tests and anything that does not need the identity.
+    public static func cardSizes(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
+                                 available: CGSize) -> [[CGSize]] {
+        cardRows(windowCounts: windowCounts, emptyWidth: emptyWidth, available: available)
+            .map { $0.map(\.size) }
     }
 
     /// Widths inside one row: empty workspaces take `emptyWidth`, the cards that hold

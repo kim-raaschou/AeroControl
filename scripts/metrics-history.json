@@ -304,5 +304,14 @@
     "complexity": 467,
     "prodComplexity": 306,
     "files": 39
+  },
+  {
+    "timestamp": "2026-09-17T19:46:48+02:00",
+    "commit": "b6a9155",
+    "subject": "Sync with AeroSpace only while the overview is on screen",
+    "code": 3156,
+    "complexity": 470,
+    "prodComplexity": 309,
+    "files": 39
   }
 ]

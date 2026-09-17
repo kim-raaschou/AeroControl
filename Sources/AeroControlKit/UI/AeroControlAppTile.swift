@@ -2,23 +2,38 @@ import SwiftUI
 import Common
 
 struct AeroControlAppTile: View {
+    @Environment(OverviewStore.self) private var state
+    @Environment(\.aeroDismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
-    let image: NSImage?
-    /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
-    /// with its own aspect ratio and the app icon badged in its corner, otherwise the app icon.
-    let preview: NSImage?
-    let isFocused: Bool
-    let onFocusWindow: () -> Void
-    let onCloseWindow: () -> Void
-    let onHoverChanged: (Bool) -> Void
+    let metrics: AeroControlMetrics
 
     @State private var isHovering = false
 
-    let metrics: AeroControlMetrics
+    private var image: NSImage? { state.icons[window.windowId] }
+    /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
+    /// with its own aspect ratio and the app icon badged in its corner, otherwise the app icon.
+    private var preview: NSImage? { state.previews[window.windowId] }
+    private var isFocused: Bool { window.windowId == state.model.focusedWindowId }
+
+    private func onFocusWindow() {
+        Task { [weak state] in await state?.dispatch(.focusWindow(window.windowId)) }
+        dismiss()
+    }
+
+    private func onCloseWindow() {
+        Task { [weak state] in await state?.dispatch(.closeWindow(window.windowId)) }
+    }
+
+    /// Pointing is the selection: Cmd-Q acts on whatever the mouse is over.
+    private func hoverChanged(_ hovering: Bool) {
+        isHovering = hovering
+        if hovering { state.hoveredWindowId = window.windowId }
+        else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
+    }
     private var iconSize: CGFloat { metrics.iconSize }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
     /// Corner radius of the drawn content: gentle on snapshots, the icon's own on icons.
@@ -30,26 +45,6 @@ struct AeroControlAppTile: View {
         plateRadius + (metrics.previews ? AeroControlMetrics.snapshotRingGap : metrics.focusPlatePadding)
     }
     private var tileSize: CGSize { metrics.tileSize }
-
-    init(
-        window: WindowInfo,
-        image: NSImage?,
-        preview: NSImage? = nil,
-        isFocused: Bool,
-        onFocusWindow: @escaping () -> Void,
-        onCloseWindow: @escaping () -> Void = {},
-        onHoverChanged: @escaping (Bool) -> Void = { _ in },
-        metrics: AeroControlMetrics = AeroControlMetrics(iconSize: 32)
-    ) {
-        self.window = window
-        self.image = image
-        self.preview = preview
-        self.isFocused = isFocused
-        self.onFocusWindow = onFocusWindow
-        self.onCloseWindow = onCloseWindow
-        self.onHoverChanged = onHoverChanged
-        self.metrics = metrics
-    }
 
     /// What is actually drawn: the fitted snapshot, or the whole cell for icons.
     private var contentSize: CGSize {
@@ -73,12 +68,12 @@ struct AeroControlAppTile: View {
             .background(selectionPlate)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
-            .onHover { isHovering = $0; onHoverChanged($0) }
+            .onHover(perform: hoverChanged)
             .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
             .draggable(OverviewDragPayload.window(id: window.windowId)) {
                 tile
                     .frame(width: contentSize.width, height: contentSize.height)
-                    .onAppear { isHovering = false; onHoverChanged(false) }
+                    .onAppear { hoverChanged(false) }
             }
     }
 

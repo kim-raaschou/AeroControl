@@ -9,13 +9,13 @@ public struct AeroControlPanel: View {
     let availableHeight: CGFloat
     /// Called after an action that completes the "one shot" (focus a window or a
     /// workspace); the host hides the overview.
-    let onDismiss: () -> Void
+    let onDismiss: @MainActor () -> Void
 
     public init(
         state: OverviewStore,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
-        onDismiss: @escaping () -> Void = {}
+        onDismiss: @escaping @MainActor () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
         self.availableWidth = availableWidth
@@ -34,12 +34,14 @@ public struct AeroControlPanel: View {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
-                Color.clear.frame(width: 0, height: 0)
+                EmptyView()
             } else {
                 grid
             }
         }
         .fixedSize()
+        .environment(state)
+        .environment(\.aeroDismiss, onDismiss)
     }
 
     private var usable: CGSize {
@@ -55,60 +57,28 @@ public struct AeroControlPanel: View {
 
     private var grid: some View {
         let all = workspaces
-        let previews = state.previewsAvailable
         let namesMonitors = self.namesMonitors
-        let sizes = AeroControlLayout.cardSizes(
+        let rows = AeroControlLayout.cardRows(
             windowCounts: all.map { $0.windows.count },
             emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
             available: usable
         )
-        var index = 0
-        let rows: [[(WorkspaceInfo, CGSize)]] = sizes.map { row in
-            row.map { size in defer { index += 1 }; return (all[index], size) }
-        }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
-                    ForEach(row, id: \.0.id) { workspace, size in
-                        card(for: workspace, size: size, previews: previews,
-                             monitor: namesMonitors ? workspace.monitorShortName : nil)
+                    ForEach(row) { cell in
+                        let workspace = all[cell.index]
+                        AeroControlWorkspaceCard(
+                            workspace: workspace,
+                            monitorName: namesMonitors ? workspace.monitorShortName : nil,
+                            previewAspect: gridAspect(workspace),
+                            size: cell.size
+                        )
+                        .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
             }
         }
-    }
-
-    private func card(for workspace: WorkspaceInfo, size: CGSize,
-                      previews: Bool, monitor: String?) -> some View {
-        AeroControlWorkspaceCard(
-            workspace: workspace,
-            monitorName: monitor,
-            isFocused: workspace.name == state.model.focusedWorkspace,
-            focusedWindowId: state.model.focusedWindowId,
-            icons: state.icons,
-            previews: state.previews,
-            showPreviews: previews,
-            previewAspect: gridAspect(workspace),
-            size: size,
-            onFocusWorkspace: { send(.focusWorkspace(workspace.name)); onDismiss() },
-            onFocusWindow: { windowId in send(.focusWindow(windowId)); onDismiss() },
-            onMoveWindow: { windowId, target in
-                send(.moveWindow(windowId: windowId, toWorkspace: target))
-            },
-            onMergeWorkspace: { source, target in
-                send(.mergeWorkspace(source: source, into: target))
-            },
-            onCloseWindow: { windowId in send(.closeWindow(windowId)) },
-            onHoverWindow: { windowId, hovered in
-                if hovered { state.hoveredWindowId = windowId }
-                else if state.hoveredWindowId == windowId { state.hoveredWindowId = nil }
-            }
-        )
-        .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
-    }
-
-    private func send(_ action: AeroControlAction) {
-        Task { [weak state] in await state?.dispatch(action) }
     }
 
     private func errorView(_ message: String) -> some View {

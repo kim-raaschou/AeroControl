@@ -8,27 +8,23 @@ struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
     /// The display this workspace lives on; nil with a single display, where naming it is noise.
     let monitorName: String?
-    let isFocused: Bool
-    let focusedWindowId: Int
-    let icons: [Int: NSImage]
-    let previews: [Int: NSImage]
-    /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
-    let showPreviews: Bool
     /// Height/width of a snapshot cell, the screen's own aspect.
     let previewAspect: CGFloat
     let size: CGSize
-    let onFocusWorkspace: () -> Void
-    let onFocusWindow: (Int) -> Void
-    let onMoveWindow: (Int, String) -> Void
-    /// (source workspace, target workspace): merge every window of source into target.
-    let onMergeWorkspace: (String, String) -> Void
-    let onCloseWindow: (Int) -> Void
-    /// (windowId, isHovered): tells the host which window Cmd-Q would act on.
-    let onHoverWindow: (Int, Bool) -> Void
 
     @State private var isDropTarget = false
+    @Environment(OverviewStore.self) private var state
+    @Environment(\.aeroDismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
+
+    private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
+    /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
+    private var showPreviews: Bool { state.previewsAvailable }
+
+    private func run(_ action: AeroControlAction) {
+        Task { [weak state] in await state?.dispatch(action) }
+    }
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
@@ -51,7 +47,7 @@ struct AeroControlWorkspaceCard: View {
         .overlay(dropTargetHint.allowsHitTesting(false))
         .clipShape(shape)
         .contentShape(shape)
-        .onTapGesture(perform: onFocusWorkspace)
+        .onTapGesture { run(.focusWorkspace(workspace.name)); dismiss() }
         // Grab the card anywhere outside a tile and drop it on another card to merge the
         // workspace into it. Tiles keep their own drag (a single window).
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
@@ -60,10 +56,10 @@ struct AeroControlWorkspaceCard: View {
             isDropTarget = false
             switch item {
             case .window(let id):
-                onMoveWindow(id, workspace.name)
+                run(.moveWindow(windowId: id, toWorkspace: workspace.name))
             case .workspace(let source):
                 guard source != workspace.name else { return false }
-                onMergeWorkspace(source, workspace.name)
+                run(.mergeWorkspace(source: source, into: workspace.name))
             }
             return true
         } isTargeted: { isDropTarget = $0 }
@@ -100,7 +96,7 @@ struct AeroControlWorkspaceCard: View {
             .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
             .background(isFocused ? palette.accent : palette.badgeFill, in: Circle())
             .contentShape(Circle())
-            .onTapGesture(perform: onFocusWorkspace)
+            .onTapGesture { run(.focusWorkspace(workspace.name)); dismiss() }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
                   : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
     }
@@ -139,23 +135,14 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
-        AeroControlAppTile(
-            window: window,
-            image: icons[window.windowId],
-            preview: previews[window.windowId],
-            isFocused: window.windowId == focusedWindowId,
-            onFocusWindow: { onFocusWindow(window.windowId) },
-            onCloseWindow: { onCloseWindow(window.windowId) },
-            onHoverChanged: { onHoverWindow(window.windowId, $0) },
-            metrics: metrics
-        )
+        AeroControlAppTile(window: window, metrics: metrics)
     }
 
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
             RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+                .fill(palette.accent.opacity(0.12))
                 .strokeBorder(palette.accent.opacity(0.9), lineWidth: 3)
-                .background(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous).fill(palette.accent.opacity(0.12)))
         }
     }
 }
