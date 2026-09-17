@@ -5,7 +5,7 @@ import Foundation
 /// The AeroSpace socket wire-protocol version this runner speaks.
 public let aerospaceSocketProtocolVersion: UInt32 = 1
 
-public enum AerospaceSocketError: Error, CustomStringConvertible {
+public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError {
     case io(String)
     case protocolMismatch(UInt32)
     case commandFailed(arguments: [String], exitCode: Int32, stderr: String)
@@ -19,6 +19,11 @@ public enum AerospaceSocketError: Error, CustomStringConvertible {
             "AeroSpace command failed (exit \(code)): \(args.joined(separator: " "))\(stderr.isEmpty ? "" : " — \(stderr)")"
         }
     }
+
+    /// `localizedDescription` ignores `CustomStringConvertible`, and the overview shows
+    /// exactly that string when a load fails — without this the user gets NSError's
+    /// "The operation couldn't be completed" instead of what AeroSpace said.
+    public var errorDescription: String? { description }
 }
 
 /// Sends AeroSpace commands over its Unix socket instead of spawning the
