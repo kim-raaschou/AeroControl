@@ -12,8 +12,10 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ## Features
 
 - One shot, Mission-Control style: a full-screen blurred overlay on the screen under the
-  mouse. Starts hidden, summoned by opening it again (bind that to a key), dismissed as
-  soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
+  mouse. Starts hidden, summoned by a key bound to `open aerocontrol://workspaces`, dismissed
+  as soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
+  The keyboard drives it: the focus ring starts on the focused window, arrows and Tab move
+  it across the whole map, Enter picks. See *Keyboard*.
 - A predictable grid, Mission-Control style: one card per workspace, in rows of as equal
   length as possible. Every row is the same height and every card that holds windows is the
   same width, so a workspace sits in the same place whatever it happens to contain; empty
@@ -29,9 +31,11 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   window nothing appears.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
-- **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
-  works for windows AeroSpace has parked off-screen). Needs the Screen Recording permission;
-  without it the overview shows app icons instead, and the menu offers to request it.
+- **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
+  windows AeroSpace has parked off-screen). The overview appears first, in its final shape,
+  and the pictures land in it as they are taken — about 170 ms to the overview and another
+  ~300 ms until the last of twenty pictures. Needs the Screen Recording permission; without
+  it the overview shows app icons instead, and the menu offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.
 - Drag a tile onto another workspace to move the window there.
 - **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to
