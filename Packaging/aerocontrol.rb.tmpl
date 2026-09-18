@@ -30,12 +30,13 @@ cask "aerocontrol" do
   zap trash: "~/Library/Preferences/com.aerocontrol.AeroControl.plist"
 
   caveats <<~EOS
-    AeroControl is a companion for AeroSpace and needs AeroSpace >= 0.21.1-Beta:
+    AeroControl is a companion for AeroSpace and needs AeroSpace >= 0.21.0-Beta:
       brew install --cask nikitabobko/tap/aerospace
 
-    Launch AeroControl.app once from Finder (Gatekeeper), then wire it into
-    ~/.aerospace.toml. Window previews need Screen Recording (System Settings >
-    Privacy & Security); everything else works without any permission.
-    See the README for details.
+    Launch AeroControl.app once from Finder (Gatekeeper), then bind a key in your
+    aerospace.toml (~/.aerospace.toml or ~/.config/aerospace/aerospace.toml):
+      cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://workspaces']
+    Window previews need Screen Recording (System Settings > Privacy & Security);
+    everything else works without any permission. See the README for details.
   EOS
 end

@@ -7,7 +7,31 @@ A one-shot workspace overview for [AeroSpace](https://github.com/nikitabobko/Aer
 Summon it, see every workspace across your monitors with window previews, do one thing —
 focus a window, jump to a workspace, move a window, merge two workspaces — and it is gone.
 
-All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, focus, move, close).
+AeroSpace does the window management. AeroControl only shows you what AeroSpace has and
+hands it one command, over AeroSpace's own Unix socket.
+
+## What you get
+
+Five things you do all day, each one summon and one key:
+
+- **"Where did that window go?"** Press the key. Every workspace is on screen as a card,
+  every window as a live picture, so you see it rather than remember it. Click it, or walk
+  the ring to it with the arrows and press Enter. Mission Control, but for AeroSpace's
+  workspaces and with the windows AeroSpace has parked off-screen.
+- **"Which of my Arc windows?"** You are in Arc with three windows. Press the second key
+  (`aerocontrol://windows`): only the Arc windows appear, with their titles, and the ring is
+  already on the next one — Enter switches. Cmd-` with pictures. With one window nothing
+  appears at all.
+- **"The Teams window with the meeting in it."** Press the key and type `te`: the map
+  collapses to the windows whose title or app name starts with that, titles shown. Type more
+  to narrow, Enter when it is first. No mouse, no reading a number off a badge.
+- **"This belongs on workspace 3."** Drag the window's picture onto the other card. Or drag
+  a whole card onto another to merge two workspaces into one.
+- **"Close the strays."** Hover a picture for its close button, or point at a window and press
+  ⌘Q to quit that app — the overview stays up for the next one.
+
+What it is not: a window manager, a dock, or a permanent panel. It has no state of its own
+between summons, and it asks for no permission except Screen Recording for the pictures.
 
 ## Features
 
@@ -50,7 +74,9 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ## Requirements
 
 - macOS 26+
-- [AeroSpace](https://nikitabobko.github.io/AeroSpace/guide#installation) 0.21.1 or newer
+- [AeroSpace](https://nikitabobko.github.io/AeroSpace/guide#installation) 0.21.0-Beta or newer:
+  that release introduced the `subscribe` command and made the socket protocol public, which
+  is everything AeroControl talks to.
 - Optional: Screen Recording permission for AeroControl (window previews). Everything else
   works without any privacy permission.
 
@@ -84,7 +110,8 @@ To keep the Screen Recording grant across rebuilds, run `script/sign-identity.sh
 ### Summon it from AeroSpace
 
 Two summons, two URLs. Both reach the running instance through Launch Services — no second
-process, no signal — and start it when it is not running:
+process, no signal — and start it when it is not running. Put them in your AeroSpace config
+(`~/.aerospace.toml` or `~/.config/aerospace/aerospace.toml`, whichever you use):
 
 ```toml
 cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://workspaces']   # every workspace

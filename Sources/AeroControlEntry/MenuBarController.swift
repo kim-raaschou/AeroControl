@@ -78,7 +78,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         menu.addItem(versionHeader())
-        menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.1"))
+        menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
         // A submenu, not nine items: the palette list would otherwise be most of the menu.
         // The parent carries the current theme's name and swatch, so the choice is visible
