@@ -114,6 +114,10 @@ public class OverviewStore {
     /// is a TCC round-trip.
     public private(set) var previewsAvailable = false
 
+    /// Warms the capture path before `reload()`, so the system's window enumeration and
+    /// AeroSpace's answer arrive together rather than one after the other.
+    public func prepareCapture() { nativeSystem.prepareCapture() }
+
     public func requestPreviewAccess() {
         nativeSystem.requestPreviewAccess()
         previewsAvailable = nativeSystem.canCapturePreviews

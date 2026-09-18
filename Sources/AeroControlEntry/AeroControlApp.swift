@@ -2,6 +2,9 @@ import SwiftUI
 import AppKit
 import Common
 import AeroControlKit
+import OSLog
+
+private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "overview")
 
 @main
 struct AeroControlApp: App {
@@ -108,6 +111,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// URL, toggles the map. A URL reaches the running instance the way a reopen does,
     /// without a second process — and unlike a reopen it can carry a word.
     func application(_ application: NSApplication, open urls: [URL]) {
+        log.notice("summon: \(urls.first?.host() ?? "-", privacy: .public)")
         overlayManager.toggleVisibility(urls.contains { $0.host() == "windows" } ? .focusedApp : .map)
     }
 

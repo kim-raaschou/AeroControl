@@ -8,7 +8,10 @@ public protocol NativeApiBridge: Sendable {
     var canCapturePreviews: Bool { get }
     /// Asks macOS for Screen Recording access; the system shows its own prompt/settings.
     func requestPreviewAccess()
-    /// One preview image per window id, scaled to fit `maxSize` (points). Windows that
+    /// Starts whatever a capture needs that does not depend on which windows: called before
+    /// AeroSpace is read, so the two overlap.
+    func prepareCapture()
+    /// One preview image per window id, scaled to fit `maxSize` (pixels). Windows that
     /// cannot be captured are simply absent from the result.
     func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage]
 }
@@ -18,5 +21,6 @@ public protocol NativeApiBridge: Sendable {
 public extension NativeApiBridge {
     var canCapturePreviews: Bool { false }
     func requestPreviewAccess() {}
+    func prepareCapture() {}
     func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] { [:] }
 }

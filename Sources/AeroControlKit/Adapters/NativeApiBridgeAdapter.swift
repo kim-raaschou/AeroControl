@@ -1,7 +1,8 @@
 import AppKit
 import Common
 import OSLog
-import ScreenCaptureKit
+// ScreenCaptureKit's types are not marked Sendable yet; they are only ever touched on the main actor here.
+@preconcurrency import ScreenCaptureKit
 
 private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "previews")
 
@@ -28,26 +29,64 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         log.notice("previews: Screen Recording not granted; requested access -> \(granted)")
     }
 
-    /// Captures each window once, sequentially (a handful of ~10-30 ms captures; a task
-    /// group would only buy complexity). Off-screen windows parked by AeroSpace still
-    /// have content and capture fine. AeroSpace window ids are CGWindowIDs.
+    /// The one system-wide window enumeration a capture needs (~100 ms), started early so it
+    /// runs while AeroSpace is being read instead of after.
+    private var pendingContent: Task<SCShareableContent?, Never>?
+
+    public func prepareCapture() {
+        guard canCapturePreviews else { return }
+        pendingContent = Task { @MainActor in await Self.shareableContent() }
+    }
+
+    private static func shareableContent() async -> SCShareableContent? {
+        do {
+            return try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+        } catch {
+            log.error("previews: shareable content failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// How many captures are in flight at once. They are independent and the window
+    /// server overlaps them, with diminishing returns: 18 windows took 243 ms one at a
+    /// time, 200 ms six at a time, ~150 ms sixteen at a time.
+    private static let parallelCaptures = 16
+
+    /// Captures each window once. Off-screen windows parked by AeroSpace still have
+    /// content and capture fine. AeroSpace window ids are CGWindowIDs.
     public func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return [:] }
         guard !windowIds.isEmpty else { return [:] }
-        let content: SCShareableContent
-        do {
-            content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        } catch {
-            log.error("previews: shareable content failed: \(error.localizedDescription, privacy: .public)")
-            return [:]
+        let content: SCShareableContent?
+        if let pending = pendingContent {
+            pendingContent = nil
+            content = await pending.value
+        } else {
+            content = await Self.shareableContent()
         }
+        guard let content else { return [:] }
         let wanted = Set(windowIds.map { CGWindowID($0) })
-        var result: [Int: NSImage] = [:]
+        let windows = content.windows.filter { wanted.contains($0.windowID) }
         let started = ContinuousClock.now
-        for window in content.windows where wanted.contains(window.windowID) {
-            if let image = await Self.capture(window, maxSize: maxSize) {
-                result[Int(window.windowID)] = image
+        let result = await withTaskGroup(of: (Int, NSImage)?.self, returning: [Int: NSImage].self) { group in
+            var result: [Int: NSImage] = [:]
+            var inFlight = 0
+            for window in windows {
+                // One finishes, one starts: the window server sees a steady six, never all.
+                if inFlight == Self.parallelCaptures, let captured = await group.next() {
+                    if let (id, image) = captured { result[id] = image }
+                    inFlight -= 1
+                }
+                // SCWindow is not Sendable; it is handed to exactly one child task and never
+                // touched here again, which is the move the checker cannot see.
+                nonisolated(unsafe) let window = window
+                group.addTask { await Self.capture(window, maxSize: maxSize).map { (Int(window.windowID), $0) } }
+                inFlight += 1
             }
+            for await captured in group {
+                if let (id, image) = captured { result[id] = image }
+            }
+            return result
         }
         let ms = (ContinuousClock.now - started) / .milliseconds(1)
         log.notice("previews: requested \(windowIds.count) captured \(result.count) in \(Int(ms)) ms")

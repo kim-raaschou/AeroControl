@@ -95,6 +95,7 @@ final class OverlayWindowManager {
         // fade-in with the real state and the images already in place.
         Task { [weak self] in
             guard let self else { return }
+            self.state.prepareCapture()
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
             if summon == .focusedApp, !self.state.filterToFocusedApp() {
