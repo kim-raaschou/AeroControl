@@ -32,8 +32,7 @@ struct AeroControlFilterPill: View {
     /// like the keystrokes stopped arriving. A miss has to say so — the grid it leaves
     /// standing is the same grid a query matching everything would leave.
     private var pill: some View {
-        let single = matchCount == 1
-        return HStack(spacing: 8) {
+        HStack(spacing: 8) {
             Text(query)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
             // One typed letter is not a miss — the map is simply still standing.
@@ -43,10 +42,10 @@ struct AeroControlFilterPill: View {
                     .opacity(0.75)
             }
         }
-        .foregroundStyle(single ? palette.focusedBadgeText : palette.badgeText)
+        .foregroundStyle(palette.badgeText)
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
-        .background(single ? palette.accent : palette.badgeFill, in: Capsule())
+        .background(palette.badgeFill, in: Capsule())
         .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
     }
 }

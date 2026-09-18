@@ -10,8 +10,6 @@ struct AeroControlAppTile: View {
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
     let metrics: AeroControlMetrics
-    /// The digit that picks this tile while a filter is up; nil when it was not numbered.
-    let ordinal: Int?
     /// Whether the grid this tile sits in is a filtered result. The panel decides that once,
     /// from what it is drawing — a second answer derived from the query length disagreed with
     /// it on a miss, and captioned every window on a map that had not moved.
@@ -23,7 +21,8 @@ struct AeroControlAppTile: View {
     /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
     /// with its own aspect ratio and the app icon badged in its corner, otherwise the app icon.
     private var preview: NSImage? { state.previews[window.windowId] }
-    private var isFocused: Bool { window.windowId == state.model.focusedWindowId }
+    /// The ring: AeroSpace's focus on the map, the selected match while filtering.
+    private var isFocused: Bool { window.windowId == state.ringWindowId }
 
     /// While a filter is up the title is the point: two windows of one app are told apart by
     /// their title and their picture, and the title is the one that is provably current —
@@ -34,7 +33,7 @@ struct AeroControlAppTile: View {
     }
 
     /// A window without a title is still a window; name it by its app rather than leave the
-    /// caption blank and the keycap homeless.
+    /// caption blank.
     private var captionText: String { window.title.isEmpty ? window.appName : window.title }
 
     /// A caption only earns its lane when the picture under it stays at least this tall;
@@ -110,15 +109,12 @@ struct AeroControlAppTile: View {
     /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
     /// two windows apart sits at the front of the title where an ellipsis would land.
     private var caption: some View {
-        HStack(spacing: 7) {
-            ordinalBadge
-            Text(captionText)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(palette.badgeText)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-        }
-        .frame(height: AeroControlLayout.captionTitleHeight)
+        Text(captionText)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(palette.badgeText)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+            .frame(height: AeroControlLayout.captionTitleHeight)
     }
 
     /// The picture, its focus ring and the close button — everything the caption is not.
@@ -128,23 +124,6 @@ struct AeroControlAppTile: View {
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)
-    }
-
-
-    /// The keystroke that picks this match, drawn as a keycap so it reads as a shortcut and
-    /// not as the round accent circle a workspace badge is. It sits beside the name rather
-    /// than on the picture: a corner badge covers the content it is meant to help you read.
-    @ViewBuilder private var ordinalBadge: some View {
-        if let ordinal {
-            Text("\(ordinal)")
-                .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
-                .foregroundStyle(palette.accent)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
-                .padding(4)
-        }
     }
 
     @ViewBuilder private var tile: some View {

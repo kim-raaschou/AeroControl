@@ -138,7 +138,7 @@ class OverviewWindow: NSPanel {
 
 /// AppKit's half of `FilterKey`, which lives in `Common` and may not see an `NSEvent`.
 /// A modified key is somebody else's (Cmd-Q, Cmd-W, Ctrl-arrows in AeroSpace); Shift is
-/// not a modifier here, it is how capitals are typed.
+/// not a modifier here, it is how capitals are typed — and how Tab is walked backwards.
 private extension FilterKey {
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -147,6 +147,9 @@ private extension FilterKey {
         case 53: self = .escape
         case 51: self = .backspace
         case 36, 76: self = .enter
+        case 48: self = modifiers.contains(.shift) ? .previous : .next
+        case 124: self = .next
+        case 123: self = .previous
         default:
             guard let key = event.characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key

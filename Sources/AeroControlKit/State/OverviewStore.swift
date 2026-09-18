@@ -21,12 +21,22 @@ public class OverviewStore {
     /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
     /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
     /// change — the grid would jump on every letter.
-    public var filter: String = ""
+    public var filter: String = "" { didSet { selection = 0 } }
 
-    /// Every window the query picks out, in the order the grid draws them. The grid, the pill
-    /// and the digit keys all read this one list, so what is numbered on screen is what the
-    /// keystroke focuses.
+    /// The match the ring is on and Enter picks, as an index into `filterMatches`. Back to
+    /// the first on every keystroke: the list under it has just changed.
+    public var selection: Int = 0
+
+    /// Every window the query picks out, in the order the grid draws them. The grid, the ring
+    /// and Enter all read this one list, so what the ring is on is what Enter focuses.
     public var filterMatches: [ParsedWindow] { model.matching(filter) }
+
+    /// The window wearing the ring: the selected match while the filter has any, AeroSpace's
+    /// focused window otherwise — so on the map, and on a miss, the ring means what it always
+    /// did.
+    public var ringWindowId: Int? {
+        filterMatches.selected(selection)?.window.windowId ?? model.focusedWindowId
+    }
 
     private let inbox: AsyncStream<OverviewInput>
     private let inboxContinuation: AsyncStream<OverviewInput>.Continuation

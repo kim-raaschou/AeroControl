@@ -32,10 +32,10 @@ public extension OverviewModel {
 
     /// Windows with a word starting with `query` in their title or app name, each with the
     /// workspace it lives on, in the order the grid draws them: workspace by workspace,
-    /// AeroSpace's own order inside each. That order *is* the numbering — the keycaps read
-    /// 1, 2, 3 across the screen because this list and the grid are the same list. A query
-    /// shorter than `minQueryLength` matches nothing: the filter is not on yet, which is not
-    /// the same as matching everything.
+    /// AeroSpace's own order inside each. That order is the one Tab walks, and its first
+    /// entry is what Enter picks until Tab says otherwise. A query shorter than
+    /// `minQueryLength` matches nothing: the filter is not on yet, which is not the same as
+    /// matching everything.
     func matching(_ query: String) -> [ParsedWindow] {
         let needle = query.trimmingCharacters(in: .whitespaces)
         guard needle.count >= Self.minQueryLength else { return [] }
@@ -61,10 +61,14 @@ public extension OverviewModel {
     }
 }
 
-/// The ordinal the digit keys pick, by window id, which is also the badge that tile draws.
-/// One through nine; past the ninth match the mouse or another letter is the way.
-public func filterOrdinals(matches: [ParsedWindow]) -> [Int: Int] {
-    Dictionary(uniqueKeysWithValues: matches.prefix(9).enumerated().map { ($0.element.window.windowId, $0.offset + 1) })
+public extension Array where Element == ParsedWindow {
+    /// The match the ring is on: `selection` clamped to the last one, nil when there is none.
+    /// The one place that turns an index into a match — a list that shrank under a stale
+    /// index (a window closed while the query stood) still wears a ring, and Enter picks
+    /// exactly what the ring shows, because both ask here.
+    func selected(_ selection: Int) -> ParsedWindow? {
+        isEmpty ? nil : self[Swift.min(selection, count - 1)]
+    }
 }
 
 /// A keystroke the overview understands, named by what it means rather than by its key code:
@@ -74,6 +78,9 @@ public enum FilterKey: Equatable, Sendable {
     case backspace
     case enter
     case escape
+    /// Tab and →, Shift-Tab and ←: the ring moves to the next or previous match.
+    case next
+    case previous
 }
 
 public extension FilterKey {
@@ -91,28 +98,30 @@ public enum FilterKeyAction: Equatable, Sendable {
     /// Not ours: the window handles the key as it did before there was a filter.
     case none
     case setQuery(String)
+    /// The ring moves to this index of the matches.
+    case select(Int)
     case focus(windowId: Int)
 }
 
-/// What a keystroke does to the filter. A digit 1–9 always selects and never types: making
-/// it mean text *or* selection depending on the match count is what let `code2` focus a
-/// window instead of narrowing the query, silently and with no way back. The cost is that a
-/// digit cannot be searched for, which is why `0` is still text — nothing is ever labelled 0.
-public func filterKeyAction(query: String, matches: [ParsedWindow], key: FilterKey) -> FilterKeyAction {
+/// What a keystroke does to the filter. `selection` is the match the ring is on: Enter picks
+/// it, Tab and the arrows move it and wrap at either end. Everything typed is text, digits
+/// included — "code2" narrows the query and nothing else. A match is picked by typing until
+/// it is first, or by walking the ring to it; there is nothing on screen to read a key off.
+public func filterKeyAction(query: String, matches: [ParsedWindow], selection: Int, key: FilterKey) -> FilterKeyAction {
     switch key {
     case .escape:
         return query.isEmpty ? .none : .setQuery("")
     case .enter:
-        return matches.count == 1 ? .focus(windowId: matches[0].window.windowId) : .none
+        guard let pick = matches.selected(selection) else { return .none }
+        return .focus(windowId: pick.window.windowId)
+    case .next, .previous:
+        // One match has nowhere to go; none has nothing to stand on.
+        guard matches.count > 1 else { return .none }
+        let at = Swift.min(selection, matches.count - 1)
+        return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):
-        if character.isASCII, let ordinal = character.wholeNumberValue, (1...9).contains(ordinal) {
-            // Out of range is inert rather than text: a digit means the same thing whether
-            // or not there is a tile wearing it.
-            guard ordinal <= matches.count else { return .none }
-            return .focus(windowId: matches[ordinal - 1].window.windowId)
-        }
         // A query is trimmed before it is matched, so one starting with a space shows a pill
         // with nothing in it over an unchanged grid, and the next Escape spends itself
         // clearing it. Internal spaces are text like any other ("cafe munster").

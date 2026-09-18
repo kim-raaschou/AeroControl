@@ -71,11 +71,14 @@ final class OverlayWindowManager {
     /// handed back to the window, so Escape on an empty query still dismisses.
     private func handleKey(_ key: FilterKey) -> Bool {
         guard requestedVisible else { return false }
-        switch filterKeyAction(query: state.filter, matches: state.filterMatches, key: key) {
+        switch filterKeyAction(query: state.filter, matches: state.filterMatches, selection: state.selection, key: key) {
         case .none:
             return false
         case .setQuery(let query):
             state.filter = query
+            return true
+        case .select(let index):
+            state.selection = index
             return true
         case .focus(let windowId):
             Task { [state] in await state.dispatch(.focusWindow(windowId)) }

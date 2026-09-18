@@ -11,9 +11,6 @@ struct AeroControlWorkspaceCard: View {
     /// Height/width of a snapshot cell, the screen's own aspect.
     let previewAspect: CGFloat
     let size: CGSize
-    /// The digit each of the first nine matches answers to, by window id; empty means this
-    /// is the unfiltered map and nothing is numbered.
-    let ordinals: [Int: Int]
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
 
@@ -140,7 +137,7 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
-        AeroControlAppTile(window: window, metrics: metrics, ordinal: ordinals[window.windowId], filtering: filtering)
+        AeroControlAppTile(window: window, metrics: metrics, filtering: filtering)
     }
 
     @ViewBuilder private var dropTargetHint: some View {

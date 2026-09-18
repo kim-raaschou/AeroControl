@@ -340,5 +340,14 @@
     "complexity": 529,
     "prodComplexity": 344,
     "files": 42
+  },
+  {
+    "timestamp": "2026-09-18T11:29:13+02:00",
+    "commit": "05b8324",
+    "subject": "Filter tests as tables; usedHeight covered",
+    "code": 3579,
+    "complexity": 528,
+    "prodComplexity": 344,
+    "files": 42
   }
 ]

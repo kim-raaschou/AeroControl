@@ -75,7 +75,6 @@ public struct AeroControlPanel: View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : workspaces
-        let ordinals = filterOrdinals(matches: matches)        // empty when nothing matched
         let namesMonitors = self.namesMonitors
         var rows = AeroControlLayout.cardRows(
             windowCounts: all.map { $0.windows.count },
@@ -94,7 +93,6 @@ public struct AeroControlPanel: View {
                             monitorName: namesMonitors ? workspace.monitorShortName : nil,
                             previewAspect: gridAspect(workspace),
                             size: cell.size,
-                            ordinals: ordinals,
                             filtering: filtering
                         )
                         .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))

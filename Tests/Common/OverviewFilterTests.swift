@@ -69,7 +69,7 @@ struct OverviewMatchingTests {
         #expect(model.matching("Café").first?.workspace == "2")
     }
 
-    @Test("matches come back in the order the grid draws them: workspace by workspace, so the keycaps read across")
+    @Test("matches come back in the order the grid draws them: workspace by workspace, so Tab walks across")
     func orderIsPlacement() {
         // A title match on workspace 2 must not jump ahead of the app-name matches on workspace 1.
         let spread = OverviewModel(workspaces: [
@@ -79,7 +79,6 @@ struct OverviewMatchingTests {
         let matches = spread.matching("teams")
         #expect(matches.map(\.window.windowId) == [1, 2, 3, 4])
         #expect(spread.workspaces(holding: matches).map { $0.windows.map(\.windowId) } == [[1, 2], [3, 4]])
-        #expect(filterOrdinals(matches: matches) == [1: 1, 2: 2, 3: 3, 4: 4])
     }
 }
 
@@ -105,33 +104,13 @@ struct FilteredWorkspacesTests {
     }
 }
 
-@Suite("filterOrdinals")
-struct FilterOrdinalsTests {
-
-    @Test("the first nine matches are numbered in order — what the digit keys pick")
-    func numbersTheFirstNine() {
-        #expect(filterOrdinals(matches: model.matching("te")) == [1: 1, 2: 2])
-        #expect(filterOrdinals(matches: model.matching("zzz")).isEmpty)
-    }
-
-    @Test("past the ninth there are no digits left, so those tiles are not numbered")
-    func stopsAtNine() {
-        let many = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: (1...12).map { window($0, "Teams") }),
-        ])
-        let ordinals = filterOrdinals(matches: many.matching("Teams"))
-        #expect(ordinals.count == 9)
-        #expect(ordinals[9] == 9 && ordinals[10] == nil)
-    }
-}
-
 @Suite("filterKeyAction")
 struct FilterKeyActionTests {
-    /// The two Teams windows: what most rows resolve digits and Enter against.
+    /// The two Teams windows: what most rows resolve Enter and Tab against.
     private var two: [ParsedWindow] { model.matching("Teams") }
 
-    private func action(_ query: String, _ key: FilterKey, matches: [ParsedWindow]? = nil) -> FilterKeyAction {
-        filterKeyAction(query: query, matches: matches ?? two, key: key)
+    private func action(_ query: String, _ key: FilterKey, matches: [ParsedWindow]? = nil, selection: Int = 0) -> FilterKeyAction {
+        filterKeyAction(query: query, matches: matches ?? two, selection: selection, key: key)
     }
 
     @Test("what a keystroke does to the query, against two matches", arguments: [
@@ -141,12 +120,8 @@ struct FilterKeyActionTests {
         ("", .backspace, .none),                         // not ours
         ("Team", .escape, .setQuery("")),                // clear first…
         ("", .escape, .none),                            // …then the window dismisses
-        ("Teams", .enter, .none),                        // two matches: Enter has nothing to pick
-        ("Teams", .character("5"), .none),               // a digit past the last tile is inert, not text:
-                                                         // it must mean one thing at all times, or `Teams2`
-                                                         // focuses a window instead of narrowing, with no way back
-        ("ws", .character("0"), .setQuery("ws0")),       // zero is text; no tile is ever labelled zero
-        ("x", .character("٣"), .setQuery("x٣")),         // a digit from another script is text too
+        ("code", .character("2"), .setQuery("code2")),   // a digit is text: nothing on screen answers to a key
+        ("x", .character("٣"), .setQuery("x٣")),
         ("", .character(" "), .none),                    // a query cannot start with a space…
         ("cafe", .character(" "), .setQuery("cafe ")),   // …but can hold one
     ])
@@ -154,20 +129,34 @@ struct FilterKeyActionTests {
         #expect(action(query, key) == expected)
     }
 
-    @Test("a digit picks the tile wearing it, and Enter picks a sole match")
+    @Test("Enter picks the match the ring is on — the first until Tab says otherwise")
     func picks() {
-        #expect(action("Teams", .character("2")) == .focus(windowId: two[1].window.windowId))
+        #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
+        #expect(action("Teams", .enter, selection: 1) == .focus(windowId: two[1].window.windowId))
         #expect(action("standup", .enter, matches: model.matching("standup")) == .focus(windowId: 1))
-        #expect(action("zzz", .enter, matches: []) == .none)
-        #expect(action("", .character("1"), matches: []) == .none)
+        #expect(action("zzz", .enter, matches: []) == .none)               // a miss: nothing to stand on
+        // The list shrank under the index (a window closed mid-query): the ring clamps to the
+        // last match, and Enter picks that same one rather than nothing.
+        #expect(action("Teams", .enter, selection: 5) == .focus(windowId: two[1].window.windowId))
+        #expect(two.selected(5)?.window.windowId == two[1].window.windowId)
     }
 
-    @Test("the action vocabulary is exactly these three")
+    @Test("Tab and the arrows walk the matches and wrap at both ends")
+    func walks() {
+        #expect(action("Teams", .next) == .select(1))
+        #expect(action("Teams", .next, selection: 1) == .select(0))
+        #expect(action("Teams", .previous) == .select(1))
+        #expect(action("Teams", .next, selection: 5) == .select(0))                          // walks on from the clamp
+        #expect(action("standup", .next, matches: model.matching("standup")) == .none)   // one match: nowhere to go
+        #expect(action("zzz", .previous, matches: []) == .none)
+    }
+
+    @Test("the action vocabulary is exactly these four")
     func exhaustive() {
         // A compile-time guard: there is no case here promising a dismissal that this
         // function's one caller only ever turns back into "not ours".
         switch action("", .escape) {
-        case .none, .setQuery, .focus: break
+        case .none, .setQuery, .select, .focus: break
         }
     }
 }
