@@ -73,7 +73,16 @@ struct AeroControlAppTile: View {
 
     /// The focus frame hugs the drawn content, not the cell.
     private var plateSize: CGSize {
-        metrics.previews ? metrics.focusPlateRect(around: contentSize) : metrics.focusPlateRect
+        metrics.previews ? metrics.focusPlateRect(around: drawnSize) : metrics.focusPlateRect
+    }
+
+    /// What the snapshot ends up at. A caption shortens the artwork's frame, and the image
+    /// keeps its aspect inside it, so it letterboxes smaller in both directions — the ring
+    /// has to hug that, not the unconstrained size, or it climbs into the caption.
+    private var drawnSize: CGSize {
+        guard contentSize.height > 0 else { return contentSize }
+        let scale = min(1, artworkHeight / contentSize.height)
+        return CGSize(width: contentSize.width * scale, height: contentSize.height * scale)
     }
 
     var body: some View {
