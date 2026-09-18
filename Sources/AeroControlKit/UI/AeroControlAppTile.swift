@@ -12,6 +12,10 @@ struct AeroControlAppTile: View {
     let metrics: AeroControlMetrics
     /// The digit that picks this tile while a filter is up; nil when it was not numbered.
     let ordinal: Int?
+    /// Whether the grid this tile sits in is a filtered result. The panel decides that once,
+    /// from what it is drawing — a second answer derived from the query length disagreed with
+    /// it on a miss, and captioned every window on a map that had not moved.
+    let filtering: Bool
 
     @State private var isHovering = false
 
@@ -26,16 +30,16 @@ struct AeroControlAppTile: View {
     /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
     /// in the tooltip, which costs a second of holding the mouse still.
     private var showsCaption: Bool {
-        state.isFiltering && tileSize.height >= Self.minTitledTileHeight
+        filtering && tileSize.height >= AeroControlLayout.captionLane + Self.minPictureHeight
     }
 
     /// A window without a title is still a window; name it by its app rather than leave the
     /// caption blank and the keycap homeless.
     private var captionText: String { window.title.isEmpty ? window.appName : window.title }
 
-    /// Below this the title would take more of the cell than the picture it labels.
-    private static let minTitledTileHeight: CGFloat = 130
-    private static let titleLane: CGFloat = 32
+    /// A caption only earns its lane when the picture under it stays at least this tall;
+    /// below that the label would be bigger than the thing it labels.
+    private static let minPictureHeight: CGFloat = 92
 
     private func onFocusWindow() {
         Task { [weak state] in await state?.dispatch(.focusWindow(window.windowId)) }
@@ -64,29 +68,28 @@ struct AeroControlAppTile: View {
     }
     private var tileSize: CGSize { metrics.tileSize }
 
-    /// What is actually drawn: the fitted snapshot, or the whole cell for icons.
+    /// The room the picture has: the cell, less the caption's lane when there is one. Every
+    /// other size here is derived from this one box, so the ring, the close button and the
+    /// picture can never disagree about where the picture is.
+    private var pictureBox: CGSize {
+        CGSize(width: tileSize.width,
+               height: tileSize.height - (showsCaption ? AeroControlLayout.captionLane : 0))
+    }
+
+    /// What is actually drawn: the fitted snapshot, or the whole box for icons.
     private var contentSize: CGSize {
-        guard metrics.previews else { return tileSize }
-        guard let preview else { return CGSize(width: tileSize.height, height: tileSize.height) }
-        return metrics.fittedPreviewSize(preview.size)
+        guard metrics.previews else { return pictureBox }
+        guard let preview else { return CGSize(width: pictureBox.height, height: pictureBox.height) }
+        return AeroControlMetrics.fit(preview.size, into: pictureBox)
     }
 
     /// The focus frame hugs the drawn content, not the cell.
     private var plateSize: CGSize {
-        metrics.previews ? metrics.focusPlateRect(around: drawnSize) : metrics.focusPlateRect
-    }
-
-    /// What the snapshot ends up at. A caption shortens the artwork's frame, and the image
-    /// keeps its aspect inside it, so it letterboxes smaller in both directions — the ring
-    /// has to hug that, not the unconstrained size, or it climbs into the caption.
-    private var drawnSize: CGSize {
-        guard contentSize.height > 0 else { return contentSize }
-        let scale = min(1, artworkHeight / contentSize.height)
-        return CGSize(width: contentSize.width * scale, height: contentSize.height * scale)
+        metrics.previews ? metrics.focusPlateRect(around: contentSize) : metrics.focusPlateRect
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: AeroControlLayout.captionGap) {
             if showsCaption { caption }
             artwork
         }
@@ -115,26 +118,18 @@ struct AeroControlAppTile: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
         }
-        .frame(height: Self.titleLane)
+        .frame(height: AeroControlLayout.captionTitleHeight)
     }
 
-    /// The picture, its focus ring and the two corner affordances — everything the title is
-    /// not, so the ring keeps hugging the snapshot when a caption appears above it.
+    /// The picture, its focus ring and the close button — everything the caption is not.
     private var artwork: some View {
         tile
-            .frame(width: contentSize.width, height: artworkHeight)
+            .frame(width: contentSize.width, height: contentSize.height)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)
     }
 
-    /// A caption never pushes the card open: it takes its lane out of the cell, not out of
-    /// the picture. Most snapshots are limited by the cell's width and leave height to spare,
-    /// so the usual case costs the picture nothing at all.
-    private var artworkHeight: CGFloat {
-        guard showsCaption else { return contentSize.height }
-        return min(contentSize.height, tileSize.height - Self.titleLane - 6)
-    }
 
     /// The keystroke that picks this match, drawn as a keycap so it reads as a shortcut and
     /// not as the round accent circle a workspace badge is. It sits beside the name rather

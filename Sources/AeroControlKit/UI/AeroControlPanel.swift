@@ -42,7 +42,7 @@ public struct AeroControlPanel: View {
             } else {
                 grid(matches)
             }
-            AeroControlFilterPill(query: state.filter, matchCount: matches.count, isFiltering: state.isFiltering)
+            AeroControlFilterPill(query: state.filter, matchCount: matches.count)
         }
         .fixedSize()
         .environment(state)
@@ -73,8 +73,9 @@ public struct AeroControlPanel: View {
     /// to read your way out of.
     private func grid(_ matches: [ParsedWindow]) -> some View {
         let filtered = state.model.workspaces(holding: matches)
-        let all = filtered.isEmpty ? workspaces : filtered
-        let ordinals = filtered.isEmpty ? [:] : filterOrdinals(matches: matches)
+        let filtering = !filtered.isEmpty
+        let all = filtering ? filtered : workspaces
+        let ordinals = filterOrdinals(matches: matches)        // empty when nothing matched
         let namesMonitors = self.namesMonitors
         var rows = AeroControlLayout.cardRows(
             windowCounts: all.map { $0.windows.count },
@@ -82,7 +83,7 @@ public struct AeroControlPanel: View {
             available: usable
         )
         // A result may be shorter than the screen; a map may not.
-        if !filtered.isEmpty { rows = rows.map { shrunk($0, of: all) } }
+        if filtering { rows = rows.map { shrunk($0, of: all) } }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
@@ -93,7 +94,8 @@ public struct AeroControlPanel: View {
                             monitorName: namesMonitors ? workspace.monitorShortName : nil,
                             previewAspect: gridAspect(workspace),
                             size: cell.size,
-                            ordinals: ordinals
+                            ordinals: ordinals,
+                            filtering: filtering
                         )
                         .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
                     }

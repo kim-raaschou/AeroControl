@@ -34,8 +34,14 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// A window snapshot scaled to fit inside `previewSize`, keeping its own aspect ratio.
     /// The snapshot is drawn bare, so this is what the focus frame hugs.
     public func fittedPreviewSize(_ imageSize: CGSize) -> CGSize {
-        guard imageSize.width > 0, imageSize.height > 0 else { return previewSize }
-        let scale = min(previewSize.width / imageSize.width, previewSize.height / imageSize.height)
+        Self.fit(imageSize, into: previewSize)
+    }
+
+    /// `imageSize` scaled to sit inside `box` with its own aspect ratio; the box itself when
+    /// the image has no size to speak of.
+    public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize {
+        guard imageSize.width > 0, imageSize.height > 0 else { return box }
+        let scale = min(box.width / imageSize.width, box.height / imageSize.height)
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 

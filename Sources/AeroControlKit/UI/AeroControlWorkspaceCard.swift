@@ -14,6 +14,8 @@ struct AeroControlWorkspaceCard: View {
     /// The digit each of the first nine matches answers to, by window id; empty means this
     /// is the unfiltered map and nothing is numbered.
     let ordinals: [Int: Int]
+    /// Whether this card is part of a filtered result rather than the map.
+    let filtering: Bool
 
     @State private var isDropTarget = false
     @Environment(OverviewStore.self) private var state
@@ -138,7 +140,7 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
-        AeroControlAppTile(window: window, metrics: metrics, ordinal: ordinals[window.windowId])
+        AeroControlAppTile(window: window, metrics: metrics, ordinal: ordinals[window.windowId], filtering: filtering)
     }
 
     @ViewBuilder private var dropTargetHint: some View {

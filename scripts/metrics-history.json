@@ -331,5 +331,14 @@
     "complexity": 548,
     "prodComplexity": 347,
     "files": 42
+  },
+  {
+    "timestamp": "2026-09-18T10:50:44+02:00",
+    "commit": "c65849d",
+    "subject": "The focus ring hugs the picture, not the box it was drawn in",
+    "code": 3599,
+    "complexity": 529,
+    "prodComplexity": 344,
+    "files": 42
   }
 ]

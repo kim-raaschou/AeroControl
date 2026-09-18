@@ -31,22 +31,20 @@ public extension OverviewModel {
     static var minQueryLength: Int { 2 }
 
     /// Windows with a word starting with `query` in their title or app name, each with the
-    /// workspace it lives on. Title matches come first: part of a meeting name means that
-    /// window, not the three other windows of the same app. Within each group AeroSpace's own
-    /// order stands. A query shorter than `minQueryLength` matches nothing: the filter is not
-    /// on yet, which is not the same as matching everything.
+    /// workspace it lives on, in the order the grid draws them: workspace by workspace,
+    /// AeroSpace's own order inside each. That order *is* the numbering — the keycaps read
+    /// 1, 2, 3 across the screen because this list and the grid are the same list. A query
+    /// shorter than `minQueryLength` matches nothing: the filter is not on yet, which is not
+    /// the same as matching everything.
     func matching(_ query: String) -> [ParsedWindow] {
         let needle = query.trimmingCharacters(in: .whitespaces)
         guard needle.count >= Self.minQueryLength else { return [] }
         let needles = needle.split(separator: " ")
-        let scored = workspaces.flatMap { workspace in
-            workspace.windows.compactMap { window -> (match: ParsedWindow, byTitle: Bool)? in
-                let byTitle = window.title.hasWordsStarting(with: needles)
-                guard byTitle || window.appName.hasWordsStarting(with: needles) else { return nil }
-                return (ParsedWindow(window: window, workspace: workspace.name), byTitle)
-            }
+        return workspaces.flatMap { workspace in
+            workspace.windows
+                .filter { $0.title.hasWordsStarting(with: needles) || $0.appName.hasWordsStarting(with: needles) }
+                .map { ParsedWindow(window: $0, workspace: workspace.name) }
         }
-        return scored.filter(\.byTitle).map(\.match) + scored.filter { !$0.byTitle }.map(\.match)
     }
 
     /// The grid a query draws: every workspace holding one of `matches`, carrying only those

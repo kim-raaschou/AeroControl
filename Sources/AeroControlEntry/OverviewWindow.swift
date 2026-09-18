@@ -23,7 +23,6 @@ class OverviewWindow: NSPanel {
     var onQuitPointedApp: (() -> Void)?
     /// Offers a keystroke to the type-to-filter host; true when it took it.
     var onKey: ((FilterKey) -> Bool)?
-    /// Cmd-1…Cmd-9: focus the nth match; false when the filter has no nth match to give.
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -62,10 +61,6 @@ class OverviewWindow: NSPanel {
     /// default. Left alone, a stray Cmd-Q killed the whole agent: the overlay vanished, the
     /// app underneath came to the front, and the summon keybind silently did nothing until
     /// AeroControl was launched again. Quit stays in the menu bar item.
-    ///
-    /// Cmd-1…Cmd-9 picks the nth match — the Alfred/Raycast idiom — and belongs here for the
-    /// opposite reason: a plain digit is text the user is typing, and must never be taken
-    /// from the query.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
         // Only the modifiers that mean something here: a digit key reports `.numericPad`

@@ -78,17 +78,10 @@ final class OverlayWindowManager {
             state.filter = query
             return true
         case .focus(let windowId):
-            focus(windowId)
+            Task { [state] in await state.dispatch(.focusWindow(windowId)) }
+            hide(restoreFocus: false)       // the filter chose a window; it gets the keyboard
             return true
         }
-    }
-
-    /// Cmd-1…Cmd-9: focus the nth match, in the order the badges number them. Ignored when
-    /// the query has no nth match, so the keystroke falls through to whatever else wants it.
-
-    private func focus(_ windowId: Int) {
-        Task { [state] in await state.dispatch(.focusWindow(windowId)) }
-        hide(restoreFocus: false)           // the filter chose a window; it gets the keyboard
     }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
