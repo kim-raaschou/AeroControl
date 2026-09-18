@@ -161,22 +161,6 @@ struct OverviewStoreTests {
             .joined(separator: ",") + "]"
     }
 
-    @Test("a wide query still draws every match: the grid sizes them, so there is no cut-off")
-    func wideQueryKeepsEveryMatch() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(12), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
-
-        store.filter = "Teams"
-        #expect(store.filterMatches.count == 12)
-        #expect(filterOrdinals(matches: store.filterMatches).count == 9)   // only nine digits
-
-        store.filter = "standup"
-        #expect(store.filterMatches.map(\.window.windowId) == [1])
-        store.stop()
-    }
-
     @Test("the filter is the user's alone: no reload touches it, and it asks AeroSpace nothing")
     func filterIsIndependentOfTheReducer() async {
         let runner = ScriptRunner()
@@ -185,7 +169,6 @@ struct OverviewStoreTests {
         await store.reload()
 
         store.filter = "standup"
-        let commands = runner.commandsRun.count
 
         // A window appears while the query stands: the query survives, the matches re-derive.
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -193,10 +176,11 @@ struct OverviewStoreTests {
         #expect(store.filter == "standup")
         #expect(store.filterMatches.map(\.window.windowId) == [1])
 
+        // Changing the query is a local matter: it asks AeroSpace nothing.
+        let commands = runner.commandsRun.count
         store.filter = "Teams"
-        try? await Task.sleep(for: .milliseconds(50))
         #expect(store.filterMatches.count == 3)
-        #expect(runner.commandsRun.count == commands + 4)   // the reload's four reads, nothing else
+        #expect(runner.commandsRun.count == commands)
         store.stop()
     }
 

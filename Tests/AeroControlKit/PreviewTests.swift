@@ -101,7 +101,7 @@ struct PreviewMetricsTests {
     func filteredGridReusesCardRows() {
         let model = OverviewModel(workspaces: [
             WorkspaceInfo(name: "1", windows: (1...6).map { win($0, "Code") }),
-            WorkspaceInfo(name: "2", windows: [win(7, "Mail", "Inbox")]),
+            WorkspaceInfo(name: "2", windows: [win(7, "Mail", "Doctor's note")]),
             WorkspaceInfo(name: "3", windows: (8...11).map { win($0, "Safari", "Docs \($0)") }),
             WorkspaceInfo(name: "4", windows: []),
         ])
@@ -115,12 +115,34 @@ struct PreviewMetricsTests {
 
         // Two matching workspaces: two cards of equal width, and no sliver for the empty ones,
         // because a filtered grid never holds a workspace with nothing in it.
-        // "do" starts a word in "Docs 8" and in "Code" — two workspaces, not three.
-        let two = model.workspaces(holding: model.matching("do"))
-        #expect(two.map(\.name) == ["3"])
+        let two = model.workspaces(holding: model.matching("do"))          // "Doctor's" and "Docs 8"
+        #expect(two.map(\.name) == ["2", "3"])
         let split = AeroControlLayout.cardRows(windowCounts: two.map { $0.windows.count }, available: available)
-        #expect(split.map(\.count) == [1])
+        #expect(split.map(\.count) == [2])
+        #expect(Set(split[0].map(\.size.width)).count == 1)
         #expect(split[0].allSatisfy { $0.size.width > AeroControlLayout.emptyCardWidth })
+    }
+
+    /// A filtered row is only as tall as its pictures — plus the caption every filtered tile
+    /// wears. A picture cannot grow past its aspect ratio, so a row wider than its content
+    /// hands the empty height back; a row already limited by height keeps all of it.
+    @Test("a filtered row shrinks to what its tiles use, caption lane included")
+    func usedHeightFollowsTheTiles() {
+        let aspect = AeroControlLayout.tileAspect
+        // One 3:2 window in a wide, tall card: limited by width, so height is left over.
+        let wide = AeroControlLayout.usedHeight(windowCounts: [1], widths: [1600], aspects: [aspect], available: 2000)
+        let tile = AeroControlLayout.tileGrid(windowCount: 1, card: CGSize(width: 1600, height: 2000), aspect: aspect).width
+        let expected = tile * aspect + AeroControlLayout.captionLane + AeroControlLayout.cardPadding + AeroControlLayout.badgeLane
+        #expect(abs(wide - expected) < 1)
+        #expect(wide < 2000)
+
+        // The same window in a short card is limited by height: nothing to hand back.
+        #expect(AeroControlLayout.usedHeight(windowCounts: [1], widths: [1600], aspects: [aspect], available: 400) == 400)
+
+        // A row takes the tallest card's need, not the first's.
+        let tallest = AeroControlLayout.usedHeight(windowCounts: [1, 4], widths: [800, 800], aspects: [aspect, aspect], available: 2000)
+        let alone = AeroControlLayout.usedHeight(windowCounts: [4], widths: [800], aspects: [aspect], available: 2000)
+        #expect(tallest == alone)
     }
 
     @Test("cell aspect is the median snapshot aspect; four tall columns lay out as one row of tall cells")

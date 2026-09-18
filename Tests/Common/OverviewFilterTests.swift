@@ -10,6 +10,7 @@ private func window(_ id: Int, _ app: String, _ title: String = "") -> WindowInf
 }
 
 /// Two Teams windows (only the title tells them apart), a Code window, and an accented title.
+/// Anything that asserts an *order* runs against this one.
 private var model: OverviewModel { OverviewModel(workspaces: [
     WorkspaceInfo(name: "1", windows: [window(1, "Teams", "Crew standup"),
                                        window(2, "Teams", "Chat")]),
@@ -17,97 +18,68 @@ private var model: OverviewModel { OverviewModel(workspaces: [
                                        window(4, "Safari", "Café Münster")]),
 ]) }
 
-private func ids(_ query: String) -> [Int] {
+/// Awkward strings for the word rules. Only ever asserted for membership, so adding a row
+/// here cannot disturb the ordered tests above.
+private var words: OverviewModel { OverviewModel(workspaces: [
+    WorkspaceInfo(name: "1", windows: [window(1, "Microsoft Teams", "Chat | Lars | Microsoft Teams"),
+                                       window(2, "Code", "aerospace.toml — .config"),
+                                       window(3, "Arc", "BECT-938: the tenant check"),
+                                       window(4, "Mail", "Inbox")]),
+]) }
+
+private func ids(_ query: String, in model: OverviewModel = model) -> [Int] {
     model.matching(query).map(\.window.windowId)
 }
 
 @Suite("matching")
 struct OverviewMatchingTests {
 
-    @Test("an app name matches, in AeroSpace's own order")
-    func matchesAppName() {
-        #expect(ids("Teams") == [1, 2])
-        #expect(ids("saf") == [4])             // the app name, not the title
+    @Test("a query picks the windows whose title or app name has a word starting with it", arguments: [
+        ("Teams", [1, 2]),          // app name, in AeroSpace's order
+        ("saf", [4]),               // app name, not the title
+        ("standup", [1]),           // title: the point — two windows of one app told apart
+        ("te", [1, 2]),             // two letters is a query
+        ("teAMs", [1, 2]),          // case is ignored
+        ("cafe munster", [4]),      // diacritics too, and a query with a space matches word by word
+        ("eams", []),               // inside "Teams": a mid-word hit is the surprising kind
+        ("tandup", []),             // inside "standup"
+        ("t", []),                  // one letter is not a query yet: the map stays standing
+        ("", []),                   // the filter is off, not "everything"
+        ("   ", []),
+        ("zzz", []),                // a real miss
+    ])
+    func matches(query: String, expected: [Int]) {
+        #expect(ids(query) == expected)
     }
 
-    @Test("a word anywhere in the string can start the match, not just the first")
-    func matchesAnyWordStart() {
-        let teams = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: [window(1, "Microsoft Teams", "Chat | Lars | Microsoft Teams")]),
-        ])
-        #expect(teams.matching("teams").map(\.window.windowId) == [1])   // second word
-        #expect(teams.matching("lars").map(\.window.windowId) == [1])    // between pipes
+    @Test("a word anywhere can start the match, and punctuation is a word boundary", arguments: [
+        ("teams", [1]),             // second word of the app name
+        ("lars", [1]),              // between pipes
+        ("toml", [2]),              // after a dot
+        ("938", [3]),               // after a hyphen: a digit reached through the filter
+        ("in", [4]),                // the fold is locale-invariant: "Inbox" must match "in" everywhere
+        ("space", []),              // mid-word in "aerospace"
+    ])
+    func wordRules(query: String, expected: [Int]) {
+        #expect(ids(query, in: words) == expected)
     }
-
-    @Test("punctuation splits words, so a suffix or a number is reachable")
-    func punctuationSplitsWords() {
-        let mixed = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: [window(1, "Code", "aerospace.toml — .config"),
-                                               window(2, "Arc", "BECT-938: the tenant check")]),
-        ])
-        #expect(mixed.matching("toml").map(\.window.windowId) == [1])
-        #expect(mixed.matching("938").map(\.window.windowId) == [2])
-    }
-
-    @Test("a match starts a word: mid-word hits are the surprising kind and do not count")
-    func doesNotMatchMidWord() {
-        #expect(ids("eams").isEmpty)           // inside "Teams"
-        #expect(ids("tandup").isEmpty)         // inside "standup"
-    }
-
-    @Test("one character is not a query yet: the map stays standing")
-    func shortQueryMatchesNothing() {
-        #expect(ids("t").isEmpty)
-        #expect(ids("te") == [1, 2])
-    }
-
-    @Test("a title matches, which is the point: two windows of the same app")
-    func matchesTitle() {
-        #expect(ids("standup") == [1])
-    }
-
-    @Test("a title match outranks an app-name match: the meeting you named, not the app's rest")
-    func titlesRankAboveAppNames() {
-        let teams = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: [window(1, "Teams"), window(2, "Teams"),
-                                               window(3, "Slack", "Teams migration"), window(4, "Teams")]),
-        ])
-        #expect(teams.matching("teams").map(\.window.windowId) == [3, 1, 2, 4])
-    }
-
-    @Test("the fold is the invariant one, never the host's locale")
-    func foldingIgnoresLocale() {
-        let mail = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: [window(1, "Mail", "Inbox")]),
-        ])
-        #expect(mail.matching("in").map(\.window.windowId) == [1])
-        // The same fold in a Turkish locale, where "I" is the dotless ı's capital: what a
-        // localized predicate does on a Turkish Mac, and what no test in another locale sees.
-        #expect("Inbox".range(of: "in", options: [.caseInsensitive, .diacriticInsensitive, .anchored],
-                              range: nil, locale: Locale(identifier: "tr_TR")) == nil)
-    }
-
-    @Test("case and diacritics are ignored, so the query can be typed flat")
-    func ignoresCaseAndDiacritics() {
-        #expect(ids("teAMs") == [1, 2])
-        #expect(ids("cafe munster") == [4])
-    }
-
-    @Test("an empty or blank query matches nothing: the filter is off, not everything")
-    func emptyMatchesNothing() {
-        #expect(ids("").isEmpty)
-        #expect(ids("   ").isEmpty)
-    }
-
 
     @Test("a match carries the workspace it lives on")
     func carriesWorkspace() {
         #expect(model.matching("Café").first?.workspace == "2")
     }
 
-    @Test("a query nothing holds matches nothing")
-    func missMatchesNothing() {
-        #expect(ids("zzz").isEmpty)
+    @Test("matches come back in the order the grid draws them: workspace by workspace, so the keycaps read across")
+    func orderIsPlacement() {
+        // A title match on workspace 2 must not jump ahead of the app-name matches on workspace 1.
+        let spread = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: [window(1, "Teams"), window(2, "Teams")]),
+            WorkspaceInfo(name: "2", windows: [window(3, "Slack", "Teams migration"), window(4, "Teams")]),
+        ])
+        let matches = spread.matching("teams")
+        #expect(matches.map(\.window.windowId) == [1, 2, 3, 4])
+        #expect(spread.workspaces(holding: matches).map { $0.windows.map(\.windowId) } == [[1, 2], [3, 4]])
+        #expect(filterOrdinals(matches: matches) == [1: 1, 2: 2, 3: 3, 4: 4])
     }
 }
 
@@ -123,28 +95,20 @@ struct FilteredWorkspacesTests {
         let teams = grid("Teams")
         #expect(teams.map(\.0) == ["1"])                 // workspace 2 holds no Teams window
         #expect(teams.map(\.1) == [[1, 2]])
-
-        let wide = grid("c")                             // below the threshold: nothing yet
-        #expect(wide.isEmpty)
     }
 
-    @Test("cards keep AeroSpace's order, whatever order the matches came back in")
-    func keepsGridOrder() {
-        // "ch" ranks Chat's title match first, but the grid is still AeroSpace's order.
-        #expect(grid("ch").map(\.1) == [[2]])
-    }
-
-    @Test("no match is no grid: the caller draws the whole map rather than an empty screen")
-    func missDrawsNothing() {
-        #expect(grid("zzz").isEmpty)
-        #expect(grid("").isEmpty)
+    @Test("no match is no grid: the caller draws the whole map rather than an empty screen", arguments: [
+        "zzz", "", "c",                                  // a miss, the filter off, below the threshold
+    ])
+    func missDrawsNothing(query: String) {
+        #expect(grid(query).isEmpty)
     }
 }
 
 @Suite("filterOrdinals")
 struct FilterOrdinalsTests {
 
-    @Test("the first nine matches are numbered in match order — what ⌘1…⌘9 picks")
+    @Test("the first nine matches are numbered in order — what the digit keys pick")
     func numbersTheFirstNine() {
         #expect(filterOrdinals(matches: model.matching("te")) == [1: 1, 2: 2])
         #expect(filterOrdinals(matches: model.matching("zzz")).isEmpty)
@@ -163,90 +127,64 @@ struct FilterOrdinalsTests {
 
 @Suite("filterKeyAction")
 struct FilterKeyActionTests {
-    private var matches: [ParsedWindow] { model.matching("Teams") }
+    /// The two Teams windows: what most rows resolve digits and Enter against.
+    private var two: [ParsedWindow] { model.matching("Teams") }
 
     private func action(_ query: String, _ key: FilterKey, matches: [ParsedWindow]? = nil) -> FilterKeyAction {
-        filterKeyAction(query: query, matches: matches ?? self.matches, key: key)
+        filterKeyAction(query: query, matches: matches ?? two, key: key)
     }
 
-    @Test("a letter is appended to the query")
-    func typingAppends() {
-        #expect(action("Tea", .character("m")) == .setQuery("Team"))
-        #expect(action("", .character("T")) == .setQuery("T"))
+    @Test("what a keystroke does to the query, against two matches", arguments: [
+        ("Tea", FilterKey.character("m"), FilterKeyAction.setQuery("Team")),
+        ("", .character("T"), .setQuery("T")),
+        ("Team", .backspace, .setQuery("Tea")),
+        ("", .backspace, .none),                         // not ours
+        ("Team", .escape, .setQuery("")),                // clear first…
+        ("", .escape, .none),                            // …then the window dismisses
+        ("Teams", .enter, .none),                        // two matches: Enter has nothing to pick
+        ("Teams", .character("5"), .none),               // a digit past the last tile is inert, not text:
+                                                         // it must mean one thing at all times, or `Teams2`
+                                                         // focuses a window instead of narrowing, with no way back
+        ("ws", .character("0"), .setQuery("ws0")),       // zero is text; no tile is ever labelled zero
+        ("x", .character("٣"), .setQuery("x٣")),         // a digit from another script is text too
+        ("", .character(" "), .none),                    // a query cannot start with a space…
+        ("cafe", .character(" "), .setQuery("cafe ")),   // …but can hold one
+    ])
+    func keys(query: String, key: FilterKey, expected: FilterKeyAction) {
+        #expect(action(query, key) == expected)
     }
 
-    @Test("backspace shortens the query, and on an empty one is not ours")
-    func backspace() {
-        #expect(action("Team", .backspace) == .setQuery("Tea"))
-        #expect(action("", .backspace) == .none)
+    @Test("a digit picks the tile wearing it, and Enter picks a sole match")
+    func picks() {
+        #expect(action("Teams", .character("2")) == .focus(windowId: two[1].window.windowId))
+        #expect(action("standup", .enter, matches: model.matching("standup")) == .focus(windowId: 1))
+        #expect(action("zzz", .enter, matches: []) == .none)
+        #expect(action("", .character("1"), matches: []) == .none)
     }
 
-    @Test("escape clears the query, and on an empty one is not ours: the window dismisses")
-    func escapeClearsThenIsNotOurs() {
-        #expect(action("Team", .escape) == .setQuery(""))
-        #expect(action("", .escape) == .none)
-        // Exhaustive on purpose: there is no case here promising a dismissal that this
+    @Test("the action vocabulary is exactly these three")
+    func exhaustive() {
+        // A compile-time guard: there is no case here promising a dismissal that this
         // function's one caller only ever turns back into "not ours".
         switch action("", .escape) {
         case .none, .setQuery, .focus: break
         }
-    }
-
-    @Test("enter focuses only when the query has narrowed to exactly one window")
-    func enterNeedsOneMatch() {
-        #expect(action("Teams", .enter) == .none)
-        #expect(action("standup", .enter, matches: model.matching("standup")) == .focus(windowId: 1))
-        #expect(action("zzz", .enter, matches: []) == .none)
-    }
-
-    @Test("a digit 1-9 always picks and never types, whatever the query already holds")
-    func digitsAlwaysPick() {
-        let two = model.matching("Teams")
-        #expect(two.count == 2)
-        #expect(action("Teams", .character("2")) == .focus(windowId: two[1].window.windowId))
-        // Out of range is inert, not text: the digit must mean one thing at all times, or
-        // `Teams2` focuses a window instead of narrowing, silently and with no way back.
-        #expect(action("Teams", .character("5")) == .none)
-        #expect(action("", .character("1"), matches: []) == .none)
-    }
-
-    @Test("zero is text, because no tile is ever labelled zero")
-    func zeroTypes() {
-        #expect(action("ws", .character("0")) == .setQuery("ws0"))
-    }
-
-    @Test("a digit from another script is text: only the digits the tiles wear can pick")
-    func nonASCIIDigitTypes() {
-        #expect(action("x", .character("٣")) == .setQuery("x٣"))
-    }
-
-    @Test("a query cannot start with a space, but can hold one")
-    func leadingSpaceRejected() {
-        #expect(action("", .character(" ")) == .none)
-        #expect(action("cafe", .character(" ")) == .setQuery("cafe "))
-        #expect(ids("cafe munster") == [4])
     }
 }
 
 @Suite("FilterKey.typed")
 struct FilterKeyTypedTests {
 
-    @Test("text is a key")
-    func textIsAKey() {
-        #expect(FilterKey.typed("a") == .character("a"))
-        #expect(FilterKey.typed("é") == .character("é"))
-        #expect(FilterKey.typed(" ") == .character(" "))
-    }
-
-    @Test("arrow and function keys arrive as private-use scalars, and are not text")
-    func rejectsPrivateUseScalars() {
-        #expect(FilterKey.typed(Character(UnicodeScalar(0xF700)!)) == nil)   // up arrow
-        #expect(FilterKey.typed(Character(UnicodeScalar(0xF704)!)) == nil)   // F1
-    }
-
-    @Test("control characters are not text either")
-    func rejectsControlCharacters() {
-        #expect(FilterKey.typed("\u{3}") == nil)
-        #expect(FilterKey.typed("\t") == nil)
+    @Test("text is a key; arrows, function keys and control characters are not", arguments: [
+        ("a" as Character, FilterKey.character("a")),
+        ("é", .character("é")),
+        (" ", .character(" ")),
+        (Character(UnicodeScalar(0xF700)!), nil),        // up arrow: a private-use scalar, not a glyph
+        (Character(UnicodeScalar(0xF704)!), nil),        // F1
+        ("\u{3}", nil),
+        ("\t", nil),
+    ])
+    func typed(character: Character, expected: FilterKey?) {
+        #expect(FilterKey.typed(character) == expected)
     }
 }
