@@ -10,6 +10,8 @@ struct AeroControlAppTile: View {
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
     let metrics: AeroControlMetrics
+    /// The digit ⌘1…⌘9 picks this tile with, when the filter numbered it; nil otherwise.
+    let ordinal: Int?
 
     @State private var isHovering = false
 
@@ -62,6 +64,7 @@ struct AeroControlAppTile: View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
+            .overlay(alignment: .topLeading) { ordinalBadge }
             .overlay(alignment: .topTrailing) { closeButton }
             .frame(width: tileSize.width, height: tileSize.height)
             .padding(cellPadding)
@@ -75,6 +78,21 @@ struct AeroControlAppTile: View {
                     .frame(width: contentSize.width, height: contentSize.height)
                     .onAppear { hoverChanged(false) }
             }
+    }
+
+    /// The keystroke that picks this match, drawn as a keycap so it reads as a shortcut and
+    /// not as the round accent circle a workspace badge is.
+    @ViewBuilder private var ordinalBadge: some View {
+        if let ordinal {
+            Text("⌘\(ordinal)")
+                .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                .foregroundStyle(palette.accent)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                .padding(4)
+        }
     }
 
     @ViewBuilder private var tile: some View {

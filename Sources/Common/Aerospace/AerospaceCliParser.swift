@@ -58,6 +58,8 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     }
 }
 
+/// A window with the workspace it sits on, as `list-windows` reports it; also what the
+/// overview's filter hands back for a match, which needs exactly the same pair.
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String

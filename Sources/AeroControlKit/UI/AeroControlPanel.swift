@@ -30,15 +30,18 @@ public struct AeroControlPanel: View {
     private var namesMonitors: Bool { state.model.spansMonitors }
 
     public var body: some View {
-        Group {
+        // Once per pass: matching is a scan of every window's name and title, on every keystroke.
+        let matches = state.filterMatches
+        return Group {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
                 EmptyView()
             } else {
-                grid
+                grid(matches)
             }
         }
+        .overlay(alignment: .bottom) { AeroControlFilterPill(query: state.filter, matchCount: matches.count) }
         .fixedSize()
         .environment(state)
         .environment(\.aeroDismiss, onDismiss)
@@ -55,8 +58,15 @@ public struct AeroControlPanel: View {
         return AeroControlLayout.cellAspect(snapshotSizes: sizes, fallback: AeroControlLayout.previewAspect(for: usable))
     }
 
-    private var grid: some View {
-        let all = workspaces
+    /// The result takes over the grid's geometry: a query that found something draws only the
+    /// workspaces that hold a match, each with only its matching windows, sized by the same
+    /// `cardRows` as the full grid — it counts windows and knows nothing of workspaces. A
+    /// query that found nothing leaves the whole map standing, so there is always something
+    /// to read your way out of.
+    private func grid(_ matches: [ParsedWindow]) -> some View {
+        let filtered = state.model.workspaces(holding: matches)
+        let all = filtered.isEmpty ? workspaces : filtered
+        let ordinals = filtered.isEmpty ? [:] : filterOrdinals(matches: matches)
         let namesMonitors = self.namesMonitors
         let rows = AeroControlLayout.cardRows(
             windowCounts: all.map { $0.windows.count },
@@ -72,13 +82,17 @@ public struct AeroControlPanel: View {
                             workspace: workspace,
                             monitorName: namesMonitors ? workspace.monitorShortName : nil,
                             previewAspect: gridAspect(workspace),
-                            size: cell.size
+                            size: cell.size,
+                            ordinals: ordinals
                         )
                         .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
                     }
                 }
             }
         }
+        // The unfiltered grid is a map and never moves; the filtered one is a result, and
+        // re-flows as the query narrows. Animated, or every letter would snap.
+        .animation(.easeInOut(duration: 0.15), value: all)
     }
 
     private func errorView(_ message: String) -> some View {

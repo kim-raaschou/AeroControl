@@ -5,6 +5,10 @@ import Testing
 
 // MARK: - Metrics & layout with previews
 
+private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
+    WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", title: title)
+}
+
 @Suite("metrics — previews")
 struct PreviewMetricsTests {
     @Test("preview tiles are 3:2 of the icon size; icon tiles stay square")
@@ -89,6 +93,34 @@ struct PreviewMetricsTests {
         #expect(rows[0][0].height * 2 + AeroControlLayout.cardGap <= available.height + 1)
         let tile = AeroControlLayout.tileGrid(windowCount: 4, card: rows[0][0])
         #expect(tile.columns == 2 && tile.width > 400)                    // 2x2 with roomy snapshots
+    }
+
+    /// The filtered overview: the result takes over the grid's geometry, and `cardRows` does
+    /// the sizing unchanged — it counts windows and has never known what a workspace is.
+    @Test("the filtered grid drops the workspaces with no match and sizes the rest by their matches")
+    func filteredGridReusesCardRows() {
+        let model = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: (1...6).map { win($0, "Code") }),
+            WorkspaceInfo(name: "2", windows: [win(7, "Mail", "Inbox")]),
+            WorkspaceInfo(name: "3", windows: (8...11).map { win($0, "Safari", "Docs \($0)") }),
+            WorkspaceInfo(name: "4", windows: []),
+        ])
+        let filtered = model.workspaces(holding: model.matching("Code"))
+        #expect(filtered.map(\.name) == ["1"])                               // three workspaces gone
+
+        let available = CGSize(width: 1600, height: 1000)
+        let rows = AeroControlLayout.cardRows(windowCounts: filtered.map { $0.windows.count }, available: available)
+        #expect(rows.map(\.count) == [1])                                    // one card, the whole screen
+        #expect(rows[0][0].size.width == available.width)
+
+        // Two matching workspaces: two cards of equal width, and no sliver for the empty ones,
+        // because a filtered grid never holds a workspace with nothing in it.
+        let two = model.workspaces(holding: model.matching("o"))             // Code, Inbox, Safari
+        #expect(two.map(\.name) == ["1", "2", "3"])
+        let split = AeroControlLayout.cardRows(windowCounts: two.map { $0.windows.count }, available: available)
+        #expect(split.map(\.count) == [3])
+        #expect(Set(split[0].map(\.size.width)).count == 1)
+        #expect(split[0].allSatisfy { $0.size.width > AeroControlLayout.emptyCardWidth })
     }
 
     @Test("cell aspect is the median snapshot aspect; four tall columns lay out as one row of tall cells")

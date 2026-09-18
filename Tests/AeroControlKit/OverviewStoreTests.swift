@@ -153,6 +153,53 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    // MARK: The typed filter
+
+    /// `count` windows of one app, one of which carries a title no other holds.
+    private func teams(_ count: Int) -> String {
+        "[" + (1...count).map { oneWindow($0, "1", app: "Teams", title: $0 == 1 ? "Crew standup" : nil) }
+            .joined(separator: ",") + "]"
+    }
+
+    @Test("a wide query still draws every match: the grid sizes them, so there is no cut-off")
+    func wideQueryKeepsEveryMatch() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(12), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+
+        store.filter = "Teams"
+        #expect(store.filterMatches.count == 12)
+        #expect(filterOrdinals(matches: store.filterMatches).count == 9)   // only nine digits
+
+        store.filter = "standup"
+        #expect(store.filterMatches.map(\.window.windowId) == [1])
+        store.stop()
+    }
+
+    @Test("the filter is the user's alone: no reload touches it, and it asks AeroSpace nothing")
+    func filterIsIndependentOfTheReducer() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+
+        store.filter = "standup"
+        let commands = runner.commandsRun.count
+
+        // A window appears while the query stands: the query survives, the matches re-derive.
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        await store.reload()
+        #expect(store.filter == "standup")
+        #expect(store.filterMatches.map(\.window.windowId) == [1])
+
+        store.filter = "Teams"
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(store.filterMatches.count == 3)
+        #expect(runner.commandsRun.count == commands + 4)   // the reload's four reads, nothing else
+        store.stop()
+    }
+
     // MARK: Actions
 
     @Test("typed inputs drive the store through the send() ingress")

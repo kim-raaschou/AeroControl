@@ -16,6 +16,17 @@ public class OverviewStore {
     /// does: the overview is a place you point at windows, so pointing is the selection.
     public var hoveredWindowId: Int?
 
+    /// What the user has typed into the overview. UI state that drives no AeroSpace work, so
+    /// it lives here beside `hoveredWindowId` rather than in the model: the reducer's contract
+    /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
+    /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
+    /// change — the grid would jump on every letter.
+    public var filter: String = ""
+
+    /// Every window the query picks out, best first. The grid, the pill and ⌘1…⌘9 all read
+    /// this one list, so what is numbered on screen is what the keystroke focuses.
+    public var filterMatches: [ParsedWindow] { model.matching(filter) }
+
     private let inbox: AsyncStream<OverviewInput>
     private let inboxContinuation: AsyncStream<OverviewInput>.Continuation
 

@@ -1,5 +1,6 @@
 import AppKit
 import AeroControlKit
+import Common
 import OSLog
 import SwiftUI
 
@@ -20,6 +21,10 @@ class OverviewWindow: NSPanel {
     var onDismiss: (() -> Void)?
     /// Cmd-Q: quit the app whose window the mouse is over, Mission-Control style.
     var onQuitPointedApp: (() -> Void)?
+    /// Offers a keystroke to the type-to-filter host; true when it took it.
+    var onKey: ((FilterKey) -> Bool)?
+    /// Cmd-1…Cmd-9: focus the nth match; false when the filter has no nth match to give.
+    var onSelectMatch: ((Int) -> Bool)?
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -41,8 +46,12 @@ class OverviewWindow: NSPanel {
     /// Key so Escape reaches us; non-activating so the app never takes over the menu bar.
     override var canBecomeKey: Bool { true }
 
+    /// Escape also arrives here rather than through `keyDown` — Cmd-period always does — so
+    /// the filter gets the same first refusal it gets there. Two Escape routes meaning two
+    /// different things is how Escape came to skip clearing the query on one of them.
     override func cancelOperation(_ sender: Any?) {
         log.debug("overview: cancelOperation")
+        if onKey?(.escape) == true { return }
         onDismiss?()
     }
 
@@ -54,20 +63,31 @@ class OverviewWindow: NSPanel {
     /// default. Left alone, a stray Cmd-Q killed the whole agent: the overlay vanished, the
     /// app underneath came to the front, and the summon keybind silently did nothing until
     /// AeroControl was launched again. Quit stays in the menu bar item.
+    ///
+    /// Cmd-1…Cmd-9 picks the nth match — the Alfred/Raycast idiom — and belongs here for the
+    /// opposite reason: a plain digit is text the user is typing, and must never be taken
+    /// from the query.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
-        let onlyCommand = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
-        guard onlyCommand else { return super.performKeyEquivalent(with: event) }
+        // Only the modifiers that mean something here: a digit key reports `.numericPad`
+        // even on the top row, so comparing the whole flag set against `.command` silently
+        // excluded Cmd-1…Cmd-9 while Cmd-Q and Cmd-W worked.
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        guard modifiers == .command else { return super.performKeyEquivalent(with: event) }
         switch key {
         case "q": onQuitPointedApp?()
         case "w": onDismiss?()
-        default: return super.performKeyEquivalent(with: event)
+        default:
+            guard let ordinal = Int(key), (1...9).contains(ordinal), onSelectMatch?(ordinal) == true else {
+                return super.performKeyEquivalent(with: event)
+            }
         }
         return true
     }
 
     override func keyDown(with event: NSEvent) {
         log.debug("overview: keyDown \(event.keyCode)")
+        if let key = FilterKey(event: event), onKey?(key) == true { return }
         if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }
     }
 
@@ -121,6 +141,24 @@ class OverviewWindow: NSPanel {
                 self.orderOut(nil)
                 self.alphaValue = 1
             }
+        }
+    }
+}
+
+/// AppKit's half of `FilterKey`, which lives in `Common` and may not see an `NSEvent`.
+/// A modified key is somebody else's (Cmd-Q, Cmd-W, Ctrl-arrows in AeroSpace); Shift is
+/// not a modifier here, it is how capitals are typed.
+private extension FilterKey {
+    init?(event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return nil }
+        switch event.keyCode {
+        case 53: self = .escape
+        case 51: self = .backspace
+        case 36, 76: self = .enter
+        default:
+            guard let key = event.characters?.first.flatMap(FilterKey.typed) else { return nil }
+            self = key
         }
     }
 }
