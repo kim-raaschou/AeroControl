@@ -79,22 +79,19 @@ To keep the Screen Recording grant across rebuilds, run `script/sign-identity.sh
 
 ### Summon it from AeroSpace
 
-Opening AeroControl while it runs toggles the overview: Launch Services hands the running
-instance a reopen event, no second process is started. When it is not running the same command
-starts it. Bind a key to it:
+Two summons, two URLs. Both reach the running instance through Launch Services — no second
+process, no signal — and start it when it is not running:
 
 ```toml
-cmd-ctrl-alt-space = ['exec-and-forget open -a AeroControl']
+cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://map']   # every workspace
+cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://app']   # the focused app's windows
 ```
 
-`open -n` (a forced second instance, which signals the first with SIGUSR1 and exits) still
-works but costs about 200 ms more.
+`aerocontrol://app` shows only the windows of the app you are in, ring on the next one; with a
+single window nothing appears. Either URL closes the overview when it is already up.
 
-For the overview of the focused app's windows only, bind a second key to the URL:
-
-```toml
-cmd-ctrl-alt-a = ['exec-and-forget open aerocontrol://app']
-```
+`open -a AeroControl` toggles the map too (a reopen event), and is the one command that works
+before the URL scheme is registered — Launch Services learns it on the app's first launch.
 
 ## Keyboard
 
