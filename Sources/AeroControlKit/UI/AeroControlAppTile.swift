@@ -121,6 +121,7 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
+            .animation(.easeOut(duration: 0.15), value: preview == nil)   // the picture fades in over the icon as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)
@@ -133,6 +134,7 @@ struct AeroControlAppTile: View {
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
+                .transition(.opacity)
                 .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the image
                     icon
                         .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)

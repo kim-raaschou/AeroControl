@@ -59,9 +59,11 @@ public struct AeroControlPanel: View {
 
     private static let pillGap: CGFloat = 18
 
-    /// Cell aspect of a grid card: the median of its snapshots', the screen's when none.
+    /// Cell aspect of a grid card: the median of its windows' sizes, the screen's when none.
+    /// Sizes, not snapshots: they are known before any picture is, so the grid has its
+    /// shape at reveal and pictures landing later move nothing.
     private func gridAspect(_ workspace: WorkspaceInfo) -> CGFloat {
-        let sizes = workspace.windows.compactMap { state.previews[$0.windowId]?.size }
+        let sizes = workspace.windows.compactMap { state.previewSizes[$0.windowId] }
         return AeroControlLayout.cellAspect(snapshotSizes: sizes, fallback: AeroControlLayout.previewAspect(for: usable))
     }
 

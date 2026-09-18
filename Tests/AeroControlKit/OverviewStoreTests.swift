@@ -347,12 +347,14 @@ struct OverviewStorePreviewTests {
         await store.reload()
 
         #expect(store.previewsAvailable)
+        await store.measurePreviews()
+        #expect(store.previewSizes.count == 2)                 // the grid's shape, before any picture
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         #expect(bridge.captured == [[1, 2]])
         #expect(store.previews.count == 2)
 
         store.clearPreviews()
-        #expect(store.previews.isEmpty)
+        #expect(store.previews.isEmpty && store.previewSizes.isEmpty)
         store.stop()
     }
 

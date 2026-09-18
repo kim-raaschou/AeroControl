@@ -90,9 +90,9 @@ final class OverlayWindowManager {
     /// display changes and settings changes free of special cases.
     private func show(_ summon: Summon) {
         requestedVisible = true
-        // Read AeroSpace's whole state, then snapshot what it listed, then follow it live
-        // for as long as the overview is up. Nothing is drawn until both are in: one
-        // fade-in with the real state and the images already in place.
+        // Read AeroSpace's whole state and every window's size, reveal the grid in its
+        // final shape with icons in the tiles, then let the pictures land one by one —
+        // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
             self.state.prepareCapture()
@@ -103,7 +103,7 @@ final class OverlayWindowManager {
                 return
             }
             if self.state.previewsAvailable {
-                await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
+                await self.state.measurePreviews()
                 guard self.requestedVisible else { return }
             } else {
                 // Ask macOS for Screen Recording on the first summon without it. The system
@@ -113,6 +113,9 @@ final class OverlayWindowManager {
             }
             self.state.startFollowingAerospace()
             self.rebuild()
+            if self.state.previewsAvailable {
+                await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
+            }
         }
     }
 

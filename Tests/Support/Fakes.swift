@@ -92,9 +92,12 @@ final class FakeBridge: NativeApiBridge {
 
     var canCapturePreviews: Bool { granted }
     func requestPreviewAccess() { accessRequests += 1 }
-    func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
+    func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {
+        Dictionary(uniqueKeysWithValues: windowIds.map { ($0, CGSize(width: 300, height: 200)) })
+    }
+    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         captured.append(windowIds)
-        return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, NSImage(size: maxSize)) })
+        for id in windowIds { deliver(id, NSImage(size: maxSize)) }
     }
 }
 

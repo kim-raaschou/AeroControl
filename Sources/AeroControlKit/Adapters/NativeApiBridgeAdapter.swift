@@ -32,10 +32,31 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     /// The one system-wide window enumeration a capture needs (~100 ms), started early so it
     /// runs while AeroSpace is being read instead of after.
     private var pendingContent: Task<SCShareableContent?, Never>?
+    /// The enumeration `previewSizes` resolved, kept for the capture that follows it.
+    private var content: SCShareableContent?
 
     public func prepareCapture() {
         guard canCapturePreviews else { return }
         pendingContent = Task { @MainActor in await Self.shareableContent() }
+    }
+
+    private func resolvedContent() async -> SCShareableContent? {
+        if let content { return content }
+        if let pending = pendingContent {
+            pendingContent = nil
+            content = await pending.value
+        } else {
+            content = await Self.shareableContent()
+        }
+        return content
+    }
+
+    public func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {
+        guard canCapturePreviews, let content = await resolvedContent() else { return [:] }
+        let wanted = Set(windowIds.map { CGWindowID($0) })
+        return Dictionary(uniqueKeysWithValues: content.windows.lazy
+            .filter { wanted.contains($0.windowID) && $0.frame.width > 1 && $0.frame.height > 1 }
+            .map { (Int($0.windowID), $0.frame.size) })
     }
 
     private static func shareableContent() async -> SCShareableContent? {
@@ -52,29 +73,23 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     /// time, 200 ms six at a time, ~150 ms sixteen at a time.
     private static let parallelCaptures = 16
 
-    /// Captures each window once. Off-screen windows parked by AeroSpace still have
-    /// content and capture fine. AeroSpace window ids are CGWindowIDs.
-    public func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] {
-        guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return [:] }
-        guard !windowIds.isEmpty else { return [:] }
-        let content: SCShareableContent?
-        if let pending = pendingContent {
-            pendingContent = nil
-            content = await pending.value
-        } else {
-            content = await Self.shareableContent()
-        }
-        guard let content else { return [:] }
+    /// Captures each window once, delivering each picture the moment it lands. Off-screen
+    /// windows parked by AeroSpace still have content and capture fine. AeroSpace window
+    /// ids are CGWindowIDs.
+    public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
+        guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
+        guard !windowIds.isEmpty, let content = await resolvedContent() else { return }
+        self.content = nil                                   // one summon, one enumeration
         let wanted = Set(windowIds.map { CGWindowID($0) })
         let windows = content.windows.filter { wanted.contains($0.windowID) }
         let started = ContinuousClock.now
-        let result = await withTaskGroup(of: (Int, NSImage)?.self, returning: [Int: NSImage].self) { group in
-            var result: [Int: NSImage] = [:]
+        let captured = await withTaskGroup(of: (Int, NSImage)?.self, returning: Int.self) { group in
+            var captured = 0
             var inFlight = 0
             for window in windows {
-                // One finishes, one starts: the window server sees a steady six, never all.
-                if inFlight == Self.parallelCaptures, let captured = await group.next() {
-                    if let (id, image) = captured { result[id] = image }
+                // One finishes, one starts: the window server sees a steady few, never all.
+                if inFlight == Self.parallelCaptures, let landed = await group.next() {
+                    if let (id, image) = landed { deliver(id, image); captured += 1 }
                     inFlight -= 1
                 }
                 // SCWindow is not Sendable; it is handed to exactly one child task and never
@@ -83,14 +98,13 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
                 group.addTask { await Self.capture(window, maxSize: maxSize).map { (Int(window.windowID), $0) } }
                 inFlight += 1
             }
-            for await captured in group {
-                if let (id, image) = captured { result[id] = image }
+            for await landed in group {
+                if let (id, image) = landed { deliver(id, image); captured += 1 }
             }
-            return result
+            return captured
         }
         let ms = (ContinuousClock.now - started) / .milliseconds(1)
-        log.notice("previews: requested \(windowIds.count) captured \(result.count) in \(Int(ms)) ms")
-        return result
+        log.notice("previews: requested \(windowIds.count) captured \(captured) in \(Int(ms)) ms")
     }
 
     private static func capture(_ window: SCWindow, maxSize: CGSize) async -> NSImage? {

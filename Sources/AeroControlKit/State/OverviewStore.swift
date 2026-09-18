@@ -10,7 +10,11 @@ public class OverviewStore {
     let nativeSystem: NativeApiBridge
     private(set) var icons: [Int: NSImage] = [:]
     /// Window previews, captured when the overview is summoned and dropped when it hides.
+    /// They land one by one into a grid that is already on screen.
     public private(set) var previews: [Int: NSImage] = [:]
+    /// Each window's on-screen size, known before any picture is: the grid takes its
+    /// shape from these, so pictures landing later change nothing but the pictures.
+    public private(set) var previewSizes: [Int: CGSize] = [:]
     public private(set) var error: String?
     /// The window the mouse is over, if any. Cmd-Q acts on it, the way Mission Control's
     /// does: the overview is a place you point at windows, so pointing is the selection.
@@ -123,21 +127,32 @@ public class OverviewStore {
         previewsAvailable = nativeSystem.canCapturePreviews
     }
 
-    /// Capture previews for every window currently in the model and store them. Returns
-    /// when they are in, so the caller can reveal the overview with the images already
-    /// there. A `clearPreviews()` in the meantime discards the result.
-    public func capturePreviews(maxSize: CGSize) async {
-        let ids = model.workspaces.flatMap(\.windows).map(\.windowId)
+    private var windowIds: [Int] { model.workspaces.flatMap(\.windows).map(\.windowId) }
+
+    /// Reads every window's size — cheap, the enumeration was started with `prepareCapture`
+    /// — so the overview can be revealed with its final shape before a picture is taken.
+    public func measurePreviews() async {
         captureGeneration += 1
         let generation = captureGeneration
-        let images = await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize)
+        let sizes = await nativeSystem.previewSizes(windowIds: windowIds)
         guard generation == captureGeneration else { return }
-        previews = images
+        previewSizes = sizes
+    }
+
+    /// Captures a preview of every window in the model, each stored the moment it lands.
+    /// Returns when all are in. A `clearPreviews()` in the meantime discards the rest.
+    public func capturePreviews(maxSize: CGSize) async {
+        let generation = captureGeneration
+        await nativeSystem.windowPreviews(windowIds: windowIds, maxSize: maxSize) { [weak self] id, image in
+            guard let self, generation == self.captureGeneration else { return }
+            self.previews[id] = image
+        }
     }
 
     public func clearPreviews() {
         captureGeneration += 1
         previews = [:]
+        previewSizes = [:]
     }
 
     /// The "other windows of this app" summon: the query is the focused window's app name,

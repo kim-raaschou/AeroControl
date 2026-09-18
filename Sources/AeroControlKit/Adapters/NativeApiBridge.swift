@@ -11,9 +11,12 @@ public protocol NativeApiBridge: Sendable {
     /// Starts whatever a capture needs that does not depend on which windows: called before
     /// AeroSpace is read, so the two overlap.
     func prepareCapture()
-    /// One preview image per window id, scaled to fit `maxSize` (pixels). Windows that
-    /// cannot be captured are simply absent from the result.
-    func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage]
+    /// The on-screen size of each window, in points, before any picture is taken: the grid
+    /// takes its shape from these, so it does not reflow as pictures land.
+    func previewSizes(windowIds: [Int]) async -> [Int: CGSize]
+    /// One preview per window, scaled to fit `maxSize` (pixels), handed over one by one as
+    /// each lands. Windows that cannot be captured are simply never delivered.
+    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async
 }
 
 /// Previews are optional: a bridge without capture support behaves like the icon-only
@@ -22,5 +25,6 @@ public extension NativeApiBridge {
     var canCapturePreviews: Bool { false }
     func requestPreviewAccess() {}
     func prepareCapture() {}
-    func windowPreviews(windowIds: [Int], maxSize: CGSize) async -> [Int: NSImage] { [:] }
+    func previewSizes(windowIds: [Int]) async -> [Int: CGSize] { [:] }
+    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {}
 }
