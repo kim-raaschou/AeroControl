@@ -168,11 +168,25 @@ struct FilterKeyActionTests {
         #expect(action("zzz", .enter, matches: []) == .none)
     }
 
-    @Test("a digit is text and nothing else: selection by number is ⌘1…⌘9, which never gets here")
-    func digitsAlwaysType() {
-        #expect(action("Teams", .character("2")) == .setQuery("Teams2"))   // two Teams windows match
-        #expect(action("", .character("1")) == .setQuery("1"))
+    @Test("a digit 1-9 always picks and never types, whatever the query already holds")
+    func digitsAlwaysPick() {
+        let two = model.matching("Teams")
+        #expect(two.count == 2)
+        #expect(action("Teams", .character("2")) == .focus(windowId: two[1].window.windowId))
+        // Out of range is inert, not text: the digit must mean one thing at all times, or
+        // `Teams2` focuses a window instead of narrowing, silently and with no way back.
+        #expect(action("Teams", .character("5")) == .none)
+        #expect(action("", .character("1"), matches: []) == .none)
+    }
+
+    @Test("zero is text, because no tile is ever labelled zero")
+    func zeroTypes() {
         #expect(action("ws", .character("0")) == .setQuery("ws0"))
+    }
+
+    @Test("a digit from another script is text: only the digits the tiles wear can pick")
+    func nonASCIIDigitTypes() {
+        #expect(action("x", .character("٣")) == .setQuery("x٣"))
     }
 
     @Test("a query cannot start with a space, but can hold one")

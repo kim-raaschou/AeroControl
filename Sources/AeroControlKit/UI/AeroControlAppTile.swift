@@ -10,7 +10,7 @@ struct AeroControlAppTile: View {
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
     let metrics: AeroControlMetrics
-    /// The digit ⌘1…⌘9 picks this tile with, when the filter numbered it; nil otherwise.
+    /// The digit that picks this tile while a filter is up; nil when it was not numbered.
     let ordinal: Int?
 
     @State private var isHovering = false
@@ -84,7 +84,7 @@ struct AeroControlAppTile: View {
     /// not as the round accent circle a workspace badge is.
     @ViewBuilder private var ordinalBadge: some View {
         if let ordinal {
-            Text("⌘\(ordinal)")
+            Text("\(ordinal)")
                 .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
                 .foregroundStyle(palette.accent)
                 .padding(.horizontal, 5)

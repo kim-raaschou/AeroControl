@@ -42,8 +42,8 @@ public extension OverviewModel {
     }
 }
 
-/// The ordinal ⌘1…⌘9 picks, by window id, which is also the badge that tile draws. There are
-/// only nine digits; past the ninth match the mouse or another letter is the way.
+/// The ordinal the digit keys pick, by window id, which is also the badge that tile draws.
+/// One through nine; past the ninth match the mouse or another letter is the way.
 public func filterOrdinals(matches: [ParsedWindow]) -> [Int: Int] {
     Dictionary(uniqueKeysWithValues: matches.prefix(9).enumerated().map { ($0.element.window.windowId, $0.offset + 1) })
 }
@@ -75,8 +75,10 @@ public enum FilterKeyAction: Equatable, Sendable {
     case focus(windowId: Int)
 }
 
-/// What a keystroke does to the filter. `matches` is the whole match list, and nothing here
-/// reads it to pick a window by number: a plain digit is text, ⌘1…⌘9 selects.
+/// What a keystroke does to the filter. A digit 1–9 always selects and never types: making
+/// it mean text *or* selection depending on the match count is what let `code2` focus a
+/// window instead of narrowing the query, silently and with no way back. The cost is that a
+/// digit cannot be searched for, which is why `0` is still text — nothing is ever labelled 0.
 public func filterKeyAction(query: String, matches: [ParsedWindow], key: FilterKey) -> FilterKeyAction {
     switch key {
     case .escape:
@@ -86,6 +88,12 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], key: FilterK
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):
+        if character.isASCII, let ordinal = character.wholeNumberValue, (1...9).contains(ordinal) {
+            // Out of range is inert rather than text: a digit means the same thing whether
+            // or not there is a tile wearing it.
+            guard ordinal <= matches.count else { return .none }
+            return .focus(windowId: matches[ordinal - 1].window.windowId)
+        }
         // A query is trimmed before it is matched, so one starting with a space shows a pill
         // with nothing in it over an unchanged grid, and the next Escape spends itself
         // clearing it. Internal spaces are text like any other ("cafe munster").

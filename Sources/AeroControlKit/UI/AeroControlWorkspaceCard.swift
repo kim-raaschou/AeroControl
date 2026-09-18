@@ -11,7 +11,7 @@ struct AeroControlWorkspaceCard: View {
     /// Height/width of a snapshot cell, the screen's own aspect.
     let previewAspect: CGFloat
     let size: CGSize
-    /// The ⌘-digit each of the first nine matches answers to, by window id; empty means this
+    /// The digit each of the first nine matches answers to, by window id; empty means this
     /// is the unfiltered map and nothing is numbered.
     let ordinals: [Int: Int]
 

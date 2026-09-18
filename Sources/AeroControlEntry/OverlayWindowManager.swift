@@ -85,12 +85,6 @@ final class OverlayWindowManager {
 
     /// Cmd-1…Cmd-9: focus the nth match, in the order the badges number them. Ignored when
     /// the query has no nth match, so the keystroke falls through to whatever else wants it.
-    private func selectMatch(ordinal: Int) -> Bool {
-        let matches = state.filterMatches
-        guard requestedVisible, (1...matches.count).contains(ordinal) else { return false }
-        focus(matches[ordinal - 1].window.windowId)
-        return true
-    }
 
     private func focus(_ windowId: Int) {
         Task { [state] in await state.dispatch(.focusWindow(windowId)) }
@@ -153,7 +147,6 @@ final class OverlayWindowManager {
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
-        window.onSelectMatch = { [weak self] in self?.selectMatch(ordinal: $0) ?? false }
         let root = OverviewRoot(
             panel: makePanel(availableSize: screen.frame.size),
             theme: settings.theme,

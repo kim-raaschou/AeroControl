@@ -24,7 +24,6 @@ class OverviewWindow: NSPanel {
     /// Offers a keystroke to the type-to-filter host; true when it took it.
     var onKey: ((FilterKey) -> Bool)?
     /// Cmd-1…Cmd-9: focus the nth match; false when the filter has no nth match to give.
-    var onSelectMatch: ((Int) -> Bool)?
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -77,10 +76,7 @@ class OverviewWindow: NSPanel {
         switch key {
         case "q": onQuitPointedApp?()
         case "w": onDismiss?()
-        default:
-            guard let ordinal = Int(key), (1...9).contains(ordinal), onSelectMatch?(ordinal) == true else {
-                return super.performKeyEquivalent(with: event)
-            }
+        default: return super.performKeyEquivalent(with: event)
         }
         return true
     }
