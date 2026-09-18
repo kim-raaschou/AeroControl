@@ -21,6 +21,18 @@ struct AeroControlAppTile: View {
     private var preview: NSImage? { state.previews[window.windowId] }
     private var isFocused: Bool { window.windowId == state.model.focusedWindowId }
 
+    /// While a filter is up the title is the point: two windows of one app are told apart by
+    /// their title and their picture, and the title is the one that is provably current —
+    /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
+    /// in the tooltip, which costs a second of holding the mouse still.
+    private var showsTitle: Bool {
+        !state.filter.isEmpty && !window.title.isEmpty && tileSize.height >= Self.minTitledTileHeight
+    }
+
+    /// Below this the title would take more of the cell than the picture it labels.
+    private static let minTitledTileHeight: CGFloat = 130
+    private static let titleLane: CGFloat = 32
+
     private func onFocusWindow() {
         Task { [weak state] in await state?.dispatch(.focusWindow(window.windowId)) }
         dismiss()
@@ -61,14 +73,12 @@ struct AeroControlAppTile: View {
     }
 
     var body: some View {
-        tile
-            .frame(width: contentSize.width, height: contentSize.height)
-            .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
-            .overlay(alignment: .topLeading) { ordinalBadge }
-            .overlay(alignment: .topTrailing) { closeButton }
+        VStack(spacing: 6) {
+            if showsTitle { titleLabel }
+            artwork
+        }
             .frame(width: tileSize.width, height: tileSize.height)
             .padding(cellPadding)
-            .background(selectionPlate)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
             .onHover(perform: hoverChanged)
@@ -78,6 +88,37 @@ struct AeroControlAppTile: View {
                     .frame(width: contentSize.width, height: contentSize.height)
                     .onAppear { hoverChanged(false) }
             }
+    }
+
+    /// The window's own name, centred over the picture it belongs to. Never truncated: a
+    /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
+    /// two windows apart sits at the front of the title where an ellipsis would land.
+    private var titleLabel: some View {
+        Text(window.title)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(palette.badgeText)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+            .frame(height: Self.titleLane)
+    }
+
+    /// The picture, its focus ring and the two corner affordances — everything the title is
+    /// not, so the ring keeps hugging the snapshot when a caption appears above it.
+    private var artwork: some View {
+        tile
+            .frame(width: contentSize.width, height: artworkHeight)
+            .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
+            .overlay(alignment: .topLeading) { ordinalBadge }
+            .overlay(alignment: .topTrailing) { closeButton }
+            .background(selectionPlate)
+    }
+
+    /// A caption never pushes the card open: it takes its lane out of the cell, not out of
+    /// the picture. Most snapshots are limited by the cell's width and leave height to spare,
+    /// so the usual case costs the picture nothing at all.
+    private var artworkHeight: CGFloat {
+        guard showsTitle else { return contentSize.height }
+        return min(contentSize.height, tileSize.height - Self.titleLane - 6)
     }
 
     /// The keystroke that picks this match, drawn as a keycap so it reads as a shortcut and
