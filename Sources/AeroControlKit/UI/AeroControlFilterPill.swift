@@ -18,9 +18,18 @@ struct AeroControlFilterPill: View {
     /// is describing.
     var body: some View {
         Group {
-            if query.isEmpty { Color.clear } else { pill }
+            if query.isEmpty { hint } else { pill }
         }
         .frame(height: Self.laneHeight)
+    }
+
+    /// The lane's idle content: the three keys the overview answers to, faint enough to be
+    /// furniture. Nothing else on screen says the keyboard works, and a filter nobody can
+    /// find is a filter nobody uses.
+    private var hint: some View {
+        Text("type to filter  ·  ⇥ next  ·  ⏎ focus")
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            .foregroundStyle(palette.badgeText.opacity(0.4))
     }
 
     /// Tall enough for the capsule and its shadow. The panel subtracts it from the grid's
