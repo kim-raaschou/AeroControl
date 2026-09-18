@@ -7,9 +7,9 @@
 #
 # Bypass in a true emergency with `git push --no-verify` (discouraged).
 
-echo "pre-push: running swift test…"
+echo "pre-push: running make test…"
 out=$(mktemp)
-if swift test >"$out" 2>&1; then
+if make test >"$out" 2>&1; then
     status=0
 else
     status=$?

@@ -1,185 +1,128 @@
 # AGENTS.md — working notes for AI agents on AeroControl
 
-AeroControl is a **thin floating overview/companion for [AeroSpace](https://github.com/nikitabobko/AeroSpace)**,
-a macOS tiling WM. AeroSpace does all the real window management; AeroControl only
-visualizes workspaces and forwards user actions (focus/move/close) to the AeroSpace CLI.
+AeroControl is a **one-shot, Mission-Control-style overview for
+[AeroSpace](https://github.com/nikitabobko/AeroSpace)**, a macOS tiling WM. AeroSpace does
+all the real window management; AeroControl draws the workspaces once per summon and
+forwards one action (focus / move / merge / close) over AeroSpace's Unix socket.
 
 ## How we work: the crew (governing principle)
 
-**We operate as a crew, not a single author. Every task — design, code, refactor,
-docs, cleanup — is verified, discussed and reviewed by the crew before it is considered
-done.** Concretely:
+**We operate as a crew, not a single author. Every task — design, code, refactor, docs,
+cleanup — is verified, discussed and reviewed by the crew before it is considered done.**
 
-- **Discuss before deciding.** For any non-trivial choice, convene a crew of specialized
-  sub-agents / models (e.g. an advocate vs. a skeptic, plus domain reviewers) and let them
-  debate and cross-examine. Surface disagreements explicitly; the facilitator takes the
-  final call under the project's KISS/YAGNI and trust-boundary ethos.
-- **Review every change.** No task ships without a review pass by the crew (a
-  `code-review`/`rubber-duck` agent or a second model), independent of the author. Reviews
-  target real bugs, logic/design flaws and regressions — not style.
-- **Verify, don't assume.** Claims are checked against the actual code (and against the real
-  AeroSpace source when relevant), and against the test suite. "It should work" is not done.
-- **Test-first where it bites** — especially the concurrency/runner code, which has only
-  real-process tests.
-- **One reviewable change at a time.** Small, logically-scoped commits so each decision is
-  auditable in history.
+- **Discuss before deciding.** For any non-trivial choice, convene specialised sub-agents
+  (an advocate and a sceptic, plus domain reviewers), let them cross-examine, surface the
+  disagreements, and take the call under KISS / YAGNI.
+- **Review every change** with a pass independent of the author, aimed at real bugs, logic
+  and design flaws — not style.
+- **Verify, don't assume.** Check claims against the code, the tests, and the real AeroSpace
+  source when relevant. Verify UI changes **on screen** before committing: a change installed
+  unseen has broken the app before.
+- **One reviewable change at a time.** Small commits; refactors and features in separate
+  commits.
 
-This is deliberate: AeroControl's past reviews (architecture, complexity, config, simplify,
-Liquid Glass) were all produced by multi-model crews with a cross-examination round. Keep
-that bar.
+## Build, test, install
 
-## Build, test, metrics
+Plain `swift build` does not work on a Command Line Tools-only machine (CLT 27 ships a
+macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always use it:
 
-- Build: `swift build` · Test: `swift test` (102 tests, swift-testing + a little XCTest).
-- Targeted: `swift test --filter <SuiteOrName>`.
-- The `warning: input verification failed` / `note: while processing …` lines during
-  build/test are **benign** (strict-memory-safety tooling noise), not errors.
-- Line endings are **LF**, enforced by `.gitattributes`. Don't reintroduce CRLF.
-- Code-size/complexity dashboard: `python3 scripts/code_metrics.py` → `docs/code-metrics.html`.
-  Regenerate it after notable structural changes.
+- `make build` · `make test` · `make install` (builds, signs, installs to `/Applications`,
+  kills and relaunches the agent).
+- Targeted tests: `swift test --filter <Suite>` works once `SDKROOT` is set as the Makefile does.
+- Line endings are **LF**, enforced by `.gitattributes`.
+- After `make install`, confirm the process is newer than the binary before testing
+  (`ps -o lstart= -p $(pgrep -x AeroControl)` vs. `stat -f %Sm /Applications/AeroControl.app/Contents/MacOS/AeroControl`).
 
 ### Rule: code metrics stay within baseline +1% — verified at every commit
 
-- The tracked-Swift **code-line count and approximate complexity must not rise more than
-  1% above the baseline** in `scripts/metrics-baseline.json`. The baseline stores the raw
-  totals; the enforced ceiling for each metric is `floor(baseline × 1.01)` (small-refactor
-  headroom so trivial churn doesn't block commits — the intent is still *don't grow*).
-- This is **enforced on every commit** by `.githooks/pre-commit`, which runs
-  `python3 scripts/code_metrics.py --check` and **fails the commit** if either metric
-  exceeds its ceiling. Enable the hook once per clone: `git config core.hooksPath .githooks`.
-- When you legitimately **reduce** code, ratchet the baseline down:
-  `python3 scripts/code_metrics.py --update-baseline` and commit the new baseline (this also
-  lowers the ceiling, keeping the 1% band from drifting upward).
-- Sustained growth beyond the 1% band is only allowed when genuinely justified: reduce
-  elsewhere to stay under the ceiling, or (as a deliberate, explained exception) run
-  `--update-baseline` to re-anchor it and commit that change so the increase is reviewable in
-  history. Default answer to "the metric went up" is **make it smaller**, not raise the baseline.
-- The headroom lives in one constant, `MARGIN` in `scripts/code_metrics.py`.
+- Tracked Swift **code lines and approximate complexity may not rise more than 1% above**
+  `scripts/metrics-baseline.json`. Tests count towards the line total. Ceiling per metric is
+  `floor(baseline × 1.01)`.
+- `.githooks/pre-commit` runs `python3 scripts/code_metrics.py --check` and fails the commit
+  when a ceiling is exceeded. Enable once per clone: `git config core.hooksPath .githooks`.
+- When you **reduce** code, ratchet down: `python3 scripts/code_metrics.py --update-baseline`
+  and commit `scripts/metrics-baseline.json` (with `scripts/metrics-history.json` and
+  `docs/code-metrics.html`, which the script regenerates).
+- Default answer to "the metric went up" is **make it smaller**, not raise the baseline. Raise
+  it only as a deliberate, explained exception in its own commit.
 
 ### Rule: `Sources/Common/` stays UI-framework-free — enforced
 
-- Files under `Sources/Common/` are the pure domain and **must not import AppKit, SwiftUI,
-  Cocoa, or UIKit**. `--check` fails (blocking commit + CI) on any violation, independent of
-  the size/complexity ceiling. This keeps the domain portable and testable without a UI host.
+Files under `Sources/Common/` **must not import AppKit, SwiftUI, Cocoa or UIKit**; `--check`
+fails on any violation.
 
-### Extra health metrics (reported, not all gated)
+## Gates
 
-`scripts/code_metrics.py` / `docs/code-metrics.html` also surface, for insight: per-function
-complexity (top 15) and the single longest function, max brace-nesting depth per file, and the
-test-to-production code ratio. These are informational; only code/complexity ceilings and the
-Common purity rule fail the build.
+- **`.githooks/pre-commit`** — the metrics guard, every commit.
+- **`.githooks/pre-push`** — `make test` before every push.
+- **`.github/workflows/ci.yml`** — a `macos-26` runner (Xcode 26.2) builds, tests and runs the
+  same metrics guard on push/PR to `main`. Green CI is what proves `main` holds.
 
-## Git hooks & CI (verification gates)
+## Architecture
 
-- **`.githooks/pre-commit`** — runs the code-metrics guard (`--check`); fast, every commit.
-- **`.githooks/pre-push`** — runs `swift test` (the full 102-test suite) before every push, so
-  a broken build/test never leaves the machine. Commits stay fast; the suite runs here instead.
-- Enable both once per clone: `git config core.hooksPath .githooks`. Bypass in a true emergency
-  with `--no-verify` (discouraged).
-- **`.github/workflows/ci.yml`** — the server-side backstop the hooks can't guarantee (hooks are
-  per-clone and `--no-verify`-bypassable). On push/PR to `main`, a `macos-26` runner (Xcode 26.2)
-  builds, runs `swift test`, and runs the **same metrics guard**. The README CI badge shows its
-  status. This is the authoritative gate: green CI, not a local hook, is what proves `main` holds.
+- `Sources/Common/` — **pure domain**. `OverviewModel`, the reducer
+  `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`), type-to-filter
+  (`OverviewFilter.swift`: matching, `FilterKey`, `filterKeyAction`), AeroSpace command argv and
+  response decoding (`Aerospace/`), the `AerospaceProcessRunner` port.
+- `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
+  socket protocol; `OverviewStore` (`@MainActor @Observable`) owns the model, runs the
+  reducer, interprets effects, and holds the UI-only filter state (`filter`, `selection`,
+  `filterMatches`, `ringWindowId`); SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`.
+- `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
+  `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
+- Do **not** merge the reducer into the store. The store's size is the effects it owns.
 
-- `Sources/Common/` — **pure domain**, no AppKit. `OverviewModel` + the pure reducer
-  `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`), CLI parsing/commands.
-- `Sources/AeroControlKit/` — **adapters + the effect interpreter**. `OverviewStore`
-  (`@MainActor @Observable`) owns the model, runs the reducer, and interprets effects
-  (runs the CLI via the `AerospaceProcessRunner` port, loads icons, manages task lifecycles).
-- `Sources/AeroControlEntry/` — the executable: windows, overlay placement, lifecycle.
-- Do **not** merge the reducer into the store, and do not split `OverviewStore` just to
-  satisfy a linter — its size is a symptom of the effects it owns, not accidental sprawl.
+### The one-shot model
 
-## The trust boundary (most important principle here)
+Summon → `reload()` reads AeroSpace's whole state → previews are captured → the overlay
+appears. **While visible** the store follows AeroSpace's event stream (`subscribe`,
+`--no-send-initial`); every event means "read again" (`.changed` → `.refresh`). **On hide** the
+subscription stops, previews are dropped, the filter is cleared. Nothing keeps the model in
+sync while hidden — nothing reads it. Events carry **no data**; all state comes from commands.
 
-"AeroSpace is trusted" applies to AeroSpace's **logical/semantic contract at the parsing
-boundary** — decode what it explicitly emits strictly. It does **NOT** eliminate:
+### Load-bearing defensive code (do not delete as "paranoia")
 
-- **macOS/AppKit timing & races** (window-teardown latency, CGWindowList-vs-AeroSpace lag)
-- **CLI transport** (brew symlink swap / login race at startup, a hung process)
-- **CLI output-format drift** across AeroSpace versions
+- `requestRefresh` cancel-and-reload with `refreshGeneration`: every event or completed
+  action re-derives truth from AeroSpace; the generation counter drops stale results. There is
+  **no optimistic local state**.
+- Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream
+  loses whatever happened meanwhile.
+- `captureGeneration`: a preview capture that finishes after `clearPreviews()` is discarded.
+- `AerospaceSocketRunner`: protocol-version handshake, per-command timeout, `SocketHandle` fd
+  ownership; blocking syscalls on a private queue, never the cooperative pool.
+- `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.
+- `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
+  meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
 
-Defensive code guarding those three is **load-bearing — do not delete it as "paranoia":**
+### Trust boundary
 
-- `requestRefresh` **cancel-and-reload** with the `refreshGeneration` guard — the store owns
-  no optimistic local state; every event/doorbell cancels any in-flight reload and re-derives
-  truth from AeroSpace, and the generation counter drops stale results. This is how dead-tile
-  and close-vs-teardown races are handled now (it **replaced** the old optimistic-suppression
-  machinery — `suppressingDeadWindows` / `pendingCloseIds` / the close-grace poll are **gone**;
-  do not reintroduce them).
-- The window-close **doorbell** (`NativeApiBridge.windowCloseSignals` global `NSEvent` monitor
-  → `.localWindowClosed` → `requestRefresh`) — AeroSpace emits no event for title-bar closes of
-  background windows, so this permission-free signal triggers a reload.
-- `initialLoad` retry/backoff — transient CLI unavailability at startup.
-- Runner `run()` timeout + non-zero-exit handling.
-- `TolerantInt` — `NULL-MONITOR*` string sentinels are **valid runtime values** on any
-  version, so integer *value* tolerance stays.
+AeroSpace is trusted at the **parsing boundary**: the fields AeroControl explicitly requests
+(`AerospaceCommand.listWindowsFields` etc.) are decoded strictly, and the **initial
+`loadOverview`** fails loudly with a visible `Load error:` banner. Steady-state reloads use
+`try?`, unknown events parse to `.other`, and there is **no runtime version check** — the
+minimum (**AeroSpace ≥ 0.21.1**) is documentation. `Tests/Common/AerospaceContractTests`
+pins argv and event names; if you add or rename a field or event, update both sides.
 
-What IS safe to trust away: tolerance for **fields AeroSpace always emits and the app
-explicitly requests**. AeroControl documents a **minimum AeroSpace version** (README /
-requirements; **≥ 0.21.1**) and stays within ~1 release, so those fields are decoded
-strictly. **Scope of "fail loud" (be precise — it is partial, not global):** only the
-**initial `loadOverview`** fails loudly — a rename/removal/retype of a *required* `list-windows`
-/ `list-workspaces` field (window-id, app-name, app-bundle-id, workspace,
-window-parent-container-layout) makes the throwing decoder fail and, after retries, surfaces a
-visible `error = "Load error: …"` banner. Everything else degrades **silently by design**: the
-`subscribe` event listener swallows decode failures (`AerospaceEvent.parse` → nil/`.other`,
-empty `catch {}`), steady-state reloads and `loadMonitors` use `try?`, `TolerantInt` falls back
-to 0, and semantic value shifts (e.g. the `"floating"` layout string) just flip a bool. There
-is **no runtime version check** — the minimum is documentation, not an enforced gate. (This is
-also why the generic `Fallback`/`DecodableDefault` machinery was removed.)
+### Permissions
 
-**Versioning policy.** AeroControl versions **independently** (its own SemVer, currently
-**v0.1.0**) — the version number describes AeroControl's own changes, not AeroSpace's. A
-matching number would give a *false* sense of compatibility safety: the version string never
-proves the CLI field/event contract is intact. The **only** real compatibility check is the
-throwing decoder on the initial load (see the trust-boundary note above), which catches
-structural breaks in the required `list-windows`/`list-workspaces` fields — it does **not**
-cover event-stream renames or steady-state reloads, and there is no runtime version gate.
-Compatibility is a *range* (currently **AeroSpace ≥ 0.21.1**), shown as a separate line in the
-menu-bar menu, not encoded in the version number. The numeric version lives in
-`Packaging/Info.plist` (`CFBundleShortVersionString`); `ACReleaseVersion` holds the
-`v`-prefixed display string; `script/release.sh` stamps both from the `VERSION` argument.
-When AeroSpace ships a new version, verify the CLI `--format` fields still decode and bump the
-compatibility range if the floor moves — bump AeroControl's own version only for AeroControl
-changes.
+Only **Screen Recording**, and only for window previews (`CGRequestScreenCaptureAccess` in
+`NativeApiBridgeAdapter`; the menu offers it). Without it the overview draws app icons. No
+Accessibility, Input Monitoring or Automation: window actions go through AeroSpace, the summon
+keybind lives in AeroSpace's config, and the overlay is a `.nonactivatingPanel`. macOS ties the
+grant to the **signing identity** — see README "Build from source" and `script/release.sh`.
 
-**Permissions (none).** AeroControl requires **no macOS TCC permissions of its own** — no
-Accessibility, no Screen Recording, no Input Monitoring, no Automation. All window actions go
-through the `aerospace` CLI → the AeroSpace **server**, which does the AX work under *its own*
-grant; AeroControl calls **no** privileged AX API (verified 2026-07-14, crew + rubber-duck
-audit). It only reads window *numbers* (`kCGWindowNumber`, no titles → no Screen Recording),
-draws its own `.nonactivatingPanel` overlay, and toggles via SIGUSR1 (the summon keybind lives
-in AeroSpace's config, so there is **no** global hotkey/event monitor). A former startup
-`AXIsProcessTrusted` prompt was removed: it targeted the wrong app (AeroSpace owns that grant)
-and gave false assurance. Do not re-add a permission request without an actual privileged API.
+### Versioning
 
-## CLI contract & parsing
-
-- Requested field tokens live in `AerospaceCommand` (`listWindowsFields` etc.); decoder keys
-  live in `AerospaceCliParser`. **Contract tests pin tokens ↔ keys** (drift guard) and pin
-  the `_event` names ↔ parser cases. If you add/rename a CLI field or event, update both
-  sides or the contract test will (correctly) fail.
-- `AerospaceEvent.parse` returns `.other` for unknown/unusable events; the contract test
-  uses `!= .other` as its "is this handled?" probe — keep that in mind before collapsing it.
-
-## Concurrency: the CLI runner
-
-`AerospaceProcessRunnerCli.run` uses **drain-both-pipes-to-EOF, then `reap` off the
-cooperative pool** (so `terminationStatus` is valid), inside a task group that races a
-timeout. Do **not** reintroduce a `terminationHandler`→continuation bridge or a
-`OneShotResumer`-style single-resume guard — that was the fragile machinery this pattern
-replaced. There are real-process tests (`AerospaceProcessRunnerCliTests`); the `timeout`
-is an injectable init seam for fast tests.
+AeroControl versions independently of AeroSpace (currently **v0.1.1**;
+`Packaging/Info.plist` holds `CFBundleShortVersionString` and the `v`-prefixed
+`ACReleaseVersion`; `script/release.sh` stamps both). The compatibility range is shown as a
+separate menu line. Bump AeroControl's version for AeroControl changes only.
 
 ## Workflow conventions
 
-- Prefer the smallest targeted test that covers the change; run the full suite before
-  declaring done.
-- Test-first for anything touching the concurrency/runner code — it has no fake, only
-  real-process tests.
-- Keep the user's uncommitted WIP separate from agent commits (commit with explicit paths).
-- Before committing, the metrics guard runs automatically (see the "code metrics must not
-  rise" rule). If it blocks you, reduce code or ratchet the baseline deliberately — don't
-  bypass it with `--no-verify`.
-- Commit trailer: `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`.
+- Smallest targeted test for the change; full `make test` before declaring done.
+- Never read the user's dotfiles or execute config; AeroControl is public and Homebrew-distributed.
+- Never send synthetic keystrokes to verify the overlay unless it is confirmed on screen
+  (`lsof -p $(pgrep -x AeroControl) | grep -c unix` ≥ 2) — they land in whatever is focused.
+- Never push; the user pushes.
+- Commit trailer: `Co-Authored-By:` naming the model that wrote the change.

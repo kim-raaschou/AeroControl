@@ -18,7 +18,11 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   length as possible. Every row is the same height and every card that holds windows is the
   same width, so a workspace sits in the same place whatever it happens to contain; empty
   workspaces shrink to a badge. Inside a card the windows fill it as a grid of 3:2 tiles
-  (column count chosen for the largest tiles), in the order they sit on screen.
+  (column count chosen for the largest tiles), in AeroSpace's order.
+- **Type to filter**: start typing and the grid collapses to the windows whose title or app
+  name has a word starting with what you typed — `te` finds Teams, `toml` finds
+  `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
+  marks the first one, Tab moves it, Enter focuses it. See *Keyboard*.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,
@@ -35,14 +39,6 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   than one display each card names its own; with a single display nothing is shown.
 - Menu-bar configuration with persisted settings.
 
-## Gallery
-
-![AeroControl overview](docs/media/gallery-hero-top-arc-ws6.png)
-*Overview overlay with live workspace/app state.*
-
-![AeroControl menu items](docs/media/gallery-menu-items.png)
-*Open menu showing theme, the Screen Recording prompt, reset, and quit.*
-
 ## Requirements
 
 - macOS 26+
@@ -53,10 +49,6 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
 ```bash
 brew install --cask nikitabobko/tap/aerospace
 ```
-
-On-screen window ordering uses `list-windows --sort-by dfs`, which is not in a released
-AeroSpace yet ([PR #2207](https://github.com/nikitabobko/AeroSpace/pull/2207)). Until it
-lands, AeroControl falls back to AeroSpace's own ordering.
 
 ## Install
 
@@ -107,6 +99,21 @@ cmd-ctrl-alt-space = ['exec-and-forget open -a AeroControl']
 
 `open -n` (a forced second instance, which signals the first with SIGUSR1 and exits) still
 works but costs about 200 ms more.
+
+## Keyboard
+
+| Key | Does |
+|---|---|
+| letters, digits, space | filter; the grid narrows from the second character |
+| Tab, → / Shift-Tab, ← | move the focus ring to the next / previous match |
+| Enter | focus the window under the ring |
+| Escape | clear the query; on an empty query, dismiss |
+| ⌘W | dismiss |
+| ⌘Q | quit the app under the pointer — the overview stays up, Mission-Control style |
+
+Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
+word in the window's title or app name. A query that matches nothing leaves the full map
+standing and says so.
 
 ## Configure it from the menu bar
 
