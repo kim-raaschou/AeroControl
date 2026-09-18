@@ -75,11 +75,15 @@ struct AeroControlAppTile: View {
                height: tileSize.height - (showsCaption ? AeroControlLayout.captionLane : 0))
     }
 
-    /// What is actually drawn: the fitted snapshot, or the whole box for icons.
+    /// What is actually drawn: the fitted snapshot — sized from the window's measured size
+    /// before the picture is in, so the place it lands in is already its shape — or the
+    /// whole box for icons.
     private var contentSize: CGSize {
         guard metrics.previews else { return pictureBox }
-        guard let preview else { return CGSize(width: pictureBox.height, height: pictureBox.height) }
-        return AeroControlMetrics.fit(preview.size, into: pictureBox)
+        guard let size = preview?.size ?? state.previewSizes[window.windowId] else {
+            return CGSize(width: pictureBox.height, height: pictureBox.height)
+        }
+        return AeroControlMetrics.fit(size, into: pictureBox)
     }
 
     /// The focus frame hugs the drawn content, not the cell.
@@ -128,7 +132,12 @@ struct AeroControlAppTile: View {
     }
 
     @ViewBuilder private var tile: some View {
-        if metrics.previews, let preview {
+        if metrics.previews, preview == nil, state.capturing {
+            // The picture's place until it lands: a faint plate, not an icon that gets
+            // replaced. Windows that cannot be captured get their icon once capture is over.
+            RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+                .fill(palette.badgeFill.opacity(0.35))
+        } else if metrics.previews, let preview {
             Image(nsImage: preview)
                 .resizable()
                 .interpolation(.high)

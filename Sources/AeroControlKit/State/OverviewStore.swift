@@ -139,18 +139,25 @@ public class OverviewStore {
         previewSizes = sizes
     }
 
+    /// True while pictures are still landing: a tile without one shows its place, not an
+    /// icon. Once capture is over, a tile still without a picture shows the icon.
+    public private(set) var capturing = false
+
     /// Captures a preview of every window in the model, each stored the moment it lands.
     /// Returns when all are in. A `clearPreviews()` in the meantime discards the rest.
     public func capturePreviews(maxSize: CGSize) async {
         let generation = captureGeneration
+        capturing = true
         await nativeSystem.windowPreviews(windowIds: windowIds, maxSize: maxSize) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.previews[id] = image
         }
+        if generation == captureGeneration { capturing = false }
     }
 
     public func clearPreviews() {
         captureGeneration += 1
+        capturing = false
         previews = [:]
         previewSizes = [:]
     }
