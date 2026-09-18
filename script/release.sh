@@ -14,7 +14,7 @@
 #   ARCHS="arm64 x86_64"     (universal, like AeroSpace; the cask's arch line is dropped)
 #
 # The bundle is signed with the same self-signed "AeroControl Dev" certificate the Makefile
-# uses (README, "Build from source"). macOS ties the Screen Recording grant to the signing
+# uses (script/sign-identity.sh creates it). macOS ties the Screen Recording grant to the signing
 # identity, and an ad-hoc signature is a new identity every build — so an ad-hoc release
 # would revoke the grant on every `brew upgrade`. SIGN_IDENTITY=- forces ad-hoc anyway.
 #
@@ -57,7 +57,7 @@ for a in $ARCHS; do ARCH_FLAGS="$ARCH_FLAGS --arch $a"; done
 SIGN_IDENTITY="${SIGN_IDENTITY:-AeroControl Dev}"
 if [ "$SIGN_IDENTITY" != "-" ] && ! security find-identity -p codesigning 2>/dev/null | grep -q "\"${SIGN_IDENTITY}\""; then
     echo "error: code-signing identity \"${SIGN_IDENTITY}\" is not in the keychain." >&2
-    echo "       Create it (README, \"Build from source\") — or SIGN_IDENTITY=- for an ad-hoc build" >&2
+    echo "       Create it with script/sign-identity.sh — or SIGN_IDENTITY=- for an ad-hoc build" >&2
     echo "       that will lose users their Screen Recording grant on upgrade." >&2
     exit 1
 fi

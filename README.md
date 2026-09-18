@@ -71,21 +71,7 @@ make install
 ```
 
 `make install` builds `AeroControl.app`, installs it to `/Applications` and relaunches it.
-
-macOS ties the Screen Recording grant to the app's code signature, and an ad-hoc
-signature changes with every build. To keep the grant across rebuilds, create a
-self-signed code-signing certificate named `AeroControl Dev` once; the Makefile picks it
-up automatically (no trust settings needed):
-
-```bash
-T=$(mktemp -d) && cd "$T" && printf '[req]\ndistinguished_name=dn\nx509_extensions=v3\nprompt=no\n[dn]\nCN=AeroControl Dev\n[v3]\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=critical,codeSigning\nbasicConstraints=critical,CA:false\n' > ext.cnf && \
-openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes -keyout key.pem -out cert.pem -config ext.cnf && \
-openssl pkcs12 -export -inkey key.pem -in cert.pem -name "AeroControl Dev" -out dev.p12 -passout pass:x && \
-security import dev.p12 -k ~/Library/Keychains/login.keychain-db -P x -T /usr/bin/codesign && cd - && rm -rf "$T"
-```
-
-After switching signatures, re-grant Screen Recording once (System Settings ▸ Privacy &
-Security ▸ Screen & System Audio Recording) and relaunch AeroControl.
+To keep the Screen Recording grant across rebuilds, run `script/sign-identity.sh` once first.
 
 ### Summon it from AeroSpace
 
@@ -153,10 +139,10 @@ make clean
 make release VERSION=0.1.2 PUBLISH=1
 ```
 
-Builds a version-stamped bundle signed with the `AeroControl Dev` certificate (see *Build
-from source*; the script refuses to run without it, because an ad-hoc release would revoke
-every user's Screen Recording grant on upgrade), publishes the GitHub Release, and writes
-a Homebrew cask to `.release/aerocontrol.rb`. Copy that cask to
+Builds a version-stamped bundle signed with the `AeroControl Dev` certificate
+(`script/sign-identity.sh`; the release refuses to run without it, because an ad-hoc release
+would revoke every user's Screen Recording grant on upgrade), publishes the GitHub Release,
+and writes a Homebrew cask to `.release/aerocontrol.rb`. Copy that cask to
 [kim-raaschou/homebrew-tap](https://github.com/kim-raaschou/homebrew-tap) as
 `Casks/aerocontrol.rb` and commit it. Omit `PUBLISH=1` for a dry run.
 

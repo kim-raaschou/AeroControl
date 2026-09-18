@@ -21,8 +21,8 @@ build:
 
 # Sign with a stable identity when one exists: macOS ties privacy grants (Screen
 # Recording for previews) to the code signature, and an ad-hoc signature changes with
-# every build, which silently revokes the grant. Create it once (self-signed, no
-# trust needed): see README "Build from source". Falls back to ad-hoc.
+# every build, which silently revokes the grant. Create it once with
+# script/sign-identity.sh (self-signed, no trust needed). Falls back to ad-hoc.
 SIGN_IDENTITY ?= $(shell security find-identity -p codesigning 2>/dev/null | grep -q '"AeroControl Dev"' && echo "AeroControl Dev" || echo "-")
 
 # Assemble a proper .app bundle (accessory agent, LSUIElement) around the release

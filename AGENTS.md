@@ -109,7 +109,8 @@ Only **Screen Recording**, and only for window previews (`CGRequestScreenCapture
 `NativeApiBridgeAdapter`; the menu offers it). Without it the overview draws app icons. No
 Accessibility, Input Monitoring or Automation: window actions go through AeroSpace, the summon
 keybind lives in AeroSpace's config, and the overlay is a `.nonactivatingPanel`. macOS ties the
-grant to the **signing identity** — see README "Build from source" and `script/release.sh`.
+grant to the **signing identity** — `script/sign-identity.sh` creates the stable one that
+`make install` picks up and `script/release.sh` requires.
 
 ### Versioning
 
