@@ -2,8 +2,6 @@ import AppKit
 
 @MainActor
 public protocol NativeApiBridge: Sendable {
-    func appIcon(bundleId: String) -> NSImage
-
     /// Whether window previews can be captured (macOS Screen Recording permission).
     var canCapturePreviews: Bool { get }
     /// Asks macOS for Screen Recording access; the system shows its own prompt/settings.
@@ -19,8 +17,8 @@ public protocol NativeApiBridge: Sendable {
     func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async
 }
 
-/// Previews are optional: a bridge without capture support behaves like the icon-only
-/// overview (this is also what the test fakes get).
+/// Previews are optional: a bridge without capture support leaves every tile a plate
+/// (this is also what the test fakes get).
 public extension NativeApiBridge {
     var canCapturePreviews: Bool { false }
     func requestPreviewAccess() {}

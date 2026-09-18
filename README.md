@@ -59,7 +59,8 @@ between summons, and it asks for no permission except Screen Recording for the p
   windows AeroSpace has parked off-screen). The overview appears first, in its final shape,
   and the pictures land in it as they are taken — about 170 ms to the overview and another
   ~300 ms until the last of twenty pictures. Needs the Screen Recording permission; without
-  it the overview shows app icons instead, and the menu offers to request it.
+  it the tiles are empty plates — the overview is built around the pictures — and the menu
+  offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.
 - Drag a tile onto another workspace to move the window there.
 - **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to

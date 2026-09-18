@@ -4,27 +4,22 @@ import CoreGraphics
 
 @Suite("AeroControlMetrics")
 struct AeroControlMetricsTests {
-    @Test func acceptsAnySaneSizeAndFallsBackOtherwise() {
-        #expect(AeroControlMetrics(iconSize: 10).iconSize == 10)
-        #expect(AeroControlMetrics(iconSize: 200).iconSize == 200)
-        #expect(AeroControlMetrics(iconSize: 0).iconSize == 48)
-        #expect(AeroControlMetrics(iconSize: -5).iconSize == 48)
-        #expect(AeroControlMetrics(iconSize: .nan).iconSize == 48)
+    @Test("fitting makes the padded tile exactly the cell width, shaped by the aspect")
+    func fitting() {
+        let m = AeroControlMetrics.fitting(cellWidth: 300, aspect: 2.0 / 3.0)
+        #expect(abs(m.tileWidth - 300) < 0.001)
+        #expect(abs(m.tileSize.height - m.tileSize.width * 2 / 3) < 0.001)
+        #expect(m.tileCellPadding > 0 && m.tileCellPadding < 10)
+        #expect(AeroControlMetrics.fitting(cellWidth: 600).tileCellPadding == 2 * m.tileCellPadding)   // scales with the grid
     }
 
-    @Test func tileGeometryScalesWithTheIcon() {
-        let m = AeroControlMetrics(iconSize: 48)
-        #expect(m.tileSize == CGSize(width: 48, height: 48))
-        #expect(m.tileCellPadding == 2)
-        #expect(m.tileWidth == 52)
-        #expect(AeroControlMetrics(iconSize: 96).tileWidth == 2 * m.tileWidth)
-    }
-
-    @Test func theFocusPlateHugsTheArtworkWithAFloorAtSmallSizes() {
-        let tiny = AeroControlMetrics(iconSize: 16)
-        #expect(tiny.focusPlatePadding == 3)                       // the floor, not 16 * 0.05
-        #expect(abs(AeroControlMetrics(iconSize: 96).focusPlatePadding - 4.8) < 0.001)
-        let m = AeroControlMetrics(iconSize: 48)
-        #expect(m.focusPlateRect.width < m.tileWidth)              // tighter than the padded cell
+    @Test("a snapshot is fitted into the cell with its own aspect ratio, and the focus frame hugs it")
+    func fittedPreview() {
+        let box = CGSize(width: 144, height: 96)
+        #expect(AeroControlMetrics.fit(CGSize(width: 1000, height: 1000), into: box) == CGSize(width: 96, height: 96))
+        #expect(AeroControlMetrics.fit(CGSize(width: 600, height: 200), into: box) == CGSize(width: 144, height: 48))
+        #expect(AeroControlMetrics.fit(.zero, into: box) == box)
+        let gap = AeroControlMetrics.snapshotRingGap
+        #expect(AeroControlMetrics.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
     }
 }

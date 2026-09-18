@@ -91,7 +91,7 @@ final class OverlayWindowManager {
     private func show(_ summon: Summon) {
         requestedVisible = true
         // Read AeroSpace's whole state and every window's size, reveal the grid in its
-        // final shape with icons in the tiles, then let the pictures land one by one —
+        // final shape with a plate per window, then let the pictures land one by one —
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
@@ -108,7 +108,7 @@ final class OverlayWindowManager {
             } else {
                 // Ask macOS for Screen Recording on the first summon without it. The system
                 // shows its dialog once per app; afterwards this is a silent no-op and the
-                // menu item / System Settings is the way in. Icons are shown meanwhile.
+                // menu item / System Settings is the way in. The tiles stay plates meanwhile.
                 self.state.requestPreviewAccess()
             }
             self.state.startFollowingAerospace()

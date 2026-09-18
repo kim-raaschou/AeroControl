@@ -88,8 +88,6 @@ final class FakeBridge: NativeApiBridge {
     /// Every window-id list the store has asked to capture.
     var captured: [[Int]] = []
 
-    func appIcon(bundleId: String) -> NSImage { NSImage() }
-
     var canCapturePreviews: Bool { granted }
     func requestPreviewAccess() { accessRequests += 1 }
     func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {

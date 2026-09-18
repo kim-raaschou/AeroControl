@@ -7,18 +7,7 @@ import OSLog
 private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "previews")
 
 public final class NativeApiBridgeAdapter: NativeApiBridge {
-    private var iconCache: [String: NSImage] = [:]
-
     public init() {}
-
-    public func appIcon(bundleId: String) -> NSImage {
-        if let cached = iconCache[bundleId] {
-            return cached
-        }
-        let icon = Self.loadIcon(bundleId: bundleId)
-        iconCache[bundleId] = icon
-        return icon
-    }
 
     // MARK: Window previews (ScreenCaptureKit)
 
@@ -128,30 +117,4 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         }
         return NSImage(cgImage: cgImage, size: NSSize(width: frame.width * scale, height: frame.height * scale))
     }
-
-    private static func loadIcon(bundleId: String) -> NSImage {
-        let original: NSImage
-        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
-            original = NSWorkspace.shared.icon(forFile: appURL.path)
-        } else {
-            original = NSWorkspace.shared.icon(for: .applicationBundle)
-        }
-        return largeRepresentation(of: original)
-    }
-
-    /// Keeps only the 256 px representation of a macOS icon. Left to itself, AppKit picks
-    /// the representation nearest the drawn size, and for a 28 pt badge on a 1x display that
-    /// is the 32 px one, which for pre-Tahoe icons (VS Code, IntelliJ) carries macOS 26's
-    /// grey wrapper rim and looks smaller than its neighbours. Downscaling the large
-    /// representation with high interpolation gives the same clean artwork at every size
-    /// and on every display scale.
-    private static func largeRepresentation(of image: NSImage) -> NSImage {
-        let side: CGFloat = 256
-        let rect = NSRect(x: 0, y: 0, width: side, height: side)
-        guard let rep = image.bestRepresentation(for: rect, context: nil, hints: nil) else { return image }
-        let large = NSImage(size: rect.size)
-        large.addRepresentation(rep)
-        return large
-    }
-
 }

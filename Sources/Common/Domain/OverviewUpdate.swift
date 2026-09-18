@@ -31,7 +31,6 @@ public enum OverviewInput: Sendable {
 
 public enum OverviewEffect: Equatable {
     case windowRemoved(Int)
-    case loadIcons([WindowInfo])
     case refresh
     case runAction(AeroControlAction)
     /// Actions that must run one after another, in order (e.g. a merge).
@@ -74,12 +73,7 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
     }
 
     let removedIds = oldIds.subtracting(freshIds)
-    var effects: [OverviewEffect] = removedIds.sorted().map { .windowRemoved($0) }
-    let allWindows = new.workspaces.flatMap(\.windows)
-    if !allWindows.isEmpty {
-        effects.append(.loadIcons(allWindows))
-    }
-    return (new, effects)
+    return (new, removedIds.sorted().map { .windowRemoved($0) })
 }
 
 private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (OverviewModel, [OverviewEffect]) {

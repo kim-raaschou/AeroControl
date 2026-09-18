@@ -14,36 +14,8 @@ private func cardSizes(_ windowCounts: [Int], available: CGSize) -> [[CGSize]] {
     AeroControlLayout.cardRows(windowCounts: windowCounts, available: available).map { $0.map(\.size) }
 }
 
-@Suite("metrics — previews")
-struct PreviewMetricsTests {
-    @Test("preview tiles are 3:2 of the icon size; icon tiles stay square")
-    func tileSize() {
-        let icons = AeroControlMetrics(iconSize: 48)
-        let previews = AeroControlMetrics(iconSize: 48, previews: true)
-        #expect(icons.tileSize == CGSize(width: 48, height: 48))
-        #expect(previews.tileSize == CGSize(width: 144, height: 96))
-        #expect(previews.tileWidth == 144 + 2 * previews.tileCellPadding)
-    }
-
-    @Test("fitting metrics make the padded tile exactly the requested cell width")
-    func fittingCell() {
-        for previews in [true, false] {
-            let m = AeroControlMetrics.fitting(cellWidth: 300, previews: previews)
-            #expect(abs(m.tileWidth - 300) < 0.001)
-        }
-        #expect(AeroControlMetrics.fitting(cellWidth: 300, previews: true).iconSize < 100)
-    }
-
-    @Test("a snapshot is fitted into the 3:2 cell with its own aspect ratio, and the focus frame hugs it")
-    func fittedPreview() {
-        let m = AeroControlMetrics(iconSize: 48, previews: true)
-        #expect(AeroControlMetrics.fit(CGSize(width: 1000, height: 1000), into: m.previewSize) == CGSize(width: 96, height: 96))
-        #expect(AeroControlMetrics.fit(CGSize(width: 600, height: 200), into: m.previewSize) == CGSize(width: 144, height: 48))
-        #expect(AeroControlMetrics.fit(.zero, into: m.previewSize) == m.previewSize)
-        let gap = AeroControlMetrics.snapshotRingGap
-        #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
-    }
-
+@Suite("layout")
+struct LayoutTests {
     @Test("row count: 1-3 one row, 4-6 two, 7-12 three")
     func rowCounts() {
         #expect([1, 2, 3].map(AeroControlLayout.rowCount(forCount:)) == [1, 1, 1])
@@ -181,7 +153,6 @@ struct PreviewMetricsTests {
             #expect(AeroControlLayout.tileGrid(windowCount: 2, card: fourWide).columns == 2)   // 1x2 stays: 2x1 would halve the tiles
             #expect(AeroControlLayout.tileGrid(windowCount: 3, card: fourWide).columns == 3)   // 1x3 stays for the same reason
         }
-        #expect(AeroControlLayout.tileGrid(windowCount: 1, card: CGSize(width: 500, height: 500), aspect: 1).width == AeroControlLayout.maxIconTile)
     }
 }
 

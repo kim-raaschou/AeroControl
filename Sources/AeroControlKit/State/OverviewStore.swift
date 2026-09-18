@@ -8,7 +8,6 @@ public class OverviewStore {
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
-    private(set) var icons: [Int: NSImage] = [:]
     /// Window previews, captured when the overview is summoned and dropped when it hides.
     /// They land one by one into a grid that is already on screen.
     public private(set) var previews: [Int: NSImage] = [:]
@@ -152,25 +151,18 @@ public class OverviewStore {
         previewSizes = sizes
     }
 
-    /// True while pictures are still landing: a tile without one shows its place, not an
-    /// icon. Once capture is over, a tile still without a picture shows the icon.
-    public private(set) var capturing = false
-
     /// Captures a preview of every window in the model, each stored the moment it lands.
     /// Returns when all are in. A `clearPreviews()` in the meantime discards the rest.
     public func capturePreviews(maxSize: CGSize) async {
         let generation = captureGeneration
-        capturing = true
         await nativeSystem.windowPreviews(windowIds: windowIds, maxSize: maxSize) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.previews[id] = image
         }
-        if generation == captureGeneration { capturing = false }
     }
 
     public func clearPreviews() {
         captureGeneration += 1
-        capturing = false
         previews = [:]
         previewSizes = [:]
     }
@@ -264,16 +256,7 @@ public class OverviewStore {
         for effect in effects {
             switch effect {
             case .windowRemoved(let id):
-                icons.removeValue(forKey: id)
                 previews.removeValue(forKey: id)
-            case .loadIcons(let windows):
-                var added: [Int: NSImage] = [:]
-                for window in windows where icons[window.windowId] == nil {
-                    added[window.windowId] = nativeSystem.appIcon(bundleId: window.bundleId)
-                }
-                if !added.isEmpty {
-                    icons.merge(added) { _, new in new }
-                }
             case .refresh:
                 requestRefresh()
             case .runAction(let action):

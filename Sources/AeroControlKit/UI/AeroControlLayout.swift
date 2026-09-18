@@ -4,7 +4,7 @@ import CoreGraphics
 /// same shape whatever the workspaces hold. Cards are split into rows of as equal length
 /// as possible, every row is the same height, and within a row every card that holds
 /// windows is the same width (empty workspaces keep a badge-wide sliver). A card's windows
-/// fill it as a grid of 3:2 tiles (or square icons) using whichever column count yields
+/// fill it as a grid of 3:2 tiles using whichever column count yields
 /// the largest tiles. All unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
@@ -16,8 +16,6 @@ public enum AeroControlLayout {
     /// Vertical room reserved at the top of a card for the workspace badge.
     public static let badgeLane: CGFloat = 44
     public static let minTileWidth: CGFloat = 36
-    /// Largest square icon tile; icons bigger than this stop looking like icons.
-    public static let maxIconTile: CGFloat = 128
     /// Diameter of the workspace badge in the card header.
     public static let badgeSize: CGFloat = 24
     /// An empty card is exactly the badge plus the card padding on both sides, so the badge
@@ -140,7 +138,7 @@ public enum AeroControlLayout {
 
     /// Column count and tile width for `windowCount` tiles inside the card's inner area:
     /// the largest tiles, with a preference for squarer grids within `gridTolerance`.
-    /// `aspect` is height/width: `tileAspect` or 1 (icons).
+    /// `aspect` is height/width, the screen's or `tileAspect`.
     public static func tileGrid(windowCount: Int, card: CGSize, aspect: CGFloat = tileAspect) -> (columns: Int, width: CGFloat) {
         guard windowCount > 0 else { return (0, 0) }
         let innerWidth = card.width - 2 * cardPadding
@@ -154,8 +152,6 @@ public enum AeroControlLayout {
         let largest = candidates.map(\.width).max() ?? 0
         // Candidates are in ascending column order, so the first good enough has the most rows.
         let best = candidates.first { $0.width >= largest * (1 - gridTolerance) } ?? (1, 0)
-        var width = best.width
-        if aspect == 1 { width = min(width, maxIconTile) }
-        return (best.columns, max(minTileWidth, width.rounded(.down)))
+        return (best.columns, max(minTileWidth, best.width.rounded(.down)))
     }
 }

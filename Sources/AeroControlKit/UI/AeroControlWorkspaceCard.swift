@@ -2,7 +2,7 @@ import SwiftUI
 import Common
 
 /// One "desktop" card: badge at the top-left, the workspace's windows below as a grid of
-/// snapshot cells (or app icons without Screen Recording).
+/// snapshot cells.
 /// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
@@ -21,8 +21,6 @@ struct AeroControlWorkspaceCard: View {
     @Environment(\.aeroTheme) private var theme
 
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-    /// Preview tiles (snapshot cells) when Screen Recording is granted, plain icons otherwise.
-    private var showPreviews: Bool { state.previewsAvailable }
 
     private func run(_ action: AeroControlAction) {
         state.send(.action(action))
@@ -124,9 +122,8 @@ struct AeroControlWorkspaceCard: View {
 
     private var grid: some View {
         let windows = workspace.windows
-        let aspect: CGFloat = showPreviews ? previewAspect : 1
-        let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: aspect)
-        let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, previews: showPreviews, previewAspect: previewAspect)
+        let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: previewAspect)
+        let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, aspect: previewAspect)
         return LazyVGrid(
             columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
             spacing: AeroControlLayout.tileSpacing

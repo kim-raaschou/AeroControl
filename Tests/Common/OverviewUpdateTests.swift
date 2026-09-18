@@ -29,7 +29,7 @@ struct LoadedTests {
         #expect(windowIds(new, workspace: "2") == [9009])
         #expect(new.focusedWindowId == 9009)
         #expect(new.focusedWorkspace == "2")
-        #expect(effects.contains(.loadIcons(new.workspaces.flatMap(\.windows))))
+        #expect(effects.isEmpty)
     }
 
     @Test("a load drops windows AeroSpace no longer lists")

@@ -108,7 +108,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 keyEquivalent: ""
             )
             grant.target = self
-            grant.toolTip = "Previews capture each window once when the overview opens. Without the permission the overview shows app icons."
+            grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
             menu.addItem(grant)
         }
 

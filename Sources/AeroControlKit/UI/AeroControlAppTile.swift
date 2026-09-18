@@ -17,9 +17,10 @@ struct AeroControlAppTile: View {
 
     @State private var isHovering = false
 
-    private var image: NSImage? { state.icons[window.windowId] }
-    /// Window snapshot; when present the tile is the bare snapshot, fitted into the 3:2 cell
-    /// with its own aspect ratio and the app icon badged in its corner, otherwise the app icon.
+    /// The window's snapshot, fitted into the cell with its own aspect ratio; until it lands
+    /// — or for good, without Screen Recording — the tile is a plate in the snapshot's shape.
+    /// No icons: they said nothing a picture and a title do not, and flashed in whenever a
+    /// picture went away.
     private var preview: NSImage? { state.previews[window.windowId] }
     /// The ring: AeroSpace's focus on the map, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
@@ -55,16 +56,10 @@ struct AeroControlAppTile: View {
         if hovering { state.hoveredWindowId = window.windowId }
         else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
     }
-    private var iconSize: CGFloat { metrics.iconSize }
     private var cellPadding: CGFloat { metrics.tileCellPadding }
-    /// Corner radius of the drawn content: gentle on snapshots, the icon's own on icons.
-    private var plateRadius: CGFloat {
-        metrics.previews ? AeroControlMetrics.snapshotRadius : metrics.iconArtworkRadius
-    }
+    private var plateRadius: CGFloat { AeroControlMetrics.snapshotRadius }
     /// The focus ring follows the content radius plus its gap.
-    private var ringRadius: CGFloat {
-        plateRadius + (metrics.previews ? AeroControlMetrics.snapshotRingGap : metrics.focusPlatePadding)
-    }
+    private var ringRadius: CGFloat { plateRadius + AeroControlMetrics.snapshotRingGap }
     private var tileSize: CGSize { metrics.tileSize }
 
     /// The room the picture has: the cell, less the caption's lane when there is one. Every
@@ -77,19 +72,14 @@ struct AeroControlAppTile: View {
 
     /// What is actually drawn: the fitted snapshot — sized from the window's measured size
     /// before the picture is in, so the place it lands in is already its shape — or the
-    /// whole box for icons.
+    /// whole box when nothing is known about the window.
     private var contentSize: CGSize {
-        guard metrics.previews else { return pictureBox }
-        guard let size = preview?.size ?? state.previewSizes[window.windowId] else {
-            return CGSize(width: pictureBox.height, height: pictureBox.height)
-        }
+        guard let size = preview?.size ?? state.previewSizes[window.windowId] else { return pictureBox }
         return AeroControlMetrics.fit(size, into: pictureBox)
     }
 
     /// The focus frame hugs the drawn content, not the cell.
-    private var plateSize: CGSize {
-        metrics.previews ? metrics.focusPlateRect(around: contentSize) : metrics.focusPlateRect
-    }
+    private var plateSize: CGSize { AeroControlMetrics.focusPlateRect(around: contentSize) }
 
     var body: some View {
         VStack(spacing: AeroControlLayout.captionGap) {
@@ -125,46 +115,23 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
-            .animation(.easeOut(duration: 0.15), value: preview == nil)   // the picture fades in over the icon as it lands
+            .animation(.easeOut(duration: 0.15), value: preview == nil)   // the picture fades into its place as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)
     }
 
     @ViewBuilder private var tile: some View {
-        if metrics.previews, preview == nil, state.capturing {
-            // The picture's place until it lands: a faint plate, not an icon that gets
-            // replaced. Windows that cannot be captured get their icon once capture is over.
-            RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
-                .fill(palette.badgeFill.opacity(0.35))
-        } else if metrics.previews, let preview {
+        if let preview {
             Image(nsImage: preview)
                 .resizable()
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
                 .transition(.opacity)
-                .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the image
-                    icon
-                        .frame(width: metrics.previewBadgeSize, height: metrics.previewBadgeSize)
-                        .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                        .padding(metrics.previewBadgeSize * 0.2)
-                }
         } else {
-            icon
-        }
-    }
-
-    @ViewBuilder private var icon: some View {
-        if let image {
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
-                .aspectRatio(contentMode: .fit)
-        } else {
-            RoundedRectangle(cornerRadius: plateRadius)
-                .fill(.quaternary)
-                .overlay { Image(systemName: "app.fill").foregroundStyle(.secondary) }
+            RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+                .fill(palette.badgeFill.opacity(0.35))
         }
     }
 
@@ -191,7 +158,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var closeButton: some View {
         if isHovering {
-            let diameter: CGFloat = metrics.previews ? 18 : max(11, iconSize * 0.32)
+            let diameter: CGFloat = 18
             Button(action: onCloseWindow) {
                 Image(systemName: "xmark")
                     .font(.system(size: diameter * 0.45, weight: .bold))
@@ -203,8 +170,7 @@ struct AeroControlAppTile: View {
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .padding(metrics.previews ? 6 : 0)                  // inside the snapshot's corner, clear of the focus ring
-            .offset(x: metrics.previews ? 0 : diameter * 0.15, y: metrics.previews ? 0 : -diameter * 0.15)
+            .padding(6)                                         // inside the snapshot's corner, clear of the focus ring
             .help("Close window")
         }
     }
