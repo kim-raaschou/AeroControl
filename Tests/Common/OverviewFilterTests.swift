@@ -126,6 +126,14 @@ struct FilterKeyActionTests {
         filterKeyAction(query: query, matches: matches ?? two, selection: selection, key: key)
     }
 
+    /// Six Teams windows on workspace 1 (drawn 3 wide) and two on workspace 2 (2 wide).
+    private var eight: [ParsedWindow] {
+        OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: (1...6).map { window($0, "Teams") }),
+            WorkspaceInfo(name: "2", windows: (7...8).map { window($0, "Teams") }),
+        ]).matching("Teams")
+    }
+
     @Test("what a keystroke does to the query, against two matches", arguments: [
         ("Tea", FilterKey.character("m"), FilterKeyAction.setQuery("Team")),
         ("", .character("T"), .setQuery("T")),
@@ -164,18 +172,34 @@ struct FilterKeyActionTests {
         (0, false, 6),       // up off the first card: the last card's last row
     ])
     func rows(from: Int, down: Bool, expected: Int) {
-        let eight = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: (1...6).map { window($0, "Teams") }),
-            WorkspaceInfo(name: "2", windows: (7...8).map { window($0, "Teams") }),
-        ]).matching("Teams")
-        #expect(eight.neighbor(of: from, columns: ["1": 3, "2": 2], down: down) == expected)
+        #expect(eight.neighbor(of: from, columns: ["1": 3, "2": 2], cardRows: [["1", "2"]], down: down) == expected)
     }
 
-    @Test("a card nobody reported is one column wide, and one match has nowhere to go")
+    @Test("across rows of cards: ↓ leaves for the card below, nearest column, skipping cards with nothing in them")
+    func acrossCardRows() {
+        // Cards drawn   1 2      ws 1: two windows (2 wide)   ws 2: one window
+        //               3 4      ws 3: empty                  ws 4: two windows (2 wide)
+        let map = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: [window(1, "A"), window(2, "B")]),
+            WorkspaceInfo(name: "2", windows: [window(3, "C")]),
+            WorkspaceInfo(name: "3", windows: []),
+            WorkspaceInfo(name: "4", windows: [window(4, "D"), window(5, "E")]),
+        ]).windowsInGridOrder
+        let rows = [["1", "2"], ["3", "4"]]
+        let columns = ["1": 2, "2": 1, "4": 2]
+        #expect(map.neighbor(of: 0, columns: columns, cardRows: rows, down: true) == 3)     // ws 1 → below is empty ws 3, so ws 4, column 0
+        #expect(map.neighbor(of: 1, columns: columns, cardRows: rows, down: true) == 4)     // column 1 of ws 1 → column 1 of ws 4
+        #expect(map.neighbor(of: 2, columns: columns, cardRows: rows, down: true) == 3)     // ws 2 → ws 4 right below
+        #expect(map.neighbor(of: 3, columns: columns, cardRows: rows, down: false) == 2)    // ws 4 (card column 1) ↑ → ws 2, right above it
+        #expect(map.neighbor(of: 2, columns: columns, cardRows: rows, down: false) == 3)    // ws 2 ↑ wraps to the row below: ws 4
+    }
+
+    @Test("a card nobody reported is one column wide and all cards one row; one window has nowhere to go")
     func rowsDefaults() {
-        #expect(two.neighbor(of: 0, columns: [:], down: true) == 1)
-        #expect(two.neighbor(of: 1, columns: [:], down: true) == 0)                 // wraps within the only card
-        #expect(model.matching("standup").neighbor(of: 0, columns: [:], down: true) == nil)
+        #expect(two.neighbor(of: 0, columns: [:], cardRows: [], down: true) == 1)
+        #expect(two.neighbor(of: 1, columns: [:], cardRows: [], down: true) == 0)           // wraps within the only card
+        #expect(eight.neighbor(of: 3, columns: ["1": 3], cardRows: [], down: true) == 6)    // unreported rows: the next card along
+        #expect(model.matching("standup").neighbor(of: 0, columns: [:], cardRows: [], down: true) == nil)
         #expect(action("Teams", .down) == .select(1))
         #expect(action("zzz", .up, matches: []) == .none)
     }

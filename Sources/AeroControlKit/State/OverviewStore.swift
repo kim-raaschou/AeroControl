@@ -4,7 +4,7 @@ import Common
 
 @MainActor @Observable
 public class OverviewStore {
-    public private(set) var model = OverviewModel() { didSet { filterMatches = model.matching(filter) } }
+    public private(set) var model = OverviewModel() { didSet { filterMatches = model.matching(filter); cursor = model.cursor(for: filterMatches) } }
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
@@ -25,15 +25,27 @@ public class OverviewStore {
     /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
     /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
     /// change — the grid would jump on every letter.
-    public var filter: String = "" { didSet { selection = 0; filterMatches = model.matching(filter) } }
+    public var filter: String = "" { didSet { selection = nil; filterMatches = model.matching(filter); cursor = model.cursor(for: filterMatches) } }
 
-    /// The match the ring is on and Enter picks, as an index into `filterMatches`. Back to
-    /// the first on every keystroke: the list under it has just changed.
-    public var selection: Int = 0
+    /// The window the ring is on and Enter picks, as an index into `cursor`; nil until a
+    /// key moves it, meaning the first match while filtering and AeroSpace's focused window
+    /// on the map. Back to nil on every keystroke: the list under it has just changed.
+    public var selection: Int?
 
-    /// How many columns each card was drawn with, by workspace — what ↑/↓ need. The card
-    /// reports it as it lays out; only the panel knows a card's width.
+    /// What the ring walks: the matches while a query has some, every window in grid order
+    /// otherwise — the map is navigable too.
+    public private(set) var cursor: [ParsedWindow] = []
+
+    /// Where the ring stands before any key has moved it.
+    private var restingSelection: Int {
+        filterMatches.isEmpty ? (cursor.firstIndex { $0.window.windowId == model.focusedWindowId } ?? 0) : 0
+    }
+
+    /// What the panel drew, reported as it lays out, because only it knows a card's width
+    /// and place: how many tile columns each card has (by workspace) and which cards share
+    /// a row. What ↑/↓ steer by.
     public var columns: [String: Int] = [:]
+    public var cardRows: [[String]] = []
 
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
     /// and Enter all read this one list, so what the ring is on is what Enter focuses. Derived
@@ -45,7 +57,8 @@ public class OverviewStore {
     /// focused window otherwise — so on the map, and on a miss, the ring means what it always
     /// did.
     public var ringWindowId: Int? {
-        filterMatches.selected(selection)?.window.windowId ?? model.focusedWindowId
+        guard selection != nil || !filterMatches.isEmpty else { return model.focusedWindowId }
+        return cursor.selected(selection ?? restingSelection)?.window.windowId ?? model.focusedWindowId
     }
 
     private let inbox: AsyncStream<OverviewInput>
@@ -185,7 +198,8 @@ public class OverviewStore {
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
-        let action = filterKeyAction(query: filter, matches: filterMatches, selection: selection, columns: columns, key: key)
+        let action = filterKeyAction(query: filter, matches: cursor, selection: selection ?? restingSelection,
+                                     columns: columns, cardRows: cardRows, key: key)
         switch action {
         case .setQuery(let query): filter = query
         case .select(let index): selection = index

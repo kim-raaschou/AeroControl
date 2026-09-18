@@ -199,8 +199,24 @@ struct OverviewStoreTests {
         store.columns["1"] = 1                                                   // what the card reports as it lays out
         #expect(store.handle(.down) == .select(0))                               // one column, from the last: round to the first
         // A keystroke puts the ring back on the first match: the list under it changed.
-        #expect(store.handle(.character("x")) == .setQuery("Teamsx") && store.selection == 0)
+        #expect(store.handle(.character("x")) == .setQuery("Teamsx") && store.selection == nil)
         #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == store.model.focusedWindowId)
+        store.stop()
+    }
+
+    @Test("the map is navigable too: the ring rests on the focused window, and the same keys move it and pick")
+    func mapNavigation() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+
+        #expect(store.selection == nil && store.ringWindowId == 2)
+        #expect(store.handle(.next) == .select(2) && store.ringWindowId == 3)
+        #expect(store.handle(.enter) == .focus(windowId: 3))
+        #expect(store.handle(.previous) == .select(1) && store.handle(.previous) == .select(0))
+        #expect(store.handle(.character("x")) == .setQuery("x") && store.selection == nil)   // typing resets the ring
         store.stop()
     }
 

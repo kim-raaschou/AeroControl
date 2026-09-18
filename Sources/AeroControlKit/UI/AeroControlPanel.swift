@@ -84,6 +84,7 @@ public struct AeroControlPanel: View {
         )
         // A result may be shorter than the screen; a map may not.
         if filtering { rows = rows.map { shrunk($0, of: all) } }
+        let cardRows = rows.map { $0.map { all[$0.index].name } }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
@@ -104,6 +105,7 @@ public struct AeroControlPanel: View {
         // The unfiltered grid is a map and never moves; the filtered one is a result, and
         // re-flows as the query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15), value: all)
+        .onChange(of: cardRows, initial: true) { _, cardRows in state.cardRows = cardRows }   // for ↑/↓ across cards
     }
 
     /// Gives a row back the height its tiles cannot use, so two matches are two big pictures

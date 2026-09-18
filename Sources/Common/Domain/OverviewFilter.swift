@@ -40,11 +40,18 @@ public extension OverviewModel {
         let needle = query.trimmingCharacters(in: .whitespaces)
         guard needle.count >= Self.minQueryLength else { return [] }
         let needles = needle.split(separator: " ")
-        return workspaces.flatMap { workspace in
-            workspace.windows
-                .filter { $0.title.hasWordsStarting(with: needles) || $0.appName.hasWordsStarting(with: needles) }
-                .map { ParsedWindow(window: $0, workspace: workspace.name) }
+        return windowsInGridOrder.filter {
+            $0.window.title.hasWordsStarting(with: needles) || $0.window.appName.hasWordsStarting(with: needles)
         }
+    }
+
+    /// What the ring walks for these matches: them, or every window when there are none.
+    func cursor(for matches: [ParsedWindow]) -> [ParsedWindow] { matches.isEmpty ? windowsInGridOrder : matches }
+
+    /// Every window with its workspace, in the order the grid draws them: what the ring
+    /// walks when no query has narrowed it.
+    var windowsInGridOrder: [ParsedWindow] {
+        workspaces.flatMap { workspace in workspace.windows.map { ParsedWindow(window: $0, workspace: workspace.name) } }
     }
 
     /// The app name of the focused window, nil when nothing is focused. Typed into the
@@ -76,31 +83,44 @@ public extension Array where Element == ParsedWindow {
         isEmpty ? nil : self[Swift.min(selection, count - 1)]
     }
 
-    /// The match one tile row below (or above) `selection` in the grid the panel drew: the
-    /// same column, next row of the same card; off the card's last row, the same column on
-    /// the next card's first row; off the last card, round to the first. `columns` is what
-    /// each card was drawn with, by workspace — the card reports it, because only the panel
-    /// knows a card's width. An unreported card is one column wide.
-    func neighbor(of selection: Int, columns: [String: Int], down: Bool) -> Int? {
+    /// The window one tile row below (or above) `selection` in the grid the panel drew: the
+    /// same column, next row of the same card. Off the card, the next *row of cards*
+    /// (wrapping), in it the card nearest this one's column that holds any of these
+    /// windows, and in that card the same tile column on its first (or last) row. The
+    /// panel reports what it drew — `columns` per card by workspace, `cardRows` as rows of
+    /// workspace names — because only it knows a card's width and place; unreported, a
+    /// card is one column wide and all cards form one row.
+    func neighbor(of selection: Int, columns: [String: Int], cardRows: [[String]], down: Bool) -> Int? {
         guard count > 1 else { return nil }
         let at = Swift.min(selection, count - 1)
-        // Matches come grouped by workspace, so each card is a contiguous range.
-        let cards = indices.reduce(into: [Range<Int>]()) { cards, i in
-            if let last = cards.last, self[last.lowerBound].workspace == self[i].workspace {
-                cards[cards.count - 1] = last.lowerBound..<(i + 1)
-            } else {
-                cards.append(i..<(i + 1))
+        let here = self[at].workspace
+        let cols = Swift.max(1, columns[here] ?? 1)
+        let card = indices.filter { self[$0].workspace == here }      // contiguous: grouped by workspace
+        let step = at + (down ? cols : -cols)
+        if card.contains(step) { return step }
+        let rows = cardRows.contains { $0.contains(here) }
+            ? cardRows
+            : [reduce(into: [String]()) { if !$0.contains($1.workspace) { $0.append($1.workspace) } }]
+        let rowAt = rows.firstIndex { $0.contains(here) }!
+        let colAt = rows[rowAt].firstIndex(of: here)!
+        // The same tile column in `target`, on the row it is entered from.
+        func landing(in target: String) -> Int {
+            let range = indices.filter { self[$0].workspace == target }
+            let targetCols = Swift.max(1, columns[target] ?? 1)
+            let col = Swift.min((at - card[0]) % cols, targetCols - 1)
+            let rowStart = down ? 0 : ((range.count - 1) / targetCols) * targetCols
+            return range[Swift.min(rowStart + col, range.count - 1)]
+        }
+        // Rows of cards to try, nearest first in the direction of travel, this one last;
+        // in each, the other cards nearest this one's column. Only this card left: wrap in it.
+        for offset in 1...rows.count {
+            let row = rows[(rowAt + (down ? offset : rows.count - offset)) % rows.count]
+            let nearest = row.enumerated().sorted { abs($0.offset - colAt) < abs($1.offset - colAt) }.map(\.element)
+            if let target = nearest.first(where: { name in name != here && contains { $0.workspace == name } }) {
+                return landing(in: target)
             }
         }
-        let card = cards.firstIndex { $0.contains(at) } ?? 0
-        let cols = Swift.max(1, columns[self[at].workspace] ?? 1)
-        let step = at + (down ? cols : -cols)
-        if cards[card].contains(step) { return step }
-        let col = (at - cards[card].lowerBound) % cols
-        let next = cards[(card + (down ? 1 : cards.count - 1)) % cards.count]
-        let nextCols = Swift.max(1, columns[self[next.lowerBound].workspace] ?? 1)
-        let row = down ? 0 : (next.count - 1) / nextCols
-        return next.lowerBound + Swift.min(row * nextCols + Swift.min(col, nextCols - 1), next.count - 1)
+        return landing(in: here)
     }
 }
 
@@ -164,7 +184,7 @@ public enum FilterKeyAction: Equatable, Sendable {
 /// included — "code2" narrows the query and nothing else. A match is picked by typing until
 /// it is first, or by walking the ring to it; there is nothing on screen to read a key off.
 public func filterKeyAction(query: String, matches: [ParsedWindow], selection: Int,
-                            columns: [String: Int] = [:], key: FilterKey) -> FilterKeyAction {
+                            columns: [String: Int] = [:], cardRows: [[String]] = [], key: FilterKey) -> FilterKeyAction {
     switch key {
     case .escape:
         return query.isEmpty ? .none : .setQuery("")
@@ -177,7 +197,7 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], selection: I
         let at = Swift.min(selection, matches.count - 1)
         return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
     case .up, .down:
-        return matches.neighbor(of: selection, columns: columns, down: key == .down).map { .select($0) } ?? .none
+        return matches.neighbor(of: selection, columns: columns, cardRows: cardRows, down: key == .down).map { .select($0) } ?? .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):

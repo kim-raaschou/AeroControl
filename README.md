@@ -98,7 +98,7 @@ before the URL scheme is registered — Launch Services learns it on the app's f
 | Key | Does |
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
-| Tab, → / Shift-Tab, ← | move the focus ring to the next / previous match |
+| Tab, → / Shift-Tab, ← | move the focus ring to the next / previous window |
 | ↑ / ↓ | move the focus ring a tile row up / down, across cards |
 | Enter | focus the window under the ring |
 | Escape | clear the query; on an empty query, dismiss |
@@ -107,7 +107,8 @@ before the URL scheme is registered — Launch Services learns it on the app's f
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title or app name. A query that matches nothing leaves the full map
-standing and says so.
+standing and says so. The ring walks the whole map too: without a query it starts on the
+focused window, and the same keys move it and pick.
 
 ## Configure it from the menu bar
 
