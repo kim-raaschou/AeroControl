@@ -63,9 +63,8 @@ class OverviewWindow: NSPanel {
     /// AeroControl was launched again. Quit stays in the menu bar item.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
-        // Only the modifiers that mean something here: a digit key reports `.numericPad`
-        // even on the top row, so comparing the whole flag set against `.command` silently
-        // excluded Cmd-1…Cmd-9 while Cmd-Q and Cmd-W worked.
+        // Only the modifiers that mean something here; the flag set also carries `.numericPad`,
+        // `.function` and the like.
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers == .command else { return super.performKeyEquivalent(with: event) }
         switch key {
@@ -137,23 +136,12 @@ class OverviewWindow: NSPanel {
 }
 
 /// AppKit's half of `FilterKey`, which lives in `Common` and may not see an `NSEvent`.
-/// A modified key is somebody else's (Cmd-Q, Cmd-W, Ctrl-arrows in AeroSpace); Shift is
-/// not a modifier here, it is how capitals are typed — and how Tab is walked backwards.
+/// A modified key is somebody else's (Cmd-Q, Cmd-W, Ctrl-arrows in AeroSpace).
 private extension FilterKey {
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return nil }
-        switch event.keyCode {
-        case 53: self = .escape
-        case 51: self = .backspace
-        case 36, 76: self = .enter
-        case 48: self = modifiers.contains(.shift) ? .previous : .next
-        case 124: self = .next
-        case 123: self = .previous
-        default:
-            guard let key = event.characters?.first.flatMap(FilterKey.typed) else { return nil }
-            self = key
-        }
+        self.init(keyCode: event.keyCode, shift: modifiers.contains(.shift), characters: event.characters)
     }
 }
 

@@ -31,12 +31,6 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// The drawn tile, before cell padding: the preview box or the square icon.
     public var tileSize: CGSize { previews ? previewSize : CGSize(width: iconSize, height: iconSize) }
 
-    /// A window snapshot scaled to fit inside `previewSize`, keeping its own aspect ratio.
-    /// The snapshot is drawn bare, so this is what the focus frame hugs.
-    public func fittedPreviewSize(_ imageSize: CGSize) -> CGSize {
-        Self.fit(imageSize, into: previewSize)
-    }
-
     /// `imageSize` scaled to sit inside `box` with its own aspect ratio; the box itself when
     /// the image has no size to speak of.
     public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize {
@@ -61,10 +55,6 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     public var tileCellPadding: CGFloat { 2 * scale }
 
-    public var tileHeight: CGFloat {
-        tileSize.height + 2 * tileCellPadding
-    }
-
     public var tileWidth: CGFloat {
         tileSize.width + 2 * tileCellPadding
     }
@@ -78,8 +68,6 @@ public struct AeroControlMetrics: Equatable, Sendable {
     private var iconArtworkInset: CGFloat { iconSize * 0.083 }
 
     public var iconArtworkRadius: CGFloat { (iconSize - 2 * iconArtworkInset) * 0.22 }
-
-    public var focusPlateRadius: CGFloat { iconArtworkRadius + focusPlatePadding }
 
     /// App icon badged on a snapshot: small enough never to compete with the image.
     public var previewBadgeSize: CGFloat { min(28, max(16, iconSize * 0.18)) }

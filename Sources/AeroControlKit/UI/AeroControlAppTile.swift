@@ -41,12 +41,12 @@ struct AeroControlAppTile: View {
     private static let minPictureHeight: CGFloat = 92
 
     private func onFocusWindow() {
-        Task { [weak state] in await state?.dispatch(.focusWindow(window.windowId)) }
+        state.send(.action(.focusWindow(window.windowId)))
         dismiss()
     }
 
     private func onCloseWindow() {
-        Task { [weak state] in await state?.dispatch(.closeWindow(window.windowId)) }
+        state.send(.action(.closeWindow(window.windowId)))
     }
 
     /// Pointing is the selection: Cmd-Q acts on whatever the mouse is over.

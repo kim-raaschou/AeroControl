@@ -30,7 +30,6 @@ public struct AeroControlPanel: View {
     private var namesMonitors: Bool { state.model.spansMonitors }
 
     public var body: some View {
-        // Once per pass: matching is a scan of every window's name and title, on every keystroke.
         let matches = state.filterMatches
         // The pill sits under the result rather than over it: the cards are only as tall as
         // their pictures need now, so an overlay at the bottom would land on a card edge.

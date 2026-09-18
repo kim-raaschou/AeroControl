@@ -43,12 +43,8 @@ final class OverlayWindowManager {
         state.clearPreviews()
         state.filter = ""
         window?.dismiss()
-        guard restoreFocus, let owner = focusedWindowOwner() else { return }
-        owner.activate()
-    }
-
-    private func focusedWindowOwner() -> NSRunningApplication? {
-        owner(ofWindow: state.model.focusedWindowId)
+        guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
+        app.activate()
     }
 
     private func owner(ofWindow windowId: Int) -> NSRunningApplication? {
@@ -67,24 +63,21 @@ final class OverlayWindowManager {
         app.terminate()
     }
 
-    /// Type-to-filter: a keystroke the filter has a use for is consumed, anything else is
-    /// handed back to the window, so Escape on an empty query still dismisses.
+    /// Type-to-filter: the store takes the keys it has a use for; the one it cannot finish —
+    /// a pick — ends the visit here. Anything else is handed back to the window, so Escape on
+    /// an empty query still dismisses.
     private func handleKey(_ key: FilterKey) -> Bool {
         guard requestedVisible else { return false }
-        switch filterKeyAction(query: state.filter, matches: state.filterMatches, selection: state.selection, key: key) {
+        switch state.handle(key) {
         case .none:
             return false
-        case .setQuery(let query):
-            state.filter = query
-            return true
-        case .select(let index):
-            state.selection = index
-            return true
         case .focus(let windowId):
-            Task { [state] in await state.dispatch(.focusWindow(windowId)) }
+            state.send(.action(.focusWindow(windowId)))
             hide(restoreFocus: false)       // the filter chose a window; it gets the keyboard
-            return true
+        case .setQuery, .select:
+            break
         }
+        return true
     }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps

@@ -4,7 +4,7 @@ import Common
 
 @MainActor @Observable
 public class OverviewStore {
-    public private(set) var model = OverviewModel()
+    public private(set) var model = OverviewModel() { didSet { filterMatches = model.matching(filter) } }
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
@@ -21,15 +21,17 @@ public class OverviewStore {
     /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
     /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
     /// change — the grid would jump on every letter.
-    public var filter: String = "" { didSet { selection = 0 } }
+    public var filter: String = "" { didSet { selection = 0; filterMatches = model.matching(filter) } }
 
     /// The match the ring is on and Enter picks, as an index into `filterMatches`. Back to
     /// the first on every keystroke: the list under it has just changed.
     public var selection: Int = 0
 
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
-    /// and Enter all read this one list, so what the ring is on is what Enter focuses.
-    public var filterMatches: [ParsedWindow] { model.matching(filter) }
+    /// and Enter all read this one list, so what the ring is on is what Enter focuses. Derived
+    /// when the query or the model changes, not on read: every tile asks for the ring, and a
+    /// computed property here was a scan of every title per tile per pass.
+    public private(set) var filterMatches: [ParsedWindow] = []
 
     /// The window wearing the ring: the selected match while the filter has any, AeroSpace's
     /// focused window otherwise — so on the map, and on a miss, the ring means what it always
@@ -124,8 +126,18 @@ public class OverviewStore {
         previews = [:]
     }
 
-    public func dispatch(_ action: AeroControlAction) async {
-        send(.action(action))
+    /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and
+    /// the ring are the store's — and the caller learns what became of it: `.none` is not
+    /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
+    /// window is the caller's.
+    public func handle(_ key: FilterKey) -> FilterKeyAction {
+        let action = filterKeyAction(query: filter, matches: filterMatches, selection: selection, key: key)
+        switch action {
+        case .setQuery(let query): filter = query
+        case .select(let index): selection = index
+        case .none, .focus: break
+        }
+        return action
     }
 
     private func startInbox() {

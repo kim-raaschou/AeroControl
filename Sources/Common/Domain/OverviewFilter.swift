@@ -84,6 +84,23 @@ public enum FilterKey: Equatable, Sendable {
 }
 
 public extension FilterKey {
+    /// The key a keyboard event stands for, from the parts of it that matter; nil when it is
+    /// not one of ours. The caller has already ruled out Cmd, Ctrl and Option. Shift is not
+    /// a modifier here: it is how capitals are typed, and how Tab is walked backwards.
+    init?(keyCode: UInt16, shift: Bool, characters: String?) {
+        switch keyCode {
+        case 53: self = .escape
+        case 51: self = .backspace
+        case 36, 76: self = .enter
+        case 48: self = shift ? .previous : .next
+        case 124: self = .next
+        case 123: self = .previous
+        default:
+            guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
+            self = key
+        }
+    }
+
     /// The key a typed character stands for, or nil when it is not text. Arrow and function
     /// keys arrive as private-use scalars (0xF700+), not control characters — reject both.
     static func typed(_ character: Character) -> FilterKey? {

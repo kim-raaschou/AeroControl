@@ -13,7 +13,6 @@ struct AeroControlFilterPill: View {
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
-
     /// The lane is there whether or not anything has been typed. The pill is the only thing
     /// on screen that appears mid-gesture, and a view that appears must not move the grid it
     /// is describing.

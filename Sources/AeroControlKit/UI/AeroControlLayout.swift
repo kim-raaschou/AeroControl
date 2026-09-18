@@ -97,13 +97,6 @@ public enum AeroControlLayout {
         }
     }
 
-    /// Just the sizes, for the layout tests and anything that does not need the identity.
-    public static func cardSizes(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
-                                 available: CGSize) -> [[CGSize]] {
-        cardRows(windowCounts: windowCounts, emptyWidth: emptyWidth, available: available)
-            .map { $0.map(\.size) }
-    }
-
     /// Widths inside one row: empty workspaces take `emptyWidth`, the cards that hold
     /// windows split what is left equally, so a card's size never depends on its neighbours.
     static func rowWidths(windowCounts: [Int], rowWidth: CGFloat, emptyWidth: CGFloat = emptyCardWidth) -> [CGFloat] {

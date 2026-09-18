@@ -40,7 +40,6 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     }
 }
 
-
 /// What AeroSpace considers focused. Asked for separately from the window list because a
 /// workspace with no windows is still the focused one.
 public struct Focus: Equatable, Sendable {

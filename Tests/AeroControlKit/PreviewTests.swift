@@ -9,6 +9,11 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
     WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", title: title)
 }
 
+/// Just the sizes: the layout tests never need a cell's identity.
+private func cardSizes(_ windowCounts: [Int], available: CGSize) -> [[CGSize]] {
+    AeroControlLayout.cardRows(windowCounts: windowCounts, available: available).map { $0.map(\.size) }
+}
+
 @Suite("metrics — previews")
 struct PreviewMetricsTests {
     @Test("preview tiles are 3:2 of the icon size; icon tiles stay square")
@@ -18,8 +23,6 @@ struct PreviewMetricsTests {
         #expect(icons.tileSize == CGSize(width: 48, height: 48))
         #expect(previews.tileSize == CGSize(width: 144, height: 96))
         #expect(previews.tileWidth == 144 + 2 * previews.tileCellPadding)
-        #expect(previews.tileHeight == 96 + 2 * previews.tileCellPadding)
-        #expect(previews.tileHeight > icons.tileHeight)
     }
 
     @Test("fitting metrics make the padded tile exactly the requested cell width")
@@ -34,9 +37,9 @@ struct PreviewMetricsTests {
     @Test("a snapshot is fitted into the 3:2 cell with its own aspect ratio, and the focus frame hugs it")
     func fittedPreview() {
         let m = AeroControlMetrics(iconSize: 48, previews: true)
-        #expect(m.fittedPreviewSize(CGSize(width: 1000, height: 1000)) == CGSize(width: 96, height: 96))
-        #expect(m.fittedPreviewSize(CGSize(width: 600, height: 200)) == CGSize(width: 144, height: 48))
-        #expect(m.fittedPreviewSize(.zero) == m.previewSize)
+        #expect(AeroControlMetrics.fit(CGSize(width: 1000, height: 1000), into: m.previewSize) == CGSize(width: 96, height: 96))
+        #expect(AeroControlMetrics.fit(CGSize(width: 600, height: 200), into: m.previewSize) == CGSize(width: 144, height: 48))
+        #expect(AeroControlMetrics.fit(.zero, into: m.previewSize) == m.previewSize)
         let gap = AeroControlMetrics.snapshotRingGap
         #expect(m.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
     }
@@ -61,7 +64,7 @@ struct PreviewMetricsTests {
     @Test("5 workspaces (18, 0, 1, 0, 0 windows): even rows, empties narrow, all width used")
     func fiveWorkspaces() {
         let available = CGSize(width: 1624, height: 1050)
-        let rows = AeroControlLayout.cardSizes(windowCounts: [18, 0, 1, 0, 0], available: available)
+        let rows = cardSizes([18, 0, 1, 0, 0], available: available)
         #expect(rows.count == 2)
         #expect(rows.map(\.count) == [3, 2])
         let gap = AeroControlLayout.cardGap
@@ -78,7 +81,7 @@ struct PreviewMetricsTests {
 
     @Test("cards that hold windows share a row equally, whatever they hold")
     func equalWidths() {
-        let rows = AeroControlLayout.cardSizes(windowCounts: [1, 4], available: CGSize(width: 1000, height: 500))
+        let rows = cardSizes([1, 4], available: CGSize(width: 1000, height: 500))
         #expect(rows.count == 1)
         #expect(rows[0][0].width == rows[0][1].width)
         #expect(rows[0].map(\.width).reduce(0, +) + AeroControlLayout.cardGap <= 1000)
@@ -87,7 +90,7 @@ struct PreviewMetricsTests {
     @Test("the layout ignores the snapshots: same counts, same cards")
     func layoutIsPredictable() {
         let available = CGSize(width: 3300, height: 1300)
-        let rows = AeroControlLayout.cardSizes(windowCounts: [4, 2, 3, 0, 1], available: available)
+        let rows = cardSizes([4, 2, 3, 0, 1], available: available)
         #expect(rows.count == 2 && rows.map(\.count) == [3, 2])
         #expect(rows[0][0].height == rows[1][0].height)
         #expect(rows[0][0].height * 2 + AeroControlLayout.cardGap <= available.height + 1)

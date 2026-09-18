@@ -25,7 +25,7 @@ struct AeroControlWorkspaceCard: View {
     private var showPreviews: Bool { state.previewsAvailable }
 
     private func run(_ action: AeroControlAction) {
-        Task { [weak state] in await state?.dispatch(action) }
+        state.send(.action(action))
     }
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }

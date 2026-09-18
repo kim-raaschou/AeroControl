@@ -16,7 +16,7 @@ struct AeroControlMetricsTests {
         let m = AeroControlMetrics(iconSize: 48)
         #expect(m.tileSize == CGSize(width: 48, height: 48))
         #expect(m.tileCellPadding == 2)
-        #expect(m.tileWidth == 52 && m.tileHeight == 52)
+        #expect(m.tileWidth == 52)
         #expect(AeroControlMetrics(iconSize: 96).tileWidth == 2 * m.tileWidth)
     }
 
@@ -26,6 +26,5 @@ struct AeroControlMetricsTests {
         #expect(abs(AeroControlMetrics(iconSize: 96).focusPlatePadding - 4.8) < 0.001)
         let m = AeroControlMetrics(iconSize: 48)
         #expect(m.focusPlateRect.width < m.tileWidth)              // tighter than the padded cell
-        #expect(m.focusPlateRadius > m.iconArtworkRadius)
     }
 }

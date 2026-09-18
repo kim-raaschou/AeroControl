@@ -143,8 +143,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-
-
     /// A dot in the theme's accent on its own background, so the list can be read at a glance
     /// instead of by name alone.
     private func swatch(for theme: AeroControlTheme) -> NSImage {
@@ -167,7 +165,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         guard let id = sender.representedObject as? String, let theme = AeroControlTheme.named(id) else { return }
         onSelectTheme(theme)
     }
-
 
     @objc private func quitFromMenu() {
         onQuit()

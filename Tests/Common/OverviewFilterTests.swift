@@ -161,6 +161,26 @@ struct FilterKeyActionTests {
     }
 }
 
+@Suite("FilterKey from a key code")
+struct FilterKeyCodeTests {
+    @Test("the keys the overview answers to, by macOS key code; Shift only matters to Tab", arguments: [
+        (53, false, nil, .escape),
+        (51, false, nil, .backspace),
+        (36, false, "\r", .enter),
+        (76, false, nil, .enter),                        // keypad Enter
+        (48, false, "\t", .next),
+        (48, true, "\t", .previous),                     // Shift-Tab
+        (124, false, nil, .next),                        // →
+        (123, false, nil, .previous),                    // ←
+        (0, false, "a", .character("a")),
+        (0, true, "A", .character("A")),                 // Shift types capitals, it does not modify
+        (126, false, "\u{F700}", nil),                   // ↑ is nobody's
+    ] as [(UInt16, Bool, String?, FilterKey?)])
+    func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {
+        #expect(FilterKey(keyCode: keyCode, shift: shift, characters: characters) == expected)
+    }
+}
+
 @Suite("FilterKey.typed")
 struct FilterKeyTypedTests {
 

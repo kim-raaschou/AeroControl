@@ -184,6 +184,24 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("keys go through the store: text narrows, Tab walks the ring, Enter hands back a pick")
+    func keysGoThroughTheStore() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+
+        #expect(store.handle(.character("T")) == .setQuery("T"))
+        store.filter = "Teams"
+        let second = store.filterMatches[1].window.windowId
+        #expect(store.handle(.next) == .select(1) && store.ringWindowId == second)
+        #expect(store.handle(.enter) == .focus(windowId: second))
+        // A keystroke puts the ring back on the first match: the list under it changed.
+        #expect(store.handle(.character("x")) == .setQuery("Teamsx") && store.selection == 0)
+        #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == store.model.focusedWindowId)
+        store.stop()
+    }
+
     // MARK: Actions
 
     @Test("typed inputs drive the store through the send() ingress")
