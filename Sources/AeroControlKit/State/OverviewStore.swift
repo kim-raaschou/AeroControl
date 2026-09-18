@@ -130,12 +130,18 @@ public class OverviewStore {
     /// and the ring starts on the window *after* the focused one, so Enter alone switches
     /// to the next instance — Cmd-` with pictures — and Tab walks on from there. Text, not
     /// bundle id, on purpose: the pill shows a query you can keep typing into.
-    public func filterToFocusedApp() {
-        guard let name = model.focusedAppName else { return }
+    ///
+    /// False, and the filter untouched, when there is nothing to choose between — one
+    /// window or none. The summon is a picker, and a picker with one option is a flash of
+    /// screen for nothing.
+    public func filterToFocusedApp() -> Bool {
+        guard let name = model.focusedAppName else { return false }
+        let matches = model.matching(name)
+        guard matches.count > 1,
+              let at = matches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) else { return false }
         filter = name
-        if let at = filterMatches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) {
-            selection = (at + 1) % filterMatches.count
-        }
+        selection = (at + 1) % matches.count
+        return true
     }
 
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and

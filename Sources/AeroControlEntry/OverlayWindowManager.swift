@@ -81,7 +81,8 @@ final class OverlayWindowManager {
     }
 
     /// What the overview opens showing: the whole map, or the map filtered to the app of the
-    /// focused window — the summon for "which of my three Arc windows".
+    /// focused window — the summon for "which of my three Arc windows". With one Arc window
+    /// there is nothing to pick, and nothing appears.
     enum Summon { case map, focusedApp }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
@@ -95,7 +96,10 @@ final class OverlayWindowManager {
             guard let self else { return }
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
-            if summon == .focusedApp { self.state.filterToFocusedApp() }
+            if summon == .focusedApp, !self.state.filterToFocusedApp() {
+                self.hide(restoreFocus: true)      // opening the URL activated us; give the keyboard back
+                return
+            }
             if self.state.previewsAvailable {
                 await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
                 guard self.requestedVisible else { return }

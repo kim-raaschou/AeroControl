@@ -25,7 +25,8 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   marks the first one, Tab moves it, Enter focuses it. See *Keyboard*.
 - **This app's windows**: a second summon, `open aerocontrol://app`, opens the overview
   already filtered to the app you are in — three Arc windows, nothing else — with the ring
-  on the next one, so Enter alone switches instance and Tab walks the rest.
+  on the next one, so Enter alone switches instance and Tab walks the rest. With a single
+  window nothing appears.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once when the overview opens (ScreenCaptureKit,

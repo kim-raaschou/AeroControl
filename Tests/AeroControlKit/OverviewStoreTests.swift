@@ -202,7 +202,7 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("the focused-app summon types the app name and puts the ring on the next instance")
+    @Test("the focused-app summon types the app name and puts the ring on the next instance; alone, it declines")
     func focusedAppSummon() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -210,15 +210,19 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        store.filterToFocusedApp()
+        #expect(store.filterToFocusedApp())
         #expect(store.filter == "Teams" && store.ringWindowId == 3)             // the one after the focused
         #expect(store.handle(.enter) == .focus(windowId: 3))
 
         store.filter = ""
+        runner.setState(windows: teams(1), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 1, workspace: "1")
+        await store.reload()
+        #expect(!store.filterToFocusedApp() && store.filter == "")               // one window: nothing to pick
+
         runner.setFocus(windowId: nil, workspace: nil)
         await store.reload()
-        store.filterToFocusedApp()
-        #expect(store.filter == "")                                               // nothing focused: the map
+        #expect(!store.filterToFocusedApp())                                      // nothing focused
         store.stop()
     }
 
