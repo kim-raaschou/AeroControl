@@ -114,7 +114,7 @@ grant to the **signing identity** — `script/sign-identity.sh` creates the stab
 
 ### Versioning
 
-AeroControl versions independently of AeroSpace (currently **v0.1.1**;
+AeroControl versions independently of AeroSpace (currently **v0.2.0**;
 `Packaging/Info.plist` holds `CFBundleShortVersionString` and the `v`-prefixed
 `ACReleaseVersion`; `script/release.sh` stamps both). The compatibility range is shown as a
 separate menu line. Bump AeroControl's version for AeroControl changes only.
