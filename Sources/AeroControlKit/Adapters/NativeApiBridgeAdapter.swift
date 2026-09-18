@@ -43,12 +43,14 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         }
         let wanted = Set(windowIds.map { CGWindowID($0) })
         var result: [Int: NSImage] = [:]
+        let started = ContinuousClock.now
         for window in content.windows where wanted.contains(window.windowID) {
             if let image = await Self.capture(window, maxSize: maxSize) {
                 result[Int(window.windowID)] = image
             }
         }
-        log.notice("previews: requested \(windowIds.count) matched \(content.windows.filter { wanted.contains($0.windowID) }.count) captured \(result.count)")
+        let ms = (ContinuousClock.now - started) / .milliseconds(1)
+        log.notice("previews: requested \(windowIds.count) captured \(result.count) in \(Int(ms)) ms")
         return result
     }
 
@@ -57,8 +59,11 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         guard frame.width > 1, frame.height > 1 else { return nil }
         let scale = min(maxSize.width / frame.width, maxSize.height / frame.height, 1)
         let config = SCStreamConfiguration()
-        config.width = max(1, Int(frame.width * scale * 2))    // 2x: keep previews crisp on Retina
-        config.height = max(1, Int(frame.height * scale * 2))
+        // `maxSize` is in pixels, not points: a tile is a few hundred pixels wide even when
+        // a filter has left three of them, and a 2x bitmap was resampled down eightfold on
+        // every frame while holding four times the memory.
+        config.width = max(1, Int(frame.width * scale))
+        config.height = max(1, Int(frame.height * scale))
         config.showsCursor = false
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let cgImage: CGImage

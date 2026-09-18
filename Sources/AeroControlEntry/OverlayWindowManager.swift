@@ -12,7 +12,8 @@ final class OverlayWindowManager {
     private var window: OverviewWindow?
     /// One-shot overview: starts hidden, summoned by the toggle.
     private var requestedVisible = false
-    /// Previews are captured to fit this box (points); tiles are drawn at 3:2 of the icon size.
+    /// Previews are captured to fit this box, in pixels: a tile is drawn at 3:2 of the icon
+    /// size and is at most a few hundred pixels wide, so this stays sharp at 2x.
     private static let previewCaptureSize = CGSize(width: 720, height: 480)
 
     init(

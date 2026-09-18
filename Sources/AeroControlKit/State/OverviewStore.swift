@@ -70,6 +70,7 @@ public class OverviewStore {
     /// Reads AeroSpace's whole state and applies it. The overview is a one shot: the host
     /// awaits this at summon, so what is drawn is what AeroSpace says right now.
     public func reload() async {
+        previewsAvailable = nativeSystem.canCapturePreviews
         do {
             let result = try await loadOverview(using: runner)
             apply(.loaded(result), animated: false)
@@ -108,10 +109,15 @@ public class OverviewStore {
     // MARK: Window previews
 
     /// True when macOS lets us capture windows; decides the tile layout up front so the
-    /// overview does not jump when the images arrive.
-    public var previewsAvailable: Bool { nativeSystem.canCapturePreviews }
+    /// overview does not jump when the images arrive. Read from the system once per reload
+    /// and after a request, not on access: every card asked on every body, and the answer
+    /// is a TCC round-trip.
+    public private(set) var previewsAvailable = false
 
-    public func requestPreviewAccess() { nativeSystem.requestPreviewAccess() }
+    public func requestPreviewAccess() {
+        nativeSystem.requestPreviewAccess()
+        previewsAvailable = nativeSystem.canCapturePreviews
+    }
 
     /// Capture previews for every window currently in the model and store them. Returns
     /// when they are in, so the caller can reveal the overview with the images already
@@ -275,7 +281,9 @@ public class OverviewStore {
             guard let result = try? await loadOverview(using: self.runner) else { return }
             guard generation == self.refreshGeneration else { return }
             self.error = nil
-            self.send(.loaded(result))
+            // Not animated: the grid animates its own reflow, and a second 0.1 s animation
+            // restarted on every event fought it.
+            self.apply(.loaded(result), animated: false)
         }
     }
 }
