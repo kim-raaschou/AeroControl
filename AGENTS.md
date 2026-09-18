@@ -44,7 +44,8 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   and commit `scripts/metrics-baseline.json` (with `scripts/metrics-history.json` and
   `docs/code-metrics.html`, which the script regenerates).
 - Default answer to "the metric went up" is **make it smaller**, not raise the baseline. Raise
-  it only as a deliberate, explained exception in its own commit.
+  it only as a deliberate, explained exception — in the commit that earns it (a feature and
+  its cost are one reviewable change), with the cost stated in the message.
 
 ### Rule: `Sources/Common/` stays UI-framework-free — enforced
 

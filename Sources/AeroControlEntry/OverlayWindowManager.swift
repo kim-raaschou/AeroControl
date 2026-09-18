@@ -80,9 +80,13 @@ final class OverlayWindowManager {
         return true
     }
 
+    /// What the overview opens showing: the whole map, or the map filtered to the app of the
+    /// focused window — the summon for "which of my three Arc windows".
+    enum Summon { case map, focusedApp }
+
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
     /// display changes and settings changes free of special cases.
-    private func show() {
+    private func show(_ summon: Summon) {
         requestedVisible = true
         // Read AeroSpace's whole state, then snapshot what it listed, then follow it live
         // for as long as the overview is up. Nothing is drawn until both are in: one
@@ -91,6 +95,7 @@ final class OverlayWindowManager {
             guard let self else { return }
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
+            if summon == .focusedApp { self.state.filterToFocusedApp() }
             if self.state.previewsAvailable {
                 await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
                 guard self.requestedVisible else { return }
@@ -121,8 +126,8 @@ final class OverlayWindowManager {
         window = nil
     }
 
-    func toggleVisibility() {
-        if requestedVisible { hide(restoreFocus: true) } else { show() }
+    func toggleVisibility(_ summon: Summon = .map) {
+        if requestedVisible { hide(restoreFocus: true) } else { show(summon) }
     }
 
     func selectTheme(_ theme: AeroControlTheme) {

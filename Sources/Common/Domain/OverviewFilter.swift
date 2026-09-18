@@ -47,6 +47,12 @@ public extension OverviewModel {
         }
     }
 
+    /// The app name of the focused window, nil when nothing is focused. Typed into the
+    /// filter, it is the "every window of the app I am in" query.
+    var focusedAppName: String? {
+        workspaces.lazy.flatMap(\.windows).first { $0.windowId == focusedWindowId }?.appName
+    }
+
     /// The grid a query draws: every workspace holding one of `matches`, carrying only those
     /// windows, in AeroSpace's order. Empty when nothing matched, where the caller draws the
     /// full grid instead — the screen must never go dark with no way to read out of it.

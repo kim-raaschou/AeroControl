@@ -82,6 +82,19 @@ struct OverviewMatchingTests {
     }
 }
 
+@Suite("focusedAppName")
+struct FocusedAppNameTests {
+    @Test("the focused window's app, or nil when nothing is focused; typed, it lists that app's windows")
+    func focusedApp() {
+        var focused = model
+        focused.focusedWindowId = 2
+        #expect(focused.focusedAppName == "Teams")
+        #expect(ids(focused.focusedAppName!, in: focused) == [1, 2])
+        focused.focusedWindowId = 99
+        #expect(focused.focusedAppName == nil)
+    }
+}
+
 @Suite("the filtered grid")
 struct FilteredWorkspacesTests {
     private func grid(_ query: String) -> [(String, [Int])] {

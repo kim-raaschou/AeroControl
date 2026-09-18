@@ -126,6 +126,18 @@ public class OverviewStore {
         previews = [:]
     }
 
+    /// The "other windows of this app" summon: the query is the focused window's app name,
+    /// and the ring starts on the window *after* the focused one, so Enter alone switches
+    /// to the next instance — Cmd-` with pictures — and Tab walks on from there. Text, not
+    /// bundle id, on purpose: the pill shows a query you can keep typing into.
+    public func filterToFocusedApp() {
+        guard let name = model.focusedAppName else { return }
+        filter = name
+        if let at = filterMatches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) {
+            selection = (at + 1) % filterMatches.count
+        }
+    }
+
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and
     /// the ring are the store's — and the caller learns what became of it: `.none` is not
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the

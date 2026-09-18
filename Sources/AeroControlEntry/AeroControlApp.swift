@@ -103,6 +103,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    /// `open aerocontrol://app`: the overview opens filtered to the focused window's app —
+    /// every window of the app you are in and nothing else. A URL reaches the running
+    /// instance the way a reopen does, without a second process; any other URL is a plain
+    /// toggle.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        overlayManager.toggleVisibility(urls.contains { $0.host() == "app" } ? .focusedApp : .map)
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         performTeardown()
     }
