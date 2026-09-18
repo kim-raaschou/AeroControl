@@ -115,11 +115,11 @@ struct PreviewMetricsTests {
 
         // Two matching workspaces: two cards of equal width, and no sliver for the empty ones,
         // because a filtered grid never holds a workspace with nothing in it.
-        let two = model.workspaces(holding: model.matching("o"))             // Code, Inbox, Safari
-        #expect(two.map(\.name) == ["1", "2", "3"])
+        // "do" starts a word in "Docs 8" and in "Code" — two workspaces, not three.
+        let two = model.workspaces(holding: model.matching("do"))
+        #expect(two.map(\.name) == ["3"])
         let split = AeroControlLayout.cardRows(windowCounts: two.map { $0.windows.count }, available: available)
-        #expect(split.map(\.count) == [3])
-        #expect(Set(split[0].map(\.size.width)).count == 1)
+        #expect(split.map(\.count) == [1])
         #expect(split[0].allSatisfy { $0.size.width > AeroControlLayout.emptyCardWidth })
     }
 

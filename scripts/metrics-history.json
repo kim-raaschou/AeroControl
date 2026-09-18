@@ -322,5 +322,14 @@
     "complexity": 472,
     "prodComplexity": 311,
     "files": 39
+  },
+  {
+    "timestamp": "2026-09-18T10:12:41+02:00",
+    "commit": "3ab4958",
+    "subject": "A filtered row keeps only the height its pictures can use",
+    "code": 3639,
+    "complexity": 548,
+    "prodComplexity": 347,
+    "files": 42
   }
 ]

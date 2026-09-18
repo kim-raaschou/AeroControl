@@ -1,27 +1,48 @@
 import Foundation
 
 private extension String {
-    /// Case- and diacritic-insensitive containment with the locale named explicitly. The
-    /// locale-aware fold is a trap here: in a Turkish one "I" folds to "ı", so "Inbox" stops
-    /// matching "i" — and a test in the host's locale would never see it.
-    func foldedContains(_ needle: String) -> Bool {
-        range(of: needle, options: [.caseInsensitive, .diacriticInsensitive], range: nil, locale: nil) != nil
+    /// True when every word of the query begins some word here, case- and diacritic-insensitively.
+    ///
+    /// Word-anchored rather than anywhere in the string: a mid-word hit is the surprising
+    /// kind, and the collapse is only trustworthy if you can see why each survivor survived.
+    /// Anchored to the *word* and not the string because "Microsoft Teams" does not start
+    /// with "teams", and that is the case the filter exists for. A word is a run of letters
+    /// and digits, so `.` and `-` split: "toml" finds aerospace.toml and "938" finds BECT-938.
+    ///
+    /// The locale is named explicitly. The locale-aware fold is a trap: in a Turkish one "I"
+    /// folds to "ı", so "Inbox" stops matching "i" — and a test in the host's locale would
+    /// never see it.
+    func hasWordsStarting(with needles: [Substring]) -> Bool {
+        let words = split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        // Every typed word must start some word here, in any order — so "cafe mun" finds
+        // "Café Münster" and "lars teams" finds a chat window whichever way round you type it.
+        return needles.allSatisfy { needle in
+            words.contains { word in
+                word.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive, .anchored],
+                           range: nil, locale: nil) != nil
+            }
+        }
     }
 }
 
 public extension OverviewModel {
-    /// Windows whose title or app name contains `query`, case- and diacritic-insensitively,
-    /// each with the workspace it lives on. Title matches come first: part of a meeting name
-    /// means that window, not the three other windows of the same app. Within each group
-    /// AeroSpace's own order stands. An empty query matches nothing: the filter is off, not
-    /// "everything".
+    /// Below this the query has not said anything yet, and collapsing the whole map on one
+    /// keystroke is violent for no gain.
+    static var minQueryLength: Int { 2 }
+
+    /// Windows with a word starting with `query` in their title or app name, each with the
+    /// workspace it lives on. Title matches come first: part of a meeting name means that
+    /// window, not the three other windows of the same app. Within each group AeroSpace's own
+    /// order stands. A query shorter than `minQueryLength` matches nothing: the filter is not
+    /// on yet, which is not the same as matching everything.
     func matching(_ query: String) -> [ParsedWindow] {
         let needle = query.trimmingCharacters(in: .whitespaces)
-        guard !needle.isEmpty else { return [] }
+        guard needle.count >= Self.minQueryLength else { return [] }
+        let needles = needle.split(separator: " ")
         let scored = workspaces.flatMap { workspace in
             workspace.windows.compactMap { window -> (match: ParsedWindow, byTitle: Bool)? in
-                let byTitle = window.title.foldedContains(needle)
-                guard byTitle || window.appName.foldedContains(needle) else { return nil }
+                let byTitle = window.title.hasWordsStarting(with: needles)
+                guard byTitle || window.appName.hasWordsStarting(with: needles) else { return nil }
                 return (ParsedWindow(window: window, workspace: workspace.name), byTitle)
             }
         }

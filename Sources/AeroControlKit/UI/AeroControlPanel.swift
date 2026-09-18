@@ -42,7 +42,7 @@ public struct AeroControlPanel: View {
             } else {
                 grid(matches)
             }
-            AeroControlFilterPill(query: state.filter, matchCount: matches.count)
+            AeroControlFilterPill(query: state.filter, matchCount: matches.count, isFiltering: state.isFiltering)
         }
         .fixedSize()
         .environment(state)

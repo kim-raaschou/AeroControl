@@ -27,7 +27,38 @@ struct OverviewMatchingTests {
     @Test("an app name matches, in AeroSpace's own order")
     func matchesAppName() {
         #expect(ids("Teams") == [1, 2])
-        #expect(ids("e") == [1, 3, 4, 2])      // every name or title holds an "e"; titles first
+        #expect(ids("saf") == [4])             // the app name, not the title
+    }
+
+    @Test("a word anywhere in the string can start the match, not just the first")
+    func matchesAnyWordStart() {
+        let teams = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: [window(1, "Microsoft Teams", "Chat | Lars | Microsoft Teams")]),
+        ])
+        #expect(teams.matching("teams").map(\.window.windowId) == [1])   // second word
+        #expect(teams.matching("lars").map(\.window.windowId) == [1])    // between pipes
+    }
+
+    @Test("punctuation splits words, so a suffix or a number is reachable")
+    func punctuationSplitsWords() {
+        let mixed = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: [window(1, "Code", "aerospace.toml — .config"),
+                                               window(2, "Arc", "BECT-938: the tenant check")]),
+        ])
+        #expect(mixed.matching("toml").map(\.window.windowId) == [1])
+        #expect(mixed.matching("938").map(\.window.windowId) == [2])
+    }
+
+    @Test("a match starts a word: mid-word hits are the surprising kind and do not count")
+    func doesNotMatchMidWord() {
+        #expect(ids("eams").isEmpty)           // inside "Teams"
+        #expect(ids("tandup").isEmpty)         // inside "standup"
+    }
+
+    @Test("one character is not a query yet: the map stays standing")
+    func shortQueryMatchesNothing() {
+        #expect(ids("t").isEmpty)
+        #expect(ids("te") == [1, 2])
     }
 
     @Test("a title matches, which is the point: two windows of the same app")
@@ -49,10 +80,10 @@ struct OverviewMatchingTests {
         let mail = OverviewModel(workspaces: [
             WorkspaceInfo(name: "1", windows: [window(1, "Mail", "Inbox")]),
         ])
-        #expect(mail.matching("i").map(\.window.windowId) == [1])
+        #expect(mail.matching("in").map(\.window.windowId) == [1])
         // The same fold in a Turkish locale, where "I" is the dotless ı's capital: what a
         // localized predicate does on a Turkish Mac, and what no test in another locale sees.
-        #expect("Inbox".range(of: "i", options: [.caseInsensitive, .diacriticInsensitive],
+        #expect("Inbox".range(of: "in", options: [.caseInsensitive, .diacriticInsensitive, .anchored],
                               range: nil, locale: Locale(identifier: "tr_TR")) == nil)
     }
 
@@ -67,6 +98,7 @@ struct OverviewMatchingTests {
         #expect(ids("").isEmpty)
         #expect(ids("   ").isEmpty)
     }
+
 
     @Test("a match carries the workspace it lives on")
     func carriesWorkspace() {
@@ -92,15 +124,14 @@ struct FilteredWorkspacesTests {
         #expect(teams.map(\.0) == ["1"])                 // workspace 2 holds no Teams window
         #expect(teams.map(\.1) == [[1, 2]])
 
-        let all = grid("a")                              // every window matches: the whole map
-        #expect(all.map(\.0) == ["1", "2"])
-        #expect(all.map(\.1) == [[1, 2], [3, 4]])
+        let wide = grid("c")                             // below the threshold: nothing yet
+        #expect(wide.isEmpty)
     }
 
     @Test("cards keep AeroSpace's order, whatever order the matches came back in")
     func keepsGridOrder() {
-        // "e" ranks the title matches first (1, 3, 4, then 2); the grid is still 1 then 2.
-        #expect(grid("e").map(\.1) == [[1, 2], [3, 4]])
+        // "ch" ranks Chat's title match first, but the grid is still AeroSpace's order.
+        #expect(grid("ch").map(\.1) == [[2]])
     }
 
     @Test("no match is no grid: the caller draws the whole map rather than an empty screen")
@@ -115,7 +146,7 @@ struct FilterOrdinalsTests {
 
     @Test("the first nine matches are numbered in match order — what ⌘1…⌘9 picks")
     func numbersTheFirstNine() {
-        #expect(filterOrdinals(matches: model.matching("e")) == [1: 1, 3: 2, 4: 3, 2: 4])
+        #expect(filterOrdinals(matches: model.matching("te")) == [1: 1, 2: 2])
         #expect(filterOrdinals(matches: model.matching("zzz")).isEmpty)
     }
 

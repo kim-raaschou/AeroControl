@@ -1,4 +1,5 @@
 import SwiftUI
+import Common
 
 /// What the user has typed, over the grid the query is drawing. The grid is the answer; the
 /// pill only says the keystrokes are arriving, and — when nothing matched and the full grid
@@ -6,11 +7,14 @@ import SwiftUI
 struct AeroControlFilterPill: View {
     let query: String
     let matchCount: Int
+    /// One typed letter is not a miss — the map is simply still standing.
+    let isFiltering: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
+
 
     var body: some View {
         if !query.isEmpty { pill }
@@ -24,7 +28,7 @@ struct AeroControlFilterPill: View {
         return HStack(spacing: 8) {
             Text(query)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-            if matchCount == 0 {
+            if matchCount == 0, isFiltering {
                 Text("no match")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .opacity(0.75)

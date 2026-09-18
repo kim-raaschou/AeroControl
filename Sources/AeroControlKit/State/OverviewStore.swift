@@ -25,6 +25,13 @@ public class OverviewStore {
 
     /// Every window the query picks out, best first. The grid, the pill and ⌘1…⌘9 all read
     /// this one list, so what is numbered on screen is what the keystroke focuses.
+    /// Whether the query has said enough to filter. One typed letter has not: the map stays
+    /// standing, and nothing that only belongs to a result — captions, the miss message —
+    /// should appear yet.
+    public var isFiltering: Bool {
+        filter.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength
+    }
+
     public var filterMatches: [ParsedWindow] { model.matching(filter) }
 
     private let inbox: AsyncStream<OverviewInput>

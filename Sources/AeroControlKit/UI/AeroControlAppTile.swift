@@ -26,7 +26,7 @@ struct AeroControlAppTile: View {
     /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
     /// in the tooltip, which costs a second of holding the mouse still.
     private var showsTitle: Bool {
-        !state.filter.isEmpty && !window.title.isEmpty && tileSize.height >= Self.minTitledTileHeight
+        state.isFiltering && !window.title.isEmpty && tileSize.height >= Self.minTitledTileHeight
     }
 
     /// Below this the title would take more of the cell than the picture it labels.
