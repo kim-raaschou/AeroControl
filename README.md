@@ -23,7 +23,7 @@ All AeroSpace calls run over the AeroSpace Unix socket path (subscribe, list, fo
   name has a word starting with what you typed — `te` finds Teams, `toml` finds
   `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
   marks the first one, Tab moves it, Enter focuses it. See *Keyboard*.
-- **This app's windows**: a second summon, `open aerocontrol://app`, opens the overview
+- **This app's windows**: a second summon, `open aerocontrol://windows`, opens the overview
   already filtered to the app you are in — three Arc windows, nothing else — with the ring
   on the next one, so Enter alone switches instance and Tab walks the rest. With a single
   window nothing appears.
@@ -83,11 +83,11 @@ Two summons, two URLs. Both reach the running instance through Launch Services �
 process, no signal — and start it when it is not running:
 
 ```toml
-cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://map']   # every workspace
-cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://app']   # the focused app's windows
+cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://workspaces']   # every workspace
+cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://windows']      # the focused app's windows
 ```
 
-`aerocontrol://app` shows only the windows of the app you are in, ring on the next one; with a
+`aerocontrol://windows` shows only the windows of the app you are in, ring on the next one; with a
 single window nothing appears. Either URL closes the overview when it is already up.
 
 `open -a AeroControl` toggles the map too (a reopen event), and is the one command that works

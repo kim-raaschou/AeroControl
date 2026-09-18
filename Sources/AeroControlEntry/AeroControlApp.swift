@@ -103,12 +103,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// `open aerocontrol://app`: the overview opens filtered to the focused window's app —
-    /// every window of the app you are in and nothing else. `aerocontrol://map`, or any other
+    /// `open aerocontrol://windows`: the overview opens filtered to the focused window's app —
+    /// every window of the app you are in and nothing else. `aerocontrol://workspaces`, or any other
     /// URL, toggles the map. A URL reaches the running instance the way a reopen does,
     /// without a second process — and unlike a reopen it can carry a word.
     func application(_ application: NSApplication, open urls: [URL]) {
-        overlayManager.toggleVisibility(urls.contains { $0.host() == "app" } ? .focusedApp : .map)
+        overlayManager.toggleVisibility(urls.contains { $0.host() == "windows" } ? .focusedApp : .map)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
