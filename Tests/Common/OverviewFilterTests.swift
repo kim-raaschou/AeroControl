@@ -154,6 +154,32 @@ struct FilterKeyActionTests {
         #expect(two.selected(5)?.window.windowId == two[1].window.windowId)
     }
 
+    @Test("↑/↓ move a tile row: same column, next row; off the card, the same column on the next card", arguments: [
+        (0, true, 3),        // ws 1 is 3 wide: down from the first is the one below it
+        (3, true, 6),        // last row of ws 1, column 0: down lands on ws 2's first
+        (5, true, 7),        // column 2, but ws 2 is 2 wide: clamped to its last column
+        (6, true, 0),        // off the last card: round to the first
+        (4, false, 1),       // up within the card
+        (7, false, 4),       // up out of ws 2, column 1: ws 1's last row, column 1
+        (0, false, 6),       // up off the first card: the last card's last row
+    ])
+    func rows(from: Int, down: Bool, expected: Int) {
+        let eight = OverviewModel(workspaces: [
+            WorkspaceInfo(name: "1", windows: (1...6).map { window($0, "Teams") }),
+            WorkspaceInfo(name: "2", windows: (7...8).map { window($0, "Teams") }),
+        ]).matching("Teams")
+        #expect(eight.neighbor(of: from, columns: ["1": 3, "2": 2], down: down) == expected)
+    }
+
+    @Test("a card nobody reported is one column wide, and one match has nowhere to go")
+    func rowsDefaults() {
+        #expect(two.neighbor(of: 0, columns: [:], down: true) == 1)
+        #expect(two.neighbor(of: 1, columns: [:], down: true) == 0)                 // wraps within the only card
+        #expect(model.matching("standup").neighbor(of: 0, columns: [:], down: true) == nil)
+        #expect(action("Teams", .down) == .select(1))
+        #expect(action("zzz", .up, matches: []) == .none)
+    }
+
     @Test("Tab and the arrows walk the matches and wrap at both ends")
     func walks() {
         #expect(action("Teams", .next) == .select(1))
@@ -187,7 +213,9 @@ struct FilterKeyCodeTests {
         (123, false, nil, .previous),                    // ←
         (0, false, "a", .character("a")),
         (0, true, "A", .character("A")),                 // Shift types capitals, it does not modify
-        (126, false, "\u{F700}", nil),                   // ↑ is nobody's
+        (126, false, "\u{F700}", .up),                   // ↑ — a private-use scalar, never text
+        (125, false, "\u{F701}", .down),
+        (122, false, "\u{F704}", nil),                   // F1 is nobody's
     ] as [(UInt16, Bool, String?, FilterKey?)])
     func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {
         #expect(FilterKey(keyCode: keyCode, shift: shift, characters: characters) == expected)

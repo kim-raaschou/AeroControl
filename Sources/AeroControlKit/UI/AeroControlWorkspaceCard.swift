@@ -134,6 +134,7 @@ struct AeroControlWorkspaceCard: View {
             ForEach(windows, id: \.windowId) { window in tile(window, metrics: metrics) }
         }
         .animation(.easeInOut(duration: 0.15), value: windows)
+        .onChange(of: columns, initial: true) { _, columns in state.columns[workspace.name] = columns }   // for ↑/↓
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {

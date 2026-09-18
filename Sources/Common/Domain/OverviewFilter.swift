@@ -75,6 +75,33 @@ public extension Array where Element == ParsedWindow {
     func selected(_ selection: Int) -> ParsedWindow? {
         isEmpty ? nil : self[Swift.min(selection, count - 1)]
     }
+
+    /// The match one tile row below (or above) `selection` in the grid the panel drew: the
+    /// same column, next row of the same card; off the card's last row, the same column on
+    /// the next card's first row; off the last card, round to the first. `columns` is what
+    /// each card was drawn with, by workspace — the card reports it, because only the panel
+    /// knows a card's width. An unreported card is one column wide.
+    func neighbor(of selection: Int, columns: [String: Int], down: Bool) -> Int? {
+        guard count > 1 else { return nil }
+        let at = Swift.min(selection, count - 1)
+        // Matches come grouped by workspace, so each card is a contiguous range.
+        let cards = indices.reduce(into: [Range<Int>]()) { cards, i in
+            if let last = cards.last, self[last.lowerBound].workspace == self[i].workspace {
+                cards[cards.count - 1] = last.lowerBound..<(i + 1)
+            } else {
+                cards.append(i..<(i + 1))
+            }
+        }
+        let card = cards.firstIndex { $0.contains(at) } ?? 0
+        let cols = Swift.max(1, columns[self[at].workspace] ?? 1)
+        let step = at + (down ? cols : -cols)
+        if cards[card].contains(step) { return step }
+        let col = (at - cards[card].lowerBound) % cols
+        let next = cards[(card + (down ? 1 : cards.count - 1)) % cards.count]
+        let nextCols = Swift.max(1, columns[self[next.lowerBound].workspace] ?? 1)
+        let row = down ? 0 : (next.count - 1) / nextCols
+        return next.lowerBound + Swift.min(row * nextCols + Swift.min(col, nextCols - 1), next.count - 1)
+    }
 }
 
 /// A keystroke the overview understands, named by what it means rather than by its key code:
@@ -87,6 +114,9 @@ public enum FilterKey: Equatable, Sendable {
     /// Tab and →, Shift-Tab and ←: the ring moves to the next or previous match.
     case next
     case previous
+    /// ↑ and ↓: the ring moves a tile row, in the grid as drawn.
+    case up
+    case down
 }
 
 public extension FilterKey {
@@ -101,6 +131,8 @@ public extension FilterKey {
         case 48: self = shift ? .previous : .next
         case 124: self = .next
         case 123: self = .previous
+        case 126: self = .up
+        case 125: self = .down
         default:
             guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key
@@ -127,10 +159,12 @@ public enum FilterKeyAction: Equatable, Sendable {
 }
 
 /// What a keystroke does to the filter. `selection` is the match the ring is on: Enter picks
-/// it, Tab and the arrows move it and wrap at either end. Everything typed is text, digits
+/// it, Tab and ←/→ move it along the list and wrap, ↑/↓ move it a tile row in the grid the
+/// panel drew (`columns` per card, see `neighbor`). Everything typed is text, digits
 /// included — "code2" narrows the query and nothing else. A match is picked by typing until
 /// it is first, or by walking the ring to it; there is nothing on screen to read a key off.
-public func filterKeyAction(query: String, matches: [ParsedWindow], selection: Int, key: FilterKey) -> FilterKeyAction {
+public func filterKeyAction(query: String, matches: [ParsedWindow], selection: Int,
+                            columns: [String: Int] = [:], key: FilterKey) -> FilterKeyAction {
     switch key {
     case .escape:
         return query.isEmpty ? .none : .setQuery("")
@@ -142,6 +176,8 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], selection: I
         guard matches.count > 1 else { return .none }
         let at = Swift.min(selection, matches.count - 1)
         return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
+    case .up, .down:
+        return matches.neighbor(of: selection, columns: columns, down: key == .down).map { .select($0) } ?? .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):

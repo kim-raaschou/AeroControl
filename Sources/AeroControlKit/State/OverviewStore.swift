@@ -27,6 +27,10 @@ public class OverviewStore {
     /// the first on every keystroke: the list under it has just changed.
     public var selection: Int = 0
 
+    /// How many columns each card was drawn with, by workspace — what ↑/↓ need. The card
+    /// reports it as it lays out; only the panel knows a card's width.
+    public var columns: [String: Int] = [:]
+
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
     /// and Enter all read this one list, so what the ring is on is what Enter focuses. Derived
     /// when the query or the model changes, not on read: every tile asks for the ring, and a
@@ -149,7 +153,7 @@ public class OverviewStore {
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
-        let action = filterKeyAction(query: filter, matches: filterMatches, selection: selection, key: key)
+        let action = filterKeyAction(query: filter, matches: filterMatches, selection: selection, columns: columns, key: key)
         switch action {
         case .setQuery(let query): filter = query
         case .select(let index): selection = index

@@ -99,6 +99,7 @@ before the URL scheme is registered — Launch Services learns it on the app's f
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
 | Tab, → / Shift-Tab, ← | move the focus ring to the next / previous match |
+| ↑ / ↓ | move the focus ring a tile row up / down, across cards |
 | Enter | focus the window under the ring |
 | Escape | clear the query; on an empty query, dismiss |
 | ⌘W | dismiss |
