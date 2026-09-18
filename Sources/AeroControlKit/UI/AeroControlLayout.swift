@@ -112,6 +112,25 @@ public enum AeroControlLayout {
         return windowCounts.map { $0 > 0 ? each : emptyWidth }
     }
 
+    /// The height a row of cards can actually use. A snapshot cannot grow past its own aspect
+    /// ratio, so a card taller than its tiles need is height it will only ever leave empty —
+    /// with two matches on a wide screen that is most of the screen.
+    ///
+    /// Only the filtered grid uses this. The map keeps its even rows on purpose: a workspace
+    /// must sit in the same place whatever it happens to contain, and a height that followed
+    /// the content would move it every time a window opened.
+    public static func usedHeight(windowCounts: [Int], widths: [CGFloat], aspects: [CGFloat],
+                                  available: CGFloat) -> CGFloat {
+        let needed = windowCounts.indices.map { i -> CGFloat in
+            guard windowCounts[i] > 0 else { return 0 }
+            let card = CGSize(width: widths[i], height: available)
+            let (columns, tile) = tileGrid(windowCount: windowCounts[i], card: card, aspect: aspects[i])
+            let rows = CGFloat(Int((Double(windowCounts[i]) / Double(columns)).rounded(.up)))
+            return rows * tile * aspects[i] + (rows - 1) * tileSpacing + cardPadding + badgeLane
+        }
+        return min(available, needed.max() ?? available)
+    }
+
     /// A grid whose tiles are within this fraction of the largest possible is "as good":
     /// among those the one with more rows wins, so four windows in a wide card become
     /// 2x2 rather than a strip of four with empty space below (Mission Control style).

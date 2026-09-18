@@ -32,7 +32,9 @@ public struct AeroControlPanel: View {
     public var body: some View {
         // Once per pass: matching is a scan of every window's name and title, on every keystroke.
         let matches = state.filterMatches
-        return Group {
+        // The pill sits under the result rather than over it: the cards are only as tall as
+        // their pictures need now, so an overlay at the bottom would land on a card edge.
+        return VStack(spacing: 18) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
@@ -40,8 +42,8 @@ public struct AeroControlPanel: View {
             } else {
                 grid(matches)
             }
+            AeroControlFilterPill(query: state.filter, matchCount: matches.count)
         }
-        .overlay(alignment: .bottom) { AeroControlFilterPill(query: state.filter, matchCount: matches.count) }
         .fixedSize()
         .environment(state)
         .environment(\.aeroDismiss, onDismiss)
@@ -68,11 +70,13 @@ public struct AeroControlPanel: View {
         let all = filtered.isEmpty ? workspaces : filtered
         let ordinals = filtered.isEmpty ? [:] : filterOrdinals(matches: matches)
         let namesMonitors = self.namesMonitors
-        let rows = AeroControlLayout.cardRows(
+        var rows = AeroControlLayout.cardRows(
             windowCounts: all.map { $0.windows.count },
             emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
             available: usable
         )
+        // A result may be shorter than the screen; a map may not.
+        if !filtered.isEmpty { rows = rows.map { shrunk($0, of: all) } }
         return VStack(spacing: AeroControlLayout.cardGap) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 HStack(spacing: AeroControlLayout.cardGap) {
@@ -93,6 +97,19 @@ public struct AeroControlPanel: View {
         // The unfiltered grid is a map and never moves; the filtered one is a result, and
         // re-flows as the query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15), value: all)
+    }
+
+    /// Gives a row back the height its tiles cannot use, so two matches are two big pictures
+    /// rather than two small ones adrift in a full-height card.
+    private func shrunk(_ row: [AeroControlLayout.Cell], of all: [WorkspaceInfo]) -> [AeroControlLayout.Cell] {
+        guard let height = row.first?.size.height else { return row }
+        let used = AeroControlLayout.usedHeight(
+            windowCounts: row.map { all[$0.index].windows.count },
+            widths: row.map(\.size.width),
+            aspects: row.map { gridAspect(all[$0.index]) },
+            available: height
+        )
+        return row.map { AeroControlLayout.Cell(index: $0.index, size: CGSize(width: $0.size.width, height: used)) }
     }
 
     private func errorView(_ message: String) -> some View {
