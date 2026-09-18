@@ -10,8 +10,13 @@
 #               Omit it for a dry run that only builds the artifact + cask locally.
 #
 # Set ARCHS to override the build architecture(s):
-#   ARCHS="arm64"            (default — macOS 26 is Apple-Silicon-era)
-#   ARCHS="arm64 x86_64"     (universal, like AeroSpace)
+#   ARCHS="arm64"            (default — macOS 26 is Apple-Silicon-era; the cask says so)
+#   ARCHS="arm64 x86_64"     (universal, like AeroSpace; the cask's arch line is dropped)
+#
+# The bundle is signed with the same self-signed "AeroControl Dev" certificate the Makefile
+# uses (README, "Build from source"). macOS ties the Screen Recording grant to the signing
+# identity, and an ad-hoc signature is a new identity every build — so an ad-hoc release
+# would revoke the grant on every `brew upgrade`. SIGN_IDENTITY=- forces ad-hoc anyway.
 #
 # The release artifact and generated cask land in ./.release/ (git-ignored).
 # The cask is meant to be committed to the separate tap repo
@@ -49,6 +54,14 @@ ARCHS="${ARCHS:-arm64}"
 ARCH_FLAGS=""
 for a in $ARCHS; do ARCH_FLAGS="$ARCH_FLAGS --arch $a"; done
 
+SIGN_IDENTITY="${SIGN_IDENTITY:-AeroControl Dev}"
+if [ "$SIGN_IDENTITY" != "-" ] && ! security find-identity -p codesigning 2>/dev/null | grep -q "\"${SIGN_IDENTITY}\""; then
+    echo "error: code-signing identity \"${SIGN_IDENTITY}\" is not in the keychain." >&2
+    echo "       Create it (README, \"Build from source\") — or SIGN_IDENTITY=- for an ad-hoc build" >&2
+    echo "       that will lose users their Screen Recording grant on upgrade." >&2
+    exit 1
+fi
+
 echo "==> Releasing ${APP_NAME} ${VERSION} (tag ${TAG}, short ${SHORT_VERSION}, archs: ${ARCHS})"
 
 echo "==> Running tests"
@@ -67,7 +80,7 @@ if [ ! -x "$BIN_PATH" ]; then
     exit 1
 fi
 
-echo "==> Assembling ${APP_NAME}.app (version-stamped, ad-hoc signed)"
+echo "==> Assembling ${APP_NAME}.app (version-stamped, signed as \"${SIGN_IDENTITY}\")"
 rm -rf "$STAGE_DIR"
 mkdir -p "${APP_BUNDLE}/Contents/MacOS"
 cp "$BIN_PATH" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
@@ -82,7 +95,7 @@ cp Packaging/Info.plist "${APP_BUNDLE}/Contents/Info.plist"
     "${APP_BUNDLE}/Contents/Info.plist" 2>/dev/null \
     || /usr/libexec/PlistBuddy -c "Add :ACReleaseVersion string ${TAG}" \
     "${APP_BUNDLE}/Contents/Info.plist"
-codesign --force --sign - "$APP_BUNDLE"
+codesign --force --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 
 echo "==> Zipping ${ZIP_PATH}"
 rm -f "$ZIP_PATH"
@@ -92,7 +105,9 @@ SHA256="$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')"
 echo "==> sha256: ${SHA256}"
 
 echo "==> Generating cask ${CASK_PATH}"
-sed -e "s|__VERSION__|${VERSION}|g" -e "s|__SHA256__|${SHA256}|g" \
+# A single-arch build declares its arch; a universal one has no arch line.
+if [ "$ARCHS" = "arm64" ]; then ARCH_SED='s|__ARCH__|:arm64|'; else ARCH_SED='/__ARCH__/d'; fi
+sed -e "s|__VERSION__|${VERSION}|g" -e "s|__SHA256__|${SHA256}|g" -e "$ARCH_SED" \
     Packaging/aerocontrol.rb.tmpl > "$CASK_PATH"
 
 if [ "$PUBLISH" -eq 1 ]; then

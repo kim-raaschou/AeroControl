@@ -78,7 +78,7 @@ cd AeroControl
 make install
 ```
 
-`make install` builds and installs `AeroControl.app` to `/Applications`.
+`make install` builds `AeroControl.app`, installs it to `/Applications` and relaunches it.
 
 macOS ties the Screen Recording grant to the app's code signature, and an ad-hoc
 signature changes with every build. To keep the grant across rebuilds, create a
@@ -146,7 +146,9 @@ make clean
 make release VERSION=0.1.2 PUBLISH=1
 ```
 
-Builds a version-stamped, ad-hoc signed bundle, publishes the GitHub Release, and writes
+Builds a version-stamped bundle signed with the `AeroControl Dev` certificate (see *Build
+from source*; the script refuses to run without it, because an ad-hoc release would revoke
+every user's Screen Recording grant on upgrade), publishes the GitHub Release, and writes
 a Homebrew cask to `.release/aerocontrol.rb`. Copy that cask to
 [kim-raaschou/homebrew-tap](https://github.com/kim-raaschou/homebrew-tap) as
 `Casks/aerocontrol.rb` and commit it. Omit `PUBLISH=1` for a dry run.

@@ -36,11 +36,14 @@ bundle: build
 	@echo "Signed with identity: $(SIGN_IDENTITY)"
 	@echo "Built $(APP_BUNDLE)"
 
-# Build the bundle and install it to /Applications.
+# Build the bundle, install it to /Applications and relaunch it. Copying over a running
+# agent leaves the old process — and the summon keybind — on the stale build.
 install: bundle
+	-pkill -x "$(APP_NAME)"; while pgrep -qx "$(APP_NAME)"; do sleep 0.2; done
 	rm -rf "$(INSTALL_DIR)/$(APP_NAME).app"
 	cp -R "$(APP_BUNDLE)" "$(INSTALL_DIR)/$(APP_NAME).app"
-	@echo "Installed $(INSTALL_DIR)/$(APP_NAME).app"
+	open "$(INSTALL_DIR)/$(APP_NAME).app"
+	@echo "Installed and relaunched $(INSTALL_DIR)/$(APP_NAME).app"
 
 clean:
 	swift package clean
