@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// What the user has typed and how much it found, over the grid the query is drawing. The
-/// grid itself is the answer; the pill only says that the keystrokes are arriving, and —
-/// when nothing matched and the full grid is back — why nothing moved.
+/// What the user has typed, over the grid the query is drawing. The grid is the answer; the
+/// pill only says the keystrokes are arriving, and — when nothing matched and the full grid
+/// is back — why nothing moved.
 struct AeroControlFilterPill: View {
     let query: String
     let matchCount: Int
@@ -17,15 +17,18 @@ struct AeroControlFilterPill: View {
     }
 
     /// Shown for any non-empty query, a miss included: otherwise one letter too many looks
-    /// like the keystrokes stopped arriving.
+    /// like the keystrokes stopped arriving. A miss has to say so — the grid it leaves
+    /// standing is the same grid a query matching everything would leave.
     private var pill: some View {
         let single = matchCount == 1
         return HStack(spacing: 8) {
             Text(query)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-            Text(matchCount == 0 ? "no match" : "\(matchCount)")
-                .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
-                .opacity(0.75)
+            if matchCount == 0 {
+                Text("no match")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .opacity(0.75)
+            }
         }
         .foregroundStyle(single ? palette.focusedBadgeText : palette.badgeText)
         .padding(.horizontal, 14)
