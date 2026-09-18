@@ -34,7 +34,7 @@ public struct AeroControlPanel: View {
         let matches = state.filterMatches
         // The pill sits under the result rather than over it: the cards are only as tall as
         // their pictures need now, so an overlay at the bottom would land on a card edge.
-        return VStack(spacing: 18) {
+        return VStack(spacing: Self.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
@@ -49,10 +49,16 @@ public struct AeroControlPanel: View {
         .environment(\.aeroDismiss, onDismiss)
     }
 
+    /// The grid's box. The query's lane comes out of it rather than being added to it: added,
+    /// the panel grew taller than the screen the moment anything was typed, and the lane was
+    /// clipped off the bottom.
     private var usable: CGSize {
         CGSize(width: availableWidth * AeroControlLayout.usableScreenFraction,
-               height: availableHeight * AeroControlLayout.usableScreenFraction)
+               height: availableHeight * AeroControlLayout.usableScreenFraction
+                   - AeroControlFilterPill.laneHeight - Self.pillGap)
     }
+
+    private static let pillGap: CGFloat = 18
 
     /// Cell aspect of a grid card: the median of its snapshots', the screen's when none.
     private func gridAspect(_ workspace: WorkspaceInfo) -> CGFloat {

@@ -25,9 +25,13 @@ struct AeroControlAppTile: View {
     /// their title and their picture, and the title is the one that is provably current —
     /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
     /// in the tooltip, which costs a second of holding the mouse still.
-    private var showsTitle: Bool {
-        state.isFiltering && !window.title.isEmpty && tileSize.height >= Self.minTitledTileHeight
+    private var showsCaption: Bool {
+        state.isFiltering && tileSize.height >= Self.minTitledTileHeight
     }
+
+    /// A window without a title is still a window; name it by its app rather than leave the
+    /// caption blank and the keycap homeless.
+    private var captionText: String { window.title.isEmpty ? window.appName : window.title }
 
     /// Below this the title would take more of the cell than the picture it labels.
     private static let minTitledTileHeight: CGFloat = 130
@@ -74,7 +78,7 @@ struct AeroControlAppTile: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            if showsTitle { titleLabel }
+            if showsCaption { caption }
             artwork
         }
             .frame(width: tileSize.width, height: tileSize.height)
@@ -93,13 +97,16 @@ struct AeroControlAppTile: View {
     /// The window's own name, centred over the picture it belongs to. Never truncated: a
     /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
     /// two windows apart sits at the front of the title where an ellipsis would land.
-    private var titleLabel: some View {
-        Text(window.title)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(palette.badgeText)
-            .lineLimit(2)
-            .multilineTextAlignment(.center)
-            .frame(height: Self.titleLane)
+    private var caption: some View {
+        HStack(spacing: 7) {
+            ordinalBadge
+            Text(captionText)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(palette.badgeText)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+        }
+        .frame(height: Self.titleLane)
     }
 
     /// The picture, its focus ring and the two corner affordances — everything the title is
@@ -108,7 +115,6 @@ struct AeroControlAppTile: View {
         tile
             .frame(width: contentSize.width, height: artworkHeight)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
-            .overlay(alignment: .topLeading) { ordinalBadge }
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)
     }
@@ -117,12 +123,13 @@ struct AeroControlAppTile: View {
     /// the picture. Most snapshots are limited by the cell's width and leave height to spare,
     /// so the usual case costs the picture nothing at all.
     private var artworkHeight: CGFloat {
-        guard showsTitle else { return contentSize.height }
+        guard showsCaption else { return contentSize.height }
         return min(contentSize.height, tileSize.height - Self.titleLane - 6)
     }
 
     /// The keystroke that picks this match, drawn as a keycap so it reads as a shortcut and
-    /// not as the round accent circle a workspace badge is.
+    /// not as the round accent circle a workspace badge is. It sits beside the name rather
+    /// than on the picture: a corner badge covers the content it is meant to help you read.
     @ViewBuilder private var ordinalBadge: some View {
         if let ordinal {
             Text("\(ordinal)")

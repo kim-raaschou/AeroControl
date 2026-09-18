@@ -16,9 +16,19 @@ struct AeroControlFilterPill: View {
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
 
+    /// The lane is there whether or not anything has been typed. The pill is the only thing
+    /// on screen that appears mid-gesture, and a view that appears must not move the grid it
+    /// is describing.
     var body: some View {
-        if !query.isEmpty { pill }
+        Group {
+            if query.isEmpty { Color.clear } else { pill }
+        }
+        .frame(height: Self.laneHeight)
     }
+
+    /// Tall enough for the capsule and its shadow. The panel subtracts it from the grid's
+    /// height, so the lane is reserved rather than added and typing never moves a card.
+    static let laneHeight: CGFloat = 38
 
     /// Shown for any non-empty query, a miss included: otherwise one letter too many looks
     /// like the keystrokes stopped arriving. A miss has to say so — the grid it leaves
@@ -39,6 +49,5 @@ struct AeroControlFilterPill: View {
         .padding(.vertical, 7)
         .background(single ? palette.accent : palette.badgeFill, in: Capsule())
         .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
-        .padding(.bottom, 10)
     }
 }
