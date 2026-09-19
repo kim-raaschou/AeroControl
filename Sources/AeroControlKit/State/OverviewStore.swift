@@ -4,7 +4,19 @@ import Common
 
 @MainActor @Observable
 public class OverviewStore {
-    public private(set) var model = OverviewModel() { didSet { filterMatches = model.matching(filter); cursor = model.cursor(for: filterMatches) } }
+    public private(set) var model = OverviewModel() {
+        didSet {
+            filterMatches = model.matching(filter)
+            cursor = model.cursor(for: filterMatches)
+            for window in model.workspaces.lazy.flatMap(\.windows) where icons[window.bundleId] == nil {
+                icons[window.bundleId] = nativeSystem.appIcon(bundleId: window.bundleId)
+            }
+        }
+    }
+
+    /// App icons by bundle id, for the badge in a picture's corner: the one thing a picture
+    /// does not say about a window is which app it is. Loaded once per app, kept for good.
+    public private(set) var icons: [String: NSImage] = [:]
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge

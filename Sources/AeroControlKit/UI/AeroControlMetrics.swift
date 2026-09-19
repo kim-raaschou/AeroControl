@@ -23,6 +23,9 @@ public struct AeroControlMetrics: Equatable, Sendable {
     /// The tile and its padding: what one grid cell takes.
     public var tileWidth: CGFloat { tileSize.width + 2 * tileCellPadding }
 
+    /// The app icon in a picture's corner: small enough never to compete with the picture.
+    public var badgeSize: CGFloat { min(28, max(16, tileSize.width * 0.06)) }
+
     /// `imageSize` scaled to sit inside `box` with its own aspect ratio; the box itself when
     /// the image has no size to speak of.
     public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize {

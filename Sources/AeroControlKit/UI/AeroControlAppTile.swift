@@ -18,10 +18,10 @@ struct AeroControlAppTile: View {
 
     @State private var isHovering = false
 
-    /// The window's snapshot, fitted into the cell with its own aspect ratio; until it lands
-    /// — or for good, without Screen Recording — the tile is a plate in the snapshot's shape.
-    /// No icons: they said nothing a picture and a title do not, and flashed in whenever a
-    /// picture went away.
+    /// The window's snapshot, fitted into the cell with its own aspect ratio, with the app's
+    /// icon badged in its corner; until it lands — or for good, without Screen Recording —
+    /// the tile is a plate in the snapshot's shape, and nothing else: an icon standing in for
+    /// a picture flashed in whenever a picture went away.
     private var preview: NSImage? { state.previews[window.windowId] }
     /// The ring: AeroSpace's focus on the map, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
@@ -129,6 +129,16 @@ struct AeroControlAppTile: View {
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
+                .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
+                    if let icon = state.icons[window.bundleId] {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: metrics.badgeSize, height: metrics.badgeSize)
+                            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                            .padding(metrics.badgeSize * 0.2)
+                    }
+                }
                 .transition(.opacity)
         } else {
             RoundedRectangle(cornerRadius: plateRadius, style: .continuous)

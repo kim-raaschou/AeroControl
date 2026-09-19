@@ -2,6 +2,9 @@ import AppKit
 
 @MainActor
 public protocol NativeApiBridge: Sendable {
+    /// The app's icon, for the badge in a picture's corner.
+    func appIcon(bundleId: String) -> NSImage
+
     /// Whether window previews can be captured (macOS Screen Recording permission).
     var canCapturePreviews: Bool { get }
     /// Asks macOS for Screen Recording access; the system shows its own prompt/settings.
