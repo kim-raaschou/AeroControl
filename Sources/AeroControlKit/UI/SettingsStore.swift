@@ -25,7 +25,9 @@ public final class SettingsStore {
     public private(set) var backdropOpacity: Double
     public private(set) var animationSpeed: AnimationSpeed
 
-    public static let backdropOpacities: [Double] = [1, 0.8, 0.6, 0.4, 0.2]
+    /// Below ~70 % the desktop competes with the cards; the useful range is narrow, so the
+    /// steps are small.
+    public static let backdropOpacities: [Double] = [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
 
     private let defaults: UserDefaults
     private let themeKey = "settings.theme"
