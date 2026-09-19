@@ -57,6 +57,8 @@ struct AeroControlWorkspaceCard: View {
             isDropTarget = false
             switch item {
             case .window(let id):
+                // Dropped back where it came from: nothing to move, like a card on itself.
+                guard !workspace.windows.contains(where: { $0.windowId == id }) else { return false }
                 run(.moveWindow(windowId: id, toWorkspace: workspace.name))
             case .workspace(let source):
                 guard source != workspace.name else { return false }
