@@ -160,14 +160,17 @@ struct OverviewRoot: View {
 
     var body: some View {
         ZStack {
-            BackdropBlur()
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
-            theme.palette(for: colorScheme).backdrop
-                .opacity(backdropOpacity)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            // The whole backdrop — blur and tint — takes the opacity, so turning it down lets
+            // the desktop through while the cards stay crisp. Tint alone made no visible
+            // difference: the blur frosts everything regardless.
+            ZStack {
+                BackdropBlur()
+                theme.palette(for: colorScheme).backdrop
+            }
+            .opacity(backdropOpacity)
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onDismiss)
             panel
         }
         .environment(\.aeroTheme, theme)
