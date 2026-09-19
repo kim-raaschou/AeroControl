@@ -65,7 +65,7 @@ fi
 echo "==> Releasing ${APP_NAME} ${VERSION} (tag ${TAG}, short ${SHORT_VERSION}, archs: ${ARCHS})"
 
 echo "==> Running tests"
-swift test
+make test
 
 echo "==> Building release binary"
 # shellcheck disable=SC2086
