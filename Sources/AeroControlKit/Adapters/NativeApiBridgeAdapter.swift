@@ -2,7 +2,7 @@ import AppKit
 import Common
 import OSLog
 // ScreenCaptureKit's types are not marked Sendable yet; they are only ever touched on the main actor here.
-@preconcurrency import ScreenCaptureKit
+@unsafe @preconcurrency import ScreenCaptureKit
 
 private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "previews")
 
@@ -118,7 +118,8 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
                 // SCWindow is not Sendable; it is handed to exactly one child task and never
                 // touched here again, which is the move the checker cannot see.
                 nonisolated(unsafe) let window = window
-                group.addTask { await Self.capture(window, maxSize: maxSize).map { (Int(window.windowID), $0) } }
+                let id = Int(window.windowID)
+                group.addTask { unsafe await Self.capture(window, maxSize: maxSize).map { (id, $0) } }
                 inFlight += 1
             }
             for await landed in group {
