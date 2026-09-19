@@ -118,7 +118,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
                 // SCWindow is not Sendable; it is handed to exactly one child task and never
                 // touched here again, which is the move the checker cannot see.
                 nonisolated(unsafe) let window = window
-                let id = Int(window.windowID)
+                let id = unsafe Int(window.windowID)
                 group.addTask { unsafe await Self.capture(window, maxSize: maxSize).map { (id, $0) } }
                 inFlight += 1
             }
