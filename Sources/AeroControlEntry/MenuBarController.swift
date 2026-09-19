@@ -5,8 +5,8 @@ import AeroControlKit
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let onQuit: () -> Void
     private let onToggle: () -> Void
-    private let onSelectTheme: (AeroControlTheme) -> Void
-    private let onReset: () -> Void
+    /// Any setting changed: the host redraws the overview with it.
+    private let onSettingsChanged: () -> Void
     private let previewsAvailable: () -> Bool
     private let onRequestPreviewAccess: () -> Void
     private let settings: SettingsStore
@@ -16,16 +16,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(
         onQuit: @escaping () -> Void,
         onToggle: @escaping () -> Void,
-        onSelectTheme: @escaping (AeroControlTheme) -> Void,
-        onReset: @escaping () -> Void,
+        onSettingsChanged: @escaping () -> Void,
         previewsAvailable: @escaping () -> Bool,
         onRequestPreviewAccess: @escaping () -> Void,
         settings: SettingsStore
     ) {
         self.onQuit = onQuit
         self.onToggle = onToggle
-        self.onSelectTheme = onSelectTheme
-        self.onReset = onReset
+        self.onSettingsChanged = onSettingsChanged
         self.previewsAvailable = previewsAvailable
         self.onRequestPreviewAccess = onRequestPreviewAccess
         self.settings = settings
@@ -96,6 +94,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
+        menu.addItem(choice("Backdrop", current: "\(Int(settings.backdropOpacity * 100)) %",
+                            options: SettingsStore.backdropOpacities.map { ("\(Int($0 * 100)) %", $0) },
+                            isCurrent: { ($0 as? Double) == settings.backdropOpacity },
+                            action: #selector(setBackdropFromMenu(_:))))
+        menu.addItem(choice("Animation", current: settings.animationSpeed.name,
+                            options: AnimationSpeed.allCases.map { ($0.name, $0.rawValue) },
+                            isCurrent: { ($0 as? String) == settings.animationSpeed.rawValue },
+                            action: #selector(setAnimationFromMenu(_:))))
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
@@ -125,6 +131,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let quitItem = NSMenuItem(title: "Quit AeroControl", action: #selector(quitFromMenu), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    /// A submenu of exclusive choices; the parent names the current one, like the theme item.
+    private func choice(_ label: String, current: String, options: [(name: String, value: Any)],
+                        isCurrent: (Any) -> Bool, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for option in options {
+            let entry = NSMenuItem(title: option.name, action: action, keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = option.value
+            entry.state = isCurrent(option.value) ? .on : .off
+            submenu.addItem(entry)
+        }
+        item.submenu = submenu
+        return item
     }
 
     private func sectionHeader(_ title: String) -> NSMenuItem {
@@ -163,7 +185,20 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func setThemeFromMenu(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String, let theme = AeroControlTheme.named(id) else { return }
-        onSelectTheme(theme)
+        settings.setTheme(theme)
+        onSettingsChanged()
+    }
+
+    @objc private func setBackdropFromMenu(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? Double else { return }
+        settings.setBackdropOpacity(value)
+        onSettingsChanged()
+    }
+
+    @objc private func setAnimationFromMenu(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let speed = AnimationSpeed(rawValue: raw) else { return }
+        settings.setAnimationSpeed(speed)
+        onSettingsChanged()
     }
 
     @objc private func quitFromMenu() {
@@ -176,6 +211,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func resetSettingsFromMenu() {
         settings.reset()
-        onReset()
+        onSettingsChanged()
     }
 }

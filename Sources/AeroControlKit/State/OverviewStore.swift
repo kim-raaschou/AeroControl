@@ -89,7 +89,7 @@ public class OverviewStore {
         previewsAvailable = nativeSystem.canCapturePreviews
         do {
             let result = try await loadOverview(using: runner)
-            apply(.loaded(result), animated: false)
+            apply(.loaded(result))
             error = nil
         } catch {
             self.error = "Load error: \(error.localizedDescription)"
@@ -235,18 +235,10 @@ public class OverviewStore {
         }
     }
 
-    private func apply(_ input: OverviewInput, animated: Bool = true) {
+    /// The grid animates its own reflow; the model changes in one step.
+    private func apply(_ input: OverviewInput) {
         let (newState, effects) = Common.updateOverview(model, input)
-        let focusChanged = newState.focusedWorkspace != model.focusedWorkspace
-        if newState != model {
-            if animated && !focusChanged {
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    model = newState
-                }
-            } else {
-                model = newState
-            }
-        }
+        if newState != model { model = newState }
         DispatchQueue.main.async { [self] in
             self.executeEffects(effects)
         }
@@ -304,9 +296,7 @@ public class OverviewStore {
             guard let result = try? await loadOverview(using: self.runner) else { return }
             guard generation == self.refreshGeneration else { return }
             self.error = nil
-            // Not animated: the grid animates its own reflow, and a second 0.1 s animation
-            // restarted on every event fought it.
-            self.apply(.loaded(result), animated: false)
+            self.apply(.loaded(result))
         }
     }
 }

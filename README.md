@@ -150,6 +150,10 @@ Use the menu-bar icon for all in-app configuration:
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
   looks the same whatever the system appearance is.
+- **Backdrop**: how much the overlay dims what is behind it — 100 % is the palette's own
+  tint, 20 % barely more than the blur.
+- **Animation**: Off, Fast, Normal or Slow. One scale on every motion — the reveal, the grid
+  reflowing under a query, a picture landing.
 - **Window Previews**: grant Screen Recording when it is missing.
 - **Reset settings** and **Quit**.
 

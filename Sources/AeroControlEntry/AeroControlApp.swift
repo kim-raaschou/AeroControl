@@ -48,8 +48,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(
             onQuit: { [weak self] in self?.quit() },
             onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
-            onSelectTheme: { [weak self] theme in self?.overlayManager.selectTheme(theme) },
-            onReset: { [weak self] in self?.overlayManager.rebuild() },
+            onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
             previewsAvailable: { [weak self] in self?.state.previewsAvailable ?? false },
             onRequestPreviewAccess: { [weak self] in self?.state.requestPreviewAccess() },
             settings: settings

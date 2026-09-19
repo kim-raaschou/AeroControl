@@ -17,6 +17,9 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
 /// click on the backdrop dismisses; the app stays an accessory (non-activating panel).
 class OverviewWindow: NSPanel {
     private static let fadeDuration: TimeInterval = 0.2
+    /// The animation scale from settings; 0 reveals and dismisses in one frame.
+    var motion: Double = 1
+    private var fade: TimeInterval { Self.fadeDuration * motion }
     private let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
     /// Cmd-Q: quit the app whose window the mouse is over, Mission-Control style.
@@ -112,7 +115,7 @@ class OverviewWindow: NSPanel {
         makeKeyAndOrderFront(nil)
         log.notice("overview: revealed, isKeyWindow=\(self.isKeyWindow), appActive=\(NSApp.isActive)")
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.fadeDuration
+            context.duration = fade
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             animator().alphaValue = 1
         }
@@ -122,7 +125,7 @@ class OverviewWindow: NSPanel {
         guard isVisible else { return }
         isDismissing = true
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.fadeDuration
+            context.duration = fade
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             animator().alphaValue = 0
         } completionHandler: { [weak self] in
@@ -149,6 +152,8 @@ private extension FilterKey {
 struct OverviewRoot: View {
     let panel: AeroControlPanel
     let theme: AeroControlTheme
+    let backdropOpacity: Double
+    let motion: Double
     let onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -160,11 +165,13 @@ struct OverviewRoot: View {
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onDismiss)
             theme.palette(for: colorScheme).backdrop
+                .opacity(backdropOpacity)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             panel
         }
         .environment(\.aeroTheme, theme)
+        .environment(\.aeroMotion, motion)
     }
 }
 

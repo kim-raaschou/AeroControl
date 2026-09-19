@@ -19,6 +19,7 @@ struct AeroControlWorkspaceCard: View {
     @Environment(\.aeroDismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
+    @Environment(\.aeroMotion) private var motion
 
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
 
@@ -130,7 +131,7 @@ struct AeroControlWorkspaceCard: View {
         ) {
             ForEach(windows, id: \.windowId) { window in tile(window, metrics: metrics) }
         }
-        .animation(.easeInOut(duration: 0.15), value: windows)
+        .animation(.easeInOut(duration: 0.15 * motion), value: windows)
         .onChange(of: columns, initial: true) { _, columns in state.columns[workspace.name] = columns }   // for ↑/↓
     }
 

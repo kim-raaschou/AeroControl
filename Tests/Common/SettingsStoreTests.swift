@@ -25,6 +25,22 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).theme == .system)
     }
 
+    @Test func backdropAndAnimationPersistAndReset() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.backdropOpacity == 1 && store.animationSpeed == .normal)
+        store.setBackdropOpacity(0.6)
+        store.setAnimationSpeed(.off)
+        #expect(SettingsStore(defaults: defaults).backdropOpacity == 0.6)
+        #expect(SettingsStore(defaults: defaults).animationSpeed == .off)
+        store.setBackdropOpacity(7)                                   // clamped, never blinding
+        #expect(store.backdropOpacity == 1)
+        store.reset()
+        #expect(SettingsStore(defaults: defaults).backdropOpacity == 1)
+        #expect(SettingsStore(defaults: defaults).animationSpeed == .normal)
+        #expect(AnimationSpeed.off.scale == 0 && AnimationSpeed.slow.scale == 2)
+    }
+
     @Test func resetClearsTheKeysOfOlderVersions() {
         let defaults = makeDefaults()
         defaults.set(true, forKey: "settings.multiScreenEnabled")

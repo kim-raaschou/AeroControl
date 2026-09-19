@@ -141,6 +141,19 @@ public extension EnvironmentValues {
     }
 }
 
+/// The animation scale from settings: every duration in the overview is multiplied by it,
+/// so 0 is instant and 2 is leisurely.
+private struct AeroMotionKey: EnvironmentKey {
+    static var defaultValue: Double { 1 }
+}
+
+public extension EnvironmentValues {
+    var aeroMotion: Double {
+        get { self[AeroMotionKey.self] }
+        set { self[AeroMotionKey.self] = newValue }
+    }
+}
+
 /// The host's "the one shot is over, hide the overview" callback. Lives in the environment
 /// because the views that fire it are the tiles and badges, three levels down.
 private struct AeroDismissKey: EnvironmentKey {

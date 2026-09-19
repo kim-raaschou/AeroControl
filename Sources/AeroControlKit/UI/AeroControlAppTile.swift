@@ -6,6 +6,7 @@ struct AeroControlAppTile: View {
     @Environment(\.aeroDismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
+    @Environment(\.aeroMotion) private var motion
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
@@ -115,7 +116,7 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
-            .animation(.easeOut(duration: 0.15), value: preview == nil)   // the picture fades into its place as it lands
+            .animation(.easeOut(duration: 0.15 * motion), value: preview == nil)   // the picture fades into its place as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .overlay(alignment: .topTrailing) { closeButton }
             .background(selectionPlate)

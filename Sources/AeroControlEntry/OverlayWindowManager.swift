@@ -139,20 +139,18 @@ final class OverlayWindowManager {
         if requestedVisible { hide(restoreFocus: true) } else { show(summon) }
     }
 
-    func selectTheme(_ theme: AeroControlTheme) {
-        settings.setTheme(theme)
-        rebuild()
-    }
-
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
         window.applyAppearance(settings.theme.enforcedAppearance)
+        window.motion = settings.animationSpeed.scale
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
         let root = OverviewRoot(
             panel: makePanel(availableSize: screen.frame.size),
             theme: settings.theme,
+            backdropOpacity: settings.backdropOpacity,
+            motion: settings.animationSpeed.scale,
             onDismiss: { [weak self] in self?.hide(restoreFocus: true) }
         )
         let hostingView = InteractiveHostingView(rootView: root)

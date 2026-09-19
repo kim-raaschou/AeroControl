@@ -5,6 +5,7 @@ import Common
 /// cards.
 public struct AeroControlPanel: View {
     @Bindable var state: OverviewStore
+    @Environment(\.aeroMotion) private var motion
     let availableWidth: CGFloat
     let availableHeight: CGFloat
     /// Called after an action that completes the "one shot" (focus a window or a
@@ -104,7 +105,7 @@ public struct AeroControlPanel: View {
         }
         // The unfiltered grid is a map and never moves; the filtered one is a result, and
         // re-flows as the query narrows. Animated, or every letter would snap.
-        .animation(.easeInOut(duration: 0.15), value: all)
+        .animation(.easeInOut(duration: 0.15 * motion), value: all)
         .onChange(of: cardRows, initial: true) { _, cardRows in state.cardRows = cardRows }   // for ↑/↓ across cards
     }
 
