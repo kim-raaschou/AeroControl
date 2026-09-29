@@ -121,15 +121,16 @@ struct AeroControlWorkspaceCard: View {
     }
 
     /// The windows as `TilePacker` lays them out — each at its own shape, one shared picture
-    /// height, rows spread evenly — centred in the card's inner box.
+    /// height, rows spread evenly — hung from the top of the card's inner box and centred
+    /// across it, as krn.overview hangs them: the badge is at the top, so the eye starts
+    /// there, and a row that follows its content leaves no room below anyway.
     private var grid: some View {
         let windows = workspace.windows
         let inner = innerSize
         let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
         let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner,
                                                  caption: filtering ? AeroControlLayout.captionLane : 0)
-        let origin = CGPoint(x: ((inner.width - min(inner.width, packed.width)) / 2).rounded(.down),
-                             y: ((inner.height - min(inner.height, packed.height)) / 2).rounded(.down))
+        let origin = CGPoint(x: ((inner.width - min(inner.width, packed.width)) / 2).rounded(.down), y: 0)
         let tileRows = packed.rows.map { $0.map { windows[$0].windowId } }
         return ZStack(alignment: .topLeading) {
             ForEach(Array(windows.enumerated()), id: \.element.windowId) { i, window in
