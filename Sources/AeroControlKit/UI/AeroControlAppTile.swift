@@ -25,6 +25,11 @@ struct AeroControlAppTile: View {
     private var preview: NSImage? { state.previews[window.windowId] }
     /// The ring: AeroSpace's focus on the map, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
+    /// The window you came from, while the ring is elsewhere: framed in the text colour so
+    /// "where I am" and "where I am going" are both on screen, and never at one place.
+    private var isOrigin: Bool { !isFocused && window.windowId == state.model.focusedWindowId }
+    /// An app hidden with ⌘H has its windows on no screen; the tile says so by fading.
+    private var isHidden: Bool { state.hiddenBundleIds.contains(window.bundleId) }
 
     /// While a filter is up the title is the point: two windows of one app are told apart by
     /// their title and their picture, and the title is the one that is provably current —
@@ -36,7 +41,7 @@ struct AeroControlAppTile: View {
 
     /// A window without a title is still a window; name it by its app rather than leave the
     /// caption blank.
-    private var captionText: String { window.title.isEmpty ? window.appName : window.title }
+    private var captionText: String { window.caption }
 
     /// A caption only earns its lane when the picture under it stays at least this tall;
     /// below that the label would be bigger than the thing it labels.
@@ -116,7 +121,9 @@ struct AeroControlAppTile: View {
             .frame(width: contentSize.width, height: contentSize.height)
             .animation(.easeOut(duration: 0.15 * motion), value: preview == nil)   // the picture fades into its place as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
+            .opacity(isHidden ? 0.45 : 1)
             .overlay(alignment: .topTrailing) { closeButton }
+            .overlay(alignment: .topLeading) { stateBadge }
             .background(selectionPlate)
     }
 
@@ -155,13 +162,30 @@ struct AeroControlAppTile: View {
     }
 
     @ViewBuilder private var selectionPlate: some View {
+        let size = plateSize
+        let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
         if isFocused {
-            let size = plateSize
-            let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
             shape
                 .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth)
                 .shadow(color: palette.accent.opacity(0.5), radius: 4)
                 .frame(width: size.width, height: size.height)
+        } else if isOrigin {
+            shape
+                .strokeBorder(palette.badgeText.opacity(0.7), lineWidth: 1.5)
+                .frame(width: size.width, height: size.height)
+        }
+    }
+
+    /// A native-fullscreen window wears the glyph macOS uses for it, so a picture that is
+    /// the whole screen is read as one.
+    @ViewBuilder private var stateBadge: some View {
+        if window.isFullscreen, preview != nil {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(palette.badgeText)
+                .padding(4)
+                .background(palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .padding(6)
         }
     }
 

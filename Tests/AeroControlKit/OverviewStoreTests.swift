@@ -244,6 +244,21 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("apps macOS has hidden are known after a load, so their tiles can be dimmed")
+    func hiddenApps() async {
+        let runner = ScriptRunner(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        bridge.hidden = ["com.app"]
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        #expect(store.hiddenBundleIds == ["com.app"])
+        bridge.hidden = []
+        await store.reload()
+        #expect(store.hiddenBundleIds.isEmpty)
+        store.stop()
+    }
+
     // MARK: Actions
 
     @Test("typed inputs drive the store through the send() ingress")

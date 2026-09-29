@@ -29,6 +29,9 @@ final class OverlayWindowManager {
             state: state,
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
+            screenRatios: Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map {
+                ($0.offset + 1, $0.element.frame.width / max(1, $0.element.frame.height))
+            }),
             onDismiss: { [weak self] in self?.hide(restoreFocus: false) }   // the action focused something
         )
     }

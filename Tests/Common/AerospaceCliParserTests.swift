@@ -47,6 +47,21 @@ struct ParseWindowsTests {
     }
 }
 
+@Suite("parseWindows — state")
+struct ParseWindowStateTests {
+    @Test("a window's fullscreen flag is read; a list without it decodes as not fullscreen")
+    func fullscreen() throws {
+        let json = """
+        [{"window-id": 1, "app-name": "Arc", "app-bundle-id": "company.thebrowser.Browser", "workspace": "1",
+          "window-parent-container-layout": "h_tiles", "window-is-fullscreen": true},
+         {"window-id": 2, "app-name": "Arc", "app-bundle-id": "company.thebrowser.Browser", "workspace": "1",
+          "window-parent-container-layout": "h_tiles"}]
+        """
+        let windows = try parseWindows(json: json).map(\.window)
+        #expect(windows.map(\.isFullscreen) == [true, false])
+    }
+}
+
 @Suite("parseWorkspaces")
 struct ParseWorkspacesTests {
     @Test("parses valid workspace JSON")
@@ -69,6 +84,18 @@ struct ParseWorkspacesTests {
     func emptyString() throws {
         let result = try parseWorkspaces(json: "")
         #expect(result.isEmpty)
+    }
+
+    @Test("the AppKit screen index is read, and a list without it decodes as 0")
+    func screenIndex() throws {
+        let json = """
+        [{"workspace": "1", "monitor-id": 1, "monitor-name": "Built-in", "monitor-appkit-nsscreen-screens-id": 1},
+         {"workspace": "2", "monitor-id": 2, "monitor-name": "BenQ", "monitor-appkit-nsscreen-screens-id": 2},
+         {"workspace": "3", "monitor-id": 1}]
+        """
+        #expect(try parseWorkspaces(json: json).map(\.screenIndex) == [1, 2, 0])
+        let built = buildOverviewResult(windows: [], workspaceMonitors: try parseWorkspaces(json: json))
+        #expect(built.workspaces.map(\.screenIndex) == [1, 2, 0])
     }
 
     @Test("tolerates string NULL-MONITOR-ID monitor-id")

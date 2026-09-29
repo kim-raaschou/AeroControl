@@ -14,6 +14,9 @@ public class OverviewStore {
         }
     }
 
+    /// Apps macOS has hidden, read with every load: their tiles are dimmed.
+    public private(set) var hiddenBundleIds: Set<String> = []
+
     /// App icons by bundle id, for the badge in a picture's corner: the one thing a picture
     /// does not say about a window is which app it is. Loaded once per app, kept for good.
     public private(set) var icons: [String: NSImage] = [:]
@@ -251,6 +254,7 @@ public class OverviewStore {
     private func apply(_ input: OverviewInput) {
         let (newState, effects) = Common.updateOverview(model, input)
         if newState != model { model = newState }
+        if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
         DispatchQueue.main.async { [self] in
             self.executeEffects(effects)
         }

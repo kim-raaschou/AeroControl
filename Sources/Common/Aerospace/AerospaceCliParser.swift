@@ -25,6 +25,8 @@ public struct DecodedWindow: Decodable, Equatable {
     public var windowTitle: String?
     public let workspace: String
     public let parentLayout: String
+    /// Optional so a list from an AeroSpace without the field still decodes.
+    public let windowIsFullscreen: Bool?
 
     /// Also the requested `--format`: `AerospaceCommand` builds the token list from these
     /// keys, so a field can never be asked for under one spelling and decoded under another.
@@ -35,6 +37,7 @@ public struct DecodedWindow: Decodable, Equatable {
         case windowTitle = "window-title"
         case workspace
         case parentLayout = "window-parent-container-layout"
+        case windowIsFullscreen = "window-is-fullscreen"
     }
 }
 
@@ -44,17 +47,21 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     /// Optional so a missing field never fails the whole load: an AeroSpace that does not
     /// emit it just leaves the display unnamed.
     public let monitorName: String?
+    /// 1-based into `NSScreen.screens`; 0 when absent.
+    @TolerantInt public var screenIndex: Int
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
         case monitorId = "monitor-id"
         case monitorName = "monitor-name"
+        case screenIndex = "monitor-appkit-nsscreen-screens-id"
     }
 
-    public init(workspace: String, monitorId: Int, monitorName: String? = nil) {
+    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0) {
         self.workspace = workspace
         self.monitorId = monitorId
         self.monitorName = monitorName
+        self.screenIndex = screenIndex
     }
 }
 
@@ -80,6 +87,7 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 appName: dw.appName,
                 bundleId: dw.appBundleId,
                 isFloating: dw.parentLayout == "floating",
+                isFullscreen: dw.windowIsFullscreen ?? false,
                 title: dw.windowTitle ?? ""
             ),
             workspace: dw.workspace
@@ -101,7 +109,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
             name: wm.workspace,
             windows: byWorkspace[wm.workspace]?.map(\.window) ?? [],
             monitorId: wm.monitorId,
-            monitorName: wm.monitorName ?? ""
+            monitorName: wm.monitorName ?? "",
+            screenIndex: wm.screenIndex
         )
     }
 

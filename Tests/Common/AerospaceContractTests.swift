@@ -12,7 +12,7 @@ struct AerospaceCommandArgvTests {
     func listWindows() {
         #expect(AerospaceCommand.listWindows() == [
             "list-windows", "--all", "--json", "--format",
-            "%{window-id} %{app-name} %{app-bundle-id} %{window-title} %{workspace} %{window-parent-container-layout}",
+            "%{window-id} %{app-name} %{app-bundle-id} %{window-title} %{workspace} %{window-parent-container-layout} %{window-is-fullscreen}",
         ])
     }
 
@@ -20,7 +20,7 @@ struct AerospaceCommandArgvTests {
     func listWorkspaces() {
         #expect(AerospaceCommand.listWorkspaces() == [
             "list-workspaces", "--monitor", "all", "--json", "--format",
-            "%{workspace} %{monitor-id} %{monitor-name}",
+            "%{workspace} %{monitor-id} %{monitor-name} %{monitor-appkit-nsscreen-screens-id}",
         ])
     }
 

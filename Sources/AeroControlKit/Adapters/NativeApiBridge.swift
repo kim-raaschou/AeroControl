@@ -4,6 +4,9 @@ import AppKit
 public protocol NativeApiBridge: Sendable {
     /// The app's icon, for the badge in a picture's corner.
     func appIcon(bundleId: String) -> NSImage
+    /// Bundle ids of the apps macOS has hidden (⌘H): their windows are on no screen, and
+    /// their tiles say so.
+    func hiddenBundleIds() -> Set<String>
 
     /// Whether window previews can be captured (macOS Screen Recording permission).
     var canCapturePreviews: Bool { get }
@@ -25,6 +28,7 @@ public protocol NativeApiBridge: Sendable {
 public extension NativeApiBridge {
     var canCapturePreviews: Bool { false }
     func requestPreviewAccess() {}
+    func hiddenBundleIds() -> Set<String> { [] }
     func prepareCapture() {}
     func previewSizes(windowIds: [Int]) async -> [Int: CGSize] { [:] }
     func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {}

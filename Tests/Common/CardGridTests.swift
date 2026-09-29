@@ -95,6 +95,20 @@ struct CardGridTests {
         #expect(abs(top - (1000 - bottom)) <= 1)
     }
 
+    @Test("a slot's own ratio drives its estimate: tall-shaped monitors fit taller pictures than wide ones")
+    func ownRatio() {
+        let box = CGSize(width: 1900, height: 1000)
+        let tall = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2, ratio: 1.0), CardGrid.Slot(weight: 1, count: 2, ratio: 1.0)],
+                                   in: box, options: generic)
+        let wide = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2, ratio: 2.4), CardGrid.Slot(weight: 1, count: 2, ratio: 2.4)],
+                                   in: box, options: generic)
+        #expect(tall.smallest > wide.smallest)
+        var wideByOption = generic
+        wideByOption.tileRatio = 2.4
+        let unshaped = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2), CardGrid.Slot(weight: 1, count: 2)], in: box, options: wideByOption)
+        #expect(unshaped.smallest == wide.smallest)                            // no ratio of its own: the options'
+    }
+
     @Test("nothing to lay out survives, and so does a zero-sized box")
     func degenerate() {
         #expect(CardGrid.layout([], in: CGSize(width: 100, height: 100), options: generic).cells.isEmpty)

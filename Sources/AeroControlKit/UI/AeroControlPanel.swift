@@ -8,6 +8,9 @@ public struct AeroControlPanel: View {
     @Environment(\.aeroMotion) private var motion
     let availableWidth: CGFloat
     let availableHeight: CGFloat
+    /// Width / height of every screen, by AeroSpace's 1-based AppKit index: a card takes the
+    /// shape of the screen its workspace is on.
+    let screenRatios: [Int: CGFloat]
     /// Called after an action that completes the "one shot" (focus a window or a
     /// workspace); the host hides the overview.
     let onDismiss: @MainActor () -> Void
@@ -16,11 +19,13 @@ public struct AeroControlPanel: View {
         state: OverviewStore,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
+        screenRatios: [Int: CGFloat] = [:],
         onDismiss: @escaping @MainActor () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
+        self.screenRatios = screenRatios
         self.onDismiss = onDismiss
     }
 
@@ -60,6 +65,11 @@ public struct AeroControlPanel: View {
 
     private static let pillGap: CGFloat = 18
 
+    /// The shape of the screen a workspace lives on; this screen's when AeroSpace did not say.
+    private func ratio(of workspace: WorkspaceInfo) -> CGFloat {
+        screenRatios[workspace.screenIndex] ?? AeroControlLayout.screenRatio(for: usable)
+    }
+
     /// The result takes over the grid's geometry: a query that found something draws only the
     /// workspaces that hold a match, each with only its matching windows, laid out by the same
     /// `CardGrid` as the full map — it weighs windows and knows nothing of workspaces. A query
@@ -75,7 +85,7 @@ public struct AeroControlPanel: View {
             emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
             caption: filtering ? AeroControlLayout.captionLane : 0)
         let layout = CardGrid.layout(all.map { CardGrid.Slot(weight: AeroControlLayout.weight(forCount: $0.windows.count),
-                                                              count: $0.windows.count) },
+                                                              count: $0.windows.count, ratio: ratio(of: $0)) },
                                      in: usable, options: options)
         let cardRows = layout.rows.map { $0.map { all[$0].name } }
         return ZStack(alignment: .topLeading) {
@@ -84,7 +94,7 @@ public struct AeroControlPanel: View {
                 AeroControlWorkspaceCard(
                     workspace: workspace,
                     monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                    fallbackRatio: AeroControlLayout.screenRatio(for: usable),
+                    fallbackRatio: ratio(of: workspace),
                     size: cell.frame.size,
                     filtering: filtering
                 )

@@ -14,7 +14,12 @@ public enum CardGrid {
         /// 0 for an empty workspace (a strip), 1 for an ordinary one, 2 for a crowded one.
         public let weight: CGFloat
         public let count: Int
-        public init(weight: CGFloat, count: Int) { self.weight = weight; self.count = count }
+        /// Width / height of this card's proxy tile — its own monitor's shape — when it is
+        /// not the one in the options.
+        public let ratio: CGFloat?
+        public init(weight: CGFloat, count: Int, ratio: CGFloat? = nil) {
+            self.weight = weight; self.count = count; self.ratio = ratio
+        }
     }
 
     public struct Options: Sendable {
@@ -118,7 +123,7 @@ public enum CardGrid {
         // What a card needs at picture height `s`, with uniform proxy tiles.
         func heightFor(_ slot: Slot, _ width: CGFloat, _ s: CGFloat) -> CGFloat {
             guard slot.count > 0 else { return shortH }
-            let tileWidth = s * o.tileRatio
+            let tileWidth = s * (slot.ratio ?? o.tileRatio)
             let perRow = max(1, Int(((width - o.cardPadding * 2 + o.tileGap) / (tileWidth + o.tileGap)).rounded(.down)))
             let need = CGFloat((slot.count + perRow - 1) / perRow)
             return need * (s + o.caption) + (need - 1) * o.tileGap + o.chrome
@@ -159,17 +164,18 @@ public enum CardGrid {
         var upright = false
         for i in 0..<n where slots[i].count > 0 {
             if cells[i].frame.height > cells[i].frame.width { upright = true }
-            smallest = min(smallest, fitHeight(slots[i].count, cells[i].frame.width - o.cardPadding * 2, cells[i].frame.height - o.chrome, o))
+            smallest = min(smallest, fitHeight(slots[i].count, cells[i].frame.width - o.cardPadding * 2, cells[i].frame.height - o.chrome,
+                                               slots[i].ratio ?? o.tileRatio, o))
         }
         return Layout(cells: cells, rows: rows, smallest: smallest == .infinity ? 0 : smallest, upright: upright)
     }
 
     /// The largest uniform picture height `count` proxy tiles get in `w` × `h`, over every row count.
-    private static func fitHeight(_ count: Int, _ w: CGFloat, _ h: CGFloat, _ o: Options) -> CGFloat {
+    private static func fitHeight(_ count: Int, _ w: CGFloat, _ h: CGFloat, _ ratio: CGFloat, _ o: Options) -> CGFloat {
         var best: CGFloat = 0
         for k in 1...count {
             let perRow = CGFloat((count + k - 1) / k)
-            let byW = (w - (perRow - 1) * o.tileGap) / perRow / o.tileRatio
+            let byW = (w - (perRow - 1) * o.tileGap) / perRow / ratio
             let byH = (h - CGFloat(k - 1) * o.tileGap) / CGFloat(k) - o.caption
             best = max(best, min(byW, byH))
         }
