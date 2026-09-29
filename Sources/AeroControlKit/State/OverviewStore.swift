@@ -53,9 +53,9 @@ public class OverviewStore {
     }
 
     /// What the panel drew, reported as it lays out, because only it knows a card's width
-    /// and place: how many tile columns each card has (by workspace) and which cards share
-    /// a row. What ↑/↓ steer by.
-    public var columns: [String: Int] = [:]
+    /// and place: each card's tile rows (window ids, by workspace) and which cards share a
+    /// row. What ↑/↓ steer by.
+    public var tileRows: [String: [[Int]]] = [:]
     public var cardRows: [[String]] = []
 
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
@@ -203,7 +203,7 @@ public class OverviewStore {
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
         let action = filterKeyAction(query: filter, matches: cursor, selection: selection ?? restingSelection,
-                                     columns: columns, cardRows: cardRows, key: key)
+                                     tileRows: tileRows, cardRows: cardRows, key: key)
         switch action {
         case .setQuery(let query): filter = query
         case .select(let index): selection = index

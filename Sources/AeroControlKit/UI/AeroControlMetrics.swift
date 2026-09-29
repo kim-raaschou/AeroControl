@@ -1,27 +1,11 @@
 import CoreGraphics
 
-/// The sizes of one tile: a window snapshot cell, shaped like the screen its window is on.
+/// The sizes of one tile, as `TilePacker` placed it.
 public struct AeroControlMetrics: Equatable, Sendable {
-    /// The drawn tile, before cell padding.
+    /// The drawn tile: picture plus caption lane, when there is one.
     public let tileSize: CGSize
-    /// Room around the tile inside its grid cell, so neighbours never touch.
-    public let tileCellPadding: CGFloat
 
-    /// Height/width of a cell when nothing better is known; 2:3 is the neutral default.
-    public static let defaultAspect: CGFloat = 2.0 / 3.0
-    /// Padding as a share of the tile's width, so it scales with the grid: 2 pt on a 144 pt tile.
-    private static let paddingFraction: CGFloat = 2.0 / 144.0
-
-    /// Metrics whose padded tile (`tileWidth`) is exactly `cellWidth`, so a grid of such
-    /// cells fills the card's inner width without overflowing it. `aspect` is height/width.
-    public static func fitting(cellWidth: CGFloat, aspect: CGFloat = defaultAspect) -> AeroControlMetrics {
-        let width = cellWidth / (1 + 2 * paddingFraction)
-        return AeroControlMetrics(tileSize: CGSize(width: width, height: width * aspect),
-                                  tileCellPadding: width * paddingFraction)
-    }
-
-    /// The tile and its padding: what one grid cell takes.
-    public var tileWidth: CGFloat { tileSize.width + 2 * tileCellPadding }
+    public init(tileSize: CGSize) { self.tileSize = tileSize }
 
     /// The app icon in a picture's corner: small enough never to compete with the picture.
     public var badgeSize: CGFloat { min(28, max(16, tileSize.width * 0.06)) }

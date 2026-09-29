@@ -196,7 +196,7 @@ struct OverviewStoreTests {
         let second = store.filterMatches[1].window.windowId
         #expect(store.handle(.next) == .select(1) && store.ringWindowId == second)
         #expect(store.handle(.enter) == .focus(windowId: second))
-        store.columns["1"] = 1                                                   // what the card reports as it lays out
+        store.tileRows["1"] = [[1], [2]]                                         // what the card reports as it lays out
         #expect(store.handle(.down) == .select(0))                               // one column, from the last: round to the first
         // A keystroke puts the ring back on the first match: the list under it changed.
         #expect(store.handle(.character("x")) == .setQuery("Teamsx") && store.selection == nil)

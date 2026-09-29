@@ -87,35 +87,41 @@ public extension Array where Element == ParsedWindow {
     /// same column, next row of the same card. Off the card, the next *row of cards*
     /// (wrapping), in it the card nearest this one's column that holds any of these
     /// windows, and in that card the same tile column on its first (or last) row. The
-    /// panel reports what it drew — `columns` per card by workspace, `cardRows` as rows of
-    /// workspace names — because only it knows a card's width and place; unreported, a
-    /// card is one column wide and all cards form one row.
-    func neighbor(of selection: Int, columns: [String: Int], cardRows: [[String]], down: Bool) -> Int? {
+    /// panel reports what it drew — `tileRows` per card by workspace, `cardRows` as rows of
+    /// workspace names — because only it knows a card's shape and place; unreported, a card
+    /// stacks its tiles one per row and all cards form one row.
+    func neighbor(of selection: Int, tileRows: [String: [[Int]]], cardRows: [[String]], down: Bool) -> Int? {
         guard count > 1 else { return nil }
         let at = Swift.min(selection, count - 1)
         let here = self[at].workspace
-        let cols = Swift.max(1, columns[here] ?? 1)
-        let card = indices.filter { self[$0].workspace == here }      // contiguous: grouped by workspace
-        let step = at + (down ? cols : -cols)
-        if card.contains(step) { return step }
-        let rows = cardRows.contains { $0.contains(here) }
+        let id = self[at].window.windowId
+        // A card's tile rows as drawn, kept to the windows walked here.
+        func rowsOf(_ workspace: String) -> [[Int]] {
+            let ids = filter { $0.workspace == workspace }.map(\.window.windowId)
+            let drawn = (tileRows[workspace] ?? []).map { $0.filter(ids.contains) }.filter { !$0.isEmpty }
+            return drawn.isEmpty ? ids.map { [$0] } : drawn
+        }
+        func index(of windowId: Int) -> Int { firstIndex { $0.window.windowId == windowId } ?? at }
+        let rows = rowsOf(here)
+        guard let row = rows.firstIndex(where: { $0.contains(id) }), let col = rows[row].firstIndex(of: id) else { return nil }
+        let next = row + (down ? 1 : -1)
+        if rows.indices.contains(next) { return index(of: rows[next][Swift.min(col, rows[next].count - 1)]) }
+        // Off the card: the same tile column in `target`, on the row it is entered from.
+        func landing(in target: String) -> Int {
+            let rows = rowsOf(target)
+            let entered = down ? rows[0] : rows[rows.count - 1]
+            return index(of: entered[Swift.min(col, entered.count - 1)])
+        }
+        let cards = cardRows.contains { $0.contains(here) }
             ? cardRows
             : [reduce(into: [String]()) { if !$0.contains($1.workspace) { $0.append($1.workspace) } }]
-        let rowAt = rows.firstIndex { $0.contains(here) }!
-        let colAt = rows[rowAt].firstIndex(of: here)!
-        // The same tile column in `target`, on the row it is entered from.
-        func landing(in target: String) -> Int {
-            let range = indices.filter { self[$0].workspace == target }
-            let targetCols = Swift.max(1, columns[target] ?? 1)
-            let col = Swift.min((at - card[0]) % cols, targetCols - 1)
-            let rowStart = down ? 0 : ((range.count - 1) / targetCols) * targetCols
-            return range[Swift.min(rowStart + col, range.count - 1)]
-        }
+        let rowAt = cards.firstIndex { $0.contains(here) }!
+        let colAt = cards[rowAt].firstIndex(of: here)!
         // Rows of cards to try, nearest first in the direction of travel, this one last;
         // in each, the other cards nearest this one's column. Only this card left: wrap in it.
-        for offset in 1...rows.count {
-            let row = rows[(rowAt + (down ? offset : rows.count - offset)) % rows.count]
-            let nearest = row.enumerated().sorted { abs($0.offset - colAt) < abs($1.offset - colAt) }.map(\.element)
+        for offset in 1...cards.count {
+            let candidates = cards[(rowAt + (down ? offset : cards.count - offset)) % cards.count]
+            let nearest = candidates.enumerated().sorted { abs($0.offset - colAt) < abs($1.offset - colAt) }.map(\.element)
             if let target = nearest.first(where: { name in name != here && contains { $0.workspace == name } }) {
                 return landing(in: target)
             }
@@ -180,11 +186,11 @@ public enum FilterKeyAction: Equatable, Sendable {
 
 /// What a keystroke does to the filter. `selection` is the match the ring is on: Enter picks
 /// it, Tab and ←/→ move it along the list and wrap, ↑/↓ move it a tile row in the grid the
-/// panel drew (`columns` per card, see `neighbor`). Everything typed is text, digits
+/// panel drew (`tileRows` per card, see `neighbor`). Everything typed is text, digits
 /// included — "code2" narrows the query and nothing else. A match is picked by typing until
 /// it is first, or by walking the ring to it; there is nothing on screen to read a key off.
 public func filterKeyAction(query: String, matches: [ParsedWindow], selection: Int,
-                            columns: [String: Int] = [:], cardRows: [[String]] = [], key: FilterKey) -> FilterKeyAction {
+                            tileRows: [String: [[Int]]] = [:], cardRows: [[String]] = [], key: FilterKey) -> FilterKeyAction {
     switch key {
     case .escape:
         return query.isEmpty ? .none : .setQuery("")
@@ -197,7 +203,7 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], selection: I
         let at = Swift.min(selection, matches.count - 1)
         return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
     case .up, .down:
-        return matches.neighbor(of: selection, columns: columns, cardRows: cardRows, down: key == .down).map { .select($0) } ?? .none
+        return matches.neighbor(of: selection, tileRows: tileRows, cardRows: cardRows, down: key == .down).map { .select($0) } ?? .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):

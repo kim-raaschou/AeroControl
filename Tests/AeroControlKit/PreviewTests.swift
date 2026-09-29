@@ -66,8 +66,6 @@ struct LayoutTests {
         #expect(rows.count == 2 && rows.map(\.count) == [3, 2])
         #expect(rows[0][0].height == rows[1][0].height)
         #expect(rows[0][0].height * 2 + AeroControlLayout.cardGap <= available.height + 1)
-        let tile = AeroControlLayout.tileGrid(windowCount: 4, card: rows[0][0])
-        #expect(tile.columns == 2 && tile.width > 400)                    // 2x2 with roomy snapshots
     }
 
     /// The filtered overview: the result takes over the grid's geometry, and `cardRows` does
@@ -103,56 +101,34 @@ struct LayoutTests {
     /// hands the empty height back; a row already limited by height keeps all of it.
     @Test("a filtered row shrinks to what its tiles use, caption lane included")
     func usedHeightFollowsTheTiles() {
-        let aspect = AeroControlLayout.tileAspect
+        let caption = AeroControlLayout.captionLane
         // One 3:2 window in a wide, tall card: limited by width, so height is left over.
-        let wide = AeroControlLayout.usedHeight(windowCounts: [1], widths: [1600], aspects: [aspect], available: 2000)
-        let tile = AeroControlLayout.tileGrid(windowCount: 1, card: CGSize(width: 1600, height: 2000), aspect: aspect).width
-        let expected = tile * aspect + AeroControlLayout.captionLane + AeroControlLayout.cardPadding + AeroControlLayout.badgeLane
+        let wide = AeroControlLayout.usedHeight(ratiosPerCard: [[1.5]], widths: [1600], caption: caption, available: 2000)
+        let inner = AeroControlLayout.innerSize(of: CGSize(width: 1600, height: 2000))
+        let expected = (inner.width / 1.5).rounded(.down) + caption + AeroControlLayout.cardPadding + AeroControlLayout.badgeLane
         #expect(abs(wide - expected) < 1)
         #expect(wide < 2000)
 
         // The same window in a short card is limited by height: nothing to hand back.
-        #expect(AeroControlLayout.usedHeight(windowCounts: [1], widths: [1600], aspects: [aspect], available: 400) == 400)
+        #expect(AeroControlLayout.usedHeight(ratiosPerCard: [[1.5]], widths: [1600], caption: caption, available: 400) == 400)
 
         // A row takes the tallest card's need, not the first's.
-        let tallest = AeroControlLayout.usedHeight(windowCounts: [1, 4], widths: [800, 800], aspects: [aspect, aspect], available: 2000)
-        let alone = AeroControlLayout.usedHeight(windowCounts: [4], widths: [800], aspects: [aspect], available: 2000)
+        let four = Array(repeating: CGFloat(1.5), count: 4)
+        let tallest = AeroControlLayout.usedHeight(ratiosPerCard: [[1.5], four], widths: [800, 800], caption: caption, available: 2000)
+        let alone = AeroControlLayout.usedHeight(ratiosPerCard: [four], widths: [800], caption: caption, available: 2000)
         #expect(tallest == alone)
     }
 
-    @Test("cell aspect is the median snapshot aspect; four tall columns lay out as one row of tall cells")
-    func tallColumns() {
-        let tall = CGSize(width: 860, height: 1440)                             // a quarter of an ultrawide
-        #expect(abs(AeroControlLayout.cellAspect(snapshotSizes: [tall, tall, tall, tall], fallback: 0.5) - 1440.0 / 860.0) < 0.001)
-        #expect(AeroControlLayout.cellAspect(snapshotSizes: [], fallback: 0.5) == 0.5)
-        #expect(AeroControlLayout.cellAspect(snapshotSizes: [.zero], fallback: 0.5) == 0.5)
-        let card = CGSize(width: 2130, height: 900)
-        let grid = AeroControlLayout.tileGrid(windowCount: 4, card: card, aspect: 1440.0 / 860.0)
-        #expect(grid.columns == 4)                                               // like AeroSpace laid them out
-        #expect(grid.width * 1440 / 860 <= card.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane + 1)
-    }
-
-
-
-
-    @Test("tile grid picks the column count that maximizes tile size and never overflows")
-    func tileGrid() {
-        let wide = CGSize(width: 1624, height: 513)
-        let (cols, w) = AeroControlLayout.tileGrid(windowCount: 18, card: wide)
-        #expect(cols > 4)                                               // a wide card wants many columns
-        let rows = Int((18.0 / Double(cols)).rounded(.up))
-        #expect(CGFloat(cols) * w + CGFloat(cols - 1) * AeroControlLayout.tileSpacing <= wide.width - 2 * AeroControlLayout.cardPadding + 1)
-        #expect(CGFloat(rows) * w * AeroControlLayout.tileAspect + CGFloat(rows - 1) * AeroControlLayout.tileSpacing
-                <= wide.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane + 1)
-        #expect(AeroControlLayout.tileGrid(windowCount: 1, card: wide).columns == 1)
-        #expect(AeroControlLayout.tileGrid(windowCount: 0, card: wide) == (0, 0))
-        // Four windows in a wide card: a 2x2 grid loses a few percent of tile width to a
-        // strip of four but fills the card, so it wins within the tolerance.
-        for fourWide in [CGSize(width: 1600, height: 562), CGSize(width: 2130, height: 650)] {   // the wide ws-1 card as measured
-            #expect(AeroControlLayout.tileGrid(windowCount: 4, card: fourWide).columns == 2)
-            #expect(AeroControlLayout.tileGrid(windowCount: 2, card: fourWide).columns == 2)   // 1x2 stays: 2x1 would halve the tiles
-            #expect(AeroControlLayout.tileGrid(windowCount: 3, card: fourWide).columns == 3)   // 1x3 stays for the same reason
-        }
+    @Test("a card's tiles are packed inside its inner box, each at its window's own shape")
+    func packedTiles() {
+        let inner = AeroControlLayout.innerSize(of: CGSize(width: 1600, height: 900))
+        let windows = (1...4).map { win($0, "Code") }
+        let sizes: [Int: CGSize] = [1: CGSize(width: 1600, height: 1000), 2: CGSize(width: 800, height: 1000)]
+        let ratios = AeroControlLayout.ratios(of: windows, sizes: sizes, fallback: 1.5)
+        #expect(ratios == [1.6, 0.8, 1.5, 1.5])                                  // measured, measured, screen, screen
+        let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner, caption: 0)
+        #expect(packed.tiles.count == 4 && packed.width <= inner.width && packed.height <= inner.height)
+        #expect(abs(packed.tiles[1].width / packed.tiles[1].height - 0.8) < 0.02)  // the portrait one stays portrait
     }
 }
 

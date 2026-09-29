@@ -60,12 +60,11 @@ public struct AeroControlPanel: View {
 
     private static let pillGap: CGFloat = 18
 
-    /// Cell aspect of a grid card: the median of its windows' sizes, the screen's when none.
-    /// Sizes, not snapshots: they are known before any picture is, so the grid has its
-    /// shape at reveal and pictures landing later move nothing.
-    private func gridAspect(_ workspace: WorkspaceInfo) -> CGFloat {
-        let sizes = workspace.windows.compactMap { state.previewSizes[$0.windowId] }
-        return AeroControlLayout.cellAspect(snapshotSizes: sizes, fallback: AeroControlLayout.previewAspect(for: usable))
+    /// Each window's shape, from the sizes measured before any picture is in — so the grid
+    /// has its shape at reveal and pictures landing later move nothing.
+    private func ratios(_ workspace: WorkspaceInfo) -> [CGFloat] {
+        AeroControlLayout.ratios(of: workspace.windows, sizes: state.previewSizes,
+                                 fallback: AeroControlLayout.screenRatio(for: usable))
     }
 
     /// The result takes over the grid's geometry: a query that found something draws only the
@@ -94,7 +93,7 @@ public struct AeroControlPanel: View {
                         AeroControlWorkspaceCard(
                             workspace: workspace,
                             monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                            previewAspect: gridAspect(workspace),
+                            fallbackRatio: AeroControlLayout.screenRatio(for: usable),
                             size: cell.size,
                             filtering: filtering
                         )
@@ -114,9 +113,9 @@ public struct AeroControlPanel: View {
     private func shrunk(_ row: [AeroControlLayout.Cell], of all: [WorkspaceInfo]) -> [AeroControlLayout.Cell] {
         guard let height = row.first?.size.height else { return row }
         let used = AeroControlLayout.usedHeight(
-            windowCounts: row.map { all[$0.index].windows.count },
+            ratiosPerCard: row.map { ratios(all[$0.index]) },
             widths: row.map(\.size.width),
-            aspects: row.map { gridAspect(all[$0.index]) },
+            caption: AeroControlLayout.captionLane,
             available: height
         )
         return row.map { AeroControlLayout.Cell(index: $0.index, size: CGSize(width: $0.size.width, height: used)) }

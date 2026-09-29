@@ -57,7 +57,6 @@ struct AeroControlAppTile: View {
         if hovering { state.hoveredWindowId = window.windowId }
         else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
     }
-    private var cellPadding: CGFloat { metrics.tileCellPadding }
     private var plateRadius: CGFloat { AeroControlMetrics.snapshotRadius }
     /// The focus ring follows the content radius plus its gap.
     private var ringRadius: CGFloat { plateRadius + AeroControlMetrics.snapshotRingGap }
@@ -88,7 +87,6 @@ struct AeroControlAppTile: View {
             artwork
         }
             .frame(width: tileSize.width, height: tileSize.height)
-            .padding(cellPadding)
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
             .onHover(perform: hoverChanged)

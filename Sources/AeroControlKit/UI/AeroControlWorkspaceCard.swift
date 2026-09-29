@@ -8,8 +8,8 @@ struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
     /// The display this workspace lives on; nil with a single display, where naming it is noise.
     let monitorName: String?
-    /// Height/width of a snapshot cell, the screen's own aspect.
-    let previewAspect: CGFloat
+    /// Width / height of a window whose size is not known yet: the screen's own shape.
+    let fallbackRatio: CGFloat
     let size: CGSize
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
@@ -114,27 +114,33 @@ struct AeroControlWorkspaceCard: View {
             .padding(6)
     }
 
-    private var innerSize: CGSize {
-        CGSize(width: size.width - 2 * AeroControlLayout.cardPadding,
-               height: size.height - AeroControlLayout.cardPadding - AeroControlLayout.badgeLane)
-    }
+    private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
 
     @ViewBuilder private var tiles: some View {
         if workspace.windows.isEmpty { Color.clear } else { grid }
     }
 
+    /// The windows as `TilePacker` lays them out — each at its own shape, one shared picture
+    /// height, rows spread evenly — centred in the card's inner box.
     private var grid: some View {
         let windows = workspace.windows
-        let (columns, tileWidth) = AeroControlLayout.tileGrid(windowCount: windows.count, card: size, aspect: previewAspect)
-        let metrics = AeroControlMetrics.fitting(cellWidth: tileWidth, aspect: previewAspect)
-        return LazyVGrid(
-            columns: Array(repeating: GridItem(.fixed(metrics.tileWidth), spacing: AeroControlLayout.tileSpacing), count: columns),
-            spacing: AeroControlLayout.tileSpacing
-        ) {
-            ForEach(windows, id: \.windowId) { window in tile(window, metrics: metrics) }
+        let inner = innerSize
+        let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
+        let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner,
+                                                 caption: filtering ? AeroControlLayout.captionLane : 0)
+        let origin = CGPoint(x: ((inner.width - min(inner.width, packed.width)) / 2).rounded(.down),
+                             y: ((inner.height - min(inner.height, packed.height)) / 2).rounded(.down))
+        let tileRows = packed.rows.map { $0.map { windows[$0].windowId } }
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(windows.enumerated()), id: \.element.windowId) { i, window in
+                let placed = packed.tiles[i]
+                tile(window, metrics: AeroControlMetrics(tileSize: CGSize(width: placed.width, height: placed.height)))
+                    .offset(x: origin.x + placed.x, y: origin.y + placed.y)
+            }
         }
+        .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15 * motion), value: windows)
-        .onChange(of: columns, initial: true) { _, columns in state.columns[workspace.name] = columns }   // for ↑/↓
+        .onChange(of: tileRows, initial: true) { _, rows in state.tileRows[workspace.name] = rows }   // for ↑/↓
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {

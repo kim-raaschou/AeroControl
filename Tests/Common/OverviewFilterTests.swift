@@ -172,7 +172,7 @@ struct FilterKeyActionTests {
         (0, false, 6),       // up off the first card: the last card's last row
     ])
     func rows(from: Int, down: Bool, expected: Int) {
-        #expect(eight.neighbor(of: from, columns: ["1": 3, "2": 2], cardRows: [["1", "2"]], down: down) == expected)
+        #expect(eight.neighbor(of: from, tileRows: ["1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8]]], cardRows: [["1", "2"]], down: down) == expected)
     }
 
     @Test("across rows of cards: ↓ leaves for the card below, nearest column, skipping cards with nothing in them")
@@ -186,20 +186,20 @@ struct FilterKeyActionTests {
             WorkspaceInfo(name: "4", windows: [window(4, "D"), window(5, "E")]),
         ]).windowsInGridOrder
         let rows = [["1", "2"], ["3", "4"]]
-        let columns = ["1": 2, "2": 1, "4": 2]
-        #expect(map.neighbor(of: 0, columns: columns, cardRows: rows, down: true) == 3)     // ws 1 → below is empty ws 3, so ws 4, column 0
-        #expect(map.neighbor(of: 1, columns: columns, cardRows: rows, down: true) == 4)     // column 1 of ws 1 → column 1 of ws 4
-        #expect(map.neighbor(of: 2, columns: columns, cardRows: rows, down: true) == 3)     // ws 2 → ws 4 right below
-        #expect(map.neighbor(of: 3, columns: columns, cardRows: rows, down: false) == 2)    // ws 4 (card column 1) ↑ → ws 2, right above it
-        #expect(map.neighbor(of: 2, columns: columns, cardRows: rows, down: false) == 3)    // ws 2 ↑ wraps to the row below: ws 4
+        let tiles = ["1": [[1, 2]], "2": [[3]], "4": [[4, 5]]]
+        #expect(map.neighbor(of: 0, tileRows: tiles, cardRows: rows, down: true) == 3)     // ws 1 → below is empty ws 3, so ws 4, column 0
+        #expect(map.neighbor(of: 1, tileRows: tiles, cardRows: rows, down: true) == 4)     // column 1 of ws 1 → column 1 of ws 4
+        #expect(map.neighbor(of: 2, tileRows: tiles, cardRows: rows, down: true) == 3)     // ws 2 → ws 4 right below
+        #expect(map.neighbor(of: 3, tileRows: tiles, cardRows: rows, down: false) == 2)    // ws 4 (card column 1) ↑ → ws 2, right above it
+        #expect(map.neighbor(of: 2, tileRows: tiles, cardRows: rows, down: false) == 3)    // ws 2 ↑ wraps to the row below: ws 4
     }
 
-    @Test("a card nobody reported is one column wide and all cards one row; one window has nowhere to go")
+    @Test("a card nobody reported stacks its tiles one per row and all cards form one row; one window has nowhere to go")
     func rowsDefaults() {
-        #expect(two.neighbor(of: 0, columns: [:], cardRows: [], down: true) == 1)
-        #expect(two.neighbor(of: 1, columns: [:], cardRows: [], down: true) == 0)           // wraps within the only card
-        #expect(eight.neighbor(of: 3, columns: ["1": 3], cardRows: [], down: true) == 6)    // unreported rows: the next card along
-        #expect(model.matching("standup").neighbor(of: 0, columns: [:], cardRows: [], down: true) == nil)
+        #expect(two.neighbor(of: 0, tileRows: [:], cardRows: [], down: true) == 1)
+        #expect(two.neighbor(of: 1, tileRows: [:], cardRows: [], down: true) == 0)          // wraps within the only card
+        #expect(eight.neighbor(of: 3, tileRows: ["1": [[1, 2, 3], [4, 5, 6]]], cardRows: [], down: true) == 6)   // the next card along
+        #expect(model.matching("standup").neighbor(of: 0, tileRows: [:], cardRows: [], down: true) == nil)
         #expect(action("Teams", .down) == .select(1))
         #expect(action("zzz", .up, matches: []) == .none)
     }

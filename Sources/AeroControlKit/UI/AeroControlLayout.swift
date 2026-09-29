@@ -1,21 +1,19 @@
+import Common
 import CoreGraphics
 
 /// Pure layout math for the full-screen overview, Mission-Control style: the grid is the
 /// same shape whatever the workspaces hold. Cards are split into rows of as equal length
 /// as possible, every row is the same height, and within a row every card that holds
 /// windows is the same width (empty workspaces keep a badge-wide sliver). A card's windows
-/// fill it as a grid of 3:2 tiles using whichever column count yields
-/// the largest tiles. All unit-tested.
+/// are packed by `TilePacker`: each at its own shape, one shared picture height. All
+/// unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     public static let cardGap: CGFloat = 24
-    /// Tile height as a fraction of its width.
-    public static let tileAspect: CGFloat = 2.0 / 3.0
     public static let tileSpacing: CGFloat = 14
     public static let cardPadding: CGFloat = 18
     /// Vertical room reserved at the top of a card for the workspace badge.
     public static let badgeLane: CGFloat = 44
-    public static let minTileWidth: CGFloat = 36
     /// Diameter of the workspace badge in the card header.
     public static let badgeSize: CGFloat = 24
     /// An empty card is exactly the badge plus the card padding on both sides, so the badge
@@ -57,18 +55,31 @@ public enum AeroControlLayout {
         return result
     }
 
-    /// Snapshot cells are shaped like the screen when nothing better is known.
-    public static func previewAspect(for available: CGSize) -> CGFloat {
-        available.width > 0 ? available.height / available.width : tileAspect
+    /// Width / height of a window nothing is known about yet: the screen's own shape.
+    public static func screenRatio(for available: CGSize) -> CGFloat {
+        available.height > 0 ? available.width / available.height : 1.5
     }
 
-    /// Cell aspect (height/width) for one workspace: the median of its snapshots' aspects,
-    /// so four tall columns get tall cells and one full-width window a wide one. Mixed
-    /// workspaces get a middle ground; every snapshot still fits inside its cell.
-    public static func cellAspect(snapshotSizes: [CGSize], fallback: CGFloat) -> CGFloat {
-        let aspects = snapshotSizes.filter { $0.width > 0 && $0.height > 0 }.map { $0.height / $0.width }.sorted()
-        guard !aspects.isEmpty else { return fallback }
-        return aspects[aspects.count / 2]
+    /// Width / height of each window, from its measured size, the screen's when unmeasured.
+    public static func ratios(of windows: [WindowInfo], sizes: [Int: CGSize], fallback: CGFloat) -> [CGFloat] {
+        windows.map { window in
+            guard let size = sizes[window.windowId], size.width > 0, size.height > 0 else { return fallback }
+            return size.width / size.height
+        }
+    }
+
+    /// The room inside a card for its tiles: below the badge lane, inside the padding.
+    public static func innerSize(of card: CGSize) -> CGSize {
+        CGSize(width: card.width - 2 * cardPadding, height: card.height - cardPadding - badgeLane)
+    }
+
+    /// A card's tiles as drawn: `TilePacker` at the largest picture height that fits `inner`,
+    /// with `caption` under each tile (the caption lane while filtering, nothing on the map).
+    public static func packTiles(ratios: [CGFloat], inner: CGSize, caption: CGFloat) -> TilePacker.Packed {
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height,
+                                           gap: tileSpacing, caption: caption, scales: nil)
+        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width,
+                                   gap: tileSpacing, caption: caption, scales: nil)
     }
 
     /// One card in a laid-out row: which workspace it is (an index into `windowCounts`) and
@@ -108,50 +119,21 @@ public enum AeroControlLayout {
         return windowCounts.map { $0 > 0 ? each : emptyWidth }
     }
 
-    /// The height a row of cards can actually use. A snapshot cannot grow past its own aspect
-    /// ratio, so a card taller than its tiles need is height it will only ever leave empty —
-    /// with two matches on a wide screen that is most of the screen.
-    ///
-    /// Only the filtered grid uses this, and a filtered tile wears a caption, so each row of
-    /// tiles is budgeted a caption lane too. Without it the shrink handed back the empty
-    /// height and the caption then bit it out of the picture.
+    /// The height a row of cards can actually use. A picture cannot grow past its own shape,
+    /// so a card taller than its tiles need is height it will only ever leave empty — with
+    /// two matches on a wide screen that is most of the screen. Only the filtered grid uses
+    /// this, with the caption lane every filtered tile wears.
     ///
     /// The map keeps its even rows on purpose: a workspace must sit in the same place whatever
     /// it happens to contain, and a height that followed the content would move it every time
     /// a window opened.
-    public static func usedHeight(windowCounts: [Int], widths: [CGFloat], aspects: [CGFloat],
+    public static func usedHeight(ratiosPerCard: [[CGFloat]], widths: [CGFloat], caption: CGFloat,
                                   available: CGFloat) -> CGFloat {
-        let needed = windowCounts.indices.map { i -> CGFloat in
-            guard windowCounts[i] > 0 else { return 0 }
-            let card = CGSize(width: widths[i], height: available)
-            let (columns, tile) = tileGrid(windowCount: windowCounts[i], card: card, aspect: aspects[i])
-            let rows = CGFloat(Int((Double(windowCounts[i]) / Double(columns)).rounded(.up)))
-            return rows * (tile * aspects[i] + captionLane) + (rows - 1) * tileSpacing + cardPadding + badgeLane
+        let needed = ratiosPerCard.indices.map { i -> CGFloat in
+            guard !ratiosPerCard[i].isEmpty else { return 0 }
+            let inner = innerSize(of: CGSize(width: widths[i], height: available))
+            return packTiles(ratios: ratiosPerCard[i], inner: inner, caption: caption).height + cardPadding + badgeLane
         }
         return min(available, needed.max() ?? available)
-    }
-
-    /// A grid whose tiles are within this fraction of the largest possible is "as good":
-    /// among those the one with more rows wins, so four windows in a wide card become
-    /// 2x2 rather than a strip of four with empty space below (Mission Control style).
-    public static let gridTolerance: CGFloat = 0.20
-
-    /// Column count and tile width for `windowCount` tiles inside the card's inner area:
-    /// the largest tiles, with a preference for squarer grids within `gridTolerance`.
-    /// `aspect` is height/width, the screen's or `tileAspect`.
-    public static func tileGrid(windowCount: Int, card: CGSize, aspect: CGFloat = tileAspect) -> (columns: Int, width: CGFloat) {
-        guard windowCount > 0 else { return (0, 0) }
-        let innerWidth = card.width - 2 * cardPadding
-        let innerHeight = card.height - cardPadding - badgeLane
-        let candidates: [(columns: Int, width: CGFloat)] = (1...windowCount).map { columns in
-            let rows = Int((Double(windowCount) / Double(columns)).rounded(.up))
-            let byWidth = (innerWidth - CGFloat(columns - 1) * tileSpacing) / CGFloat(columns)
-            let byHeight = ((innerHeight - CGFloat(rows - 1) * tileSpacing) / CGFloat(rows)) / aspect
-            return (columns, min(byWidth, byHeight))
-        }
-        let largest = candidates.map(\.width).max() ?? 0
-        // Candidates are in ascending column order, so the first good enough has the most rows.
-        let best = candidates.first { $0.width >= largest * (1 - gridTolerance) } ?? (1, 0)
-        return (best.columns, max(minTileWidth, best.width.rounded(.down)))
     }
 }

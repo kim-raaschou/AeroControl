@@ -4,15 +4,6 @@ import CoreGraphics
 
 @Suite("AeroControlMetrics")
 struct AeroControlMetricsTests {
-    @Test("fitting makes the padded tile exactly the cell width, shaped by the aspect")
-    func fitting() {
-        let m = AeroControlMetrics.fitting(cellWidth: 300, aspect: 2.0 / 3.0)
-        #expect(abs(m.tileWidth - 300) < 0.001)
-        #expect(abs(m.tileSize.height - m.tileSize.width * 2 / 3) < 0.001)
-        #expect(m.tileCellPadding > 0 && m.tileCellPadding < 10)
-        #expect(AeroControlMetrics.fitting(cellWidth: 600).tileCellPadding == 2 * m.tileCellPadding)   // scales with the grid
-    }
-
     @Test("a snapshot is fitted into the cell with its own aspect ratio, and the focus frame hugs it")
     func fittedPreview() {
         let box = CGSize(width: 144, height: 96)
