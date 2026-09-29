@@ -259,7 +259,7 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("while a query has matches their pictures are re-taken, and only theirs; clearing the query stops it")
+    @Test("once a query has matches their pictures are re-taken, only theirs, once, and larger")
     func filteredPicturesRefresh() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -274,11 +274,13 @@ struct OverviewStoreTests {
         store.filter = "standup"                                                 // matches window 1 only
         await waitUntil { bridge.captured.count >= 2 }
         #expect(bridge.captured.last == [1])
+        #expect(store.previews[1]!.size.width > 100 && store.previews[2]!.size.width == 100)   // sharper, the rest as taken
 
-        store.filter = ""
-        let taken = bridge.captured.count
         try? await Task.sleep(for: .milliseconds(400))
-        #expect(bridge.captured.count == taken)                                  // nothing narrowed: nothing re-taken
+        #expect(bridge.captured.count == 2)                                      // once, not on a clock
+        store.filter = ""
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(bridge.captured.count == 2)                                      // nothing narrowed: nothing re-taken
         store.stop()
     }
 

@@ -188,26 +188,28 @@ public class OverviewStore {
         }
     }
 
-    /// While a query has narrowed the grid to a few windows, their pictures are re-taken
-    /// every second — a handful of captures — so the tiles you are choosing between track
-    /// their windows (a meeting, a build) instead of standing as they were at summon. The
-    /// whole map is never re-taken: fifty captures a second is a fan, not a picture.
+    /// A filtered tile is three to four times the size of one on the map, so the picture
+    /// taken for the map is a blur there; a few are re-taken this much larger.
+    private static let detailScale: CGFloat = 3
+
+    /// Once a query has narrowed the grid to a few windows and the keystrokes have settled
+    /// (150 ms), their pictures are re-taken — a handful of captures, at the size the
+    /// filtered tiles are drawn — so what you are choosing between is current and sharp
+    /// instead of the map's small picture from summon, scaled up. Once, not on a clock:
+    /// the overview is a picture, not a screen share.
     private func refreshFilteredPictures() {
         refreshPicturesTask?.cancel()
         refreshPicturesTask = nil
         guard !filterMatches.isEmpty, let size = captureSize else { return }
         let generation = captureGeneration
+        let detail = CGSize(width: size.width * Self.detailScale, height: size.height * Self.detailScale)
         refreshPicturesTask = Task { [weak self] in
-            var delay: Duration = .milliseconds(150)      // the keystrokes settle first
-            while !Task.isCancelled {
-                try? await Task.sleep(for: delay)
-                guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
-                let ids = self.filterMatches.map(\.window.windowId)
-                await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: size) { [weak self] id, image in
-                    guard let self, generation == self.captureGeneration else { return }
-                    self.previews[id] = image
-                }
-                delay = .seconds(1)
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
+            let ids = self.filterMatches.map(\.window.windowId)
+            await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: detail) { [weak self] id, image in
+                guard let self, generation == self.captureGeneration else { return }
+                self.previews[id] = image
             }
         }
     }
