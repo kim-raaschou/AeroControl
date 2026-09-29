@@ -100,6 +100,7 @@ final class OverlayWindowManager {
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
+            if case .map = summon { self.state.presentation = .map } else { self.state.presentation = .strip }
             self.state.prepareCapture()
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading

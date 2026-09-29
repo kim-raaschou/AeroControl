@@ -53,6 +53,11 @@ public class OverviewStore {
     /// on the map. Back to nil on every keystroke: the list under it has just changed.
     public var selection: Int?
 
+    /// How the overview is drawn this visit: the map of every workspace, or the strip — one
+    /// row of one app's windows, like macOS's own switcher. Set by the host per summon.
+    public enum Presentation: Sendable { case map, strip }
+    public var presentation: Presentation = .map
+
     /// What the ring walks: the matches while a query has some, every window in grid order
     /// otherwise — the map is navigable too.
     public private(set) var cursor: [ParsedWindow] = []

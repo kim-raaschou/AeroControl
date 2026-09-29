@@ -44,10 +44,15 @@ public struct AeroControlPanel: View {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
                 EmptyView()
+            } else if state.presentation == .strip, !matches.isEmpty {
+                AeroControlAppStrip(matches: matches, usable: usable, fallbackRatio: AeroControlLayout.screenRatio(for: usable))
             } else {
                 grid(matches)
             }
-            AeroControlFilterPill(query: state.filter, matchCount: matches.count)
+            // In the strip the header already names the app; the pill only speaks when the
+            // query has gone past that.
+            AeroControlFilterPill(query: state.presentation == .strip && state.filter == matches.first?.window.appName ? "" : state.filter,
+                                  matchCount: matches.count)
         }
         .fixedSize()
         .environment(state)
