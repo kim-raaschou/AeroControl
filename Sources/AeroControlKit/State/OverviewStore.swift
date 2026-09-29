@@ -39,7 +39,14 @@ public class OverviewStore {
     /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
     /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
     /// change — the grid would jump on every letter.
-    public var filter: String = "" { didSet { selection = nil; filterMatches = model.matching(filter); cursor = model.cursor(for: filterMatches) } }
+    public var filter: String = "" {
+        didSet {
+            selection = nil
+            filterMatches = model.matching(filter)
+            cursor = model.cursor(for: filterMatches)
+            refreshFilteredPictures()
+        }
+    }
 
     /// The window the ring is on and Enter picks, as an index into `cursor`; nil until a
     /// key moves it, meaning the first match while filtering and AeroSpace's focused window
@@ -166,18 +173,50 @@ public class OverviewStore {
         previewSizes = sizes
     }
 
+    /// The box the pictures were taken to fit, kept for re-taking a few of them.
+    private var captureSize: CGSize?
+    private var refreshPicturesTask: Task<Void, Never>?
+
     /// Captures a preview of every window in the model, each stored the moment it lands.
     /// Returns when all are in. A `clearPreviews()` in the meantime discards the rest.
     public func capturePreviews(maxSize: CGSize) async {
         let generation = captureGeneration
+        captureSize = maxSize
         await nativeSystem.windowPreviews(windowIds: windowIds, maxSize: maxSize) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.previews[id] = image
         }
     }
 
+    /// While a query has narrowed the grid to a few windows, their pictures are re-taken
+    /// every second — a handful of captures — so the tiles you are choosing between track
+    /// their windows (a meeting, a build) instead of standing as they were at summon. The
+    /// whole map is never re-taken: fifty captures a second is a fan, not a picture.
+    private func refreshFilteredPictures() {
+        refreshPicturesTask?.cancel()
+        refreshPicturesTask = nil
+        guard !filterMatches.isEmpty, let size = captureSize else { return }
+        let generation = captureGeneration
+        refreshPicturesTask = Task { [weak self] in
+            var delay: Duration = .milliseconds(150)      // the keystrokes settle first
+            while !Task.isCancelled {
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
+                let ids = self.filterMatches.map(\.window.windowId)
+                await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: size) { [weak self] id, image in
+                    guard let self, generation == self.captureGeneration else { return }
+                    self.previews[id] = image
+                }
+                delay = .seconds(1)
+            }
+        }
+    }
+
     public func clearPreviews() {
         captureGeneration += 1
+        refreshPicturesTask?.cancel()
+        refreshPicturesTask = nil
+        captureSize = nil
         previews = [:]
         previewSizes = [:]
     }

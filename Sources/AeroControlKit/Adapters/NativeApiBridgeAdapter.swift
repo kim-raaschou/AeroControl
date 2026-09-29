@@ -64,6 +64,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     public func prepareCapture() {
         guard canCapturePreviews else { return }
+        content = nil
         pendingContent = Task { @MainActor in await Self.shareableContent() }
     }
 
@@ -106,7 +107,9 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !windowIds.isEmpty, let content = await resolvedContent() else { return }
-        self.content = nil                                   // one summon, one enumeration
+        // The enumeration is kept for the visit: re-taking a few pictures while a query
+        // stands must not cost a second system-wide scan. A window opened after the summon
+        // is not in it and is simply not re-taken; the next summon enumerates afresh.
         let wanted = Set(windowIds.map { CGWindowID($0) })
         let windows = content.windows.filter { wanted.contains($0.windowID) }
         let started = ContinuousClock.now

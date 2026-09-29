@@ -259,6 +259,29 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("while a query has matches their pictures are re-taken, and only theirs; clearing the query stops it")
+    func filteredPicturesRefresh() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        #expect(bridge.captured == [[1, 2, 3]])
+
+        store.filter = "standup"                                                 // matches window 1 only
+        await waitUntil { bridge.captured.count >= 2 }
+        #expect(bridge.captured.last == [1])
+
+        store.filter = ""
+        let taken = bridge.captured.count
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(bridge.captured.count == taken)                                  // nothing narrowed: nothing re-taken
+        store.stop()
+    }
+
     // MARK: Actions
 
     @Test("typed inputs drive the store through the send() ingress")
