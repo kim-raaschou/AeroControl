@@ -40,11 +40,14 @@ between summons, and it asks for no permission except Screen Recording for the p
   as soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
   The keyboard drives it: the focus ring starts on the focused window, arrows and Tab move
   it across the whole map, Enter picks. See *Keyboard*.
-- A predictable grid, Mission-Control style: one card per workspace, in rows of as equal
-  length as possible. Every row is the same height and every card that holds windows is the
-  same width, so a workspace sits in the same place whatever it happens to contain; empty
-  workspaces shrink to a badge. Inside a card the windows fill it as a grid of 3:2 tiles
-  (column count chosen for the largest tiles), in AeroSpace's order.
+- A grid that spends the screen on the windows: one card per workspace, in AeroSpace's
+  order. An empty workspace is a narrow strip, one with four or more windows takes a double
+  share, and rows break where the windows come out largest and are only as tall as they
+  need. Cards hold still through ordinary window churn — only crossing one of those steps
+  moves them. Inside a card every window is drawn at its own shape, all at one height, in
+  AeroSpace's order. The layout engine is shared with
+  [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview
+  for Omarchy/Hyprland.
 - **Type to filter**: start typing and the grid collapses to the windows whose title or app
   name has a word starting with what you typed — `te` finds Teams, `toml` finds
   `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
