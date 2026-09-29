@@ -220,7 +220,7 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("an app summon: two or more windows make the picker with the ring on the next; one or none change nothing and are handed back")
+    @Test("an app summon decides what one key does: start it, focus a window, or open the picker")
     func appSummon() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -228,20 +228,53 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        let three = store.filterToApp(bundleId: "com.app")                       // every fixture window is com.app
-        #expect(three.map(\.windowId) == [1, 2, 3])
-        #expect(store.filter == "Teams" && store.ringWindowId == 3)             // the one after the focused
-
+        // Three windows and the picker on: the picker, the ring on the one after the focused.
+        #expect(store.summonApp(bundleId: "com.app", picker: true) == .pick)     // every fixture window is com.app
+        #expect(store.filter == "Teams" && store.ringWindowId == 3)
         store.filter = ""
-        #expect(store.filterToApp(bundleId: "com.nothing").isEmpty && store.filter == "")   // not running: the caller starts it
 
+        // The strip off: its rules are off — no picker, no choosing. The app is brought
+        // forward and macOS decides which of its windows is in front.
+        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch)
+        #expect(store.filter == "")
+
+        // Not running: start it.
+        #expect(store.summonApp(bundleId: "com.nothing", picker: true) == .launch && store.filter == "")
+
+        // One window: focus it.
         runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
         await store.reload()
-        #expect(store.filterToApp(bundleId: "com.app").map(\.windowId) == [7] && store.filter == "")   // one: the caller focuses it
+        #expect(store.summonApp(bundleId: "com.app", picker: true) == .focus(windowId: 7) && store.filter == "")
         store.stop()
     }
 
-    @Test("the focused-app summon types the app name and puts the ring on the next instance; alone, it declines")
+    @Test("two windows toggle when you are in one of them; from anywhere else the picker or the first")
+    func twoWindowsToggle() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 1, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+
+        #expect(store.summonApp(bundleId: "com.app", picker: true) == .focus(windowId: 2))   // nothing to pick between
+        #expect(store.filter == "")
+        runner.setFocus(windowId: 2, workspace: "1")
+        await store.reload()
+        #expect(store.summonApp(bundleId: "com.app", picker: true) == .focus(windowId: 1))   // and back
+
+        runner.setFocus(windowId: nil, workspace: nil)                            // coming from another app
+        await store.reload()
+        #expect(store.summonApp(bundleId: "com.app", picker: true) == .pick)
+        store.filter = ""
+
+        // The strip off switches the toggle off with it.
+        runner.setFocus(windowId: 1, workspace: "1")
+        await store.reload()
+        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch)
+        store.stop()
+    }
+
+    @Test("the focused-app summon is the same rule for the app you are in; with nothing focused, it does nothing")
     func focusedAppSummon() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -249,7 +282,7 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        #expect(store.filterToFocusedApp())
+        #expect(store.summonApp(bundleId: nil, picker: true) == .pick)
         #expect(store.filter == "Teams" && store.ringWindowId == 3)             // the one after the focused
         #expect(store.handle(.enter) == .focus(windowId: 3))
 
@@ -257,11 +290,16 @@ struct OverviewStoreTests {
         runner.setState(windows: teams(1), workspaces: workspacesJSON(["1"]))
         runner.setFocus(windowId: 1, workspace: "1")
         await store.reload()
-        #expect(!store.filterToFocusedApp() && store.filter == "")               // one window: nothing to pick
+        #expect(store.summonApp(bundleId: nil, picker: true) == .focus(windowId: 1) && store.filter == "")   // one window: already there
 
         runner.setFocus(windowId: nil, workspace: nil)
         await store.reload()
-        #expect(!store.filterToFocusedApp())                                      // nothing focused
+        #expect(store.summonApp(bundleId: nil, picker: true) == .none)            // nothing focused
+
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        await store.reload()
+        #expect(store.summonApp(bundleId: nil, picker: false) == .launch && store.filter == "")   // strip off: passes through
         store.stop()
     }
 
@@ -302,6 +340,23 @@ struct OverviewStoreTests {
         store.filter = ""
         try? await Task.sleep(for: .milliseconds(200))
         #expect(bridge.captured.count == 2)                                      // nothing narrowed: nothing re-taken
+        store.stop()
+    }
+
+    @Test("a summon that filters before the first picture still gets sharp pictures for its matches")
+    func summonWithFilterRefreshesAfterFirstCapture() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        store.filter = "standup"                                                 // the app summon: filtered before any picture exists
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        await waitUntil { bridge.captured.count >= 2 }
+        #expect(bridge.captured.last == [1])
+        #expect(store.previews[1]!.size.width > 100)
         store.stop()
     }
 

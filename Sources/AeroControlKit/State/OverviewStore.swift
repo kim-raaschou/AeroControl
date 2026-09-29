@@ -191,6 +191,9 @@ public class OverviewStore {
             guard let self, generation == self.captureGeneration else { return }
             self.previews[id] = image
         }
+        // A summon can arrive already filtered — the app picker — before any size was known
+        // for the re-take to work from; the pictures are in now, so it starts here.
+        refreshFilteredPictures()
     }
 
     /// A filtered tile is three to four times the size of one on the map, so the picture
@@ -228,32 +231,48 @@ public class OverviewStore {
         previewSizes = [:]
     }
 
-    /// The "other windows of this app" summon: the query is the focused window's app name,
-    /// and the ring starts on the window *after* the focused one, so Enter alone switches
-    /// to the next instance — Cmd-` with pictures — and Tab walks on from there. Text, not
-    /// bundle id, on purpose: the pill shows a query you can keep typing into.
-    ///
-    /// False, and the filter untouched, when there is nothing to choose between — one
-    /// window or none. The summon is a picker, and a picker with one option is a flash of
-    /// screen for nothing.
-    public func filterToFocusedApp() -> Bool {
-        guard let bundleId = model.focusedWindow?.bundleId else { return false }
-        return filterToApp(bundleId: bundleId).count > 1
+    /// What an app summon comes to.
+    public enum AppSummon: Equatable, Sendable {
+        /// Start the app, or bring it forward if it runs; its windows are macOS's to order.
+        case launch
+        /// One window is the answer: focus it, and show nothing.
+        case focus(windowId: Int)
+        /// Windows to choose between: the filter and the ring are set; show the strip.
+        case pick
+        /// Nothing to do: no app named, and no window focused to name one.
+        case none
     }
 
-    /// The app summon, `aerocontrol://windows?app=<bundle id>`: the app's windows, in grid
-    /// order. Two or more make the picker — the query is the app's name, the ring on the
-    /// window after the focused one when that is one of them — and the caller shows it.
-    /// One or none leave the filter alone and are handed back for the caller to act on:
-    /// focus the one, or start the app. The count is free; the model was just read.
-    public func filterToApp(bundleId: String) -> [WindowInfo] {
+    /// One key on an app, `aerocontrol://windows?app=<bundle id>` — or, with no bundle id,
+    /// on the app of the focused window, `aerocontrol://windows`: the same link, the
+    /// focused app filled in. The count is free; the model was just read, so the key does
+    /// the right thing whatever the app's state:
+    ///
+    /// - none: start it; one: focus it;
+    /// - two, and you are in one of them: the other — a toggle needs no picker;
+    /// - more, or coming from elsewhere: the picker, the query the app's name and the ring
+    ///   on the window after the focused one, so Enter alone is Cmd-` with pictures. Text,
+    ///   not bundle id, on purpose: the pill shows a query you can keep typing into.
+    ///
+    /// The first two lines are the link's own and hold with the strip off. The rest are the
+    /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
+    /// decides which window is in front, which for the app you are in changes nothing.
+    public func summonApp(bundleId named: String?, picker: Bool) -> AppSummon {
+        guard let bundleId = named ?? model.focusedWindow?.bundleId else { return .none }
         let windows = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }
-        guard windows.count > 1, let name = windows.first?.appName else { return windows }
-        filter = name
+        let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
+        switch windows.count {
+        case 0: return .launch
+        case 1: return .focus(windowId: windows[0].windowId)
+        default: break
+        }
+        guard picker else { return .launch }
+        if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
+        filter = windows[0].appName
         if let at = filterMatches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) {
             selection = (at + 1) % filterMatches.count
         }
-        return windows
+        return .pick
     }
 
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and

@@ -84,13 +84,6 @@ final class OverlayWindowManager {
         return true
     }
 
-    /// What the overview opens showing: the whole map; the map filtered to the app of the
-    /// focused window — the summon for "which of my three Arc windows"; or filtered to a
-    /// named app, which with one window focuses it and with none starts it, so one key on
-    /// an app does the right thing whatever its state. With one window there is nothing to
-    /// pick, and nothing appears.
-    enum Summon { case map, focusedApp, app(bundleId: String) }
-
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
     /// display changes and settings changes free of special cases.
     private func show(_ summon: Summon) {
@@ -105,20 +98,9 @@ final class OverlayWindowManager {
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
             switch summon {
-            case .map:
-                break
-            case .focusedApp:
-                guard self.state.filterToFocusedApp() else {
-                    self.hide(restoreFocus: true)      // opening the URL activated us; give the keyboard back
-                    return
-                }
-            case .app(let bundleId):
-                let windows = self.state.filterToApp(bundleId: bundleId)
-                guard windows.count > 1 else {
-                    self.hide(restoreFocus: false)     // what follows takes the focus itself
-                    if let one = windows.first { self.state.send(.action(.focusWindow(one.windowId))) } else { self.launch(bundleId) }
-                    return
-                }
+            case .map: break
+            case .focusedApp: guard self.carryOut(self.state.summonApp(bundleId: nil, picker: self.settings.appPicker), for: nil) else { return }
+            case .app(let id): guard self.carryOut(self.state.summonApp(bundleId: id, picker: self.settings.appPicker), for: id) else { return }
             }
             if self.state.previewsAvailable {
                 await self.state.measurePreviews()
@@ -135,6 +117,23 @@ final class OverlayWindowManager {
                 await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
             }
         }
+    }
+
+    /// Does what an app summon came to; true when it is the picker, which goes on to show.
+    private func carryOut(_ action: OverviewStore.AppSummon, for bundleId: String?) -> Bool {
+        switch action {
+        case .pick:
+            return true
+        case .none:
+            hide(restoreFocus: true)           // opening the URL activated us; give the keyboard back
+        case .focus(let windowId):
+            hide(restoreFocus: false)          // what follows takes the focus itself
+            state.send(.action(.focusWindow(windowId)))
+        case .launch:
+            hide(restoreFocus: false)
+            if let bundleId { launch(bundleId) }
+        }
+        return false
     }
 
     private func targetScreen() -> NSScreen {

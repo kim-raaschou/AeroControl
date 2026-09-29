@@ -102,6 +102,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                             options: AnimationSpeed.allCases.map { ($0.name, $0.rawValue) },
                             isCurrent: { ($0 as? String) == settings.animationSpeed.rawValue },
                             action: #selector(setAnimationFromMenu(_:))))
+        menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off",
+                            options: [("On", true), ("Off", false)],
+                            isCurrent: { ($0 as? Bool) == settings.appPicker },
+                            action: #selector(setAppPickerFromMenu(_:))))
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
@@ -198,6 +202,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func setAnimationFromMenu(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let speed = AnimationSpeed(rawValue: raw) else { return }
         settings.setAnimationSpeed(speed)
+        onSettingsChanged()
+    }
+
+    @objc private func setAppPickerFromMenu(_ sender: NSMenuItem) {
+        guard let on = sender.representedObject as? Bool else { return }
+        settings.setAppPicker(on)
         onSettingsChanged()
     }
 

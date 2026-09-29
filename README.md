@@ -122,8 +122,8 @@ cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://workspaces']   # every
 cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://windows']      # the focused app's windows
 ```
 
-`aerocontrol://windows` shows only the windows of the app you are in, ring on the next one; with a
-single window nothing appears. Either URL closes the overview when it is already up.
+`aerocontrol://windows` is the same link with the app you are in filled in: with a single window nothing appears,
+with two it switches to the other, with more the strip opens, ring on the next one. Either URL closes the overview when it is already up.
 
 A third form makes one key per app do the right thing whatever its state:
 
@@ -135,7 +135,8 @@ cmd-ctrl-alt-t = ['exec-and-forget open "aerocontrol://windows?app=com.mitchellh
 |---|---|
 | none | the app starts |
 | one | that window is focused |
-| two or more | the overview opens with just them, ring on the next — pick |
+| two, and you are in one | the other one is focused — a toggle, nothing appears |
+| two from elsewhere, or more | the strip opens with just them, ring on the next — pick |
 
 Bundle ids of everything open: `aerospace list-windows --all --format '%{app-bundle-id} %{app-name}'`.
 
@@ -171,6 +172,11 @@ Use the menu-bar icon for all in-app configuration:
   in steps of 5. Below that the desktop competes with the cards.
 - **Animation**: Off, Fast, Normal or Slow. One scale on every motion — the reveal, the grid
   reflowing under a query, a picture landing.
+- **App picker**: On shows the strip — one row of the app's windows, like macOS's own
+  switcher, and two windows toggle. Off, those rules are off and the links pass through: an
+  app key with more than one window just brings the app forward — for `aerocontrol://windows`,
+  the app you are in, that changes nothing. No windows (start it) and one window (focus it)
+  work either way.
 - **Window Previews**: grant Screen Recording when it is missing.
 - **Reset settings** and **Quit**.
 

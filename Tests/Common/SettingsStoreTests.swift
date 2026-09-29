@@ -49,4 +49,14 @@ struct SettingsStoreTests {
         #expect(defaults.object(forKey: "settings.multiScreenEnabled") == nil)
         #expect(defaults.object(forKey: "settings.activeDisplay") == nil)
     }
+
+    @Test func appPickerIsOnUntilSwitchedOff() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.appPicker)
+        store.setAppPicker(false)
+        #expect(!SettingsStore(defaults: defaults).appPicker)
+        store.reset()
+        #expect(SettingsStore(defaults: defaults).appPicker)
+    }
 }

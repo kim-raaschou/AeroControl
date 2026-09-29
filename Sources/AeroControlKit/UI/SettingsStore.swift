@@ -24,6 +24,9 @@ public final class SettingsStore {
     /// less lets the desktop through.
     public private(set) var backdropOpacity: Double
     public private(set) var animationSpeed: AnimationSpeed
+    /// Whether an app summon with windows to choose between shows the strip. Off, the key
+    /// goes straight to the next window and nothing appears.
+    public private(set) var appPicker: Bool
 
     /// Below ~70 % the desktop competes with the cards; the useful range is narrow, so the
     /// steps are small.
@@ -33,6 +36,7 @@ public final class SettingsStore {
     private let themeKey = "settings.theme"
     private let backdropKey = "settings.backdropOpacity"
     private let animationKey = "settings.animationSpeed"
+    private let appPickerKey = "settings.appPickerEnabled"
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -40,6 +44,7 @@ public final class SettingsStore {
         let opacity = defaults.object(forKey: backdropKey) as? Double
         self.backdropOpacity = opacity.map { min(max($0, 0), 1) } ?? 1
         self.animationSpeed = defaults.string(forKey: animationKey).flatMap(AnimationSpeed.init) ?? .normal
+        self.appPicker = defaults.object(forKey: appPickerKey) as? Bool ?? true
     }
 
     public func setTheme(_ value: AeroControlTheme) {
@@ -58,10 +63,16 @@ public final class SettingsStore {
         defaults.set(value.rawValue, forKey: animationKey)
     }
 
+    public func setAppPicker(_ value: Bool) {
+        appPicker = value
+        defaults.set(value, forKey: appPickerKey)
+    }
+
     public func reset() {
         setTheme(.system)
         setBackdropOpacity(1)
         setAnimationSpeed(.normal)
+        setAppPicker(true)
         // Keys written by versions before the one-shot overview.
         for key in ["settings.displayConfigs", "settings.iconSize", "settings.edge",
                     "settings.orientation", "settings.activeDisplay", "settings.multiScreenEnabled"] {

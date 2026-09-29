@@ -106,15 +106,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// `open aerocontrol://windows`: the overview opens filtered to the focused window's app —
-    /// every window of the app you are in and nothing else. `aerocontrol://workspaces`, or any other
-    /// URL, toggles the map. A URL reaches the running instance the way a reopen does,
-    /// without a second process — and unlike a reopen it can carry a word.
+    /// every window of the app you are in and nothing else. `aerocontrol://workspaces`, or any
+    /// other link, toggles the map.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
-        log.notice("summon: \(url.host() ?? "-", privacy: .public)\(url.query().map { "?" + $0 } ?? "")")
-        let app = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "app" }?.value
-        let summon: OverlayWindowManager.Summon = url.host() == "windows" ? (app.map { .app(bundleId: $0) } ?? .focusedApp) : .map
-        overlayManager.toggleVisibility(summon)
+        log.notice("link: \(url.host() ?? "-", privacy: .public)")
+        overlayManager.toggleVisibility(Summon(url))
     }
 
     func applicationWillTerminate(_ notification: Notification) {
