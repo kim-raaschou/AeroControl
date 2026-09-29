@@ -60,65 +60,43 @@ public struct AeroControlPanel: View {
 
     private static let pillGap: CGFloat = 18
 
-    /// Each window's shape, from the sizes measured before any picture is in — so the grid
-    /// has its shape at reveal and pictures landing later move nothing.
-    private func ratios(_ workspace: WorkspaceInfo) -> [CGFloat] {
-        AeroControlLayout.ratios(of: workspace.windows, sizes: state.previewSizes,
-                                 fallback: AeroControlLayout.screenRatio(for: usable))
-    }
-
     /// The result takes over the grid's geometry: a query that found something draws only the
-    /// workspaces that hold a match, each with only its matching windows, sized by the same
-    /// `cardRows` as the full grid — it counts windows and knows nothing of workspaces. A
-    /// query that found nothing leaves the whole map standing, so there is always something
-    /// to read your way out of.
+    /// workspaces that hold a match, each with only its matching windows, laid out by the same
+    /// `CardGrid` as the full map — it weighs windows and knows nothing of workspaces. A query
+    /// that found nothing leaves the whole map standing, so there is always something to read
+    /// your way out of.
     private func grid(_ matches: [ParsedWindow]) -> some View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : workspaces
         let namesMonitors = self.namesMonitors
-        var rows = AeroControlLayout.cardRows(
-            windowCounts: all.map { $0.windows.count },
+        let options = AeroControlLayout.cardGridOptions(
+            for: usable,
             emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
-            available: usable
-        )
-        // A result may be shorter than the screen; a map may not.
-        if filtering { rows = rows.map { shrunk($0, of: all) } }
-        let cardRows = rows.map { $0.map { all[$0.index].name } }
-        return VStack(spacing: AeroControlLayout.cardGap) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(spacing: AeroControlLayout.cardGap) {
-                    ForEach(row) { cell in
-                        let workspace = all[cell.index]
-                        AeroControlWorkspaceCard(
-                            workspace: workspace,
-                            monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                            fallbackRatio: AeroControlLayout.screenRatio(for: usable),
-                            size: cell.size,
-                            filtering: filtering
-                        )
-                        .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
-                    }
-                }
+            caption: filtering ? AeroControlLayout.captionLane : 0)
+        let layout = CardGrid.layout(all.map { CardGrid.Slot(weight: AeroControlLayout.weight(forCount: $0.windows.count),
+                                                              count: $0.windows.count) },
+                                     in: usable, options: options)
+        let cardRows = layout.rows.map { $0.map { all[$0].name } }
+        return ZStack(alignment: .topLeading) {
+            ForEach(layout.cells, id: \.index) { cell in
+                let workspace = all[cell.index]
+                AeroControlWorkspaceCard(
+                    workspace: workspace,
+                    monitorName: namesMonitors ? workspace.monitorShortName : nil,
+                    fallbackRatio: AeroControlLayout.screenRatio(for: usable),
+                    size: cell.frame.size,
+                    filtering: filtering
+                )
+                .offset(x: cell.frame.minX, y: cell.frame.minY)
+                .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
             }
         }
-        // The unfiltered grid is a map and never moves; the filtered one is a result, and
-        // re-flows as the query narrows. Animated, or every letter would snap.
+        .frame(width: usable.width, height: usable.height, alignment: .topLeading)
+        // The map holds still through ordinary churn; the filtered result re-flows as the
+        // query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * motion), value: all)
         .onChange(of: cardRows, initial: true) { _, cardRows in state.cardRows = cardRows }   // for ↑/↓ across cards
-    }
-
-    /// Gives a row back the height its tiles cannot use, so two matches are two big pictures
-    /// rather than two small ones adrift in a full-height card.
-    private func shrunk(_ row: [AeroControlLayout.Cell], of all: [WorkspaceInfo]) -> [AeroControlLayout.Cell] {
-        guard let height = row.first?.size.height else { return row }
-        let used = AeroControlLayout.usedHeight(
-            ratiosPerCard: row.map { ratios(all[$0.index]) },
-            widths: row.map(\.size.width),
-            caption: AeroControlLayout.captionLane,
-            available: height
-        )
-        return row.map { AeroControlLayout.Cell(index: $0.index, size: CGSize(width: $0.size.width, height: used)) }
     }
 
     private func errorView(_ message: String) -> some View {

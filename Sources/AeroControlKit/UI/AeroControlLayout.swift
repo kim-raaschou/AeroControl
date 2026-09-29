@@ -1,12 +1,10 @@
 import Common
 import CoreGraphics
 
-/// Pure layout math for the full-screen overview, Mission-Control style: the grid is the
-/// same shape whatever the workspaces hold. Cards are split into rows of as equal length
-/// as possible, every row is the same height, and within a row every card that holds
-/// windows is the same width (empty workspaces keep a badge-wide sliver). A card's windows
-/// are packed by `TilePacker`: each at its own shape, one shared picture height. All
-/// unit-tested.
+/// The overview's layout constants, and the two pure engines wired to them: `CardGrid`
+/// places the workspace cards (widths by weight, rows broken where the windows come out
+/// largest, row heights that follow the content), `TilePacker` places the windows inside
+/// a card (each at its own shape, one shared picture height). All unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     public static let cardGap: CGFloat = 24
@@ -27,33 +25,6 @@ public enum AeroControlLayout {
     public static let captionTitleHeight: CGFloat = 32
     public static let captionGap: CGFloat = 6
     public static let captionLane: CGFloat = captionTitleHeight + captionGap
-
-    /// Number of rows for `count` cards: 1–3 → 1, 4–6 → 2, 7–12 → 3, then 4 per row.
-    public static func rowCount(forCount count: Int) -> Int {
-        switch count {
-        case ...0: 0
-        case 1...3: 1
-        case 4...6: 2
-        case 7...12: 3
-        default: Int((Double(count) / 4).rounded(.up))
-        }
-    }
-
-    /// Splits `count` cards into `rowCount` contiguous rows of as equal length as possible,
-    /// order preserved; a remainder goes to the top rows (7 in 3 rows → 3, 2, 2).
-    public static func partition(count: Int, rowCount: Int) -> [Range<Int>] {
-        guard rowCount > 0, count > 0 else { return [] }
-        let rows = min(rowCount, count)
-        let (length, remainder) = (count / rows, count % rows)
-        var result: [Range<Int>] = []
-        var start = 0
-        for row in 0..<rows {
-            let end = start + length + (row < remainder ? 1 : 0)
-            result.append(start..<end)
-            start = end
-        }
-        return result
-    }
 
     /// Width / height of a window nothing is known about yet: the screen's own shape.
     public static func screenRatio(for available: CGSize) -> CGFloat {
@@ -82,58 +53,19 @@ public enum AeroControlLayout {
                                    gap: tileSpacing, caption: caption, scales: nil)
     }
 
-    /// One card in a laid-out row: which workspace it is (an index into `windowCounts`) and
-    /// how big it is. Carrying the index means the caller never has to re-derive the row
-    /// split to know whose card it is holding.
-    public struct Cell: Equatable, Identifiable {
-        public let index: Int
-        public let size: CGSize
-        public var id: Int { index }
+    /// A card's weight in the grid: an empty workspace is a strip, one to three windows an
+    /// ordinary card, four or more a double share. Three steps, not a slope, so cards hold
+    /// still through ordinary window churn.
+    public static func weight(forCount count: Int) -> CGFloat {
+        count == 0 ? 0 : (count >= 4 ? 2 : 1)
     }
 
-    /// Cards per row for `windowCounts` (in AeroSpace order) inside `available`: even rows,
-    /// equal row heights, equal widths for the cards that hold windows.
-    public static func cardRows(windowCounts: [Int], emptyWidth: CGFloat = emptyCardWidth,
-                                available: CGSize) -> [[Cell]] {
-        let count = windowCounts.count
-        guard count > 0, available.width > 0, available.height > 0 else { return [] }
-        let rows = partition(count: count, rowCount: rowCount(forCount: count))
-        let height = ((available.height - CGFloat(rows.count - 1) * cardGap) / CGFloat(rows.count)).rounded(.down)
-        return rows.map { range in
-            let widths = rowWidths(windowCounts: Array(windowCounts[range]),
-                                   rowWidth: available.width, emptyWidth: emptyWidth)
-            return zip(range, widths).map { Cell(index: $0, size: CGSize(width: $1, height: height)) }
-        }
-    }
-
-    /// Widths inside one row: empty workspaces take `emptyWidth`, the cards that hold
-    /// windows split what is left equally, so a card's size never depends on its neighbours.
-    static func rowWidths(windowCounts: [Int], rowWidth: CGFloat, emptyWidth: CGFloat = emptyCardWidth) -> [CGFloat] {
-        let usable = rowWidth - CGFloat(windowCounts.count - 1) * cardGap
-        let filled = windowCounts.count { $0 > 0 }
-        guard filled > 0 else {
-            return windowCounts.map { _ in (usable / CGFloat(windowCounts.count)).rounded(.down) }
-        }
-        let empties = CGFloat(windowCounts.count - filled) * emptyWidth
-        let each = max(0, (usable - empties) / CGFloat(filled)).rounded(.down)
-        return windowCounts.map { $0 > 0 ? each : emptyWidth }
-    }
-
-    /// The height a row of cards can actually use. A picture cannot grow past its own shape,
-    /// so a card taller than its tiles need is height it will only ever leave empty — with
-    /// two matches on a wide screen that is most of the screen. Only the filtered grid uses
-    /// this, with the caption lane every filtered tile wears.
-    ///
-    /// The map keeps its even rows on purpose: a workspace must sit in the same place whatever
-    /// it happens to contain, and a height that followed the content would move it every time
-    /// a window opened.
-    public static func usedHeight(ratiosPerCard: [[CGFloat]], widths: [CGFloat], caption: CGFloat,
-                                  available: CGFloat) -> CGFloat {
-        let needed = ratiosPerCard.indices.map { i -> CGFloat in
-            guard !ratiosPerCard[i].isEmpty else { return 0 }
-            let inner = innerSize(of: CGSize(width: widths[i], height: available))
-            return packTiles(ratios: ratiosPerCard[i], inner: inner, caption: caption).height + cardPadding + badgeLane
-        }
-        return min(available, needed.max() ?? available)
+    /// `CardGrid`'s options for this overview: its gaps and paddings, the screen's shape as
+    /// the proxy tile, the caption lane while filtering.
+    public static func cardGridOptions(for available: CGSize, emptyWidth: CGFloat, caption: CGFloat) -> CardGrid.Options {
+        var options = CardGrid.Options(gap: cardGap, tileRatio: screenRatio(for: available), cardPadding: cardPadding,
+                                       chrome: cardPadding + badgeLane, narrow: emptyWidth, tileGap: tileSpacing, caption: caption)
+        options.cardShape = screenRatio(for: available)
+        return options
     }
 }
