@@ -15,6 +15,9 @@ struct AeroControlAppTile: View {
     /// from what it is drawing — a second answer derived from the query length disagreed with
     /// it on a miss, and captioned every window on a map that had not moved.
     let filtering: Bool
+    /// Whether the picture carries its app's icon. Not in the app strip: every tile there is
+    /// the same app, and the icon would say the one thing that is already known.
+    var showsIcon = true
 
     @State private var isHovering = false
 
@@ -135,7 +138,7 @@ struct AeroControlAppTile: View {
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
                 .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
-                    if let icon = state.icons[window.bundleId] {
+                    if showsIcon, let icon = state.icons[window.bundleId] {
                         Image(nsImage: icon)
                             .resizable()
                             .interpolation(.high)

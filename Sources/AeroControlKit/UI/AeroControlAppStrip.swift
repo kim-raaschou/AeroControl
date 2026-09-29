@@ -2,8 +2,8 @@ import SwiftUI
 import Common
 
 /// The picker for "which of this app's windows", drawn like macOS's own switcher: one
-/// rounded panel in the middle of the screen, the app's icon and name over one row of its
-/// windows, grouped by workspace with the workspace named under each group. Every tile at
+/// rounded panel in the middle of the screen, the app's name over one row of its
+/// windows, grouped by workspace — each group a small card of the map's, its badge at the top. Every tile at
 /// its own shape, all at one height; the ring on the one Enter picks, the window you came
 /// from framed. The same keys as the map: Tab and ←/→ walk the row, Enter picks, Escape
 /// leaves, typing narrows.
@@ -20,6 +20,8 @@ struct AeroControlAppStrip: View {
     private static let margin: CGFloat = 48
     private static let padding: CGFloat = 24
     private static let cornerRadius: CGFloat = 22
+    private static let groupPadding: CGFloat = 14
+    private static let groupRadius: CGFloat = 16
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     private var groups: [WorkspaceInfo] { state.model.workspaces(holding: matches) }
@@ -28,7 +30,8 @@ struct AeroControlAppStrip: View {
         AppStripLayout.layout(
             groups: groups.map { AeroControlLayout.ratios(of: $0.windows, sizes: state.previewSizes, fallback: fallbackRatio) },
             viewWidth: usable.width - 2 * (Self.margin + Self.padding), panelHeight: usable.height,
-            tileGap: AeroControlLayout.tileSpacing, groupGap: AeroControlLayout.cardGap, caption: AeroControlLayout.captionLane)
+            tileGap: AeroControlLayout.tileSpacing, groupGap: AeroControlLayout.cardGap, caption: AeroControlLayout.captionLane,
+            groupPadding: Self.groupPadding)
     }
 
     var body: some View {
@@ -54,13 +57,10 @@ struct AeroControlAppStrip: View {
         }
     }
 
-    /// The app's icon and name, and how many windows on how many workspaces.
+    /// The app's name, and how many windows on how many workspaces. No icon: it is one app.
     private var header: some View {
         HStack(spacing: 10) {
             if let first = matches.first?.window {
-                if let icon = state.icons[first.bundleId] {
-                    Image(nsImage: icon).resizable().interpolation(.high).frame(width: 22, height: 22)
-                }
                 Text(first.appName).font(.system(size: 15, weight: .semibold))
             }
             Text("· \(matches.count) windows" + (groups.count > 1 ? " on \(groups.count) workspaces" : ""))
@@ -70,21 +70,34 @@ struct AeroControlAppStrip: View {
         .foregroundStyle(palette.badgeText)
     }
 
-    /// One workspace's windows in a row, the workspace named under them — in the accent
-    /// while the ring is in this group.
+    /// One workspace as a small card: the map's badge at the top-left — filled with the accent
+    /// while the ring is in this group, and the card's edge with it — and its windows in a row.
     private func group(_ workspace: WorkspaceInfo, _ laid: AppStripLayout.Group) -> some View {
         let ringHere = workspace.windows.contains { $0.windowId == state.ringWindowId }
-        return VStack(spacing: 10) {
+        let shape = RoundedRectangle(cornerRadius: Self.groupRadius, style: .continuous)
+        return VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {
+            badge(workspace.name, lit: ringHere)
             HStack(alignment: .top, spacing: AeroControlLayout.tileSpacing) {
                 ForEach(Array(workspace.windows.enumerated()), id: \.element.windowId) { i, window in
                     AeroControlAppTile(window: window,
                                        metrics: AeroControlMetrics(tileSize: CGSize(width: laid.tiles[i].width, height: laid.tiles[i].height)),
-                                       filtering: true)
+                                       filtering: true, showsIcon: false)
                 }
             }
-            Text(workspace.name)
-                .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
-                .foregroundStyle(ringHere ? palette.accent : palette.badgeText.opacity(0.6))
         }
+        .padding(Self.groupPadding)
+        .frame(width: laid.width, alignment: .leading)
+        .background(shape.fill(palette.badgeFill.opacity(0.5)))
+        .overlay(shape.strokeBorder(ringHere ? palette.accent : palette.cardBorder, lineWidth: ringHere ? 2 : 1))
+    }
+
+    /// The map's badge: the workspace name in a filled circle, accent when lit.
+    private func badge(_ name: String, lit: Bool) -> some View {
+        Text(name)
+            .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
+            .lineLimit(1)
+            .foregroundStyle(lit ? palette.focusedBadgeText : palette.badgeText)
+            .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
+            .background(lit ? palette.accent : palette.badgeFill, in: Circle())
     }
 }
