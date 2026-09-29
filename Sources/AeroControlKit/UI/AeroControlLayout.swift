@@ -39,9 +39,13 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The room inside a card for its tiles: below the badge lane, inside the padding.
+    /// A card's height that is not pictures: the padding, the badge lane, and the gap
+    /// between the badge and the first row of tiles.
+    public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
+
+    /// The room inside a card for its tiles: below the badge lane and its gap, inside the padding.
     public static func innerSize(of card: CGSize) -> CGSize {
-        CGSize(width: card.width - 2 * cardPadding, height: card.height - cardPadding - badgeLane)
+        CGSize(width: card.width - 2 * cardPadding, height: card.height - cardChrome)
     }
 
     /// A card's tiles as drawn: `TilePacker` at the largest picture height that fits `inner`,
@@ -64,7 +68,7 @@ public enum AeroControlLayout {
     /// the proxy tile, the caption lane while filtering.
     public static func cardGridOptions(for available: CGSize, emptyWidth: CGFloat, caption: CGFloat) -> CardGrid.Options {
         var options = CardGrid.Options(gap: cardGap, tileRatio: screenRatio(for: available), cardPadding: cardPadding,
-                                       chrome: cardPadding + badgeLane, narrow: emptyWidth, tileGap: tileSpacing, caption: caption)
+                                       chrome: cardChrome, narrow: emptyWidth, tileGap: tileSpacing, caption: caption)
         options.cardShape = screenRatio(for: available)
         return options
     }

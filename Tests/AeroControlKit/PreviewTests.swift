@@ -20,7 +20,8 @@ struct LayoutTests {
     func gridOptions() {
         let o = AeroControlLayout.cardGridOptions(for: CGSize(width: 3000, height: 2000), emptyWidth: 60, caption: 38)
         #expect(o.gap == AeroControlLayout.cardGap && o.tileGap == AeroControlLayout.tileSpacing)
-        #expect(o.chrome == AeroControlLayout.cardPadding + AeroControlLayout.badgeLane)
+        #expect(o.chrome == AeroControlLayout.cardChrome)
+        #expect(AeroControlLayout.innerSize(of: CGSize(width: 500, height: 400)).height == 400 - AeroControlLayout.cardChrome)
         #expect(o.narrow == 60 && o.caption == 38)
         #expect(o.tileRatio == 1.5 && o.cardShape == 1.5)
     }

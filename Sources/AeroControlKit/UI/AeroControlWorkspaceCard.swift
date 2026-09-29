@@ -37,7 +37,7 @@ struct AeroControlWorkspaceCard: View {
         // workspace is empty (a narrow card) or full.
         // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
         // stack and push the badge out of its corner.
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
             tiles.frame(width: innerSize.width, height: innerSize.height)
         }
