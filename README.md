@@ -125,6 +125,20 @@ cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://windows']      # the f
 `aerocontrol://windows` shows only the windows of the app you are in, ring on the next one; with a
 single window nothing appears. Either URL closes the overview when it is already up.
 
+A third form makes one key per app do the right thing whatever its state:
+
+```toml
+cmd-ctrl-alt-t = ['exec-and-forget open "aerocontrol://windows?app=com.mitchellh.ghostty"']
+```
+
+| Windows of the app | What happens |
+|---|---|
+| none | the app starts |
+| one | that window is focused |
+| two or more | the overview opens with just them, ring on the next — pick |
+
+Bundle ids of everything open: `aerospace list-windows --all --format '%{app-bundle-id} %{app-name}'`.
+
 `open -a AeroControl` toggles the map too (a reopen event), and is the one command that works
 before the URL scheme is registered — Launch Services learns it on the app's first launch.
 

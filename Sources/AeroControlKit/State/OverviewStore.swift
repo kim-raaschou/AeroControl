@@ -232,13 +232,23 @@ public class OverviewStore {
     /// window or none. The summon is a picker, and a picker with one option is a flash of
     /// screen for nothing.
     public func filterToFocusedApp() -> Bool {
-        guard let name = model.focusedAppName else { return false }
-        let matches = model.matching(name)
-        guard matches.count > 1,
-              let at = matches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) else { return false }
+        guard let bundleId = model.focusedWindow?.bundleId else { return false }
+        return filterToApp(bundleId: bundleId).count > 1
+    }
+
+    /// The app summon, `aerocontrol://windows?app=<bundle id>`: the app's windows, in grid
+    /// order. Two or more make the picker — the query is the app's name, the ring on the
+    /// window after the focused one when that is one of them — and the caller shows it.
+    /// One or none leave the filter alone and are handed back for the caller to act on:
+    /// focus the one, or start the app. The count is free; the model was just read.
+    public func filterToApp(bundleId: String) -> [WindowInfo] {
+        let windows = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }
+        guard windows.count > 1, let name = windows.first?.appName else { return windows }
         filter = name
-        selection = (at + 1) % matches.count
-        return true
+        if let at = filterMatches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) {
+            selection = (at + 1) % filterMatches.count
+        }
+        return windows
     }
 
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and

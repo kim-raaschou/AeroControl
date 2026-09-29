@@ -110,8 +110,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// URL, toggles the map. A URL reaches the running instance the way a reopen does,
     /// without a second process — and unlike a reopen it can carry a word.
     func application(_ application: NSApplication, open urls: [URL]) {
-        log.notice("summon: \(urls.first?.host() ?? "-", privacy: .public)")
-        overlayManager.toggleVisibility(urls.contains { $0.host() == "windows" } ? .focusedApp : .map)
+        guard let url = urls.first else { return }
+        log.notice("summon: \(url.host() ?? "-", privacy: .public)\(url.query().map { "?" + $0 } ?? "")")
+        let app = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "app" }?.value
+        let summon: OverlayWindowManager.Summon = url.host() == "windows" ? (app.map { .app(bundleId: $0) } ?? .focusedApp) : .map
+        overlayManager.toggleVisibility(summon)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

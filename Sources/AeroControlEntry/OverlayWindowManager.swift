@@ -84,10 +84,12 @@ final class OverlayWindowManager {
         return true
     }
 
-    /// What the overview opens showing: the whole map, or the map filtered to the app of the
-    /// focused window — the summon for "which of my three Arc windows". With one Arc window
-    /// there is nothing to pick, and nothing appears.
-    enum Summon { case map, focusedApp }
+    /// What the overview opens showing: the whole map; the map filtered to the app of the
+    /// focused window — the summon for "which of my three Arc windows"; or filtered to a
+    /// named app, which with one window focuses it and with none starts it, so one key on
+    /// an app does the right thing whatever its state. With one window there is nothing to
+    /// pick, and nothing appears.
+    enum Summon { case map, focusedApp, app(bundleId: String) }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
     /// display changes and settings changes free of special cases.
@@ -101,9 +103,21 @@ final class OverlayWindowManager {
             self.state.prepareCapture()
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
-            if summon == .focusedApp, !self.state.filterToFocusedApp() {
-                self.hide(restoreFocus: true)      // opening the URL activated us; give the keyboard back
-                return
+            switch summon {
+            case .map:
+                break
+            case .focusedApp:
+                guard self.state.filterToFocusedApp() else {
+                    self.hide(restoreFocus: true)      // opening the URL activated us; give the keyboard back
+                    return
+                }
+            case .app(let bundleId):
+                let windows = self.state.filterToApp(bundleId: bundleId)
+                guard windows.count > 1 else {
+                    self.hide(restoreFocus: false)     // what follows takes the focus itself
+                    if let one = windows.first { self.state.send(.action(.focusWindow(one.windowId))) } else { self.launch(bundleId) }
+                    return
+                }
             }
             if self.state.previewsAvailable {
                 await self.state.measurePreviews()
@@ -136,6 +150,12 @@ final class OverlayWindowManager {
     func removeAll() {
         window?.dismiss()
         window = nil
+    }
+
+    /// Starts an app that has no window, as `open -b` would.
+    private func launch(_ bundleId: String) {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else { return }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
     func toggleVisibility(_ summon: Summon = .map) {

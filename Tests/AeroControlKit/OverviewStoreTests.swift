@@ -220,6 +220,27 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("an app summon: two or more windows make the picker with the ring on the next; one or none change nothing and are handed back")
+    func appSummon() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+
+        let three = store.filterToApp(bundleId: "com.app")                       // every fixture window is com.app
+        #expect(three.map(\.windowId) == [1, 2, 3])
+        #expect(store.filter == "Teams" && store.ringWindowId == 3)             // the one after the focused
+
+        store.filter = ""
+        #expect(store.filterToApp(bundleId: "com.nothing").isEmpty && store.filter == "")   // not running: the caller starts it
+
+        runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
+        await store.reload()
+        #expect(store.filterToApp(bundleId: "com.app").map(\.windowId) == [7] && store.filter == "")   // one: the caller focuses it
+        store.stop()
+    }
+
     @Test("the focused-app summon types the app name and puts the ring on the next instance; alone, it declines")
     func focusedAppSummon() async {
         let runner = ScriptRunner()
