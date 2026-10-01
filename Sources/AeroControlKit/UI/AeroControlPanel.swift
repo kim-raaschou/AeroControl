@@ -45,15 +45,15 @@ public struct AeroControlPanel: View {
                 errorView(errorMsg)
             } else if workspaces.isEmpty {
                 EmptyView()
-            } else if state.presentation == .strip, !matches.isEmpty {
-                AeroControlAppStrip(matches: matches, usable: usable, fallbackRatio: AeroControlLayout.screenRatio(for: usable))
+            } else if state.strip != nil, !state.stripWindows.isEmpty {
+                AeroControlAppStrip(usable: usable, screens: screenFrames,
+                                    fallbackScreen: CGRect(origin: .zero, size: CGSize(width: availableWidth, height: availableHeight)),
+                                    gap: AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames))
             } else {
                 grid(matches)
             }
-            // In the strip the header already names the app; the pill only speaks when the
-            // query has gone past that.
-            AeroControlFilterPill(query: state.presentation == .strip && state.filter == matches.first?.window.appName ? "" : state.filter,
-                                  matchCount: matches.count)
+            // The strip has no typing; its header names the app.
+            AeroControlFilterPill(query: state.strip == nil ? state.filter : "", matchCount: matches.count)
         }
         .fixedSize()
         .environment(state)

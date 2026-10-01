@@ -146,6 +146,9 @@ public enum FilterKey: Equatable, Sendable {
     /// ↑ and ↓: the ring moves a tile row, in the grid as drawn.
     case up
     case down
+    /// Home and End: the strip's first and last window; nothing on the map.
+    case home
+    case end
 }
 
 public extension FilterKey {
@@ -162,6 +165,8 @@ public extension FilterKey {
         case 123: self = .previous
         case 126: self = .up
         case 125: self = .down
+        case 115: self = .home
+        case 119: self = .end
         default:
             guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key
@@ -185,6 +190,8 @@ public enum FilterKeyAction: Equatable, Sendable {
     /// The ring moves to this index of the matches.
     case select(Int)
     case focus(windowId: Int)
+    /// Taken, and nothing for the caller to do: a step in the strip, or a key it swallows.
+    case handled
 }
 
 /// What a keystroke does to the filter. `selection` is the match the ring is on: Enter picks
@@ -207,6 +214,8 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], selection: I
         return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
     case .up, .down:
         return matches.neighbor(of: selection, tileRows: tileRows, cardRows: cardRows, down: key == .down).map { .select($0) } ?? .none
+    case .home, .end:
+        return .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
     case .character(let character):

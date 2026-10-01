@@ -6,6 +6,12 @@ import Common
 public class OverviewStore {
     public private(set) var model = OverviewModel() {
         didSet {
+            if var strip {
+                let before = oldValue.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }.map(\.window.windowId)
+                let lastIndex = strip.marked.flatMap { before.firstIndex(of: $0) } ?? 0
+                strip.marked = AppStripModel.keepSelection(strip.marked, lastIndex: lastIndex, ids: stripWindows.map(\.window.windowId))
+                self.strip = strip
+            }
             filterMatches = model.matching(filter)
             cursor = model.cursor(for: filterMatches)
             for window in model.workspaces.lazy.flatMap(\.windows) where icons[window.bundleId] == nil {
@@ -56,7 +62,84 @@ public class OverviewStore {
     /// How the overview is drawn this visit: the map of every workspace, or the strip — one
     /// row of one app's windows, like macOS's own switcher. Set by the host per summon.
     public enum Presentation: Sendable { case map, strip }
-    public var presentation: Presentation = .map
+    public var presentation: Presentation = .map {
+        didSet { if presentation == .map { strip = nil } }
+    }
+
+    /// The strip this visit: whose windows, the window you came from, and the marking. Its own
+    /// state, not a query: the app is named by bundle id, so a window of another app whose
+    /// title happens to name this one is not in it, and nothing typed narrows it.
+    public struct Strip: Equatable, Sendable {
+        public let bundleId: String
+        public let origin: Int?
+        public internal(set) var marked: Int? {
+            didSet { if !pointed { centre = marked } }
+        }
+        /// The window the carousel centres on: the marking, as keys move it. Pointing marks
+        /// without moving it, or the row would slide another window under a hand that had not
+        /// moved (krn.overview: "Keys move the centre; the pointer does not").
+        public internal(set) var centre: Int?
+        var pointed = false
+
+        init(bundleId: String, origin: Int?, marked: Int?) {
+            self.bundleId = bundleId; self.origin = origin; self.marked = marked; self.centre = marked
+        }
+    }
+    public private(set) var strip: Strip?
+
+    /// The strip's windows, in the order the map draws them.
+    public var stripWindows: [ParsedWindow] {
+        guard let strip else { return [] }
+        return model.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }
+    }
+
+    /// The workspaces that hold the strip's app, whole: a card mirrors all of a workspace, the
+    /// other apps' windows drawn grey behind the app's, not only the app's windows.
+    public var stripWorkspaces: [WorkspaceInfo] {
+        guard let strip else { return [] }
+        return model.workspaces.filter { $0.windows.contains { $0.bundleId == strip.bundleId } }
+    }
+
+    /// The summon key again while the strip is up: the marking moves on, as Cmd-` does.
+    public func stepStrip(_ direction: Int = 1) {
+        guard var strip else { return }
+        let ids = stripWindows.map(\.window.windowId)
+        let at = AppStripModel.stepPickable(strip.marked.flatMap { ids.firstIndex(of: $0) } ?? -1,
+                                            pickable: ids.map { _ in true }, direction: direction)
+        strip.marked = at >= 0 ? ids[at] : strip.marked
+        self.strip = strip
+    }
+
+    /// Pointing marks, as in krn.overview's strip; a window that is not the app's is ignored.
+    public func markStrip(_ windowId: Int) {
+        guard var strip, stripWindows.contains(where: { $0.window.windowId == windowId }) else { return }
+        strip.pointed = true
+        strip.marked = windowId
+        strip.pointed = false
+        self.strip = strip
+    }
+
+    /// Where the mouse was when the strip last heard from it, in screen points.
+    private var stripPointer: CGPoint?
+
+    /// The mouse's place as the strip opens, so a card that slides under it is not pointed at.
+    public func notePointer(_ location: CGPoint) { stripPointer = location }
+
+    /// The pointer entered a window: it marks only if the mouse moved. A hover also fires when
+    /// the carousel turns, or the strip opens, under a hand that is still, and that must not
+    /// take the marking away from the keys.
+    public func pointStrip(_ windowId: Int, at location: CGPoint) {
+        guard location != stripPointer else { return }
+        stripPointer = location
+        markStrip(windowId)
+    }
+
+    /// A key that puts the marking on a window: the centre goes with it.
+    private func selectStrip(_ windowId: Int) {
+        guard var strip else { return }
+        strip.marked = windowId
+        self.strip = strip
+    }
 
     /// What the ring walks: the matches while a query has some, every window in grid order
     /// otherwise — the map is navigable too.
@@ -83,6 +166,7 @@ public class OverviewStore {
     /// focused window otherwise — so on the map, and on a miss, the ring means what it always
     /// did.
     public var ringWindowId: Int? {
+        if let strip { return strip.marked }
         guard selection != nil || !filterMatches.isEmpty else { return model.focusedWindowId }
         return cursor.selected(selection ?? restingSelection)?.window.windowId ?? model.focusedWindowId
     }
@@ -226,6 +310,18 @@ public class OverviewStore {
         }
     }
 
+    /// The strip draws its app's windows larger than the map does: those few are taken again
+    /// at the strip's size, the rest keep the map's pictures, which are only drawn faint there.
+    public func retakeStripPictures(maxSize: CGSize) async {
+        let ids = stripWindows.map(\.window.windowId)
+        guard !ids.isEmpty else { return }
+        let generation = captureGeneration
+        await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize) { [weak self] id, image in
+            guard let self, generation == self.captureGeneration else { return }
+            self.previews[id] = image
+        }
+    }
+
     public func clearPreviews() {
         captureGeneration += 1
         refreshPicturesTask?.cancel()
@@ -254,9 +350,8 @@ public class OverviewStore {
     ///
     /// - none: start it; one: focus it;
     /// - two, and you are in one of them: the other — a toggle needs no picker;
-    /// - more, or coming from elsewhere: the picker, the query the app's name and the ring
-    ///   on the window after the focused one, so Enter alone is Cmd-` with pictures. Text,
-    ///   not bundle id, on purpose: the pill shows a query you can keep typing into.
+    /// - more, or coming from elsewhere: the strip, the marking on the window after the
+    ///   focused one, so Enter alone is Cmd-` with pictures.
     ///
     /// The first two lines are the link's own and hold with the strip off. The rest are the
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
@@ -272,10 +367,8 @@ public class OverviewStore {
         }
         guard picker else { return .launch }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
-        filter = windows[0].appName
-        if let at = filterMatches.firstIndex(where: { $0.window.windowId == model.focusedWindowId }) {
-            selection = (at + 1) % filterMatches.count
-        }
+        let origin = focusedAt.map { _ in model.focusedWindowId }
+        strip = Strip(bundleId: bundleId, origin: origin, marked: AppStripModel.start(origin: origin, ids: windows.map(\.windowId)))
         return .pick
     }
 
@@ -284,14 +377,30 @@ public class OverviewStore {
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
+        if let strip { return handleStrip(key, strip) }
         let action = filterKeyAction(query: filter, matches: cursor, selection: selection ?? restingSelection,
                                      tileRows: tileRows, cardRows: cardRows, key: key)
         switch action {
         case .setQuery(let query): filter = query
         case .select(let index): selection = index
-        case .none, .focus: break
+        case .none, .focus, .handled: break
         }
         return action
+    }
+
+    /// A key in the strip, by its own rules (`AppStripModel.action`): steps and Home/End move the
+    /// marking, a key or Enter picks, Escape is the window's to close with; anything else is
+    /// swallowed, since there is no typing in the strip.
+    private func handleStrip(_ key: FilterKey, _ strip: Strip) -> FilterKeyAction {
+        let ids = stripWindows.map(\.window.windowId)
+        switch AppStripModel.action(for: key, ids: ids, pickable: ids.map { _ in true }, marked: strip.marked) {
+        case .step(let direction): stepStrip(direction)
+        case .select(let id): selectStrip(id)
+        case .commit(let id): return .focus(windowId: id)
+        case .cancel: return .none
+        case .none: break
+        }
+        return .handled
     }
 
     private func startInbox() {

@@ -214,13 +214,14 @@ struct FilterKeyActionTests {
         #expect(action("zzz", .previous, matches: []) == .none)
     }
 
-    @Test("the action vocabulary is exactly these four")
+    @Test("the action vocabulary is exactly these five; the map's filter never answers handled, the strip's keys do")
     func exhaustive() {
         // A compile-time guard: there is no case here promising a dismissal that this
         // function's one caller only ever turns back into "not ours".
         switch action("", .escape) {
-        case .none, .setQuery, .select, .focus: break
+        case .none, .setQuery, .select, .focus, .handled: break
         }
+        #expect(action("", .home) == .none && action("", .end) == .none)
     }
 }
 
@@ -228,6 +229,8 @@ struct FilterKeyActionTests {
 struct FilterKeyCodeTests {
     @Test("the keys the overview answers to, by macOS key code; Shift only matters to Tab", arguments: [
         (53, false, nil, .escape),
+        (115, false, nil, .home),
+        (119, false, nil, .end),
         (51, false, nil, .backspace),
         (36, false, "\r", .enter),
         (76, false, nil, .enter),                        // keypad Enter

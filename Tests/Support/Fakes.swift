@@ -119,8 +119,8 @@ final class FakeBridge: NativeApiBridge {
 
 /// One `list-windows` entry. The app name and title are parameters so a test can filter on
 /// them; a nil title is left out of the JSON entirely, like a window that has none.
-func oneWindow(_ id: Int, _ ws: String, app: String = "App", title: String? = nil) -> String {
-    "{\"window-id\":\(id),\"app-name\":\"\(app)\",\"app-bundle-id\":\"com.app\","
+func oneWindow(_ id: Int, _ ws: String, app: String = "App", title: String? = nil, bundleId: String = "com.app") -> String {
+    "{\"window-id\":\(id),\"app-name\":\"\(app)\",\"app-bundle-id\":\"\(bundleId)\","
         + (title.map { "\"window-title\":\"\($0)\"," } ?? "")
         + "\"workspace\":\"\(ws)\",\"window-parent-container-layout\":\"h_tiles\",\"monitor-id\":1}"
 }

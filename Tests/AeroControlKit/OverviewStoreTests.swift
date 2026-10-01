@@ -263,7 +263,7 @@ struct OverviewStoreTests {
 
         // Three windows and the picker on: the picker, the ring on the one after the focused.
         #expect(store.summonApp(bundleId: "com.app", picker: true) == .pick)     // every fixture window is com.app
-        #expect(store.filter == "Teams" && store.ringWindowId == 3)
+        #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")   // the strip has its own state, no query
         store.filter = ""
 
         // The strip off: its rules are off — no picker, no choosing. The app is brought
@@ -316,7 +316,7 @@ struct OverviewStoreTests {
         await store.reload()
 
         #expect(store.summonApp(bundleId: nil, picker: true) == .pick)
-        #expect(store.filter == "Teams" && store.ringWindowId == 3)             // the one after the focused
+        #expect(store.strip?.marked == 3 && store.ringWindowId == 3)             // the one after the focused
         #expect(store.handle(.enter) == .focus(windowId: 3))
 
         store.filter = ""
@@ -333,6 +333,121 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 2, workspace: "1")
         await store.reload()
         #expect(store.summonApp(bundleId: nil, picker: false) == .launch && store.filter == "")   // strip off: passes through
+        store.stop()
+    }
+
+    // MARK: The strip
+
+    /// A strip open on three Teams windows, the second focused, plus a Slack window whose title says Teams.
+    private func stripOnTeams() async -> (ScriptRunner, OverviewStore) {
+        let runner = ScriptRunner()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
+                                        oneWindow(9, "2", app: "Slack", title: "Teams standup notes", bundleId: "com.slack"),
+                                        oneWindow(3, "3", app: "Teams")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "3"]))
+        runner.setFocus(windowId: 2, workspace: "2")
+        let store = started(runner)
+        await store.reload()
+        store.presentation = .strip
+        _ = store.summonApp(bundleId: "com.app", picker: true)
+        return (runner, store)
+    }
+
+    @Test("the strip holds the app's windows by bundle id, in grid order, not every window whose title names it")
+    func stripWindowsByBundleId() async {
+        let (_, store) = await stripOnTeams()
+        #expect(store.stripWindows.map(\.window.windowId) == [1, 2, 3])
+        // The cards are whole workspaces: workspace 2 keeps its Slack window, to be drawn grey behind the app's.
+        #expect(store.stripWorkspaces.map(\.name) == ["1", "2", "3"])
+        #expect(store.stripWorkspaces[1].windows.map(\.windowId) == [2, 9])
+        #expect(store.strip?.origin == 2 && store.strip?.marked == 3)
+        store.stop()
+    }
+
+    @Test("in the strip Tab steps round, Home and End go to the ends, a key picks, and typing is no query")
+    func stripKeys() async {
+        let (_, store) = await stripOnTeams()
+        #expect(store.handle(.next) == .handled && store.strip?.marked == 1)          // wraps round
+        #expect(store.handle(.previous) == .handled && store.strip?.marked == 3)
+        #expect(store.handle(.home) == .handled && store.strip?.marked == 1)
+        #expect(store.handle(.end) == .handled && store.strip?.marked == 3)
+        #expect(store.handle(.character("x")) == .handled && store.filter == "" && store.strip?.marked == 3)
+        #expect(store.handle(.character("2")) == .focus(windowId: 2))
+        #expect(store.handle(.enter) == .focus(windowId: 3))
+        #expect(store.handle(.escape) == .none)                                        // the window closes the strip
+        store.stop()
+    }
+
+    @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")
+    func stripStepsOnResummon() async {
+        let (_, store) = await stripOnTeams()
+        store.stepStrip()
+        #expect(store.strip?.marked == 1)
+        store.markStrip(2)
+        #expect(store.strip?.marked == 2)
+        store.markStrip(9)                                                              // not the app's: ignored
+        #expect(store.strip?.marked == 2)
+        store.stop()
+    }
+
+    @Test("only a pointer that moved marks: cards sliding under a still mouse do not take the marking")
+    func stillPointerDoesNotMark() async {
+        let (_, store) = await stripOnTeams()
+        store.notePointer(CGPoint(x: 500, y: 300))                                     // where the mouse rests as the strip opens
+        store.pointStrip(1, at: CGPoint(x: 500, y: 300))                               // a card slid under it
+        #expect(store.strip?.marked == 3)
+        store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the hand moved
+        #expect(store.strip?.marked == 1)
+        _ = store.handle(.next)
+        store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the row turned under a still hand
+        #expect(store.strip?.marked == 2)
+        store.stop()
+    }
+
+    @Test("keys move the carousel's centre with the marking; the pointer marks but leaves the centre, or the row would slide under a still hand")
+    func pointerLeavesTheCentre() async {
+        let (_, store) = await stripOnTeams()
+        #expect(store.strip?.centre == 3)                                              // opens centred on the marking
+        store.markStrip(1)
+        #expect(store.strip?.marked == 1 && store.strip?.centre == 3)
+        _ = store.handle(.next)
+        #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
+        _ = store.handle(.home)
+        #expect(store.strip?.centre == 1)
+        store.stepStrip()
+        #expect(store.strip?.centre == 2)
+        store.stop()
+    }
+
+    @Test("a closed marked window hands the marking to the one that took its place; the map drops the strip")
+    func stripKeepsMarkingThroughReload() async {
+        let (runner, store) = await stripOnTeams()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "3"]))
+        store.markStrip(3)
+        await store.reload()
+        #expect(store.strip?.marked == 2)
+        store.presentation = .map
+        #expect(store.strip == nil)
+        store.stop()
+    }
+
+    @Test("the strip's windows are taken again at the strip's size, and only they")
+    func stripRetakesItsWindows() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        bridge.granted = true
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(9, "1", app: "Slack", bundleId: "com.slack"),
+                                        oneWindow(2, "2", app: "Teams"), oneWindow(3, "2", app: "Teams")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2"]))
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        store.presentation = .strip
+        _ = store.summonApp(bundleId: "com.app", picker: true)
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        await store.retakeStripPictures(maxSize: CGSize(width: 400, height: 300))
+        #expect(bridge.captured.last == [1, 2, 3])
+        #expect(store.previews[1]!.size.width > 100)
         store.stop()
     }
 

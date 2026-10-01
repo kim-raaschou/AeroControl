@@ -46,6 +46,7 @@ final class OverlayWindowManager {
         state.stopFollowingAerospace()      // nothing to stay in sync with while hidden
         state.clearPreviews()
         state.filter = ""
+        state.presentation = .map           // and the strip with it
         window?.dismiss()
         guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
         app.activate()
@@ -78,7 +79,7 @@ final class OverlayWindowManager {
         case .focus(let windowId):
             state.send(.action(.focusWindow(windowId)))
             hide(restoreFocus: false)       // the filter chose a window; it gets the keyboard
-        case .setQuery, .select:
+        case .setQuery, .select, .handled:
             break
         }
         return true
@@ -116,10 +117,13 @@ final class OverlayWindowManager {
             if self.state.previewsAvailable {
                 // As large as a card can draw a window on the screen the overview is on, in its pixels.
                 let screen = self.window?.screen ?? NSScreen.main
+                let available = screen?.frame.size ?? AeroControlLayout.minimumCaptureSize
+                let scale = screen?.backingScaleFactor ?? 2
                 await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(
-                    workspaces: self.state.model.workspaces.count,
-                    available: screen?.frame.size ?? AeroControlLayout.minimumCaptureSize,
-                    backingScale: screen?.backingScaleFactor ?? 2))
+                    workspaces: self.state.model.workspaces.count, available: available, backingScale: scale))
+                if self.state.strip != nil {
+                    await self.state.retakeStripPictures(maxSize: AeroControlLayout.stripCaptureSize(available: available, backingScale: scale))
+                }
             }
         }
     }
@@ -163,8 +167,18 @@ final class OverlayWindowManager {
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
+    /// The summon key again while its app's strip is up moves the marking on, as Cmd-` does;
+    /// any other summon while the overview is up closes it.
     func toggleVisibility(_ summon: Summon = .map) {
-        if requestedVisible { hide(restoreFocus: true) } else { show(summon) }
+        guard requestedVisible else { return show(summon) }
+        if let strip = state.strip {
+            switch summon {
+            case .app(let id) where id == strip.bundleId: return state.stepStrip()
+            case .focusedApp: return state.stepStrip()
+            default: break
+            }
+        }
+        hide(restoreFocus: true)
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {

@@ -125,6 +125,78 @@ public enum AeroControlLayout {
         return (tree, measured)
     }
 
+    /// One workspace in the strip: its place on the unrolled row, where each window is drawn
+    /// inside the card's picture area, and which of those belong to other apps.
+    public struct StripCard: Equatable, Sendable {
+        public let workspace: String
+        public let span: AppStripModel.Span
+        public let frames: [Int: CGRect]
+        public let others: Set<Int>
+    }
+
+    public struct StripLayout: Equatable, Sendable {
+        /// The cards' shared height.
+        public let height: CGFloat
+        /// The unrolled row, gaps included.
+        public let width: CGFloat
+        public let cards: [StripCard]
+    }
+
+    /// The strip as krn.overview draws it: one card per workspace holding the app, each in its
+    /// screen's shape at one height (`AppStripModel.cardHeight`), mirroring the workspace as the
+    /// map does — AeroSpace's rects, or the tree read from sizes — with the other apps' windows
+    /// marked to be drawn faint. A card whose layout cannot be read packs only the app's
+    /// windows in it, each at its own shape.
+    public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
+                                   fallbackScreen: CGRect, gap: CGFloat?, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
+        let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
+        let aspects = areas.map { $0.width / max(1, $0.height) }
+        let height = AppStripModel.cardHeight(width: viewWidth, gaps: cardGap * CGFloat(max(0, groups.count - 1)),
+                                              sumAspect: aspects.reduce(0, +), panelHeight: panelHeight)
+        var x: CGFloat = 0
+        var cards: [StripCard] = []
+        for (g, workspace) in groups.enumerated() {
+            if g > 0 { x += cardGap }
+            let size = CGSize(width: (height * aspects[g]).rounded(), height: height)
+            let ours = workspace.windows.filter { $0.bundleId == bundleId }
+            var frames: [Int: CGRect] = [:], others: Set<Int> = []
+            if let mirror = treeLayout(windows: workspace.windows, sizes: sizes, rootLayout: workspace.rootLayout,
+                                       screen: areas[g], gap: gap, inner: size) {
+                frames = mirror.frames
+                others = Set(workspace.windows.map(\.windowId)).subtracting(ours.map(\.windowId))
+            } else {
+                let ratios = ratios(of: ours, sizes: sizes, fallback: aspects[g])
+                let gapHere = tileGap(innerGap: gap, screen: areas[g].size, inner: size)
+                let packed = packTiles(ratios: ratios, inner: size, gap: gapHere, caption: 0)
+                let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: size)
+                for (i, window) in ours.enumerated() {
+                    let t = packed.tiles[i]
+                    frames[window.windowId] = CGRect(x: origin.x + t.x, y: origin.y + t.y, width: t.width, height: t.height)
+                }
+            }
+            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: size.width), frames: frames, others: others))
+            x += size.width
+        }
+        return StripLayout(height: height, width: x, cards: cards)
+    }
+
+    /// From this many workspaces the strip is always a carousel: the marked card in the middle,
+    /// the row running round, every step turning the wheel. With fewer, a ring only centres one
+    /// card and leaves the view half empty, so the row stands still when it fits.
+    public static let carouselFrom = 3
+
+    /// How far each strip card moves (`AppStripModel.ringShifts`): from `carouselFrom` cards, or
+    /// when the row does not fit, it runs round with the card holding `centre` — the window the
+    /// keys put the marking on — in the middle of the view; otherwise it stands still and centred.
+    public static func stripShifts(_ layout: StripLayout, centre: Int?, viewWidth: CGFloat) -> [CGFloat] {
+        // The card's middle, not the window's: stepping between windows of one workspace moves the
+        // marking and leaves the row; the row turns a whole card at a time.
+        let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false }
+        let anchor = held.map { $0.span.x + $0.span.width / 2 } ?? 0
+        return AppStripModel.ringShifts(layout.cards.map(\.span), anchor: anchor, centre: viewWidth / 2,
+                                        ring: layout.width + cardGap, view: viewWidth, alwaysRound: layout.cards.count >= carouselFrom)
+    }
+
     /// The gap AeroSpace keeps between windows, read once for the overview: the median of what
     /// every workspace with a nested container shows. It is one setting, so any workspace that
     /// shows it speaks for all, and a card whose own tree is flat still draws it. Nil when no
@@ -155,6 +227,15 @@ public enum AeroControlLayout {
         let inner = innerSize(of: layout.cells.first?.frame.size ?? .zero)
         return CGSize(width: max(minimumCaptureSize.width, (inner.width * backingScale).rounded(.up)),
                       height: max(minimumCaptureSize.height, (inner.height * backingScale).rounded(.up)))
+    }
+
+    /// The box the strip's pictures are taken to fit, in pixels: a strip card is at most half
+    /// the panel high, in the screen's shape, so a window in it is never larger than that.
+    public static func stripCaptureSize(available: CGSize, backingScale: CGFloat) -> CGSize {
+        let height = (available.height * usableScreenFraction * 0.5).rounded(.up)
+        let size = CGSize(width: (height * screenRatio(for: available)).rounded(.up), height: height)
+        return CGSize(width: max(minimumCaptureSize.width, (size.width * backingScale).rounded(.up)),
+                      height: max(minimumCaptureSize.height, (size.height * backingScale).rounded(.up)))
     }
 
     /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with

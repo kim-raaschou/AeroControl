@@ -1,0 +1,126 @@
+import CoreGraphics
+import Foundation
+
+/// The strip's rules, ported from krn.overview's `AppStripModel.js`: which window the marking
+/// opens on, how it steps, where it goes when its window closes, how tall the cards are, how
+/// the row runs round when it does not fit, how a window is framed, and what a key does. One
+/// difference by decision: the marking only chooses — Enter, a key or a click focuses —
+/// so stepping never switches AeroSpace's workspace behind the strip.
+public enum AppStripModel {
+    /// The keys on the windows, in order: 1–9, then a–f.
+    static let keys = Array("123456789abcdef")
+
+    /// The key on the window at `index`, nil past the fifteenth.
+    public static func keyLabel(_ index: Int) -> String? {
+        index >= 0 && index < keys.count ? String(keys[index]) : nil
+    }
+
+    /// One step from `index` among `count`, wrapping; with no marking (-1) from the near end;
+    /// -1 when there is nothing to step onto.
+    public static func stepIndex(_ index: Int, count: Int, direction: Int) -> Int {
+        guard count > 0 else { return -1 }
+        guard index >= 0 else { return direction < 0 ? count - 1 : 0 }
+        return ((index + direction) % count + count) % count
+    }
+
+    /// The next window a step may land on, passing over those that cannot be picked; the
+    /// current one when it is the only one left, -1 when none can be.
+    public static func stepPickable(_ index: Int, pickable: [Bool], direction: Int) -> Int {
+        var i = index
+        for _ in pickable.indices {
+            i = stepIndex(i, count: pickable.count, direction: direction)
+            if pickable[i] { return i }
+        }
+        return -1
+    }
+
+    /// Where the marking opens: on the window after the one you are in, so two windows are the
+    /// key and Enter; on the first when you come from outside the app.
+    public static func start(origin: Int?, ids: [Int]) -> Int? {
+        guard !ids.isEmpty else { return nil }
+        let at = origin.flatMap { ids.firstIndex(of: $0) } ?? -1
+        return ids[stepIndex(at, count: ids.count, direction: 1)]
+    }
+
+    /// The marking after the windows changed: it stays on its window, or goes to the one that
+    /// took the closed window's place.
+    public static func keepSelection(_ id: Int?, lastIndex: Int, ids: [Int]) -> Int? {
+        guard !ids.isEmpty else { return nil }
+        if let id, ids.contains(id) { return id }
+        return ids[max(0, min(ids.count - 1, lastIndex))]
+    }
+
+    /// How tall the strip's cards are: as tall as `width` allows for cards whose shapes add up
+    /// to `sumAspect`, never more than half the panel and never less than a fifth.
+    public static func cardHeight(width: CGFloat, gaps: CGFloat, sumAspect: CGFloat, panelHeight: CGFloat) -> CGFloat {
+        let most = (panelHeight * 0.5).rounded(), least = (panelHeight * 0.2).rounded()
+        return max(least, min(most, ((width - gaps) / max(0.01, sumAspect)).rounded(.down)))
+    }
+
+    /// A card's place on the unrolled row.
+    public struct Span: Equatable, Sendable {
+        public let x: CGFloat
+        public let width: CGFloat
+        public init(x: CGFloat, width: CGFloat) { self.x = x; self.width = width }
+    }
+
+    /// How far each card moves. When the row fits `view` it stands still, centred on `centre`,
+    /// whichever card is marked — unless `alwaysRound`. Otherwise it is a ring of length `ring`:
+    /// the card at `anchor` (the marked window's middle) stands at the centre and the last card
+    /// comes right before the first.
+    public static func ringShifts(_ spans: [Span], anchor: CGFloat, centre: CGFloat, ring: CGFloat, view: CGFloat,
+                                  alwaysRound: Bool = false) -> [CGFloat] {
+        guard let first = spans.first, let last = spans.last else { return [] }
+        let width = last.x + last.width - first.x
+        if width <= view && !alwaysRound {
+            let still = (centre - width / 2 - first.x).rounded()
+            return spans.map { _ in still }
+        }
+        return spans.map { span in
+            let mid = span.x + span.width / 2
+            var d = mid - anchor
+            if ring > 0 { d = ((d + ring / 2).truncatingRemainder(dividingBy: ring) + ring).truncatingRemainder(dividingBy: ring) - ring / 2 }
+            return (centre + d - mid).rounded()
+        }
+    }
+
+    public enum Frame: Equatable, Sendable { case marked, origin, plain }
+
+    /// The marked window wears the accent; the window you came from the frame of where you are;
+    /// where they meet, the marking wins.
+    public static func frame(_ id: Int, marked: Int?, origin: Int?) -> Frame {
+        if id == marked { return .marked }
+        return id == origin ? .origin : .plain
+    }
+
+    public enum Action: Equatable, Sendable {
+        case none
+        /// Move the marking this many windows, passing over those that cannot be picked.
+        case step(Int)
+        /// Move the marking to this window.
+        case select(Int)
+        /// Focus this window and close.
+        case commit(Int)
+        /// Close, back on the window you came from.
+        case cancel
+    }
+
+    /// What a key does in the strip. There is no typing here: a digit or a–f goes straight to
+    /// that window, even one a step would pass over; search belongs to the map.
+    public static func action(for key: FilterKey, ids: [Int], pickable: [Bool], marked: Int?) -> Action {
+        switch key {
+        case .escape: return .cancel
+        case .enter: return marked.map { .commit($0) } ?? .none
+        case .next: return .step(1)
+        case .previous: return .step(-1)
+        case .home, .end:
+            let home = key == .home
+            let at = stepPickable(home ? -1 : 0, pickable: pickable, direction: home ? 1 : -1)
+            return at >= 0 ? .select(ids[at]) : .none
+        case .character(let c):
+            guard let n = keys.firstIndex(of: c) else { return .none }
+            return n < ids.count ? .commit(ids[n]) : .none
+        case .backspace, .up, .down: return .none
+        }
+    }
+}
