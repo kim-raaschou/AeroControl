@@ -124,7 +124,7 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
     let workspaces = workspaceMonitors.map { wm in
         WorkspaceInfo(
             name: wm.workspace,
-            windows: byWorkspace[wm.workspace]?.map(\.window) ?? [],
+            windows: layoutOrdered(byWorkspace[wm.workspace]?.map(\.window) ?? []),
             monitorId: wm.monitorId,
             monitorName: wm.monitorName ?? "",
             screenIndex: wm.screenIndex,
@@ -133,6 +133,19 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
     }
 
     return OverviewResult(workspaces: workspaces, focus: focus, layoutRects: layoutRects)
+}
+
+/// A workspace's windows in the layout's order when AeroSpace said where each tiled one is
+/// (`WorkspaceTree.order`), so the ring, the keys and the strip follow what the eye sees, not
+/// AeroSpace's listing by app name; windows without a rect — floats, a fullscreen window in
+/// front — come after them in the listing's order. Without rects the listing's order stands.
+func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
+    let placed = windows.compactMap { w in w.layoutRect.map { (w.windowId, $0) } }
+    guard placed.count > 1 else { return windows }
+    let rank = Dictionary(uniqueKeysWithValues: WorkspaceTree.order(placed).enumerated().map { ($1, $0) })
+    return windows.enumerated().sorted { a, b in
+        (rank[a.element.windowId] ?? placed.count + a.offset, a.offset) < (rank[b.element.windowId] ?? placed.count + b.offset, b.offset)
+    }.map(\.element)
 }
 
 /// Focus from the two `--focused` reads. `nil` when neither answered, so a load during an
