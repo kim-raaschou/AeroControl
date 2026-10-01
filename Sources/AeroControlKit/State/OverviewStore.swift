@@ -107,8 +107,7 @@ public class OverviewStore {
     public func stepStrip(_ direction: Int = 1) {
         guard var strip else { return }
         let ids = stripWindows.map(\.window.windowId)
-        let at = AppStripModel.stepPickable(strip.marked.flatMap { ids.firstIndex(of: $0) } ?? -1,
-                                            pickable: ids.map { _ in true }, direction: direction)
+        let at = AppStripModel.stepIndex(strip.marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: direction)
         let card = { (id: Int?) in id.flatMap { id in self.stripWorkspaces.firstIndex { $0.windows.contains { $0.windowId == id } } } }
         let from = card(strip.centre)
         strip.marked = at >= 0 ? ids[at] : strip.marked
@@ -437,7 +436,7 @@ public class OverviewStore {
     /// swallowed, since there is no typing in the strip.
     private func handleStrip(_ key: FilterKey, _ strip: Strip) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
-        switch AppStripModel.action(for: key, ids: ids, pickable: ids.map { _ in true }, marked: strip.marked) {
+        switch AppStripModel.action(for: key, ids: ids, marked: strip.marked) {
         case .step(let direction): stepStrip(direction)
         case .select(let id): selectStrip(id)
         case .commit(let id): return .focus(windowId: id)

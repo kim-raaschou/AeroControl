@@ -36,14 +36,6 @@ struct AppStripStepTests {
         #expect(M.keepSelection(1, lastIndex: 0, ids: []) == nil)
     }
 
-    @Test("steps pass over a window that cannot be picked, round the end, and stay put when nothing else can")
-    func stepPickable() {
-        #expect(M.stepPickable(0, pickable: [true, false, true], direction: 1) == 2)
-        #expect(M.stepPickable(0, pickable: [true, true, false], direction: -1) == 1)
-        #expect(M.stepPickable(-1, pickable: [false, true, true], direction: 1) == 1)
-        #expect(M.stepPickable(0, pickable: [true, false, false], direction: 1) == 0)
-        #expect(M.stepPickable(0, pickable: [false, false], direction: 1) == -1)
-    }
 }
 
 @Suite("AppStripModel: geometry")
@@ -57,20 +49,12 @@ struct AppStripGeometryTests {
         #expect(M.cardHeight(width: 400, gaps: 80, sumAspect: 16, panelHeight: 1085) == (1085 * 0.2).rounded())
     }
 
-    @Test("the marked window wears the accent, the window you came from the plain frame of where you are, and the marking wins")
-    func frames() {
-        #expect(M.frame(2, marked: 2, origin: 1) == .marked)
-        #expect(M.frame(1, marked: 2, origin: 1) == .origin)
-        #expect(M.frame(1, marked: 1, origin: 1) == .marked)
-        #expect(M.frame(3, marked: 2, origin: 1) == .plain)
-    }
 }
 
 @Suite("AppStripModel: keys")
 struct AppStripKeyTests {
     private let ids = [10, 20, 30]
-    private let pickable = [true, false, true]
-    private func act(_ key: FilterKey) -> M.Action { M.action(for: key, ids: ids, pickable: pickable, marked: 10) }
+    private func act(_ key: FilterKey) -> M.Action { M.action(for: key, ids: ids, marked: 10) }
 
     @Test("Enter chooses the marked window, Escape goes back")
     func enterEscape() {
@@ -83,7 +67,7 @@ struct AppStripKeyTests {
         #expect(act(.next) == .step(1) && act(.previous) == .step(-1))
     }
 
-    @Test("⌘ and a digit goes straight to that window, as ⌘1–⌘9 pick a tab, even one a step would pass over; beyond the strip it is nothing")
+    @Test("⌘ and a digit goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")
     func commandDigits() {
         #expect(act(.commandDigit(2)) == .commit(20))
         #expect(act(.commandDigit(4)) == .none)
@@ -94,7 +78,7 @@ struct AppStripKeyTests {
         #expect(act(.character("2")) == .none && act(.character("c")) == .none && act(.character("@")) == .none)
     }
 
-    @Test("Home and End mark the first and the last window that can be picked")
+    @Test("Home and End mark the first and the last window")
     func homeEnd() {
         #expect(act(.home) == .select(10) && act(.end) == .select(30))
     }

@@ -34,17 +34,6 @@ public enum AppStripModel {
         return ((index + direction) % count + count) % count
     }
 
-    /// The next window a step may land on, passing over those that cannot be picked; the
-    /// current one when it is the only one left, -1 when none can be.
-    public static func stepPickable(_ index: Int, pickable: [Bool], direction: Int) -> Int {
-        var i = index
-        for _ in pickable.indices {
-            i = stepIndex(i, count: pickable.count, direction: direction)
-            if pickable[i] { return i }
-        }
-        return -1
-    }
-
     /// Where the marking opens: on the window after the one you are in, so two windows are the
     /// key and Enter; on the first when you come from outside the app.
     public static func start(origin: Int?, ids: [Int]) -> Int? {
@@ -75,18 +64,9 @@ public enum AppStripModel {
         public init(x: CGFloat, width: CGFloat) { self.x = x; self.width = width }
     }
 
-    public enum Frame: Equatable, Sendable { case marked, origin, plain }
-
-    /// The marked window wears the accent; the window you came from the frame of where you are;
-    /// where they meet, the marking wins.
-    public static func frame(_ id: Int, marked: Int?, origin: Int?) -> Frame {
-        if id == marked { return .marked }
-        return id == origin ? .origin : .plain
-    }
-
     public enum Action: Equatable, Sendable {
         case none
-        /// Move the marking this many windows, passing over those that cannot be picked.
+        /// Move the marking this many windows, wrapping.
         case step(Int)
         /// Move the marking to this window.
         case select(Int)
@@ -97,17 +77,15 @@ public enum AppStripModel {
     }
 
     /// What a key does in the strip. There is no typing here, search belongs to the map: ⌘ and
-    /// a digit goes straight to that window, even one a step would pass over.
-    public static func action(for key: FilterKey, ids: [Int], pickable: [Bool], marked: Int?) -> Action {
+    /// a digit goes straight to that window; Home and End to the first and the last.
+    public static func action(for key: FilterKey, ids: [Int], marked: Int?) -> Action {
         switch key {
         case .escape: return .cancel
         case .enter: return marked.map { .commit($0) } ?? .none
         case .next: return .step(1)
         case .previous: return .step(-1)
-        case .home, .end:
-            let home = key == .home
-            let at = stepPickable(home ? -1 : 0, pickable: pickable, direction: home ? 1 : -1)
-            return at >= 0 ? .select(ids[at]) : .none
+        case .home: return ids.first.map { .select($0) } ?? .none
+        case .end: return ids.last.map { .select($0) } ?? .none
         case .commandDigit(let n):
             return n >= 1 && n <= min(keyCount, ids.count) ? .commit(ids[n - 1]) : .none
         case .character, .backspace, .up, .down: return .none
