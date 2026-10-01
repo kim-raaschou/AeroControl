@@ -70,28 +70,25 @@ public struct AeroControlPanel: View {
 
     private static let pillGap: CGFloat = 18
 
+    /// The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.
+    private var cellRatio: CGFloat { AeroControlLayout.screenRatio(for: CGSize(width: availableWidth, height: availableHeight)) }
+
     /// The shape of the screen a workspace lives on; this screen's when AeroSpace did not say.
     private func ratio(of workspace: WorkspaceInfo) -> CGFloat {
         screenRatios[workspace.screenIndex] ?? AeroControlLayout.screenRatio(for: usable)
     }
 
     /// The result takes over the grid's geometry: a query that found something draws only the
-    /// workspaces that hold a match, each with only its matching windows, laid out by the same
-    /// `CardGrid` as the full map — it weighs windows and knows nothing of workspaces. A query
-    /// that found nothing leaves the whole map standing, so there is always something to read
-    /// your way out of.
+    /// workspaces that hold a match, each with only its matching windows, in the same lattice
+    /// as the full map. A query that found nothing leaves the whole map standing, so there is
+    /// always something to read your way out of.
     private func grid(_ matches: [ParsedWindow]) -> some View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : workspaces
         let namesMonitors = self.namesMonitors
-        let options = AeroControlLayout.cardGridOptions(
-            for: usable,
-            emptyWidth: namesMonitors ? AeroControlLayout.namedEmptyCardWidth : AeroControlLayout.emptyCardWidth,
-            caption: filtering ? AeroControlLayout.captionLane : 0)
-        let layout = CardGrid.layout(all.map { CardGrid.Slot(weight: AeroControlLayout.weight(forCount: $0.windows.count),
-                                                              count: $0.windows.count, ratio: ratio(of: $0)) },
-                                     in: usable, options: options)
+        let layout = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
+                                      chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
         let cardRows = layout.rows.map { $0.map { all[$0].name } }
         return ZStack(alignment: .topLeading) {
             ForEach(layout.cells, id: \.index) { cell in

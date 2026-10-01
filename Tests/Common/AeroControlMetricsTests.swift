@@ -15,6 +15,17 @@ struct AeroControlMetricsTests {
     }
 }
 
+@Suite("where the tiles sit in a card")
+struct TileOriginTests {
+    @Test("the packed block is centred in the inner box both ways, never placed off it")
+    func centred() {
+        let inner = CGSize(width: 500, height: 300)
+        #expect(AeroControlLayout.tileOrigin(packed: CGSize(width: 300, height: 100), inner: inner) == CGPoint(x: 100, y: 100))
+        #expect(AeroControlLayout.tileOrigin(packed: CGSize(width: 301, height: 101), inner: inner) == CGPoint(x: 99, y: 99))   // rounded down
+        #expect(AeroControlLayout.tileOrigin(packed: CGSize(width: 600, height: 400), inner: inner) == .zero)                  // too big: pinned
+    }
+}
+
 @Suite("the layout symbol on a card")
 struct LayoutSymbolTests {
     @Test("tiles are a row or a column, an accordion one window in front of another")

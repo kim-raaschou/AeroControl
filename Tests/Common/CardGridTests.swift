@@ -2,13 +2,18 @@ import Testing
 import Foundation
 @testable import Common
 
-// The cards on the screen, ported from krn.overview's `weightedCells`: widths by weight
-// (empty = a strip, ordinary = 1, crowded = 2), rows broken where the windows come out
-// largest, row heights that follow what the row has to show, the whole thing centred.
+// The cards on the screen: one identical, screen-shaped cell per workspace in a lattice, the
+// lattice that gives the largest cell, centred in the box, the last row left-aligned. What
+// GNOME Shell and KWin do; chosen over the row-break search on 2026-09-30 (see
+// docs/outer-grid-literature.md).
 
-private func slot(_ count: Int) -> CardGrid.Slot {
-    CardGrid.Slot(weight: count == 0 ? 0 : (count >= 4 ? 2 : 1), count: count)
-}
+private let box = CGSize(width: 1624, height: 994)
+private let screen: CGFloat = 1.547
+private let gap: CGFloat = 24
+
+/// What a card spends on its header and padding: the inner box is the cell less this.
+private let chrome = CGSize(width: 36, height: 76)
+private func lattice(_ n: Int) -> CardGrid.Layout { CardGrid.lattice(count: n, in: box, cellRatio: screen, gap: gap, chrome: chrome) }
 
 private func overlap(_ frames: [CGRect]) -> (Int, Int)? {
     for i in frames.indices {
@@ -25,93 +30,64 @@ private func shape(_ layout: CardGrid.Layout) -> String {
     layout.rows.map { $0.map { String($0 + 1) }.joined(separator: " ") }.joined(separator: " | ")
 }
 
-// krn.overview's two option sets: the generic one, and the one measured on a 1900x1000 screen.
-private let generic = CardGrid.Options(gap: 10, tileRatio: 16 / 9, cardPadding: 8, chrome: 40, narrow: 120, tileGap: 8, caption: 18)
-private let measured = CardGrid.Options(gap: 16, tileRatio: 1.6, cardPadding: 12, chrome: 68, narrow: 180, tileGap: 12, caption: 24)
-
-@Suite("CardGrid")
+@Suite("CardGrid.lattice")
 struct CardGridTests {
-    @Test("every card placed, inside the box, none overlapping, in order", arguments: [1, 2, 3, 4, 5, 6, 7, 9, 10, 12])
+    @Test("every card placed, inside the box, none overlapping, in order, all the same size", arguments: [1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 16])
     func invariants(n: Int) {
-        let g = CardGrid.layout(Array(repeating: slot(2), count: n), in: CGSize(width: 1900, height: 1000), options: generic)
+        let g = lattice(n)
         #expect(g.cells.count == n && g.cells.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 })
-        #expect(g.cells.allSatisfy { $0.frame.minX >= 0 && $0.frame.minY >= 0 && $0.frame.maxX <= 1901 && $0.frame.maxY <= 1001 })
+        #expect(g.cells.allSatisfy { $0.frame.minX >= 0 && $0.frame.minY >= 0 && $0.frame.maxX <= box.width + 1 && $0.frame.maxY <= box.height + 1 })
         #expect(overlap(g.cells.map(\.frame)) == nil)
         #expect(g.cells.map(\.index) == Array(0..<n))
         #expect(g.rows.flatMap { $0 } == Array(0..<n))
+        #expect(Set(g.cells.map { $0.frame.size }).count == 1)
     }
 
-    @Test("rows break where the windows come out largest, and keep the default shape for a gain under 5 %", arguments: [
-        ([1, 2, 0, 0, 0], "1 | 2 3 4 5", 398),          // one window in ws 1 and two in ws 2: ws 1 gets a row of its own
-        ([3, 0, 0, 0, 0], "1 | 2 3 4 5", 385),          // windows only in ws 1: it gets the whole top row
-        ([2, 2, 0, 2, 2], "1 2 3 | 4 5", 254),          // an empty ws 3 between busy ones stands beside them
-        ([1, 4, 0, 0, 0], "1 2 3 | 4 5", 336),          // a gain under 5 % keeps the default shape
-        ([2, 2, 2, 2, 2, 2], "1 2 | 3 4 | 5 6", 230),   // six busy workspaces stand 2 + 2 + 2
-        ([2, 0, 0, 0, 2], "1 2 3 | 4 5", 0),            // empty 2–4 between two busy ones stand beside them
+    @Test("a cell's inner box, the cell less its chrome, has the screen's shape, so a drawn screen fills it", arguments: [1, 3, 7, 12])
+    func innerBoxHasScreenShape(n: Int) {
+        let size = lattice(n).cells[0].frame.size
+        #expect(abs((size.width - chrome.width) / (size.height - chrome.height) - screen) < 0.01)
+    }
+
+    @Test("without chrome the cell itself has the screen's shape")
+    func cellShapeWithoutChrome() {
+        let size = CardGrid.lattice(count: 7, in: box, cellRatio: screen, gap: gap).cells[0].frame.size
+        #expect(abs(size.width / size.height - screen) < 0.01)
+    }
+
+    @Test("the lattice with the largest cell wins", arguments: [
+        (2, "1 2"),
+        (4, "1 2 | 3 4"),
+        (7, "1 2 3 | 4 5 6 | 7"),                 // the owner's seven: a 3 × 3 with two holes
+        (8, "1 2 3 | 4 5 6 | 7 8"),
+        (12, "1 2 3 4 | 5 6 7 8 | 9 10 11 12"),
     ])
-    func rowBreaks(counts: [Int], expected: String, smallest: Int) {
-        let g = CardGrid.layout(counts.map(slot), in: CGSize(width: 1900, height: 1000), options: measured)
-        #expect(shape(g) == expected)
-        if smallest > 0 { #expect(Int(g.smallest.rounded()) == smallest) }
+    func largestCell(n: Int, expected: String) {
+        #expect(shape(lattice(n)) == expected)
     }
 
-    @Test("an empty card is the narrowest on its row; a crowded one is wider than an ordinary one")
-    func widthsByWeight() {
-        let g = CardGrid.layout([slot(0), slot(9), slot(2)], in: CGSize(width: 1900, height: 1000), options: generic)
-        let w = g.cells.map(\.frame.width)
-        #expect(w[0] <= w[1] && w[0] <= w[2])
-        #expect(w[1] > w[2])
+    @Test("rows start at the same x, so a short last row is left-aligned with holes at its end")
+    func rowsAligned() {
+        let g = lattice(7)
+        #expect(g.cells[0].frame.minX == g.cells[3].frame.minX && g.cells[3].frame.minX == g.cells[6].frame.minX)
+        #expect(g.cells[0].frame.minY == g.cells[1].frame.minY && g.cells[3].frame.minY > g.cells[0].frame.maxY)
     }
 
-    @Test("a break the search chose never stands a card upright", arguments: [2, 3, 4, 5, 6, 7, 8, 9, 10])
-    func neverUpright(n: Int) {
-        let slots = Array(repeating: slot(2), count: n)
-        let chosen = CardGrid.layout(slots, in: CGSize(width: 1900, height: 1000), options: measured)
-        var noSearch = measured
-        noSearch.rowGain = .infinity
-        let fallback = CardGrid.layout(slots, in: CGSize(width: 1900, height: 1000), options: noSearch)
-        let moved = chosen.cells != fallback.cells
-        #expect(!moved || chosen.cells.allSatisfy { $0.frame.width >= $0.frame.height })
-    }
-
-    @Test("no row of empty workspaces cuts the busy ones apart; the cards keep their order")
-    func emptiesNeverCut() {
-        // The overview as it stood on 2026-09-27: 1 (three windows), 2 empty, 3 (four, so it
-        // weighs double), 4 empty, 5 empty, 8, 10 and the scratchpad.
-        let counts = [3, 0, 4, 0, 0, 2, 1, 2]
-        let opts = CardGrid.Options(gap: 8, tileRatio: 1728 / 1055, cardPadding: 6, chrome: 39, narrow: 90, tileGap: 6, caption: 17)
-        let g = CardGrid.layout(counts.map(slot), in: CGSize(width: 1672, height: 948), options: opts)
-        let busy = g.rows.map { $0.contains { counts[$0] > 0 } }
-        let cut = busy.indices.contains { i in !busy[i] && busy[..<i].contains(true) && busy[(i + 1)...].contains(true) }
-        #expect(!cut)
-        #expect(g.rows.flatMap { $0 } == Array(0..<8))
-    }
-
-    @Test("rows use the height and sit centred: the first starts where the last ends short of the box")
+    @Test("the whole lattice sits centred in the box")
     func centred() {
-        let g = CardGrid.layout([1, 2, 0, 0, 0].map(slot), in: CGSize(width: 1900, height: 1000), options: measured)
-        let top = g.cells.map(\.frame.minY).min()!
-        let bottom = g.cells.map(\.frame.maxY).max()!
-        #expect(abs(top - (1000 - bottom)) <= 1)
-    }
-
-    @Test("a slot's own ratio drives its estimate: tall-shaped monitors fit taller pictures than wide ones")
-    func ownRatio() {
-        let box = CGSize(width: 1900, height: 1000)
-        let tall = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2, ratio: 1.0), CardGrid.Slot(weight: 1, count: 2, ratio: 1.0)],
-                                   in: box, options: generic)
-        let wide = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2, ratio: 2.4), CardGrid.Slot(weight: 1, count: 2, ratio: 2.4)],
-                                   in: box, options: generic)
-        #expect(tall.smallest > wide.smallest)
-        var wideByOption = generic
-        wideByOption.tileRatio = 2.4
-        let unshaped = CardGrid.layout([CardGrid.Slot(weight: 1, count: 2), CardGrid.Slot(weight: 1, count: 2)], in: box, options: wideByOption)
-        #expect(unshaped.smallest == wide.smallest)                            // no ratio of its own: the options'
+        let g = lattice(7)
+        let frames = g.cells.map(\.frame)
+        let minX = frames.map(\.minX).min()!, maxX = frames.map(\.minX).max()! + frames[0].width
+        let minY = frames.map(\.minY).min()!, maxY = frames.map(\.maxY).max()!
+        #expect(abs(minX - (box.width - maxX)) <= 1)
+        #expect(abs(minY - (box.height - maxY)) <= 1)
     }
 
     @Test("nothing to lay out survives, and so does a zero-sized box")
     func degenerate() {
-        #expect(CardGrid.layout([], in: CGSize(width: 100, height: 100), options: generic).cells.isEmpty)
-        #expect(CardGrid.layout([slot(1)], in: .zero, options: generic).cells.count == 1)
+        let none = CardGrid.lattice(count: 0, in: box, cellRatio: screen, gap: gap)
+        #expect(none.cells.isEmpty && none.rows.isEmpty)
+        let flat = CardGrid.lattice(count: 3, in: .zero, cellRatio: screen, gap: gap)
+        #expect(flat.cells.count == 3 && flat.rows == [[0, 1, 2]])
     }
 }

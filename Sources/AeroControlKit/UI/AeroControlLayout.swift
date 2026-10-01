@@ -2,9 +2,9 @@ import Common
 import CoreGraphics
 
 /// The overview's layout constants, and the two pure engines wired to them: `CardGrid`
-/// places the workspace cards (widths by weight, rows broken where the windows come out
-/// largest, row heights that follow the content), `TilePacker` places the windows inside
-/// a card (each at its own shape, one shared picture height). All unit-tested.
+/// places the workspace cards (one identical, screen-shaped cell each, in a lattice),
+/// `TilePacker` places the windows inside a card (each at its own shape, one shared picture
+/// height inside the card, as large as its cell allows). All unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     public static let cardGap: CGFloat = 24
@@ -14,12 +14,6 @@ public enum AeroControlLayout {
     public static let badgeLane: CGFloat = 44
     /// Diameter of the workspace badge in the card header.
     public static let badgeSize: CGFloat = 24
-    /// An empty card is exactly the badge plus the card padding on both sides, so the badge
-    /// sits in the same corner as on full cards and is centered in the narrow card as well.
-    public static let emptyCardWidth: CGFloat = badgeSize + 2 * cardPadding
-    /// Wider empty card: room for the badge AND the display name beside it, used when the
-    /// workspaces span more than one display.
-    public static let namedEmptyCardWidth: CGFloat = emptyCardWidth + 82
     /// While a filter is up each tile carries a caption above its picture: a title line and
     /// the gap to the picture. Both the tile and `usedHeight` budget for it from here.
     public static let captionTitleHeight: CGFloat = 32
@@ -57,6 +51,15 @@ public enum AeroControlLayout {
                                    gap: tileSpacing, caption: caption, scales: nil)
     }
 
+    /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with
+    /// fewer windows than the busiest reads as a centred picture and not as a top-heavy box.
+    /// Every cell is the same size, so this is what a lattice wants; a block too big for the
+    /// box is pinned at its top-left.
+    public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {
+        CGPoint(x: max(0, ((inner.width - packed.width) / 2).rounded(.down)),
+                y: max(0, ((inner.height - packed.height) / 2).rounded(.down)))
+    }
+
     /// The mark on a card for how AeroSpace lays its workspace out: tiles are a row or a column, an accordion
     /// one window in front of another. It says what AeroSpace does with the windows, not where any one is,
     /// which a hidden workspace does not tell. One window gets it too: the layout is how the next one will be
@@ -69,21 +72,5 @@ public enum AeroControlLayout {
         case "h_accordion", "v_accordion": return ("rectangle.on.rectangle", "Accordion: windows stacked, one in front")
         default: return nil
         }
-    }
-
-    /// A card's weight in the grid: an empty workspace is a strip, one to three windows an
-    /// ordinary card, four or more a double share. Three steps, not a slope, so cards hold
-    /// still through ordinary window churn.
-    public static func weight(forCount count: Int) -> CGFloat {
-        count == 0 ? 0 : (count >= 4 ? 2 : 1)
-    }
-
-    /// `CardGrid`'s options for this overview: its gaps and paddings, the screen's shape as
-    /// the proxy tile, the caption lane while filtering.
-    public static func cardGridOptions(for available: CGSize, emptyWidth: CGFloat, caption: CGFloat) -> CardGrid.Options {
-        var options = CardGrid.Options(gap: cardGap, tileRatio: screenRatio(for: available), cardPadding: cardPadding,
-                                       chrome: cardChrome, narrow: emptyWidth, tileGap: tileSpacing, caption: caption)
-        options.cardShape = screenRatio(for: available)
-        return options
     }
 }

@@ -11,21 +11,6 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    @Test("a card's weight has three steps: empty, ordinary, crowded")
-    func weights() {
-        #expect([0, 1, 3, 4, 9].map(AeroControlLayout.weight(forCount:)) == [0, 1, 1, 2, 2])
-    }
-
-    @Test("the grid options carry the overview's constants and the screen's shape")
-    func gridOptions() {
-        let o = AeroControlLayout.cardGridOptions(for: CGSize(width: 3000, height: 2000), emptyWidth: 60, caption: 38)
-        #expect(o.gap == AeroControlLayout.cardGap && o.tileGap == AeroControlLayout.tileSpacing)
-        #expect(o.chrome == AeroControlLayout.cardChrome)
-        #expect(AeroControlLayout.innerSize(of: CGSize(width: 500, height: 400)).height == 400 - AeroControlLayout.cardChrome)
-        #expect(o.narrow == 60 && o.caption == 38)
-        #expect(o.tileRatio == 1.5 && o.cardShape == 1.5)
-    }
-
     @Test("a card's tiles are packed inside its inner box, each at its window's own shape")
     func packedTiles() {
         let inner = AeroControlLayout.innerSize(of: CGSize(width: 1600, height: 900))
@@ -36,6 +21,9 @@ struct LayoutTests {
         let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner, caption: 0)
         #expect(packed.tiles.count == 4 && packed.width <= inner.width && packed.height <= inner.height)
         #expect(abs(packed.tiles[1].width / packed.tiles[1].height - 0.8) < 0.02)  // the portrait one stays portrait
+        // Each card on its own: a card with one window gets a taller picture than one with four.
+        let alone = AeroControlLayout.packTiles(ratios: [1.5], inner: inner, caption: 0)
+        #expect(alone.tiles[0].height > packed.tiles[0].height)
     }
 }
 
