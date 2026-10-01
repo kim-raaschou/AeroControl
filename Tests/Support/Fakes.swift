@@ -109,9 +109,17 @@ final class FakeBridge: NativeApiBridge {
         measured += 1
         return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, sizes[$0] ?? CGSize(width: 300, height: 200)) })
     }
+    /// When set, a capture delivers this many pictures and then waits for `release()`.
+    var holdAfter: Int?
+    private var held: CheckedContinuation<Void, Never>?
+    var isHolding: Bool { held != nil }
+    func release() { held?.resume(); held = nil }
     func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         captured.append(windowIds)
-        for id in windowIds { deliver(id, NSImage(size: maxSize)) }
+        for (n, id) in windowIds.enumerated() {
+            if n == holdAfter { await withCheckedContinuation { held = $0 } }
+            deliver(id, NSImage(size: maxSize))
+        }
     }
 }
 

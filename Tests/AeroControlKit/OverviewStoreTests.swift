@@ -465,6 +465,25 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("the pictures land in the store together, not one by one: held until the capture is in or the reveal is due")
+    func picturesLandTogether() async throws {
+        let bridge = FakeBridge()
+        bridge.granted = true
+        bridge.holdAfter = 1
+        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"])), nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
+        for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
+        #expect(bridge.isHolding && store.previews.isEmpty)                             // one picture in, held back
+        try await Task.sleep(for: .milliseconds(250))                                   // past the reveal
+        #expect(store.revealsPictures && store.previews.keys.sorted() == [1])
+        bridge.release()
+        await capture.value
+        #expect(store.previews.keys.sorted() == [1, 2])
+        store.stop()
+    }
+
     @Test("the pictures are shown together once they are in, and hidden again with them on close")
     func picturesRevealTogether() async {
         let bridge = FakeBridge()

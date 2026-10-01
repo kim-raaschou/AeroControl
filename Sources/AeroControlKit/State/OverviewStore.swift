@@ -195,6 +195,27 @@ public class OverviewStore {
     public private(set) var revealsPictures = false
     static let revealAfter: Duration = .milliseconds(120)
     private var revealTask: Task<Void, Never>?
+    /// Pictures taken but not yet in `previews`: they land together, at the reveal, and after
+    /// it at most once a frame.
+    private var arrivingPictures: [Int: NSImage] = [:]
+    private var landingTask: Task<Void, Never>?
+
+    private func landPictures() {
+        landingTask?.cancel()
+        landingTask = nil
+        guard !arrivingPictures.isEmpty else { return }
+        previews.merge(arrivingPictures) { $1 }
+        arrivingPictures = [:]
+    }
+
+    private func landPicturesSoon() {
+        guard landingTask == nil else { return }
+        landingTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(16))
+            guard !Task.isCancelled else { return }
+            self?.landPictures()
+        }
+    }
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private var captureGeneration = 0
 
@@ -296,13 +317,18 @@ public class OverviewStore {
             try? await Task.sleep(for: Self.revealAfter)
             guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
             self.revealsPictures = true
+            self.landPictures()
         }
         let ids = strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }
+        // Held, not stored: every picture stored redraws the whole overview, and on the main
+        // thread that drew the map once per window and kept the captures still in flight from
+        // landing — 19 windows came in batches, the last 230 ms after it was taken.
         await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
-            self.previews[id] = image
+            self.arrivingPictures[id] = image
+            if self.revealsPictures { self.landPicturesSoon() }
         }
-        if generation == captureGeneration { revealsPictures = true }
+        if generation == captureGeneration { revealsPictures = true; landPictures() }
         // A summon can arrive already filtered — the app picker — before any size was known
         // for the re-take to work from; the pictures are in now, so it starts here.
         refreshFilteredPictures()
@@ -337,6 +363,9 @@ public class OverviewStore {
     public func clearPreviews() {
         captureGeneration += 1
         revealTask?.cancel()
+        landingTask?.cancel()
+        landingTask = nil
+        arrivingPictures = [:]
         revealsPictures = false
         refreshPicturesTask?.cancel()
         refreshPicturesTask = nil
