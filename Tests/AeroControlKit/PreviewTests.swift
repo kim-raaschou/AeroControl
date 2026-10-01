@@ -258,45 +258,65 @@ struct StripLayoutTests {
         #expect(card.frames.values.allSatisfy { CGRect(origin: .zero, size: l.innerSize(of: card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
     }
 
-    @Test("six workspaces in a narrow view run round: the centre's card in the middle, the last right before the first, the rest cut by the edges")
-    func carousel() throws {
-        let groups = (1...6).map { n in
-            WorkspaceInfo(name: "\(n)", windows: [rected(n, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles")
-        }
-        let l = layout(groups, view: 1200, panel: 1000)
-        #expect(l.width > 1200 && l.runsRound(in: 1200))                               // it does not fit: a ring
-        let shifts = AeroControlLayout.stripShifts(l, centre: 1, viewWidth: 1200)
-        func left(_ g: Int) -> CGFloat { l.cards[g].span.x + shifts[g] }
-        // Shifts are whole points, so a card whose middle falls on a half point is within one.
-        #expect(abs(left(0) + l.cards[0].span.width / 2 - 600) <= 1)                   // workspace 1 in the middle
-        #expect(abs(left(5) - (left(0) - AeroControlLayout.cardGap - l.cards[5].span.width)) <= 1)  // workspace 6 just before it
-        let onFour = AeroControlLayout.stripShifts(l, centre: 4, viewWidth: 1200)
-        #expect(abs(l.cards[3].span.x + onFour[3] + l.cards[3].span.width / 2 - 600) <= 1)
+    private func groups(_ n: Int) -> [WorkspaceInfo] {
+        (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
+    }
+    private func middle(_ l: AeroControlLayout.StripLayout, _ p: AeroControlLayout.StripPlacement) -> CGFloat { p.x + l.cards[p.card].span.width / 2 }
+
+    @Test("four workspaces in a view that holds fewer: the marked card in the middle, one either side, and the one across cut by both edges")
+    func carouselIsWhole() throws {
+        let l = layout(groups(4), view: 1200, panel: 1000)
+        #expect(l.width > 1200 && l.runsRound(in: 1200))
+        let placed = AeroControlLayout.stripPlacements(l, centre: 1, turns: 0, viewWidth: 1200).filter(\.shown)
+        let centred = try #require(placed.first { $0.card == 0 })
+        #expect(abs(middle(l, centred) - 600) <= 1)                                    // workspace 1 in the middle
+        #expect(placed.filter { $0.card == 1 }.count == 1 && placed.filter { $0.card == 3 }.count == 1)
+        let across = placed.filter { $0.card == 2 }.map(\.x).sorted()
+        #expect(across.count == 2 && across[0] < 0 && across[1] + l.cards[2].span.width > 1200)   // cut on the left and on the right
+        #expect(placed.first { $0.card == 1 }!.x > centred.x && placed.first { $0.card == 3 }!.x < centred.x)
     }
 
-    @Test("with three or more workspaces the marked card is always in the middle, even when the row would fit; with one or two the row stands still")
+    @Test("past the last card the row turns on the same way: every card moves one card along, none jumps back across")
+    func carouselTurns() throws {
+        let l = layout(groups(4), view: 1200, panel: 1000)
+        let onLast = AeroControlLayout.stripPlacements(l, centre: 4, turns: 0, viewWidth: 1200)
+        let onFirstAgain = AeroControlLayout.stripPlacements(l, centre: 1, turns: 1, viewWidth: 1200)
+        // Nothing comes or goes at the edges as it turns: a card shown after is one drawn before, out of sight if not in it.
+        let before = Set(onLast.map(\.identity)), after = Set(onFirstAgain.map(\.identity))
+        #expect(Set(onFirstAgain.filter(\.shown).map(\.identity)).isSubset(of: before))
+        #expect(Set(onLast.filter(\.shown).map(\.identity)).isSubset(of: after))
+        let step = l.cards[0].span.width + AeroControlLayout.cardGap
+        for before in onLast {
+            guard let after = onFirstAgain.first(where: { $0.card == before.card && $0.copy == before.copy }) else { continue }
+            #expect(abs(after.x - (before.x - step)) <= 1)                              // one card to the left, all together
+        }
+        // Once round, the row looks as it did before it turned.
+        let start = AeroControlLayout.stripPlacements(l, centre: 1, turns: 0, viewWidth: 1200).filter(\.shown)
+        #expect(Set(start.map { "\($0.card)@\(Int($0.x))" }) == Set(onFirstAgain.filter(\.shown).map { "\($0.card)@\(Int($0.x))" }))
+    }
+
+    @Test("three workspaces that would fit run round all the same, the marked card in the middle and each card once; two stand still")
     func carouselFromThree() throws {
-        func groups(_ n: Int) -> [WorkspaceInfo] {
-            (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
-        }
         let three = layout(groups(3), view: 20000, panel: 1000)
-        #expect(three.width < 20000 && three.runsRound(in: 20000))                     // it would fit, and runs round all the same
+        #expect(three.width < 20000 && three.runsRound(in: 20000))
         for centre in 1...3 {
-            let s = AeroControlLayout.stripShifts(three, centre: centre, viewWidth: 20000)
-            let card = three.cards[centre - 1]
-            #expect(abs(card.span.x + s[centre - 1] + card.span.width / 2 - 10000) <= 1) // always the middle
+            let placed = AeroControlLayout.stripPlacements(three, centre: centre, turns: 0, viewWidth: 20000).filter(\.shown)
+            #expect(placed.count == 3)                                                 // a card seen whole is not drawn twice
+            #expect(abs(middle(three, try #require(placed.first { $0.card == centre - 1 })) - 10000) <= 1)
         }
-        let s3 = AeroControlLayout.stripShifts(three, centre: 1, viewWidth: 20000)
-        #expect(three.cards[2].span.x + s3[2] < three.cards[0].span.x + s3[0])         // workspace 3 comes round before 1
+        let s1 = AeroControlLayout.stripPlacements(three, centre: 1, turns: 0, viewWidth: 20000).filter(\.shown)
+        #expect(s1.first { $0.card == 2 }!.x < s1.first { $0.card == 0 }!.x)           // workspace 3 comes round before 1
         // Two windows in one card: stepping between them moves the marking, not the row.
         let pair = WorkspaceInfo(name: "9", windows: [rected(91, "Ghostty", 16, 49, 842, 1052), rected(92, "Ghostty", 870, 49, 842, 1052)],
                                  screenIndex: 1, rootLayout: "h_tiles")
         let withPair = layout(groups(2) + [pair], view: 20000, panel: 1000)
-        #expect(AeroControlLayout.stripShifts(withPair, centre: 91, viewWidth: 20000) == AeroControlLayout.stripShifts(withPair, centre: 92, viewWidth: 20000))
+        #expect(AeroControlLayout.stripPlacements(withPair, centre: 91, turns: 0, viewWidth: 20000)
+                == AeroControlLayout.stripPlacements(withPair, centre: 92, turns: 0, viewWidth: 20000))
         let two = layout(groups(2), view: 20000, panel: 1000)
         #expect(!two.runsRound(in: 20000))
-        let still = AeroControlLayout.stripShifts(two, centre: 1, viewWidth: 20000)
-        #expect(Set(still).count == 1 && still == AeroControlLayout.stripShifts(two, centre: 2, viewWidth: 20000))
+        let still = AeroControlLayout.stripPlacements(two, centre: 1, turns: 0, viewWidth: 20000)
+        #expect(still == AeroControlLayout.stripPlacements(two, centre: 2, turns: 0, viewWidth: 20000))
+        #expect(still.count == 2 && abs((still[0].x + still[1].x + two.cards[1].span.width) / 2 - 10000) <= 1)   // centred as a whole
     }
 
     @Test("a card whose layout cannot be read lays only the app's windows side by side in it")

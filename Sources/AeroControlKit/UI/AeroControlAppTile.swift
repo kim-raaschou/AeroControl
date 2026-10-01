@@ -21,6 +21,9 @@ struct AeroControlAppTile: View {
     /// The strip's key on this window, and whether it is the marked one: drawn where the icon
     /// would be, on the picture's corner.
     var key: (label: String, marked: Bool)?
+    /// Another app's window in the strip: grey and half there, so it is plainly not what you
+    /// are choosing, and framed at full strength, so where it stands still reads.
+    var faded = false
 
     @State private var isHovering = false
     @Environment(\.displayScale) private var displayScale
@@ -110,9 +113,6 @@ struct AeroControlAppTile: View {
             }
     }
 
-    /// The window's own name, centred over the picture it belongs to. Never truncated: a
-    /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
-    /// two windows apart sits at the front of the title where an ellipsis would land.
     /// The window's key, drawn as a key: ⌘ and its digit in the system's type on a keycap — a
     /// face, a hairline and a lip under it — so it reads as a shortcut and not as another
     /// workspace badge. The marked window's in the accent, as the focused workspace's badge.
@@ -141,6 +141,9 @@ struct AeroControlAppTile: View {
         }
     }
 
+    /// The window's own name, centred over the picture it belongs to. Never truncated: a
+    /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
+    /// two windows apart sits at the front of the title where an ellipsis would land.
     private var caption: some View {
         Text(captionText)
             .font(.system(size: 12, weight: .medium))
@@ -154,6 +157,9 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
+            .overlay { if faded { outline } }                  // faded with the picture: an outline, not a frame to look at
+            .saturation(faded ? 0 : 1)
+            .opacity(faded ? Self.fadedOpacity : 1)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .opacity(isHidden ? 0.45 : 1)
             .overlay(selectionPlate.allowsHitTesting(false))     // on the picture's edge, under the buttons
@@ -193,6 +199,9 @@ struct AeroControlAppTile: View {
         }
     }
 
+    /// How much of another app's window shows in the strip: enough to place it, too little to
+    /// draw the eye. krn.overview's 0.15 vanished on a dark card; 0.45 drew the eye.
+    private static let fadedOpacity: Double = 0.3
     /// How long a picture takes to come into focus, or over the one before it.
     private static let fade: Double = 0.45
     /// The picture on screen, if any: what the fade follows.
@@ -205,7 +214,14 @@ struct AeroControlAppTile: View {
     /// competing with the focus ring. Focused floating windows keep both.
     private var shadow: (opacity: Double, radius: CGFloat, offset: CGFloat) {
         if window.isFloating { return (0.5, 12, 5) }
-        return (isFocused ? 0 : 0.12, 2, 1)
+        return (isFocused || faded ? 0 : 0.12, 2, 1)
+    }
+
+    /// The one frame a picture wears short of the ring: on the window you came from, and —
+    /// faded with its picture — on another app's window in the strip.
+    private var outline: some View {
+        RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+            .strokeBorder(palette.badgeText.opacity(0.45), lineWidth: 1.5)
     }
 
     @ViewBuilder private var selectionPlate: some View {
@@ -217,9 +233,7 @@ struct AeroControlAppTile: View {
                 .shadow(color: palette.accent.opacity(0.45), radius: 3)
                 .frame(width: size.width, height: size.height)
         } else if isOrigin {
-            shape
-                .strokeBorder(palette.badgeText.opacity(0.7), lineWidth: 1.5)
-                .frame(width: size.width, height: size.height)
+            outline.frame(width: size.width, height: size.height)
         }
     }
 

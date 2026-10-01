@@ -57,31 +57,6 @@ struct AppStripGeometryTests {
         #expect(M.cardHeight(width: 400, gaps: 80, sumAspect: 16, panelHeight: 1085) == (1085 * 0.2).rounded())
     }
 
-    @Test("when the cards do not fit the view the row is a ring: the marked card in the middle, the last right before the first")
-    func ring() {
-        // Three cards of 100 with gaps of 10: a ring of 330.
-        let spans = [M.Span(x: 0, width: 100), M.Span(x: 110, width: 100), M.Span(x: 220, width: 100)]
-        func at(_ s: [CGFloat], _ g: Int) -> CGFloat { spans[g].x + s[g] }
-        let s0 = M.ringShifts(spans, anchor: 50, centre: 150, ring: 330, view: 300)
-        #expect(at(s0, 0) + 50 == 150)
-        #expect(at(s0, 2) == at(s0, 0) - 110)
-        #expect(at(s0, 1) == at(s0, 0) + 110)
-        let s2 = M.ringShifts(spans, anchor: 270, centre: 150, ring: 330, view: 300)
-        #expect(at(s2, 0) == at(s2, 2) + 110)
-    }
-
-    @Test("when every card fits, the row stands still, centred, in workspace order, whichever card is marked")
-    func still() {
-        let spans = [M.Span(x: 0, width: 100), M.Span(x: 110, width: 100), M.Span(x: 220, width: 100)]
-        let still = [50, 160, 270].map { M.ringShifts(spans, anchor: CGFloat($0), centre: 500, ring: 330, view: 1000) }
-        #expect(spans[0].x + still[0][0] == 340 && spans[2].x + still[0][2] + 100 == 660)
-        #expect(still.allSatisfy { $0 == still[0] })
-        #expect(M.ringShifts([], anchor: 0, centre: 0, ring: 0, view: 0).isEmpty)
-        // Asked to run round always, a row that fits runs round too: the marked card in the middle.
-        let round = M.ringShifts(spans, anchor: 270, centre: 500, ring: 330, view: 1000, alwaysRound: true)
-        #expect(spans[2].x + round[2] + 50 == 500 && spans[0].x + round[0] == spans[2].x + round[2] + 110)
-    }
-
     @Test("the marked window wears the accent, the window you came from the plain frame of where you are, and the marking wins")
     func frames() {
         #expect(M.frame(2, marked: 2, origin: 1) == .marked)

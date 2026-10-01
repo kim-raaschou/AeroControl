@@ -204,16 +204,49 @@ public enum AeroControlLayout {
     /// card and leaves the view half empty, so the row stands still when it fits.
     public static let carouselFrom = 3
 
-    /// How far each strip card moves (`AppStripModel.ringShifts`): from `carouselFrom` cards, or
-    /// when the row does not fit, it runs round with the card holding `centre` — the window the
-    /// keys put the marking on — in the middle of the view; otherwise it stands still and centred.
-    public static func stripShifts(_ layout: StripLayout, centre: Int?, viewWidth: CGFloat) -> [CGFloat] {
+    /// One card where the strip draws it: which card, which time round the ring (`copy`), its
+    /// left edge in the view, and whether it is seen or only stands by just out of sight.
+    public struct StripPlacement: Hashable, Sendable {
+        public let card: Int
+        public let copy: Int
+        public let x: CGFloat
+        public var shown = true
+        /// The view's identity: the same card the same time round, wherever the ring has turned it.
+        public var identity: String { "\(card)#\(copy)" }
+    }
+
+    /// Where the strip's cards stand. A row that fits, under `carouselFrom` cards, stands still
+    /// and centred. Otherwise it is a ring turned so the card holding `centre` — the window the
+    /// keys put the marking on — is in the middle, `turns` times round: the cards repeat every
+    /// ring's width, and each is shown where it shows — once when it shows whole, else every
+    /// piece the edges leave, so the card across the ring is cut by both and the row is whole
+    /// either side. Counting the turns keeps a copy's place continuous: past the last card the
+    /// ring moves on one card the same way, and nothing jumps back across. The copies a card
+    /// beyond either edge are placed too, unseen, so a turn slides them in rather than making
+    /// them appear: nothing comes or goes at the edges while the ring moves.
+    public static func stripPlacements(_ layout: StripLayout, centre: Int?, turns: Int, viewWidth: CGFloat) -> [StripPlacement] {
+        guard let first = layout.cards.first else { return [] }
+        guard layout.runsRound(in: viewWidth) else {
+            let still = (viewWidth / 2 - layout.width / 2 - first.span.x).rounded()
+            return layout.cards.indices.map { StripPlacement(card: $0, copy: 0, x: layout.cards[$0].span.x + still) }
+        }
+        let ring = layout.width + cardGap
         // The card's middle, not the window's: stepping between windows of one workspace moves the
         // marking and leaves the row; the row turns a whole card at a time.
-        let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false }
-        let anchor = held.map { $0.span.x + $0.span.width / 2 } ?? 0
-        return AppStripModel.ringShifts(layout.cards.map(\.span), anchor: anchor, centre: viewWidth / 2,
-                                        ring: layout.width + cardGap, view: viewWidth, alwaysRound: layout.runsRound(in: viewWidth))
+        let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false } ?? first
+        let offset = viewWidth / 2 - (held.span.x + held.span.width / 2 + CGFloat(turns) * ring)
+        let margin = (layout.cards.map(\.span.width).max() ?? 0) + cardGap     // one card beyond each edge
+        return layout.cards.indices.flatMap { g -> [StripPlacement] in
+            let span = layout.cards[g].span
+            let lowest = Int(((-margin - offset - span.x - span.width) / ring).rounded(.down))
+            let highest = Int(((viewWidth + margin - offset - span.x) / ring).rounded(.up))
+            let near = (lowest...highest).map { StripPlacement(card: g, copy: $0, x: (span.x + CGFloat($0) * ring + offset).rounded()) }
+                .filter { $0.x + span.width > -margin && $0.x < viewWidth + margin }
+            let seen = near.filter { $0.x + span.width > 0 && $0.x < viewWidth }
+            let whole = seen.filter { $0.x >= 0 && $0.x + span.width <= viewWidth }
+            let shown = whole.isEmpty ? seen : [whole.min { abs($0.x + span.width / 2 - viewWidth / 2) < abs($1.x + span.width / 2 - viewWidth / 2) }!]
+            return near.map { StripPlacement(card: $0.card, copy: $0.copy, x: $0.x, shown: shown.contains($0)) }
+        }
     }
 
     /// The gap AeroSpace keeps between windows, read once for the overview: the median of what

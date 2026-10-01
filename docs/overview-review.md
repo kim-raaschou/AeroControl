@@ -111,7 +111,8 @@ moves the marking on, as Cmd-` does.
   filter, so a window of another app whose title names this one is no longer in it.
 - Each workspace is a card of the map's in its screen's shape at one height (`AeroControlLayout.stripLayout`):
   AeroSpace's rects or the tree read from sizes, the whole workspace (`OverviewStore.stripWorkspaces`), the other
-  apps' windows grey at 0.45 with their icons and out of reach; krn.overview's 0.15 vanished on a dark card. A card
+  apps' windows grey at 0.3, outlined, with their icons and out of reach (`AeroControlAppTile.faded`): 0.45 drew the
+  eye, krn.overview's 0.15 vanished on a dark card. The window you came from wears the same outline at full strength. A card
   whose layout cannot be read packs only the app's windows. Each card is the map's card (`AeroControlCardFace`).
 - The strip takes its pictures once, at the strip's size: every window of its workspaces and no others
   (`capturePreviews` in the strip). The pictures are held back until the capture is in, or 120 ms have passed, and
@@ -119,13 +120,20 @@ moves the marking on, as Cmd-` does.
 
 Verified on screen with Ghostty on two workspaces: screen-shaped cards, labels, keys on every window, the marking on the
 first window when coming from another app, and the summon link stepping it. The ring (cards wider than the view) is
-covered by the ported tests and an end-to-end test of six workspaces in a narrow view (`stripShifts`), not seen on
-screen. As in krn.overview, keys move the carousel's centre and the pointer does not (`Strip.centre`): pointing marks a
+seen on screen with Ghostty on four workspaces. As in krn.overview, keys move the carousel's centre and the pointer does not (`Strip.centre`): pointing marks a
 window, but the row stays put under the hand. Pointing marks only when the mouse has moved (`pointStrip`): cards that
 slide under a resting mouse, as the strip opens or the carousel turns, would otherwise take the marking from the keys.
 From three workspaces the strip is always a carousel (`carouselFrom`, the owner's choice over krn.overview's measured
 "stand still when it fits"): the marked workspace's card in the middle, centred on the card rather than the window, so
 stepping within a workspace moves only the marking and the row turns a whole card at a time.
+
+The carousel is a ring drawn whole (`AeroControlLayout.stripPlacements`): the cards repeat every ring's width and each
+is shown where it shows, once when it shows whole, else every piece the edges leave, so with four cards the one across
+the ring is cut by both edges and the row is symmetric. It turns: the store counts the times the keys take it past the
+last card (`Strip.turns`), so it moves on one card the same way rather than jumping back, animated over 0.4 s. The
+copies a card beyond either edge are placed too, unseen, so a turn slides them in instead of making them appear at the
+edge — the jolt the owner saw at the outer cards. krn.overview's `ringShifts`, which gave each card one place and left
+the card across always on the left, is gone.
 
 ## Navigation follows the layout (2026-10-01)
 

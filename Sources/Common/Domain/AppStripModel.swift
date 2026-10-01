@@ -75,26 +75,6 @@ public enum AppStripModel {
         public init(x: CGFloat, width: CGFloat) { self.x = x; self.width = width }
     }
 
-    /// How far each card moves. When the row fits `view` it stands still, centred on `centre`,
-    /// whichever card is marked — unless `alwaysRound`. Otherwise it is a ring of length `ring`:
-    /// the card at `anchor` (the marked window's middle) stands at the centre and the last card
-    /// comes right before the first.
-    public static func ringShifts(_ spans: [Span], anchor: CGFloat, centre: CGFloat, ring: CGFloat, view: CGFloat,
-                                  alwaysRound: Bool = false) -> [CGFloat] {
-        guard let first = spans.first, let last = spans.last else { return [] }
-        let width = last.x + last.width - first.x
-        if width <= view && !alwaysRound {
-            let still = (centre - width / 2 - first.x).rounded()
-            return spans.map { _ in still }
-        }
-        return spans.map { span in
-            let mid = span.x + span.width / 2
-            var d = mid - anchor
-            if ring > 0 { d = ((d + ring / 2).truncatingRemainder(dividingBy: ring) + ring).truncatingRemainder(dividingBy: ring) - ring / 2 }
-            return (centre + d - mid).rounded()
-        }
-    }
-
     public enum Frame: Equatable, Sendable { case marked, origin, plain }
 
     /// The marked window wears the accent; the window you came from the frame of where you are;

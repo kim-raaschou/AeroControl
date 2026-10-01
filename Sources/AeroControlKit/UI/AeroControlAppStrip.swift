@@ -4,13 +4,14 @@ import Common
 /// The picker for "which of this app's windows", as krn.overview lays it out and as the map
 /// draws it: one row of the map's own cards, one per workspace holding the app, each in its
 /// screen's shape at one height — the app's windows where AeroSpace put them, the other
-/// apps' grey, half there and out of reach. The app's name and the marked window's title
-/// stand in the map's pill under the row. When the cards do not fit, the row is a ring with
-/// the marked card in the middle, moving a whole card at a time and never gliding.
+/// apps' grey, half there, framed and out of reach. The app's name and the marked window's title
+/// stand in the map's pill under the row. From three cards, or when they do not fit, the row is a
+/// ring with the marked card in the middle, whole to both edges, turning a card at a time.
 /// The marking only chooses: Enter, a window's key (⌘1–⌘9, on its corner) or a click
 /// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
 struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state
+    @Environment(\.aeroMotion) private var motion
 
     let usable: CGSize
     let screens: [Int: CGRect]
@@ -18,8 +19,8 @@ struct AeroControlAppStrip: View {
     let gap: CGFloat?
     let namesMonitors: Bool
 
-    /// The other apps' windows: there, so the workspace is whole, and plainly not what you are choosing.
-    private static let othersOpacity: Double = 0.45
+    /// How long the ring takes to turn a card along.
+    private static let turn: Double = 0.4
     /// How far in from each edge of the view a card cut by it fades out, rather than ending in mid-air.
     private static let edgeFade: CGFloat = 0.03
 
@@ -30,19 +31,27 @@ struct AeroControlAppStrip: View {
         let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.previewSizes, screens: screens,
                                                    fallbackScreen: fallbackScreen, gap: gap, viewWidth: usable.width, panelHeight: usable.height)
         let ids = windows.map(\.window.windowId)
-        let shifts = AeroControlLayout.stripShifts(layout, centre: state.strip?.centre ?? state.strip?.marked, viewWidth: usable.width)
+        let centre = state.strip?.centre ?? state.strip?.marked
+        let turns = state.strip?.turns ?? 0
+        let placements = AeroControlLayout.stripPlacements(layout, centre: centre, turns: turns, viewWidth: usable.width)
+        let held = layout.cards.firstIndex { card in centre.map { card.frames[$0] != nil } ?? false }
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(zip(groups, layout.cards).enumerated()), id: \.element.0.id) { g, pair in
-                AeroControlCardFace(workspace: pair.0, monitorName: namesMonitors ? pair.0.monitorShortName : nil,
-                                    orderUnknown: pair.1.orderUnknown, size: CGSize(width: pair.1.span.width, height: layout.height)) {
-                    windowsOf(pair.0, pair.1, ids: ids)
+            ForEach(placements, id: \.self.identity) { placed in
+                let workspace = groups[placed.card], laid = layout.cards[placed.card]
+                AeroControlCardFace(workspace: workspace, monitorName: namesMonitors ? workspace.monitorShortName : nil,
+                                    orderUnknown: laid.orderUnknown, size: CGSize(width: laid.span.width, height: layout.height)) {
+                    windowsOf(workspace, laid, ids: ids)
                 }
-                .offset(x: pair.1.span.x + (shifts.indices.contains(g) ? shifts[g] : 0))
+                .opacity(placed.shown ? 1 : 0)
+                .allowsHitTesting(placed.shown)
+                .offset(x: placed.x)
             }
         }
         .frame(width: usable.width, height: layout.height, alignment: .topLeading)
         .mask(edges(fading: layout.runsRound(in: usable.width)))
-        .transaction { $0.animation = nil }          // nothing glides: AeroSpace switches without an animation
+        // The ring turns a card along when the keys take the marking to another workspace, the
+        // same way round past the last; stepping within a card, or pointing, leaves it.
+        .animation(.smooth(duration: Self.turn * motion), value: [held ?? -1, turns])
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
     }
 
@@ -61,9 +70,9 @@ struct AeroControlAppStrip: View {
             ForEach(workspace.windows.filter { laid.frames[$0.windowId] != nil }, id: \.windowId) { window in
                 let frame = laid.frames[window.windowId]!
                 if laid.others.contains(window.windowId) {
-                    // The rest of the workspace, so the card reads as the whole of it: grey and half
-                    // there, with its app's icon. krn.overview's 0.15 vanished on a dark card.
-                    tile(window, frame, mine: false).saturation(0).opacity(Self.othersOpacity).allowsHitTesting(false)
+                    // The rest of the workspace, so the card reads as the whole of it: faded and framed,
+                    // with its app's icon, and out of reach.
+                    tile(window, frame, mine: false).allowsHitTesting(false)
                         .offset(x: frame.minX, y: frame.minY)
                 } else {
                     // The hover belongs to the window's own frame, so it goes on before the window is moved there.
@@ -80,7 +89,8 @@ struct AeroControlAppStrip: View {
     /// Every window where the map draws it, untitled as on the map: the app's own with their key
     /// where the map has the icon, the others with their icon.
     private func tile(_ window: WindowInfo, _ frame: CGRect, mine: Bool, key: (label: String, marked: Bool)? = nil) -> some View {
-        AeroControlAppTile(window: window, metrics: AeroControlMetrics(tileSize: frame.size), filtering: false, showsIcon: !mine, key: key)
+        AeroControlAppTile(window: window, metrics: AeroControlMetrics(tileSize: frame.size), filtering: false, showsIcon: !mine, key: key,
+                           faded: !mine)
             .frame(width: frame.width, height: frame.height)
     }
 }

@@ -79,6 +79,9 @@ public class OverviewStore {
         /// without moving it, or the row would slide another window under a hand that had not
         /// moved (krn.overview: "Keys move the centre; the pointer does not").
         public internal(set) var centre: Int?
+        /// How many times the keys have taken the ring round past its last card, less the times
+        /// back past its first: what keeps the carousel turning one way instead of jumping back.
+        public internal(set) var turns = 0
         var pointed = false
 
         init(bundleId: String, origin: Int?, marked: Int?) {
@@ -106,7 +109,13 @@ public class OverviewStore {
         let ids = stripWindows.map(\.window.windowId)
         let at = AppStripModel.stepPickable(strip.marked.flatMap { ids.firstIndex(of: $0) } ?? -1,
                                             pickable: ids.map { _ in true }, direction: direction)
+        let card = { (id: Int?) in id.flatMap { id in self.stripWorkspaces.firstIndex { $0.windows.contains { $0.windowId == id } } } }
+        let from = card(strip.centre)
         strip.marked = at >= 0 ? ids[at] : strip.marked
+        if let from, let to = card(strip.centre) {
+            if direction > 0, to < from { strip.turns += 1 }
+            if direction < 0, to > from { strip.turns -= 1 }
+        }
         self.strip = strip
     }
 

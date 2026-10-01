@@ -379,6 +379,19 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("stepping past the last workspace turns the ring once more the same way; back past the first turns it back")
+    func stripTurns() async {
+        let (_, store) = await stripOnTeams()                                           // Teams on 1, 2 and 3, marked on 3
+        #expect(store.strip?.turns == 0)
+        store.stepStrip()                                                                // 3 → 1: on round
+        #expect(store.strip?.marked == 1 && store.strip?.turns == 1)
+        store.stepStrip()                                                                // 1 → 2: no wrap
+        #expect(store.strip?.turns == 1)
+        store.stepStrip(-1); store.stepStrip(-1)                                         // 2 → 1 → 3: back round
+        #expect(store.strip?.marked == 3 && store.strip?.turns == 0)
+        store.stop()
+    }
+
     @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")
     func stripStepsOnResummon() async {
         let (_, store) = await stripOnTeams()
