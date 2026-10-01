@@ -86,6 +86,12 @@ struct AeroControlWorkspaceCard: View {
                     .truncationMode(.tail)
             }
             Spacer(minLength: 0)
+            if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
+                Image(systemName: symbol.name)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(palette.badgeText.opacity(0.7))
+                    .help(symbol.help)
+            }
         }
     }
 

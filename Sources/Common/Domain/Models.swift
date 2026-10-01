@@ -47,6 +47,9 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     /// AeroSpace's `monitor-appkit-nsscreen-screens-id`: 1-based into `NSScreen.screens`, 0
     /// when it did not say. The card takes that screen's shape.
     public var screenIndex: Int
+    /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion` or
+    /// `v_accordion`. Empty when AeroSpace did not say.
+    public var rootLayout: String
 
     /// The first word of the display's name: "Built-in Retina Display" -> "Built-in",
     /// "BenQ RD280U" -> "BenQ". Enough to tell two displays apart in a card header, and
@@ -55,12 +58,14 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
         String(monitorName.split(separator: " ").first ?? "")
     }
 
-    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0) {
+    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0,
+                rootLayout: String = "") {
         self.name = name
         self.windows = windows
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
+        self.rootLayout = rootLayout
     }
 }
 

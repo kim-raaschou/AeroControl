@@ -49,19 +49,24 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     public let monitorName: String?
     /// 1-based into `NSScreen.screens`; 0 when absent.
     @TolerantInt public var screenIndex: Int
+    /// How the workspace's root container is laid out: `h_tiles`, `v_tiles`, `h_accordion`,
+    /// `v_accordion`. Optional for the same reason: an older AeroSpace leaves it out.
+    public let rootLayout: String?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
         case monitorId = "monitor-id"
         case monitorName = "monitor-name"
         case screenIndex = "monitor-appkit-nsscreen-screens-id"
+        case rootLayout = "workspace-root-container-layout"
     }
 
-    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0) {
+    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil) {
         self.workspace = workspace
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
+        self.rootLayout = rootLayout
     }
 }
 
@@ -110,7 +115,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
             windows: byWorkspace[wm.workspace]?.map(\.window) ?? [],
             monitorId: wm.monitorId,
             monitorName: wm.monitorName ?? "",
-            screenIndex: wm.screenIndex
+            screenIndex: wm.screenIndex,
+            rootLayout: wm.rootLayout ?? ""
         )
     }
 

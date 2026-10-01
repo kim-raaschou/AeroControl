@@ -152,3 +152,23 @@ struct BuildOverviewResultTests {
         #expect(Set(result.workspaces.map(\.monitorId)) == [1, 2])
     }
 }
+
+@Suite("a workspace's root layout")
+struct RootLayoutTests {
+    @Test("a workspace says how its root container is laid out; an older AeroSpace that does not still decodes")
+    func decodes() throws {
+        let json = """
+        [{"workspace": "2", "monitor-id": 1, "workspace-root-container-layout": "h_tiles"},
+         {"workspace": "3", "monitor-id": 1}]
+        """
+        let result = try parseWorkspaces(json: json)
+        #expect(result[0].rootLayout == "h_tiles" && result[1].rootLayout == nil)
+    }
+
+    @Test("the overview result carries it on the workspace")
+    func carried() {
+        let monitors = [WorkspaceMonitor(workspace: "2", monitorId: 1, rootLayout: "v_accordion"), WorkspaceMonitor(workspace: "3", monitorId: 1)]
+        let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
+        #expect(result.workspaces[0].rootLayout == "v_accordion" && result.workspaces[1].rootLayout == "")
+    }
+}

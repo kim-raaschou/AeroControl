@@ -57,6 +57,20 @@ public enum AeroControlLayout {
                                    gap: tileSpacing, caption: caption, scales: nil)
     }
 
+    /// The mark on a card for how AeroSpace lays its workspace out: tiles are a row or a column, an accordion
+    /// one window in front of another. It says what AeroSpace does with the windows, not where any one is,
+    /// which a hidden workspace does not tell. One window gets it too: the layout is how the next one will be
+    /// arranged. Nothing for an empty workspace, whose card has no room, or for a layout it does not know.
+    public static func layoutSymbol(rootLayout: String, windowCount: Int) -> (name: String, help: String)? {
+        guard windowCount >= 1 else { return nil }
+        switch rootLayout {
+        case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side")
+        case "v_tiles": return ("rectangle.split.1x2", "Tiles: windows one above another")
+        case "h_accordion", "v_accordion": return ("rectangle.on.rectangle", "Accordion: windows stacked, one in front")
+        default: return nil
+        }
+    }
+
     /// A card's weight in the grid: an empty workspace is a strip, one to three windows an
     /// ordinary card, four or more a double share. Three steps, not a slope, so cards hold
     /// still through ordinary window churn.
