@@ -14,3 +14,14 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96 + 2 * gap, height: 96 + 2 * gap))
     }
 }
+
+@Suite("the app icon on a picture")
+struct BadgeSizeTests {
+    @Test("about a ninth of the picture's width, kept between 22 and 36 points so it can be read")
+    func badgeSize() {
+        func size(_ w: CGFloat) -> CGFloat { AeroControlMetrics(tileSize: CGSize(width: w, height: 100)).badgeSize }
+        #expect(size(100) == 22 && size(200) == 22)
+        #expect(abs(size(300) - 33) < 0.001)
+        #expect(size(400) == 36 && size(900) == 36)
+    }
+}

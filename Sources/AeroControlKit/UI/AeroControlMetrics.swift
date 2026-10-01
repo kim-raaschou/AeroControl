@@ -7,8 +7,9 @@ public struct AeroControlMetrics: Equatable, Sendable {
 
     public init(tileSize: CGSize) { self.tileSize = tileSize }
 
-    /// The app icon in a picture's corner: small enough never to compete with the picture.
-    public var badgeSize: CGFloat { min(28, max(16, tileSize.width * 0.06)) }
+    /// The app icon in a picture's corner: about a ninth of the picture's width, between 22 and 36 points —
+    /// small enough not to compete with the picture, large enough to tell a terminal from an editor at a glance.
+    public var badgeSize: CGFloat { min(36, max(22, tileSize.width * 0.11)) }
 
     /// `imageSize` scaled to sit inside `box` with its own aspect ratio; the box itself when
     /// the image has no size to speak of.

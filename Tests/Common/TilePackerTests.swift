@@ -25,6 +25,16 @@ private func overlap(_ tiles: [TilePacker.Tile]) -> (Int, Int)? {
 
 @Suite("TilePacker.packRows")
 struct PackRowsTests {
+    @Test("a shorter row is centred under the wider one, not hung from the left")
+    func shorterRowIsCentred() {
+        // Five 150-wide tiles with 8 between them, in a 500-wide card, fall as 3 + 2: 466 wide over 308 wide.
+        let r = pack(Array(repeating: 1.5, count: 5), height: 100, width: 500)
+        #expect(r.rows == [[0, 1, 2], [3, 4]] && r.width == 466)
+        #expect(r.tiles[0].x == 0 && r.tiles[1].x == 158 && r.tiles[2].x == 316)
+        #expect(r.tiles[3].x == 79 && r.tiles[4].x == 237)              // (466 - 308) / 2 = 79
+        #expect(r.tiles.allSatisfy { $0.x >= 0 && $0.x + $0.width <= r.width })
+    }
+
     @Test("six mixed tiles: every one placed, none overlapping, inside the width, a caption under each")
     func placesEveryTile() {
         let ratios: [CGFloat] = [1.6, 1.6, 0.8, 2.4, 1.0, 1.33]

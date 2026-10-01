@@ -2,7 +2,8 @@ import Foundation
 
 /// The windows inside a card, laid out as a justified photo grid: every tile at its own
 /// width/height ratio, one shared picture height for the whole card, rows filled greedily
-/// and then spread evenly so six windows are 3 + 3 rather than 4 + 2. Ported from
+/// and then spread evenly so six windows are 3 + 3 rather than 4 + 2, a shorter row centred
+/// under the wider one. Ported from
 /// krn.overview's `CardGeometry.js`, where it was measured against flickr's per-row
 /// justification (which wasted half a fixed box) and Knuth–Plass (which broke the height
 /// search); see that repo's docs/LAYOUT.md for why this and not those.
@@ -65,17 +66,18 @@ public enum TilePacker {
             x += widths[j] + gap
         }
 
+        // A row's width, so a shorter one can be centred under the widest rather than hung from the left.
+        let rowWidths = rows.map { row in row.reduce(CGFloat(0)) { $0 + widths[$1] + gap } - gap }
+        let widest = max(0, rowWidths.max() ?? 0)
         var tiles: [Tile] = Array(repeating: Tile(x: 0, y: 0, width: 0, height: 0), count: n)
         var y: CGFloat = 0
-        var widest: CGFloat = 0
         for (r, row) in rows.enumerated() {
-            x = 0
+            x = ((widest - rowWidths[r]) / 2).rounded(.down)
             for j in row {
                 tiles[j] = Tile(x: x, y: y + ((rowHeights[r] - heights[j]) / 2).rounded(.down),
                                 width: widths[j], height: heights[j] + caption)
                 x += widths[j] + gap
             }
-            widest = max(widest, x - gap)
             y += rowHeights[r] + caption + gap
         }
         return Packed(rows: n == 0 ? [] : rows, height: max(0, y - gap), width: widest, tiles: tiles)

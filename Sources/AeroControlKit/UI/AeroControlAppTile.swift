@@ -137,6 +137,8 @@ struct AeroControlAppTile: View {
                 .interpolation(.high)
                 .aspectRatio(contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
+                // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
+                .overlay(RoundedRectangle(cornerRadius: plateRadius, style: .continuous).strokeBorder(palette.cardBorder, lineWidth: 1))
                 .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
                     if showsIcon, let icon = state.icons[window.bundleId] {
                         Image(nsImage: icon)
