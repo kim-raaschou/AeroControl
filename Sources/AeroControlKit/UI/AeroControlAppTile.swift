@@ -66,8 +66,8 @@ struct AeroControlAppTile: View {
         else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
     }
     private var plateRadius: CGFloat { AeroControlMetrics.snapshotRadius }
-    /// The focus ring follows the content radius plus its gap.
-    private var ringRadius: CGFloat { plateRadius + AeroControlMetrics.snapshotRingGap }
+    /// The focus ring lies on the picture's edge, so it has the picture's corners.
+    private var ringRadius: CGFloat { plateRadius }
     private var tileSize: CGSize { metrics.tileSize }
 
     /// The room the picture has: the cell, less the caption's lane when there is one. Every
@@ -125,9 +125,9 @@ struct AeroControlAppTile: View {
             .animation(.easeOut(duration: 0.15 * motion), value: preview == nil)   // the picture fades into its place as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .opacity(isHidden ? 0.45 : 1)
+            .overlay(selectionPlate.allowsHitTesting(false))     // on the picture's edge, under the buttons
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(alignment: .topLeading) { stateBadge }
-            .background(selectionPlate)
     }
 
     @ViewBuilder private var tile: some View {
@@ -156,7 +156,7 @@ struct AeroControlAppTile: View {
         }
     }
 
-    /// Focus: a thin accent ring with a small gap around the drawn content and a soft glow,
+    /// Focus: a thin accent ring on the picture's edge, with its corners and a soft glow,
     /// matching the focused workspace card's accent border.
     /// A floating window is not in the tiling layout: it lies on top of it. The map already
     /// draws it there, so the tile only has to look raised — a real shadow, no extra outline
@@ -172,7 +172,7 @@ struct AeroControlAppTile: View {
         if isFocused {
             shape
                 .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth)
-                .shadow(color: palette.accent.opacity(0.5), radius: 4)
+                .shadow(color: palette.accent.opacity(0.45), radius: 3)
                 .frame(width: size.width, height: size.height)
         } else if isOrigin {
             shape
