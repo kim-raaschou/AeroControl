@@ -119,11 +119,9 @@ final class OverlayWindowManager {
                 let screen = self.window?.screen ?? NSScreen.main
                 let available = screen?.frame.size ?? AeroControlLayout.minimumCaptureSize
                 let scale = screen?.backingScaleFactor ?? 2
-                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(
-                    workspaces: self.state.model.workspaces.count, available: available, backingScale: scale))
-                if self.state.strip != nil {
-                    await self.state.retakeStripPictures(maxSize: AeroControlLayout.stripCaptureSize(available: available, backingScale: scale))
-                }
+                await self.state.capturePreviews(maxSize: self.state.strip != nil
+                    ? AeroControlLayout.stripCaptureSize(available: available, backingScale: scale)
+                    : AeroControlLayout.captureSize(workspaces: self.state.model.workspaces.count, available: available, backingScale: scale))
             }
         }
     }

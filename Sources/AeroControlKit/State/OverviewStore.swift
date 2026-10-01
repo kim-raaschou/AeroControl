@@ -180,6 +180,12 @@ public class OverviewStore {
     /// Whether this AeroSpace lists where its layout put each window; learned by the first
     /// load that gets an answer, and kept for the process. See `LayoutRects`.
     public private(set) var layoutRects: LayoutRects = .unknown
+
+    /// The pictures are shown together rather than one by one as they land: held back until
+    /// the capture is in, or `revealAfter` has passed, then faded in at once.
+    public private(set) var revealsPictures = false
+    static let revealAfter: Duration = .milliseconds(120)
+    private var revealTask: Task<Void, Never>?
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private var captureGeneration = 0
 
@@ -270,15 +276,24 @@ public class OverviewStore {
     private var captureSize: CGSize?
     private var refreshPicturesTask: Task<Void, Never>?
 
-    /// Captures a preview of every window in the model, each stored the moment it lands.
-    /// Returns when all are in. A `clearPreviews()` in the meantime discards the rest.
+    /// Captures a preview of every window drawn — the model's, or in the strip every window of
+    /// its workspaces, once, at the strip's size — each stored the moment it lands. Returns when
+    /// all are in. A `clearPreviews()` in the meantime discards the rest.
     public func capturePreviews(maxSize: CGSize) async {
         let generation = captureGeneration
         captureSize = maxSize
-        await nativeSystem.windowPreviews(windowIds: windowIds, maxSize: maxSize) { [weak self] id, image in
+        revealTask?.cancel()
+        revealTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.revealAfter)
+            guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
+            self.revealsPictures = true
+        }
+        let ids = strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }
+        await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.previews[id] = image
         }
+        if generation == captureGeneration { revealsPictures = true }
         // A summon can arrive already filtered — the app picker — before any size was known
         // for the re-take to work from; the pictures are in now, so it starts here.
         refreshFilteredPictures()
@@ -310,25 +325,16 @@ public class OverviewStore {
         }
     }
 
-    /// The strip draws its app's windows larger than the map does: those few are taken again
-    /// at the strip's size, the rest keep the map's pictures, which are only drawn faint there.
-    public func retakeStripPictures(maxSize: CGSize) async {
-        let ids = stripWindows.map(\.window.windowId)
-        guard !ids.isEmpty else { return }
-        let generation = captureGeneration
-        await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize) { [weak self] id, image in
-            guard let self, generation == self.captureGeneration else { return }
-            self.previews[id] = image
-        }
-    }
-
     public func clearPreviews() {
         captureGeneration += 1
+        revealTask?.cancel()
+        revealsPictures = false
         refreshPicturesTask?.cancel()
         refreshPicturesTask = nil
         captureSize = nil
         previews = [:]
         previewSizes = [:]
+        PictureResampler.forget()
     }
 
     /// What an app summon comes to.

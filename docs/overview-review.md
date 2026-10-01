@@ -112,9 +112,10 @@ moves the marking on, as Cmd-` does.
 - Each workspace is a card of the map's in its screen's shape at one height (`AeroControlLayout.stripLayout`):
   AeroSpace's rects or the tree read from sizes, the whole workspace (`OverviewStore.stripWorkspaces`), the other
   apps' windows grey at 0.45 with their icons and out of reach; krn.overview's 0.15 vanished on a dark card. A card
-  whose layout cannot be read packs only the app's windows. Over each card its workspace and a rule, in the accent on the marked one.
-- The strip's windows are taken again at the strip's size (`retakeStripPictures`), since it draws them larger than the
-  map does.
+  whose layout cannot be read packs only the app's windows. Each card is the map's card (`AeroControlCardFace`).
+- The strip takes its pictures once, at the strip's size: every window of its workspaces and no others
+  (`capturePreviews` in the strip). The pictures are held back until the capture is in, or 120 ms have passed, and
+  then fade in together (`revealsPictures`); a picture taken again fades over the one it replaces.
 
 Verified on screen with Ghostty on two workspaces: screen-shaped cards, labels, keys on every window, the marking on the
 first window when coming from another app, and the summon link stepping it. The ring (cards wider than the view) is

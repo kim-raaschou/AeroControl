@@ -25,6 +25,9 @@ import Foundation
         return scaled
     }
 
+    /// Everything kept: the captures it was made from are gone, and the next summon takes new ones.
+    static func forget() { cache.removeAllObjects() }
+
     private static func resample(_ image: CGImage, width: Int, height: Int) -> CGImage? {
         guard var format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32,
                                                 colorSpace: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),

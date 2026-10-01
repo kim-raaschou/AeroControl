@@ -154,7 +154,6 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         tile
             .frame(width: contentSize.width, height: contentSize.height)
-            .animation(.easeOut(duration: 0.15 * motion), value: preview == nil)   // the picture fades into its place as it lands
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .opacity(isHidden ? 0.45 : 1)
             .overlay(selectionPlate.allowsHitTesting(false))     // on the picture's edge, under the buttons
@@ -162,30 +161,42 @@ struct AeroControlAppTile: View {
             .overlay(alignment: .topLeading) { stateBadge }
     }
 
-    @ViewBuilder private var tile: some View {
-        if let preview {
-            picture(preview)
-                .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
-                // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
-                .overlay(RoundedRectangle(cornerRadius: plateRadius, style: .continuous).strokeBorder(palette.cardBorder, lineWidth: 1))
-                .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
-                    if let key {
-                        keyCap(key.label, marked: key.marked)
-                    } else if showsIcon, let icon = state.icons[window.bundleId] {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: metrics.badgeSize, height: metrics.badgeSize)
-                            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                            .padding(metrics.badgeSize * 0.2)
-                    }
-                }
-                .transition(.opacity)
-        } else {
-            RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
-                .fill(palette.badgeFill.opacity(0.35))
+    /// The plate, and the picture over it once the overview shows its pictures
+    /// (`OverviewStore.revealsPictures`): all of them fade in together, and a picture taken
+    /// again fades over the one it replaces rather than swapping in. The key or the icon is on
+    /// the plate from the start, so the keys can be read before the pictures are in.
+    private var tile: some View {
+        let plate = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
+        return ZStack {
+            plate.fill(palette.badgeFill.opacity(0.35))
+            if let preview, state.revealsPictures {
+                picture(preview)
+                    .clipShape(plate)
+                    // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
+                    .overlay(plate.strokeBorder(palette.cardBorder, lineWidth: 1))
+                    .id(ObjectIdentifier(preview))           // a new picture is a new view, fading over the old
+                    .transition(Sharpen())
+            }
+        }
+        .animation(.smooth(duration: Self.fade * motion), value: shownPicture)
+        .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
+            if let key {
+                keyCap(key.label, marked: key.marked)
+            } else if showsIcon, let icon = state.icons[window.bundleId] {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: metrics.badgeSize, height: metrics.badgeSize)
+                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                    .padding(metrics.badgeSize * 0.2)
+            }
         }
     }
+
+    /// How long a picture takes to come into focus, or over the one before it.
+    private static let fade: Double = 0.45
+    /// The picture on screen, if any: what the fade follows.
+    private var shownPicture: ObjectIdentifier? { state.revealsPictures ? preview.map(ObjectIdentifier.init) : nil }
 
     /// Focus: a thin accent ring on the picture's edge, with its corners and a soft glow,
     /// matching the focused workspace card's accent border.
@@ -242,5 +253,15 @@ struct AeroControlAppTile: View {
             .padding(6)                                         // inside the snapshot's corner, clear of the focus ring
             .help("Close window")
         }
+    }
+}
+
+/// A picture coming in: from faint and soft to there and sharp, as a window comes into focus,
+/// rather than only fading — the softer of the two to the eye.
+private struct Sharpen: Transition {
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content
+            .opacity(phase.isIdentity ? 1 : 0)
+            .blur(radius: phase.isIdentity ? 0 : 10)
     }
 }

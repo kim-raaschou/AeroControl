@@ -342,4 +342,12 @@ private let oneWorkspace = workspacesJSON(["1"])
         #expect(PictureResampler.picture(source, pixels: CGSize(width: 1100, height: 690)) === source) // already that size
         #expect(PictureResampler.picture(source, pixels: .zero) == nil)
     }
+
+    @Test("closing the overview forgets them with the captures: the next summon takes new ones, and these would never be drawn again")
+    func forgottenOnClose() throws {
+        let source = image(1100, 690)
+        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
+        previewStore(FakeBridge()).clearPreviews()
+        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
+    }
 }

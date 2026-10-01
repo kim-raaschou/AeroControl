@@ -433,22 +433,37 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("the strip's windows are taken again at the strip's size, and only they")
-    func stripRetakesItsWindows() async {
+    @Test("the strip takes its pictures once: every window of its workspaces, at the strip's size, and nothing else")
+    func stripTakesItsPicturesOnce() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
         bridge.granted = true
         runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(9, "1", app: "Slack", bundleId: "com.slack"),
-                                        oneWindow(2, "2", app: "Teams"), oneWindow(3, "2", app: "Teams")].joined(separator: ",") + "]",
-                        workspaces: workspacesJSON(["1", "2"]))
+                                        oneWindow(2, "2", app: "Teams"), oneWindow(3, "2", app: "Teams"),
+                                        oneWindow(7, "3", app: "Slack", bundleId: "com.slack")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "3"]))
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         store.start()
         await store.reload()
         store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
+        await store.capturePreviews(maxSize: CGSize(width: 400, height: 300))
+        #expect(bridge.captured == [[1, 9, 2, 3]])                  // Slack on 1 is drawn grey in the card; Slack on 3 is in no card
+        #expect(store.previews[9]?.size.width == 400 && store.previews[7] == nil)
+        store.stop()
+    }
+
+    @Test("the pictures are shown together once they are in, and hidden again with them on close")
+    func picturesRevealTogether() async {
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"])), nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        #expect(!store.revealsPictures)
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        await store.retakeStripPictures(maxSize: CGSize(width: 400, height: 300))
-        #expect(bridge.captured.last == [1, 2, 3])
-        #expect(store.previews[1]!.size.width > 100)
+        #expect(store.revealsPictures)
+        store.clearPreviews()
+        #expect(!store.revealsPictures)
         store.stop()
     }
 
