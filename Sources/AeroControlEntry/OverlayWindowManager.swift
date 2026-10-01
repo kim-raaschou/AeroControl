@@ -12,9 +12,6 @@ final class OverlayWindowManager {
     private var window: OverviewWindow?
     /// One-shot overview: starts hidden, summoned by the toggle.
     private var requestedVisible = false
-    /// Previews are captured to fit this box, in pixels: a tile is drawn at 3:2 of the icon
-    /// size and is at most a few hundred pixels wide, so this stays sharp at 2x.
-    private static let previewCaptureSize = CGSize(width: 720, height: 480)
     init(
         state: OverviewStore,
         settings: SettingsStore
@@ -117,7 +114,12 @@ final class OverlayWindowManager {
             self.state.startFollowingAerospace()
             self.rebuild()
             if self.state.previewsAvailable {
-                await self.state.capturePreviews(maxSize: Self.previewCaptureSize)
+                // As large as a card can draw a window on the screen the overview is on, in its pixels.
+                let screen = self.window?.screen ?? NSScreen.main
+                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(
+                    workspaces: self.state.model.workspaces.count,
+                    available: screen?.frame.size ?? AeroControlLayout.minimumCaptureSize,
+                    backingScale: screen?.backingScaleFactor ?? 2))
             }
         }
     }

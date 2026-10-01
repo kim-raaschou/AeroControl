@@ -139,6 +139,24 @@ public enum AeroControlLayout {
         return gaps.isEmpty ? nil : gaps[gaps.count / 2]
     }
 
+    /// The smallest box pictures are taken to fit, in pixels: what the overview used for every
+    /// screen before cards drew one window as large as the card.
+    public static let minimumCaptureSize = CGSize(width: 720, height: 480)
+
+    /// The box pictures are taken to fit, in pixels: the inner box of a lattice cell for this
+    /// many workspaces on a screen of `available` points, times the screen's backing scale. A
+    /// card draws no window larger than that, so the picture is never stretched; a fixed size
+    /// was sharp on a laptop and a blur on a 34-inch screen. Slightly generous, since the panel's
+    /// box is a little smaller than `available` times `usableScreenFraction`.
+    public static func captureSize(workspaces: Int, available: CGSize, backingScale: CGFloat) -> CGSize {
+        let box = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
+        let layout = CardGrid.lattice(count: max(1, workspaces), in: box, cellRatio: screenRatio(for: available), gap: cardGap,
+                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
+        let inner = innerSize(of: layout.cells.first?.frame.size ?? .zero)
+        return CGSize(width: max(minimumCaptureSize.width, (inner.width * backingScale).rounded(.up)),
+                      height: max(minimumCaptureSize.height, (inner.height * backingScale).rounded(.up)))
+    }
+
     /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with
     /// fewer windows than the busiest reads as a centred picture and not as a top-heavy box.
     /// Every cell is the same size, so this is what a lattice wants; a block too big for the

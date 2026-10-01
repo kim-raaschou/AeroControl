@@ -393,6 +393,86 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    // MARK: Pictures after a move
+
+    /// A store on screen with its pictures in: summoned, measured, captured.
+    private func summoned(_ runner: ScriptRunner, _ bridge: FakeBridge) async -> OverviewStore {
+        bridge.granted = true
+        let store = OverviewStore(runner: runner, nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        await store.measurePreviews()
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        return store
+    }
+
+    @Test("after a move the sizes are measured again and only the windows that changed size get a new picture")
+    func moveRetakesOnlyChangedPictures() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1"), (3, "2")]), workspaces: workspacesJSON(["1", "2"]))
+        let store = await summoned(runner, bridge)
+        #expect(bridge.captured == [[1, 2, 3]])
+        let measuredAtSummon = bridge.measured
+
+        // Window 1 goes to workspace 2; window 2 widens into the hole it leaves.
+        runner.setState(windows: windowsJSON([(1, "2"), (2, "1"), (3, "2")]), workspaces: workspacesJSON(["1", "2"]))
+        bridge.sizes[2] = CGSize(width: 600, height: 200)
+        store.send(.action(.moveWindow(windowId: 1, toWorkspace: "2")))
+        await waitUntil { bridge.captured.count >= 2 }
+        #expect(bridge.measured > measuredAtSummon)
+        #expect(bridge.captured.last == [2])
+        #expect(store.previewSizes[2] == CGSize(width: 600, height: 200))           // the fresh size, not the summon's
+        store.stop()
+    }
+
+    @Test("a window that appears while the overview is open gets a picture; nothing changed, nothing is taken")
+    func newWindowGetsPictureAndQuietRefreshTakesNone() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = await summoned(runner, bridge)
+
+        runner.setState(windows: windowsJSON([(1, "1"), (4, "1")]), workspaces: workspacesJSON(["1"]))
+        store.send(.event(.changed))
+        await waitUntil { bridge.captured.count >= 2 }
+        #expect(bridge.captured.last == [4])
+
+        let measured = bridge.measured
+        store.send(.event(.changed))
+        await waitUntil { bridge.measured > measured }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(bridge.captured.count == 2)
+        store.stop()
+    }
+
+    @Test("a hidden overview takes no pictures on a refresh")
+    func hiddenOverviewTakesNone() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = await summoned(runner, bridge)
+        store.clearPreviews()
+        runner.setState(windows: windowsJSON([(1, "1"), (4, "1")]), workspaces: workspacesJSON(["1"]))
+        store.send(.event(.changed))
+        await waitUntil { windowIds(store) == [1, 4] }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(bridge.captured.count == 1)
+        store.stop()
+    }
+
+    @Test("a refresh keeps what the store learned about layout rects instead of asking again")
+    func refreshKeepsLayoutRects() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+        #expect(store.layoutRects == .absent)
+        let asked = runner.commandsRun.count
+        store.send(.event(.changed))
+        await waitUntil { runner.commandsRun.count > asked }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(!runner.commandsRun[asked...].contains { $0.contains { $0.contains("window-layout-rect") } })
+        store.stop()
+    }
+
     // MARK: Actions
 
     @Test("typed inputs drive the store through the send() ingress")

@@ -388,10 +388,37 @@ public class OverviewStore {
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             guard let self else { return }
-            guard let result = try? await loadOverview(using: self.runner) else { return }
+            guard let result = try? await loadOverview(using: self.runner, layoutRects: self.layoutRects) else { return }
             guard generation == self.refreshGeneration else { return }
+            self.layoutRects = result.layoutRects
             self.error = nil
             self.apply(.loaded(result))
+            await self.refreshChangedPictures()
+        }
+    }
+
+    /// After AeroSpace has moved, closed or opened windows, the sizes measured at summon are stale
+    /// for the windows that changed: the neighbours that widened into a hole, the window that
+    /// landed in a new row. All sizes are read again, which is cheap, and only those windows get a
+    /// new picture, plus any that appeared; a picture of a window whose size held is still true.
+    /// Nothing while the overview is hidden: `clearPreviews` has dropped the capture size.
+    private func refreshChangedPictures() async {
+        guard let size = captureSize else { return }
+        let generation = captureGeneration
+        let before = previewSizes
+        let ids = windowIds
+        let sizes = await nativeSystem.previewSizes(windowIds: ids)
+        guard generation == captureGeneration else { return }
+        previewSizes = sizes
+        let changed = ids.filter { id in
+            guard let now = sizes[id] else { return false }
+            guard let was = before[id] else { return true }
+            return abs(now.width - was.width) > 2 || abs(now.height - was.height) > 2
+        }
+        guard !changed.isEmpty else { return }
+        await nativeSystem.windowPreviews(windowIds: changed, maxSize: size) { [weak self] id, image in
+            guard let self, generation == self.captureGeneration else { return }
+            self.previews[id] = image
         }
     }
 }

@@ -11,6 +11,19 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
+    @Test("pictures are taken as large as a card can draw one: the lattice cell's inner box, in the screen's pixels, never under the old floor")
+    func captureSizeFollowsTheCard() {
+        let wide = CGSize(width: 3440, height: 1440)
+        let one = AeroControlLayout.captureSize(workspaces: 1, available: wide, backingScale: 1)
+        let seven = AeroControlLayout.captureSize(workspaces: 7, available: wide, backingScale: 1)
+        let retina = AeroControlLayout.captureSize(workspaces: 7, available: wide, backingScale: 2)
+        #expect(one.width > 2000)                                   // one card nearly fills the 3440-point screen
+        #expect(seven.width > 720 && seven.width < one.width)       // the old fixed 720 was a blur on this screen
+        #expect(abs(retina.width - 2 * seven.width) < 1)            // pixels, not points
+        #expect(AeroControlLayout.captureSize(workspaces: 40, available: CGSize(width: 800, height: 500), backingScale: 1)
+                == AeroControlLayout.minimumCaptureSize)
+    }
+
     @Test("packed tiles keep the gap the trees draw, scaled to the card, so every card reads as one screen; unknown, the old spacing")
     func tilesShareTheGap() {
         let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084), inner = CGSize(width: 1000, height: 500)
