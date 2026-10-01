@@ -27,6 +27,8 @@ public struct DecodedWindow: Decodable, Equatable {
     public let parentLayout: String
     /// Optional so a list from an AeroSpace without the field still decodes.
     public let windowIsFullscreen: Bool?
+    /// `x,y,width,height`; only asked for from an AeroSpace that knows it, empty for a float.
+    public let windowLayoutRect: String?
 
     /// Also the requested `--format`: `AerospaceCommand` builds the token list from these
     /// keys, so a field can never be asked for under one spelling and decoded under another.
@@ -38,7 +40,16 @@ public struct DecodedWindow: Decodable, Equatable {
         case workspace
         case parentLayout = "window-parent-container-layout"
         case windowIsFullscreen = "window-is-fullscreen"
+        case windowLayoutRect = "window-layout-rect"
     }
+}
+
+/// `x,y,width,height` in points to a rect; nil for anything else, an empty string included.
+public func parseLayoutRect(_ text: String?) -> CGRect? {
+    guard let text, !text.isEmpty else { return nil }
+    let parts = text.split(separator: ",").compactMap { Double($0) }
+    guard parts.count == 4 else { return nil }
+    return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
 }
 
 public struct WorkspaceMonitor: Decodable, Equatable {
@@ -93,7 +104,8 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 bundleId: dw.appBundleId,
                 isFloating: dw.parentLayout == "floating",
                 isFullscreen: dw.windowIsFullscreen ?? false,
-                title: dw.windowTitle ?? ""
+                title: dw.windowTitle ?? "",
+                layoutRect: parseLayoutRect(dw.windowLayoutRect)
             ),
             workspace: dw.workspace
         )
@@ -106,7 +118,7 @@ public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
 }
 
 public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor],
-                                focus: Focus? = nil) -> OverviewResult {
+                                focus: Focus? = nil, layoutRects: LayoutRects = .unknown) -> OverviewResult {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
     let workspaces = workspaceMonitors.map { wm in
@@ -120,7 +132,7 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
         )
     }
 
-    return OverviewResult(workspaces: workspaces, focus: focus)
+    return OverviewResult(workspaces: workspaces, focus: focus, layoutRects: layoutRects)
 }
 
 /// Focus from the two `--focused` reads. `nil` when neither answered, so a load during an
@@ -139,12 +151,28 @@ public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
 ///
 /// A read issued in reaction to an AeroSpace event cannot see stale state: the daemon
 /// queues it behind its own work, so there is no read-too-early race to guard against.
-public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
-    let windows = try parseWindows(json: try await runner.run(AerospaceCommand.listWindows()))
+///
+/// `layoutRects` is what earlier loads learned about `%{window-layout-rect}`; the result carries
+/// what this one learned. Unknown: the read with the variable is tried, and only when AeroSpace
+/// says it cannot parse the variable *and* the plain read then succeeds is it marked absent, so
+/// an AeroSpace that is down teaches nothing. Present: that read is the read; a failure is a
+/// failure. Absent: the plain read, once.
+public func loadOverview(using runner: AerospaceProcessRunner, layoutRects: LayoutRects = .unknown) async throws -> OverviewResult {
+    var learned = layoutRects
+    let windowsJson: String
+    do {
+        windowsJson = try await runner.run(AerospaceCommand.listWindows(layoutRects: layoutRects != .absent))
+        if layoutRects == .unknown { learned = .present }
+    } catch {
+        guard layoutRects == .unknown, "\(error)".contains("window-layout-rect") else { throw error }
+        windowsJson = try await runner.run(AerospaceCommand.listWindows())
+        learned = .absent
+    }
+    let windows = try parseWindows(json: windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces()))
     // Tolerant: the lists are the load, focus is a refinement of it.
     let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow())
     let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace())
     let focus = parseFocus(windowJson: focusedWindow, workspaceJson: focusedWorkspace)
-    return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus)
+    return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus, layoutRects: learned)
 }

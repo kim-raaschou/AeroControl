@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 @testable import Common
 
@@ -170,5 +171,29 @@ struct RootLayoutTests {
         let monitors = [WorkspaceMonitor(workspace: "2", monitorId: 1, rootLayout: "v_accordion"), WorkspaceMonitor(workspace: "3", monitorId: 1)]
         let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
         #expect(result.workspaces[0].rootLayout == "v_accordion" && result.workspaces[1].rootLayout == "")
+    }
+}
+
+@Suite("window-layout-rect")
+struct LayoutRectTests {
+    private func window(_ rect: String?) -> String {
+        let field = rect.map { ", \"window-layout-rect\": \"\($0)\"" } ?? ""
+        return """
+        [{"window-id": 1, "app-name": "Ghostty", "app-bundle-id": "com.mitchellh.ghostty", "workspace": "7", "window-parent-container-layout": "h_tiles"\(field)}]
+        """
+    }
+
+    @Test("x,y,width,height in points becomes the window's layout rect")
+    func parsed() throws {
+        let w = try parseWindows(json: window("16,48,842,1052"))[0].window
+        #expect(w.layoutRect == CGRect(x: 16, y: 48, width: 842, height: 1052))
+    }
+
+    @Test("empty (a float, a fullscreen window in front), absent (a release AeroSpace) or malformed is no rect")
+    func absent() throws {
+        #expect(try parseWindows(json: window(""))[0].window.layoutRect == nil)
+        #expect(try parseWindows(json: window(nil))[0].window.layoutRect == nil)
+        #expect(try parseWindows(json: window("16,48"))[0].window.layoutRect == nil)
+        #expect(try parseWindows(json: window("a,b,c,d"))[0].window.layoutRect == nil)
     }
 }

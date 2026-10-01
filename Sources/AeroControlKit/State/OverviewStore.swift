@@ -93,6 +93,9 @@ public class OverviewStore {
     private var inboxTask: Task<Void, Never>?
     private var subscribeTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    /// Whether this AeroSpace lists where its layout put each window; learned by the first
+    /// load that gets an answer, and kept for the process. See `LayoutRects`.
+    public private(set) var layoutRects: LayoutRects = .unknown
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private var captureGeneration = 0
 
@@ -115,7 +118,8 @@ public class OverviewStore {
     public func reload() async {
         previewsAvailable = nativeSystem.canCapturePreviews
         do {
-            let result = try await loadOverview(using: runner)
+            let result = try await loadOverview(using: runner, layoutRects: layoutRects)
+            layoutRects = result.layoutRects
             apply(.loaded(result))
             error = nil
         } catch {

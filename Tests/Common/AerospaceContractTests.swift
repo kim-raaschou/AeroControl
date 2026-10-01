@@ -16,6 +16,15 @@ struct AerospaceCommandArgvTests {
         ])
     }
 
+    @Test("list-windows with layout rects is the same read plus %{window-layout-rect}, the variable of the owner's AeroSpace branch")
+    func listWindowsWithLayoutRects() {
+        let plain = AerospaceCommand.listWindows()
+        let rects = AerospaceCommand.listWindows(layoutRects: true)
+        #expect(rects.dropLast() == plain.dropLast())
+        #expect(rects.last == plain.last! + " %{window-layout-rect}")
+        #expect(AerospaceCommand.listWindows(layoutRects: false) == plain)
+    }
+
     @Test("list-workspaces argv is pinned")
     func listWorkspaces() {
         #expect(AerospaceCommand.listWorkspaces() == [

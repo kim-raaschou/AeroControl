@@ -7,11 +7,17 @@ public enum AerospaceCommand {
         K.allCases.map { "%{\($0.stringValue)}" }.joined(separator: " ")
     }
 
-    public static let listWindowsFields = format(DecodedWindow.CodingKeys.self)
+    /// The fields every AeroSpace has; the layout rect is asked for separately, see `listWindows(layoutRects:)`.
+    public static let listWindowsFields = DecodedWindow.CodingKeys.allCases.filter { $0 != .windowLayoutRect }
+        .map { "%{\($0.stringValue)}" }.joined(separator: " ")
+    static let layoutRectField = "%{\(DecodedWindow.CodingKeys.windowLayoutRect.stringValue)}"
     public static let listWorkspacesFields = format(WorkspaceMonitor.CodingKeys.self)
 
-    public static func listWindows() -> [String] {
-        ["list-windows", "--all", "--json", "--format", listWindowsFields]
+    /// `layoutRects`: also ask where the layout last put each window. `%{window-layout-rect}` is
+    /// the owner's AeroSpace branch, not in any release; a release answers "Can't parse" and the
+    /// caller falls back to the plain read.
+    public static func listWindows(layoutRects: Bool = false) -> [String] {
+        ["list-windows", "--all", "--json", "--format", listWindowsFields + (layoutRects ? " " + layoutRectField : "")]
     }
 
     public static func listWorkspaces() -> [String] {

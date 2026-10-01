@@ -22,6 +22,9 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     var failing = false
     /// Answer the lists but refuse the two `--focused` reads.
     var refuseFocusReads = false
+    /// Whether this AeroSpace knows `%{window-layout-rect}` (the owner's branch). Off by
+    /// default, like every AeroSpace release so far.
+    var acceptsLayoutRects = false
 
     init(windows: String = "[]", workspaces: String = "[]") {
         windowsJSON = windows
@@ -62,6 +65,10 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
         if failing { throw AerospaceSocketError.io("no aerospace") }
         let focused = args.contains("--focused")
         if focused, refuseFocusReads { throw AerospaceSocketError.io("no focus") }
+        if args.contains(where: { $0.contains("window-layout-rect") }), !acceptsLayoutRects {
+            throw AerospaceSocketError.commandFailed(arguments: args, exitCode: 1,
+                                                     stderr: "ERROR: Failed to parse <output-format>. Can't parse 'window-layout-rect'.", serverVersion: nil)
+        }
         switch (args.first ?? "", focused) {
         case ("list-workspaces", true): return withLock { focusedWorkspaceJSON }
         case ("list-workspaces", false): return withLock { workspacesJSON }

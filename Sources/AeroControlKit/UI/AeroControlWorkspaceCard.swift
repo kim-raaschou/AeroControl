@@ -10,6 +10,11 @@ struct AeroControlWorkspaceCard: View {
     let monitorName: String?
     /// Width / height of a window whose size is not known yet: the screen's own shape.
     let fallbackRatio: CGFloat
+    /// The visible frame of the screen this workspace lives on, in AeroSpace's coordinates
+    /// (points, top-left origin); the area its layout fills.
+    let screen: CGRect?
+    /// The gap AeroSpace keeps between windows, as the overview read it; nil when no workspace showed it.
+    let gap: CGFloat?
     let size: CGSize
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
@@ -33,13 +38,15 @@ struct AeroControlWorkspaceCard: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+        let placement = self.placement
         // Same header lane on every card, so the badge sits in the same corner whether the
         // workspace is empty (a narrow card) or full.
         // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
         // stack and push the badge out of its corner.
         VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
-            header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            tiles.frame(width: innerSize.width, height: innerSize.height)
+            header(orderUnknown: placement.fromTree && !placement.exact)
+                .frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
+            grid(placement).frame(width: innerSize.width, height: innerSize.height)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
@@ -74,8 +81,10 @@ struct AeroControlWorkspaceCard: View {
     }
 
     /// The badge, and with more than one display the name of this workspace's. The tiles
-    /// say how many windows there are.
-    private var header: some View {
+    /// say how many windows there are. The layout symbol fades when the tree is drawn from
+    /// sizes alone rather than from AeroSpace's own rects: the shape is right, the places may
+    /// be swapped.
+    private func header(orderUnknown: Bool) -> some View {
         HStack(spacing: 6) {
             badge
             if let monitorName, !monitorName.isEmpty {
@@ -89,8 +98,8 @@ struct AeroControlWorkspaceCard: View {
             if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
                 Image(systemName: symbol.name)
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(palette.badgeText.opacity(0.7))
-                    .help(symbol.help)
+                    .foregroundStyle(palette.badgeText.opacity(orderUnknown ? 0.35 : 0.7))
+                    .help(orderUnknown ? symbol.help + ". Drawn from the windows' sizes; AeroSpace did not say their order." : symbol.help)
             }
         }
     }
@@ -122,32 +131,48 @@ struct AeroControlWorkspaceCard: View {
 
     private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
 
-    @ViewBuilder private var tiles: some View {
-        if workspace.windows.isEmpty { Color.clear } else { grid }
-    }
+    /// Where every window goes in the card's inner box, how they read as rows for ↑/↓,
+    /// whether that is the workspace's real tree rather than packed tiles, and which windows
+    /// float over the tree rather than sit in it.
+    private typealias Placement = (frames: [Int: CGRect], rows: [[Int]], fromTree: Bool, ghosts: Set<Int>, exact: Bool)
 
-    /// The windows as `TilePacker` lays them out — each at its own shape, one shared picture
-    /// height, as large as the cell allows — centred in the card's inner box. Every cell is the
-    /// same size, so a card with fewer windows than the busiest would otherwise hang a small
-    /// block under its badge and leave the lower half empty.
-    private var grid: some View {
+    /// The workspace as AeroSpace lays it out when that can be read from the windows' sizes
+    /// and the root's axis (`AeroControlLayout.treeLayout`); otherwise `TilePacker`'s tiles,
+    /// each at its own shape at one shared picture height, centred in the inner box. A
+    /// filtered card shows a subset, whose sizes cannot add up to a tree, so it packs.
+    private var placement: Placement {
         let windows = workspace.windows
         let inner = innerSize
+        if !filtering, let tree = AeroControlLayout.treeLayout(windows: windows, sizes: state.previewSizes, rootLayout: workspace.rootLayout,
+                                                              screen: screen, gap: gap, inner: inner) {
+            return (tree.frames, tree.rows, fromTree: true, ghosts: tree.ghosts, exact: tree.exact)
+        }
         let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
         let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner,
+                                                 gap: AeroControlLayout.tileGap(innerGap: gap, screen: screen?.size, inner: inner),
                                                  caption: filtering ? AeroControlLayout.captionLane : 0)
         let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
-        let tileRows = packed.rows.map { $0.map { windows[$0].windowId } }
+        let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
+                                uniquingKeysWith: { _, b in b })
+        return (frames, packed.rows.map { $0.map { windows[$0].windowId } }, fromTree: false, ghosts: [], exact: false)
+    }
+
+    private func grid(_ placement: Placement) -> some View {
+        let windows = workspace.windows
+        let inner = innerSize
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(windows.enumerated()), id: \.element.windowId) { i, window in
-                let placed = packed.tiles[i]
-                tile(window, metrics: AeroControlMetrics(tileSize: CGSize(width: placed.width, height: placed.height)))
-                    .offset(x: origin.x + placed.x, y: origin.y + placed.y)
+            ForEach(windows, id: \.windowId) { window in
+                let frame = placement.frames[window.windowId] ?? .zero
+                let ghost = placement.ghosts.contains(window.windowId)
+                tile(window, metrics: AeroControlMetrics(tileSize: frame.size))
+                    .offset(x: frame.minX, y: frame.minY)
+                    .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
+                    .zIndex(ghost ? 1 : 0)
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15 * motion), value: windows)
-        .onChange(of: tileRows, initial: true) { _, rows in state.tileRows[workspace.name] = rows }   // for ↑/↓
+        .onChange(of: placement.rows, initial: true) { _, rows in state.tileRows[workspace.name] = rows }   // for ↑/↓
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {

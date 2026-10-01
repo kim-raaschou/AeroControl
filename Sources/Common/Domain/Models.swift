@@ -7,14 +7,19 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let isFloating: Bool
     public let isFullscreen: Bool
     public let title: String
+    /// Where AeroSpace's layout last put the window, in screen points with a top-left origin
+    /// (`%{window-layout-rect}`, the owner's AeroSpace branch). Nil on a release AeroSpace,
+    /// for a floating window, and for a fullscreen window in front.
+    public let layoutRect: CGRect?
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
-                isFullscreen: Bool = false, title: String = "") {
+                isFullscreen: Bool = false, title: String = "", layoutRect: CGRect? = nil) {
         self.windowId = windowId
         self.appName = appName
         self.bundleId = bundleId
         self.isFloating = isFloating
         self.isFullscreen = isFullscreen
+        self.layoutRect = layoutRect
         self.title = title
     }
 
@@ -81,15 +86,27 @@ public struct Focus: Equatable, Sendable {
     }
 }
 
+/// Whether this AeroSpace can list where its layout put each window (`%{window-layout-rect}`,
+/// the owner's AeroSpace branch, which no release has yet). Learned from AeroSpace itself,
+/// once: the read with the variable is tried while unknown; if AeroSpace answers that it cannot
+/// parse the variable and the plain read then succeeds, it is absent. Nothing is inferred and
+/// no version is parsed.
+public enum LayoutRects: Equatable, Sendable {
+    case unknown, present, absent
+}
+
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
     /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather
     /// than wiping it. A present-but-empty `Focus` is an answer: nothing is focused.
     public let focus: Focus?
+    /// What this load learned about layout rects; every laid-out window has one iff `.present`.
+    public let layoutRects: LayoutRects
 
-    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
+    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil, layoutRects: LayoutRects = .unknown) {
         self.workspaces = workspaces
         self.focus = focus
+        self.layoutRects = layoutRects
     }
 }
 

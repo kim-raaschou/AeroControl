@@ -15,7 +15,6 @@ final class OverlayWindowManager {
     /// Previews are captured to fit this box, in pixels: a tile is drawn at 3:2 of the icon
     /// size and is at most a few hundred pixels wide, so this stays sharp at 2x.
     private static let previewCaptureSize = CGSize(width: 720, height: 480)
-
     init(
         state: OverviewStore,
         settings: SettingsStore
@@ -29,8 +28,12 @@ final class OverlayWindowManager {
             state: state,
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
-            screenRatios: Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map {
-                ($0.offset + 1, $0.element.frame.width / max(1, $0.element.frame.height))
+            // What AeroSpace tiles into (no menu bar, no dock), in its coordinates: AppKit's
+            // y grows upward from the main screen's bottom, AeroSpace's downward from its top.
+            screenFrames: Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
+                let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
+                let visible = screen.visibleFrame
+                return (index + 1, CGRect(x: visible.minX, y: top - visible.maxY, width: visible.width, height: visible.height))
             }),
             onDismiss: { [weak self] in self?.hide(restoreFocus: false) }   // the action focused something
         )

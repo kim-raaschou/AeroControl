@@ -8,9 +8,10 @@ public struct AeroControlPanel: View {
     @Environment(\.aeroMotion) private var motion
     let availableWidth: CGFloat
     let availableHeight: CGFloat
-    /// Width / height of every screen, by AeroSpace's 1-based AppKit index: a card takes the
-    /// shape of the screen its workspace is on.
-    let screenRatios: [Int: CGFloat]
+    /// The visible frame of every screen in AeroSpace's coordinates (points, top-left origin),
+    /// by AeroSpace's 1-based AppKit index: the area a workspace's layout fills, and the shape a
+    /// window nothing is known about gets.
+    let screenFrames: [Int: CGRect]
     /// Called after an action that completes the "one shot" (focus a window or a
     /// workspace); the host hides the overview.
     let onDismiss: @MainActor () -> Void
@@ -19,13 +20,13 @@ public struct AeroControlPanel: View {
         state: OverviewStore,
         availableWidth: CGFloat = 0,
         availableHeight: CGFloat = 0,
-        screenRatios: [Int: CGFloat] = [:],
+        screenFrames: [Int: CGRect] = [:],
         onDismiss: @escaping @MainActor () -> Void = {}
     ) {
         self._state = Bindable(wrappedValue: state)
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
-        self.screenRatios = screenRatios
+        self.screenFrames = screenFrames
         self.onDismiss = onDismiss
     }
 
@@ -75,7 +76,7 @@ public struct AeroControlPanel: View {
 
     /// The shape of the screen a workspace lives on; this screen's when AeroSpace did not say.
     private func ratio(of workspace: WorkspaceInfo) -> CGFloat {
-        screenRatios[workspace.screenIndex] ?? AeroControlLayout.screenRatio(for: usable)
+        AeroControlLayout.screenRatio(for: screenFrames[workspace.screenIndex]?.size ?? usable)
     }
 
     /// The result takes over the grid's geometry: a query that found something draws only the
@@ -89,6 +90,8 @@ public struct AeroControlPanel: View {
         let namesMonitors = self.namesMonitors
         let layout = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
                                       chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
+        // AeroSpace's gap between windows is one setting: read from whichever workspaces show it, used by every card.
+        let gap = AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames)
         let cardRows = layout.rows.map { $0.map { all[$0].name } }
         return ZStack(alignment: .topLeading) {
             ForEach(layout.cells, id: \.index) { cell in
@@ -97,6 +100,8 @@ public struct AeroControlPanel: View {
                     workspace: workspace,
                     monitorName: namesMonitors ? workspace.monitorShortName : nil,
                     fallbackRatio: ratio(of: workspace),
+                    screen: screenFrames[workspace.screenIndex],
+                    gap: gap,
                     size: cell.frame.size,
                     filtering: filtering
                 )
