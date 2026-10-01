@@ -96,3 +96,41 @@ Unanimous first step there: remove `hug`. Note that the krn.overview rule this d
 candidate (cards capped at the monitor's shape, surplus redistributed) no longer ships: the plugin removed it in
 commit 3d0c78b on 2026-09-21, and its DESIGN.md paragraph "How big a card is" is stale. What ships there is the
 same brute-force row-break search as `CardGrid.layout`.
+
+## The strip, rebuilt on krn.overview's (2026-10-01)
+
+The app picker now follows krn.overview's strip, with three decisions by the owner: the marking only chooses (focus on
+Enter, a key or a click, as macOS's Cmd-Tab, so stepping never switches AeroSpace's workspace behind the strip); the
+windows carry keys 1–9 then a–f and there is no typing in the strip (search belongs to the map); the summon key again
+moves the marking on, as Cmd-` does.
+
+- `AppStripModel` (Common) is a port of the plugin's `AppStripModel.js` and its tests: the first marking on the window
+  after the one you are in, stepping with wrap-round, Home/End, the marking handed on when its window closes, card
+  height between a fifth and half the panel, the ring when the cards do not fit, the frames, the keys.
+- The strip has its own state in the store (`OverviewStore.Strip`: bundle id, origin, marking) instead of borrowing the
+  filter, so a window of another app whose title names this one is no longer in it.
+- Each workspace is a card of the map's in its screen's shape at one height (`AeroControlLayout.stripLayout`):
+  AeroSpace's rects or the tree read from sizes, the whole workspace (`OverviewStore.stripWorkspaces`), the other
+  apps' windows grey at 0.45 with their icons and out of reach; krn.overview's 0.15 vanished on a dark card. A card
+  whose layout cannot be read packs only the app's windows. Over each card its workspace and a rule, in the accent on the marked one.
+- The strip's windows are taken again at the strip's size (`retakeStripPictures`), since it draws them larger than the
+  map does.
+
+Verified on screen with Ghostty on two workspaces: screen-shaped cards, labels, keys on every window, the marking on the
+first window when coming from another app, and the summon link stepping it. The ring (cards wider than the view) is
+covered by the ported tests and an end-to-end test of six workspaces in a narrow view (`stripShifts`), not seen on
+screen. As in krn.overview, keys move the carousel's centre and the pointer does not (`Strip.centre`): pointing marks a
+window, but the row stays put under the hand. Pointing marks only when the mouse has moved (`pointStrip`): cards that
+slide under a resting mouse, as the strip opens or the carousel turns, would otherwise take the marking from the keys.
+From three workspaces the strip is always a carousel (`carouselFrom`, the owner's choice over krn.overview's measured
+"stand still when it fits"): the marked workspace's card in the middle, centred on the card rather than the window, so
+stepping within a workspace moves only the marking and the row turns a whole card at a time.
+
+## Navigation follows the layout (2026-10-01)
+
+AeroSpace lists a workspace's windows by app name, then title. With rects, `buildOverviewResult` now orders each
+workspace's windows by the layout (`WorkspaceTree.order`): the rects are cut along lines that cross no window, columns
+before rows, and read left to right and top to bottom, which is AeroSpace's own tree order for a tiling layout. Tab,
+the arrows, the strip's steps and its keys all follow it. Found on the owner's workspace 4, Mail on the left and
+Ghostty on the right: Tab from workspace 3 went to Ghostty first. Overlapping rects (an accordion) and windows without
+a rect keep the listing's order, the latter after the placed ones.
