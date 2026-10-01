@@ -19,6 +19,12 @@ public struct AeroControlMetrics: Equatable, Sendable {
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
+    /// `size` rounded to the screen's pixels, at least one each way: drawn at that size a
+    /// picture of exactly that many pixels maps one to one onto the screen.
+    public static func pixelSnapped(_ size: CGSize, scale: CGFloat) -> CGSize {
+        CGSize(width: max(1, (size.width * scale).rounded()) / scale, height: max(1, (size.height * scale).rounded()) / scale)
+    }
+
     /// Stroke of the focus ring, laid on the picture's edge: thin, and the same at every size.
     public static let focusRingWidth: CGFloat = 2.5
     /// Corner radius of a snapshot; small, like a real window's corners.

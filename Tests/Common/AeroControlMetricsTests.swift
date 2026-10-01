@@ -14,6 +14,13 @@ struct AeroControlMetricsTests {
         // apart on a card, and a ring outside the picture ran into the neighbour.
         #expect(AeroControlMetrics.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96, height: 96))
     }
+
+    @Test("a picture is drawn a whole number of the screen's pixels wide and high, so one of its pixels is one of the screen's")
+    func pixelSnapped() {
+        #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 100.3, height: 50.7), scale: 1) == CGSize(width: 100, height: 51))
+        #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 100.3, height: 50.7), scale: 2) == CGSize(width: 100.5, height: 50.5))
+        #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 0.2, height: 0.2), scale: 1) == CGSize(width: 1, height: 1))   // never nothing
+    }
 }
 
 @Suite("where the tiles sit in a card")

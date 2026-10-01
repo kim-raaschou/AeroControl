@@ -23,6 +23,7 @@ struct AeroControlAppTile: View {
     var key: (label: String, marked: Bool)?
 
     @State private var isHovering = false
+    @Environment(\.displayScale) private var displayScale
 
     /// The window's snapshot, fitted into the cell with its own aspect ratio, with the app's
     /// icon badged in its corner; until it lands — or for good, without Screen Recording —
@@ -86,7 +87,7 @@ struct AeroControlAppTile: View {
     /// whole box when nothing is known about the window.
     private var contentSize: CGSize {
         guard let size = preview?.size ?? state.previewSizes[window.windowId] else { return pictureBox }
-        return AeroControlMetrics.fit(size, into: pictureBox)
+        return AeroControlMetrics.pixelSnapped(AeroControlMetrics.fit(size, into: pictureBox), scale: displayScale)
     }
 
     /// The focus frame hugs the drawn content, not the cell.
@@ -128,6 +129,18 @@ struct AeroControlAppTile: View {
             .padding(metrics.badgeSize * 0.2)
     }
 
+    /// The capture at exactly the pixels it fills, drawn one to one and unfiltered
+    /// (`PictureResampler`); scaled by the renderer only when it cannot be had.
+    @ViewBuilder private func picture(_ preview: NSImage) -> some View {
+        let pixels = CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale)
+        if let source = preview.cgImage(forProposedRect: nil, context: nil, hints: nil),
+           let exact = PictureResampler.picture(source, pixels: pixels) {
+            Image(decorative: exact, scale: displayScale).resizable().interpolation(.none)
+        } else {
+            Image(nsImage: preview).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
+        }
+    }
+
     private var caption: some View {
         Text(captionText)
             .font(.system(size: 12, weight: .medium))
@@ -151,10 +164,7 @@ struct AeroControlAppTile: View {
 
     @ViewBuilder private var tile: some View {
         if let preview {
-            Image(nsImage: preview)
-                .resizable()
-                .interpolation(.high)
-                .aspectRatio(contentMode: .fit)
+            picture(preview)
                 .clipShape(RoundedRectangle(cornerRadius: plateRadius, style: .continuous))
                 // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
                 .overlay(RoundedRectangle(cornerRadius: plateRadius, style: .continuous).strokeBorder(palette.cardBorder, lineWidth: 1))

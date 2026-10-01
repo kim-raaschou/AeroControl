@@ -322,3 +322,24 @@ private let oneWorkspace = workspacesJSON(["1"])
 @MainActor private func previewStore(_ bridge: FakeBridge) -> OverviewStore {
     OverviewStore(runner: ScriptRunner(windows: twoWindows, workspaces: oneWorkspace), nativeSystem: bridge)
 }
+
+@Suite("a picture at the screen's pixels")
+@MainActor struct PictureResamplerTests {
+    private func image(_ w: Int, _ h: Int) -> CGImage {
+        let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)!
+        context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        return context.makeImage()!
+    }
+
+    @Test("a capture is scaled to exactly the pixels it is drawn in, once, and kept for that size")
+    func exactPixels() throws {
+        let source = image(1100, 690)
+        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
+        #expect(small.width == 340 && small.height == 213)
+        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) === small)   // cached
+        #expect(PictureResampler.picture(source, pixels: CGSize(width: 1100, height: 690)) === source) // already that size
+        #expect(PictureResampler.picture(source, pixels: .zero) == nil)
+    }
+}
