@@ -18,6 +18,9 @@ struct AeroControlAppTile: View {
     /// Whether the picture carries its app's icon. Not in the app strip: every tile there is
     /// the same app, and the icon would say the one thing that is already known.
     var showsIcon = true
+    /// The strip's key on this window, and whether it is the marked one: drawn where the icon
+    /// would be, on the picture's corner.
+    var key: (label: String, marked: Bool)?
 
     @State private var isHovering = false
 
@@ -109,6 +112,22 @@ struct AeroControlAppTile: View {
     /// The window's own name, centred over the picture it belongs to. Never truncated: a
     /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
     /// two windows apart sits at the front of the title where an ellipsis would land.
+    /// The window's key, drawn as a key: ⌘ and its digit in the system's type on a keycap — a
+    /// face, a hairline and a lip under it — so it reads as a shortcut and not as another
+    /// workspace badge. The marked window's in the accent, as the focused workspace's badge.
+    private func keyCap(_ label: String, marked: Bool) -> some View {
+        let cap = RoundedRectangle(cornerRadius: 5, style: .continuous)
+        return Text(label)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(marked ? palette.focusedBadgeText : palette.badgeText)
+            .padding(.horizontal, 7)
+            .frame(minWidth: AeroControlLayout.badgeSize, minHeight: AeroControlLayout.badgeSize)
+            .background(cap.fill(marked ? palette.accent : palette.cardFill ?? Color(nsColor: .controlBackgroundColor)))
+            .overlay(cap.strokeBorder(palette.cardBorder, lineWidth: 1))
+            .shadow(color: .black.opacity(0.5), radius: 0, y: 1.5)
+            .padding(metrics.badgeSize * 0.2)
+    }
+
     private var caption: some View {
         Text(captionText)
             .font(.system(size: 12, weight: .medium))
@@ -140,7 +159,9 @@ struct AeroControlAppTile: View {
                 // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
                 .overlay(RoundedRectangle(cornerRadius: plateRadius, style: .continuous).strokeBorder(palette.cardBorder, lineWidth: 1))
                 .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
-                    if showsIcon, let icon = state.icons[window.bundleId] {
+                    if let key {
+                        keyCap(key.label, marked: key.marked)
+                    } else if showsIcon, let icon = state.icons[window.bundleId] {
                         Image(nsImage: icon)
                             .resizable()
                             .interpolation(.high)

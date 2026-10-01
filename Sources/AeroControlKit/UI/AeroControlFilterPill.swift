@@ -4,9 +4,20 @@ import Common
 /// What the user has typed, over the grid the query is drawing. The grid is the answer; the
 /// pill only says the keystrokes are arriving, and — when nothing matched and the full grid
 /// is back — why nothing moved.
+///
+/// Over the app strip it names the app instead: the strip is the map narrowed to one app, so it
+/// says so where the map says what it is narrowed to.
 struct AeroControlFilterPill: View {
+    /// The app the strip shows, its icon, and how many windows on how many workspaces.
+    struct StripApp {
+        let name: String
+        let icon: NSImage?
+        let summary: String
+    }
+
     let query: String
     let matchCount: Int
+    var app: StripApp?
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.aeroTheme) private var theme
@@ -18,7 +29,7 @@ struct AeroControlFilterPill: View {
     /// is describing.
     var body: some View {
         Group {
-            if query.isEmpty { hint } else { pill }
+            if let app { appPill(app) } else if query.isEmpty { hint } else { pill }
         }
         .frame(height: Self.laneHeight)
     }
@@ -30,6 +41,21 @@ struct AeroControlFilterPill: View {
         Text("type to filter  ·  ⇥ next  ·  ⏎ focus")
             .font(.system(size: 12, weight: .medium, design: .rounded))
             .foregroundStyle(palette.badgeText.opacity(0.4))
+    }
+
+    /// The strip has no typing, so no hint: the app, in the capsule a query is drawn in.
+    private func appPill(_ app: StripApp) -> some View {
+        HStack(spacing: 8) {
+            if let icon = app.icon {
+                Image(nsImage: icon).resizable().interpolation(.high).frame(width: 20, height: 20)
+            }
+            Text(app.name)
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+            Text("· " + app.summary)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .opacity(0.75)
+        }
+        .capsule(palette)
     }
 
     /// Tall enough for the capsule and its shadow. The panel subtracts it from the grid's
@@ -50,10 +76,16 @@ struct AeroControlFilterPill: View {
                     .opacity(0.75)
             }
         }
-        .foregroundStyle(palette.badgeText)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(palette.badgeFill, in: Capsule())
-        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+        .capsule(palette)
+    }
+}
+
+private extension View {
+    func capsule(_ palette: AeroControlPalette) -> some View {
+        foregroundStyle(palette.badgeText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(palette.badgeFill, in: Capsule())
+            .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
     }
 }

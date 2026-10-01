@@ -26,34 +26,19 @@ struct AeroControlWorkspaceCard: View {
     @Environment(\.aeroTheme) private var theme
     @Environment(\.aeroMotion) private var motion
 
-    private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-
     private func run(_ action: AeroControlAction) {
         state.send(.action(action))
     }
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
-    private static let cornerRadius: CGFloat = 18
-
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
         let placement = self.placement
-        // Same header lane on every card, so the badge sits in the same corner whether the
-        // workspace is empty (a narrow card) or full.
-        // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
-        // stack and push the badge out of its corner.
-        VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
-            header(orderUnknown: placement.fromTree && !placement.exact)
-                .frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            grid(placement).frame(width: innerSize.width, height: innerSize.height)
+        AeroControlCardFace(workspace: workspace, monitorName: monitorName, orderUnknown: placement.fromTree && !placement.exact, size: size) {
+            grid(placement)
         }
-        .padding(AeroControlLayout.cardPadding)
-        .frame(width: size.width, height: size.height)
-        .background(cardFill(shape))
-        .overlay(shape.strokeBorder(palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
         .overlay(dropTargetHint.allowsHitTesting(false))
-        .clipShape(shape)
         .contentShape(shape)
         .onTapGesture { run(.focusWorkspace(workspace.name)); dismiss() }
         // Grab the card anywhere outside a tile and drop it on another card to merge the
@@ -73,50 +58,6 @@ struct AeroControlWorkspaceCard: View {
             }
             return true
         } isTargeted: { isDropTarget = $0 }
-    }
-
-    /// A solid themed fill, or the platform's frosted glass when the theme is System.
-    @ViewBuilder private func cardFill(_ shape: RoundedRectangle) -> some View {
-        if let fill = palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
-    }
-
-    /// The badge, and with more than one display the name of this workspace's. The tiles
-    /// say how many windows there are. The layout symbol fades when the tree is drawn from
-    /// sizes alone rather than from AeroSpace's own rects: the shape is right, the places may
-    /// be swapped.
-    private func header(orderUnknown: Bool) -> some View {
-        HStack(spacing: 6) {
-            badge
-            if let monitorName, !monitorName.isEmpty {
-                Label(monitorName, systemImage: "display")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(palette.badgeText)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            Spacer(minLength: 0)
-            if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
-                Image(systemName: symbol.name)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(palette.badgeText.opacity(orderUnknown ? 0.35 : 0.7))
-                    .help(orderUnknown ? symbol.help + ". Drawn from the windows' sizes; AeroSpace did not say their order." : symbol.help)
-            }
-        }
-    }
-
-    /// The workspace name as a quiet monogram: a filled circle with no outline, in the
-    /// accent color for the focused workspace and a faint tint otherwise.
-    private var badge: some View {
-        Text(workspace.name)
-            .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
-            .lineLimit(1)
-            .foregroundStyle(isFocused ? palette.focusedBadgeText : palette.badgeText)
-            .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
-            .background(isFocused ? palette.accent : palette.badgeFill, in: Circle())
-            .contentShape(Circle())
-            .onTapGesture { run(.focusWorkspace(workspace.name)); dismiss() }
-            .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
-                  : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
     }
 
     /// What follows the cursor while a workspace is dragged: its badge, a little larger.
@@ -181,9 +122,93 @@ struct AeroControlWorkspaceCard: View {
 
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
-            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
                 .fill(palette.accent.opacity(0.12))
                 .strokeBorder(palette.accent.opacity(0.9), lineWidth: 3)
         }
     }
+}
+
+/// A workspace card's face, the same on the map and in the app strip: the badge at the
+/// top-left, the display's name with more than one, the layout's symbol at the top-right,
+/// and the pictures in the inner box under them, on the card's fill and hairline.
+struct AeroControlCardFace<Content: View>: View {
+    let workspace: WorkspaceInfo
+    /// The display this workspace lives on; nil with a single display, where naming it is noise.
+    let monitorName: String?
+    /// The tree was drawn from sizes alone: the shape is right, the places may be swapped.
+    let orderUnknown: Bool
+    let size: CGSize
+    @ViewBuilder let content: () -> Content
+
+    @Environment(OverviewStore.self) private var state
+    @Environment(\.aeroDismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.aeroTheme) private var theme
+
+    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
+    private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
+    private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
+        // Same header lane on every card, so the badge sits in the same corner whether the
+        // workspace is empty (a narrow card) or full.
+        // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
+        // stack and push the badge out of its corner.
+        VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
+            header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
+            content().frame(width: innerSize.width, height: innerSize.height, alignment: .topLeading)
+        }
+        .padding(AeroControlLayout.cardPadding)
+        .frame(width: size.width, height: size.height)
+        .background(cardFill(shape))
+        .overlay(shape.strokeBorder(palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
+        .clipShape(shape)
+    }
+
+    /// A solid themed fill, or the platform's frosted glass when the theme is System.
+    @ViewBuilder private func cardFill(_ shape: RoundedRectangle) -> some View {
+        if let fill = palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
+    }
+
+    /// The badge, and with more than one display the name of this workspace's. The tiles
+    /// say how many windows there are. The layout symbol fades when the tree is drawn from
+    /// sizes alone rather than from AeroSpace's own rects: the shape is right, the places may
+    /// be swapped.
+    private var header: some View {
+        HStack(spacing: 6) {
+            badge
+            if let monitorName, !monitorName.isEmpty {
+                Label(monitorName, systemImage: "display")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(palette.badgeText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            Spacer(minLength: 0)
+            if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
+                Image(systemName: symbol.name)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(palette.badgeText.opacity(orderUnknown ? 0.35 : 0.7))
+                    .help(orderUnknown ? symbol.help + ". Drawn from the windows' sizes; AeroSpace did not say their order." : symbol.help)
+            }
+        }
+    }
+
+    /// The workspace name as a quiet monogram: a filled circle with no outline, in the
+    /// accent color for the focused workspace and a faint tint otherwise.
+    private var badge: some View {
+        Text(workspace.name)
+            .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
+            .lineLimit(1)
+            .foregroundStyle(isFocused ? palette.focusedBadgeText : palette.badgeText)
+            .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
+            .background(isFocused ? palette.accent : palette.badgeFill, in: Circle())
+            .contentShape(Circle())
+            .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))); dismiss() }
+            .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
+                  : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
+    }
+
 }

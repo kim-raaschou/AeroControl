@@ -10,6 +10,7 @@ public enum AeroControlLayout {
     public static let cardGap: CGFloat = 24
     public static let tileSpacing: CGFloat = 14
     public static let cardPadding: CGFloat = 18
+    public static let cardRadius: CGFloat = 18
     /// Vertical room reserved at the top of a card for the workspace badge.
     public static let badgeLane: CGFloat = 44
     /// Diameter of the workspace badge in the card header.
@@ -132,18 +133,33 @@ public enum AeroControlLayout {
         public let span: AppStripModel.Span
         public let frames: [Int: CGRect]
         public let others: Set<Int>
+        /// The tree was read from sizes rather than AeroSpace's rects, so its places may be swapped.
+        public let orderUnknown: Bool
     }
 
     public struct StripLayout: Equatable, Sendable {
-        /// The cards' shared height.
+        /// The cards' shared height, the map card's chrome included.
         public let height: CGFloat
+        /// The height of the box the pictures fill: the card less its chrome.
+        public let inner: CGFloat
         /// The unrolled row, gaps included.
         public let width: CGFloat
         public let cards: [StripCard]
+
+        /// Whether the row is a ring in a view this wide: from `carouselFrom` cards, or when it does not fit.
+        public func runsRound(in viewWidth: CGFloat) -> Bool {
+            cards.count >= carouselFrom || width > viewWidth
+        }
+
+        /// The box a card's pictures fill, which its frames are in.
+        public func innerSize(of card: StripCard) -> CGSize {
+            CGSize(width: card.span.width - 2 * cardPadding, height: inner)
+        }
     }
 
-    /// The strip as krn.overview draws it: one card per workspace holding the app, each in its
-    /// screen's shape at one height (`AppStripModel.cardHeight`), mirroring the workspace as the
+    /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
+    /// the app, its pictures in its screen's shape at one height (`AppStripModel.cardHeight`)
+    /// inside the map card's padding and badge lane, mirroring the workspace as the
     /// map does — AeroSpace's rects, or the tree read from sizes — with the other apps' windows
     /// marked to be drawn faint. A card whose layout cannot be read packs only the app's
     /// windows in it, each at its own shape.
@@ -151,7 +167,7 @@ public enum AeroControlLayout {
                                    fallbackScreen: CGRect, gap: CGFloat?, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
-        let height = AppStripModel.cardHeight(width: viewWidth, gaps: cardGap * CGFloat(max(0, groups.count - 1)),
+        let height = AppStripModel.cardHeight(width: viewWidth - 2 * cardPadding * CGFloat(groups.count), gaps: cardGap * CGFloat(max(0, groups.count - 1)),
                                               sumAspect: aspects.reduce(0, +), panelHeight: panelHeight)
         var x: CGFloat = 0
         var cards: [StripCard] = []
@@ -159,11 +175,12 @@ public enum AeroControlLayout {
             if g > 0 { x += cardGap }
             let size = CGSize(width: (height * aspects[g]).rounded(), height: height)
             let ours = workspace.windows.filter { $0.bundleId == bundleId }
-            var frames: [Int: CGRect] = [:], others: Set<Int> = []
+            var frames: [Int: CGRect] = [:], others: Set<Int> = [], orderUnknown = false
             if let mirror = treeLayout(windows: workspace.windows, sizes: sizes, rootLayout: workspace.rootLayout,
                                        screen: areas[g], gap: gap, inner: size) {
                 frames = mirror.frames
                 others = Set(workspace.windows.map(\.windowId)).subtracting(ours.map(\.windowId))
+                orderUnknown = !mirror.exact
             } else {
                 let ratios = ratios(of: ours, sizes: sizes, fallback: aspects[g])
                 let gapHere = tileGap(innerGap: gap, screen: areas[g].size, inner: size)
@@ -174,10 +191,12 @@ public enum AeroControlLayout {
                     frames[window.windowId] = CGRect(x: origin.x + t.x, y: origin.y + t.y, width: t.width, height: t.height)
                 }
             }
-            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: size.width), frames: frames, others: others))
-            x += size.width
+            let outer = size.width + 2 * cardPadding
+            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: outer), frames: frames, others: others,
+                                   orderUnknown: orderUnknown))
+            x += outer
         }
-        return StripLayout(height: height, width: x, cards: cards)
+        return StripLayout(height: height + cardChrome, inner: height, width: x, cards: cards)
     }
 
     /// From this many workspaces the strip is always a carousel: the marked card in the middle,
@@ -194,7 +213,7 @@ public enum AeroControlLayout {
         let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false }
         let anchor = held.map { $0.span.x + $0.span.width / 2 } ?? 0
         return AppStripModel.ringShifts(layout.cards.map(\.span), anchor: anchor, centre: viewWidth / 2,
-                                        ring: layout.width + cardGap, view: viewWidth, alwaysRound: layout.cards.count >= carouselFrom)
+                                        ring: layout.width + cardGap, view: viewWidth, alwaysRound: layout.runsRound(in: viewWidth))
     }
 
     /// The gap AeroSpace keeps between windows, read once for the overview: the median of what

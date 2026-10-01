@@ -143,6 +143,7 @@ struct FilterKeyActionTests {
         ("", .escape, .none),                            // …then the window dismisses
         ("code", .character("2"), .setQuery("code2")),   // a digit is text: nothing on screen answers to a key
         ("x", .character("٣"), .setQuery("x٣")),
+        ("code", .commandDigit(2), .none),               // ⌘2 is the strip's; the map leaves it be
         ("", .character(" "), .none),                    // a query cannot start with a space…
         ("cafe", .character(" "), .setQuery("cafe ")),   // …but can hold one
     ])
@@ -246,6 +247,20 @@ struct FilterKeyCodeTests {
     ] as [(UInt16, Bool, String?, FilterKey?)])
     func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {
         #expect(FilterKey(keyCode: keyCode, shift: shift, characters: characters) == expected)
+    }
+}
+
+@Suite("FilterKey(command:)")
+struct FilterKeyCommandTests {
+    @Test("⌘ with a digit 1–9 is a key; ⌘ with anything else is somebody else's", arguments: [
+        ("1", FilterKey?.some(.commandDigit(1))),
+        ("9", .commandDigit(9)),
+        ("0", nil),
+        ("q", nil),
+        ("", nil),
+    ] as [(String, FilterKey?)])
+    func command(characters: String, expected: FilterKey?) {
+        #expect(FilterKey(command: characters) == expected)
     }
 }
 

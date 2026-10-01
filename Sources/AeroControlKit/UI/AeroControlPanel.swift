@@ -48,12 +48,12 @@ public struct AeroControlPanel: View {
             } else if state.strip != nil, !state.stripWindows.isEmpty {
                 AeroControlAppStrip(usable: usable, screens: screenFrames,
                                     fallbackScreen: CGRect(origin: .zero, size: CGSize(width: availableWidth, height: availableHeight)),
-                                    gap: AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames))
+                                    gap: AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames),
+                                    namesMonitors: namesMonitors)
             } else {
                 grid(matches)
             }
-            // The strip has no typing; its header names the app.
-            AeroControlFilterPill(query: state.strip == nil ? state.filter : "", matchCount: matches.count)
+            AeroControlFilterPill(query: state.strip == nil ? state.filter : "", matchCount: matches.count, app: stripApp)
         }
         .fixedSize()
         .environment(state)
@@ -70,6 +70,13 @@ public struct AeroControlPanel: View {
     }
 
     private static let pillGap: CGFloat = 18
+
+    /// The app the strip shows, for the pill under it; nil on the map.
+    private var stripApp: AeroControlFilterPill.StripApp? {
+        guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
+        return .init(name: first.appName, icon: state.icons[strip.bundleId],
+                     summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count))
+    }
 
     /// The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.
     private var cellRatio: CGFloat { AeroControlLayout.screenRatio(for: CGSize(width: availableWidth, height: availableHeight)) }

@@ -108,11 +108,15 @@ struct AppStripKeyTests {
         #expect(act(.next) == .step(1) && act(.previous) == .step(-1))
     }
 
-    @Test("a digit or a–f goes straight to that window, even one a step would pass over; beyond the strip it is nothing")
-    func hexKeys() {
-        #expect(act(.character("2")) == .commit(20))
-        #expect(act(.character("c")) == .none)
-        #expect(act(.character("x")) == .none && act(.character("@")) == .none)
+    @Test("⌘ and a digit goes straight to that window, as ⌘1–⌘9 pick a tab, even one a step would pass over; beyond the strip it is nothing")
+    func commandDigits() {
+        #expect(act(.commandDigit(2)) == .commit(20))
+        #expect(act(.commandDigit(4)) == .none)
+    }
+
+    @Test("a plain digit or letter is nothing: the strip has no typing, and the keys are ⌘'s")
+    func plainKeys() {
+        #expect(act(.character("2")) == .none && act(.character("c")) == .none && act(.character("@")) == .none)
     }
 
     @Test("Home and End mark the first and the last window that can be picked")
@@ -125,9 +129,15 @@ struct AppStripKeyTests {
         #expect(act(.backspace) == .none && act(.up) == .none && act(.down) == .none)
     }
 
-    @Test("every window is labelled with its key, 1–9 then a–f, and none past the fifteenth")
+    @Test("every window is labelled with its key, ⌘1–⌘9, and none past the ninth")
     func labels() {
-        #expect(M.keyLabel(0) == "1" && M.keyLabel(8) == "9" && M.keyLabel(9) == "a" && M.keyLabel(14) == "f")
-        #expect(M.keyLabel(15) == nil)
+        #expect(M.keyLabel(0) == "⌘1" && M.keyLabel(8) == "⌘9")
+        #expect(M.keyLabel(9) == nil && M.keyLabel(-1) == nil)
+    }
+
+    @Test("the strip says how many windows, and on how many workspaces only when there is more than one")
+    func summary() {
+        #expect(M.summary(windows: 6, workspaces: 2) == "6 windows on 2 workspaces")
+        #expect(M.summary(windows: 2, workspaces: 1) == "2 windows")
     }
 }

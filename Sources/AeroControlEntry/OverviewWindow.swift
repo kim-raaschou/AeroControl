@@ -70,6 +70,7 @@ class OverviewWindow: NSPanel {
         // `.function` and the like.
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers == .command else { return super.performKeyEquivalent(with: event) }
+        if let digit = FilterKey(command: key), onKey?(digit) == true { return true }
         switch key {
         case "q": onQuitPointedApp?()
         case "w": onDismiss?()

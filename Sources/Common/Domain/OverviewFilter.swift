@@ -149,6 +149,8 @@ public enum FilterKey: Equatable, Sendable {
     /// Home and End: the strip's first and last window; nothing on the map.
     case home
     case end
+    /// ⌘1–⌘9: the strip's window with that key; nothing on the map.
+    case commandDigit(Int)
 }
 
 public extension FilterKey {
@@ -171,6 +173,12 @@ public extension FilterKey {
             guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key
         }
+    }
+
+    /// ⌘ with a digit 1–9 is one of ours; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
+    init?(command characters: String) {
+        guard characters.count == 1, let n = Int(characters), (1...9).contains(n) else { return nil }
+        self = .commandDigit(n)
     }
 
     /// The key a typed character stands for, or nil when it is not text. Arrow and function
@@ -214,7 +222,7 @@ public func filterKeyAction(query: String, matches: [ParsedWindow], selection: I
         return .select((at + (key == .next ? 1 : -1) + matches.count) % matches.count)
     case .up, .down:
         return matches.neighbor(of: selection, tileRows: tileRows, cardRows: cardRows, down: key == .down).map { .select($0) } ?? .none
-    case .home, .end:
+    case .home, .end, .commandDigit:
         return .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))

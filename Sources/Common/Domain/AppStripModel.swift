@@ -7,12 +7,17 @@ import Foundation
 /// difference by decision: the marking only chooses — Enter, a key or a click focuses —
 /// so stepping never switches AeroSpace's workspace behind the strip.
 public enum AppStripModel {
-    /// The keys on the windows, in order: 1–9, then a–f.
-    static let keys = Array("123456789abcdef")
+    /// How many windows carry a key: ⌘1–⌘9, as macOS numbers tabs.
+    static let keyCount = 9
 
-    /// The key on the window at `index`, nil past the fifteenth.
+    /// The key on the window at `index`, nil past the ninth.
     public static func keyLabel(_ index: Int) -> String? {
-        index >= 0 && index < keys.count ? String(keys[index]) : nil
+        index >= 0 && index < keyCount ? "⌘\(index + 1)" : nil
+    }
+
+    /// What the strip says after the app's name: how many windows, and on how many workspaces when more than one.
+    public static func summary(windows: Int, workspaces: Int) -> String {
+        "\(windows) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
     }
 
     /// One step from `index` among `count`, wrapping; with no marking (-1) from the near end;
@@ -105,8 +110,8 @@ public enum AppStripModel {
         case cancel
     }
 
-    /// What a key does in the strip. There is no typing here: a digit or a–f goes straight to
-    /// that window, even one a step would pass over; search belongs to the map.
+    /// What a key does in the strip. There is no typing here, search belongs to the map: ⌘ and
+    /// a digit goes straight to that window, even one a step would pass over.
     public static func action(for key: FilterKey, ids: [Int], pickable: [Bool], marked: Int?) -> Action {
         switch key {
         case .escape: return .cancel
@@ -117,10 +122,9 @@ public enum AppStripModel {
             let home = key == .home
             let at = stepPickable(home ? -1 : 0, pickable: pickable, direction: home ? 1 : -1)
             return at >= 0 ? .select(ids[at]) : .none
-        case .character(let c):
-            guard let n = keys.firstIndex(of: c) else { return .none }
-            return n < ids.count ? .commit(ids[n]) : .none
-        case .backspace, .up, .down: return .none
+        case .commandDigit(let n):
+            return n >= 1 && n <= min(keyCount, ids.count) ? .commit(ids[n - 1]) : .none
+        case .character, .backspace, .up, .down: return .none
         }
     }
 }
