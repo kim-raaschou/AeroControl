@@ -3,10 +3,10 @@ import Common
 
 /// The picker for "which of this app's windows", as krn.overview lays it out and as the map
 /// draws it: one row of the map's own cards, one per workspace holding the app, each in its
-/// screen's shape at one height — the app's windows where AeroSpace put them, with their
-/// titles as a filtered map has them, the other apps' grey, half there and out of reach. The
-/// app's name stands in the map's pill under the row. When the cards do not fit, the row is a
-/// ring with the marked card in the middle, moving a whole card at a time and never gliding.
+/// screen's shape at one height — the app's windows where AeroSpace put them, the other
+/// apps' grey, half there and out of reach. The app's name and the marked window's title
+/// stand in the map's pill under the row. When the cards do not fit, the row is a ring with
+/// the marked card in the middle, moving a whole card at a time and never gliding.
 /// The marking only chooses: Enter, a window's key (⌘1–⌘9, on its corner) or a click
 /// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
 struct AeroControlAppStrip: View {
@@ -77,10 +77,10 @@ struct AeroControlAppStrip: View {
         }
     }
 
-    /// The app's own windows titled, as the filtered map titles its matches, and keyed where
-    /// the map has the icon; the others with their icon and no title.
+    /// Every window where the map draws it, untitled as on the map: the app's own with their key
+    /// where the map has the icon, the others with their icon.
     private func tile(_ window: WindowInfo, _ frame: CGRect, mine: Bool, key: (label: String, marked: Bool)? = nil) -> some View {
-        AeroControlAppTile(window: window, metrics: AeroControlMetrics(tileSize: frame.size), filtering: mine, showsIcon: !mine, key: key)
+        AeroControlAppTile(window: window, metrics: AeroControlMetrics(tileSize: frame.size), filtering: false, showsIcon: !mine, key: key)
             .frame(width: frame.width, height: frame.height)
     }
 }

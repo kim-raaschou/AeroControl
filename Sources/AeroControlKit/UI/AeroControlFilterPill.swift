@@ -8,10 +8,11 @@ import Common
 /// Over the app strip it names the app instead: the strip is the map narrowed to one app, so it
 /// says so where the map says what it is narrowed to.
 struct AeroControlFilterPill: View {
-    /// The app the strip shows, its icon, and how many windows on how many workspaces.
+    /// The app the strip shows, its icon, the marked window's title, and how many windows on how many workspaces.
     struct StripApp {
         let name: String
         let icon: NSImage?
+        let title: String?
         let summary: String
     }
 
@@ -51,6 +52,12 @@ struct AeroControlFilterPill: View {
             }
             Text(app.name)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
+            if let title = app.title {
+                Text("— " + title)
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             Text("· " + app.summary)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .opacity(0.75)

@@ -140,4 +140,11 @@ struct AppStripKeyTests {
         #expect(M.summary(windows: 6, workspaces: 2) == "6 windows on 2 workspaces")
         #expect(M.summary(windows: 2, workspaces: 1) == "2 windows")
     }
+
+    @Test("the marked window's title follows the app's name, unless it only repeats it")
+    func markedTitle() {
+        #expect(M.title("adv tui", appName: "Ghostty") == "adv tui")
+        #expect(M.title("Ghostty", appName: "Ghostty") == nil)
+        #expect(M.title("  ", appName: "Ghostty") == nil)
+    }
 }

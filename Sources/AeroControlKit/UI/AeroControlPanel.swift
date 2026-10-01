@@ -74,7 +74,9 @@ public struct AeroControlPanel: View {
     /// The app the strip shows, for the pill under it; nil on the map.
     private var stripApp: AeroControlFilterPill.StripApp? {
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
+        let marked = state.stripWindows.first { $0.window.windowId == strip.marked }?.window
         return .init(name: first.appName, icon: state.icons[strip.bundleId],
+                     title: marked.flatMap { AppStripModel.title($0.caption, appName: $0.appName) },
                      summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count))
     }
 

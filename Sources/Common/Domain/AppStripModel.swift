@@ -15,6 +15,12 @@ public enum AppStripModel {
         index >= 0 && index < keyCount ? "⌘\(index + 1)" : nil
     }
 
+    /// The marked window's title, said after the app's name; nil when it would only repeat it.
+    public static func title(_ caption: String, appName: String) -> String? {
+        let text = caption.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty || text == appName ? nil : text
+    }
+
     /// What the strip says after the app's name: how many windows, and on how many workspaces when more than one.
     public static func summary(windows: Int, workspaces: Int) -> String {
         "\(windows) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
