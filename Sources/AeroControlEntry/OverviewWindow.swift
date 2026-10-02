@@ -112,7 +112,7 @@ class OverviewWindow: NSPanel {
     func reveal() {
         isDismissing = false
         setFrame(targetScreen.frame, display: true)
-        alphaValue = 1                      // the content fades itself in: `OverviewRoot`
+        alphaValue = 1                      // at once: see `OverviewRoot`
         makeKeyAndOrderFront(nil)
         log.notice("overview: revealed, isKeyWindow=\(self.isKeyWindow), appActive=\(NSApp.isActive)")
     }
@@ -153,13 +153,11 @@ struct OverviewRoot: View {
     let onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    @State private var shown = false
 
-    /// The overview comes in at once and its cards grow the last bit into place. Nothing fades:
-    /// the backdrop dims the desktop without blurring it on this system, and anything half there
-    /// over it — the whole window fading, or the cards — let the desktop's sharp text show
-    /// through the pictures like a shadow.
-    private static let fade: Double = 0.2
+    /// The overview comes in at once; only its pictures fade in. The backdrop dims the desktop
+    /// without blurring it on this system, and anything half there over it — the whole window
+    /// fading, or the cards — let the desktop's sharp text show through the pictures like a
+    /// shadow. The cards grew the last bit into place too, while the window was still hidden.
 
     var body: some View {
         ZStack {
@@ -175,10 +173,7 @@ struct OverviewRoot: View {
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)
             panel
-                .scaleEffect(shown ? 1 : 0.98)
-                .animation(.easeOut(duration: Self.fade * motion), value: shown)
         }
-        .onAppear { shown = true }
         .environment(\.aeroTheme, theme)
         .environment(\.aeroMotion, motion)
     }

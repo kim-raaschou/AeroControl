@@ -162,8 +162,8 @@ struct AeroControlAppTile: View {
             .overlay(alignment: .topLeading) { stateBadge }
     }
 
-    /// The plate, and the picture over it once it has landed (the store lands a visit's
-    /// pictures together): they fade in together, and a picture taken
+    /// The plate, and the picture over it once it has landed (the store lands a workspace's
+    /// together, in a wave): it fades in, and a picture taken
     /// again fades over the one it replaces rather than swapping in. The key or the icon is on
     /// the plate from the start, so the keys can be read before the pictures are in.
     private var tile: some View {
@@ -191,8 +191,8 @@ struct AeroControlAppTile: View {
     /// How much of another app's window shows in the strip: enough to place it, too little to
     /// draw the eye. krn.overview's 0.15 vanished on a dark card; 0.45 drew the eye.
     private static let fadedOpacity: Double = 0.3
-    /// How long a picture takes to come into focus, or over the one before it.
-    private static let fade: Double = 0.45
+    /// How long a picture takes to fade in, or over the one before it.
+    private static let fade: Double = 0.6
 
     /// Focus: a thin accent ring on the picture's edge, with its corners and a soft glow,
     /// matching the focused workspace card's accent border.
@@ -282,8 +282,7 @@ private struct FadingPicture<Content: View>: View {
             if let under { content(under) }
             // The layer is there before its first picture, so that picture is a change to animate.
             Group { if let shown { content(shown) } else { Color.clear } }
-                .opacity(arrived ? 1 : 0)
-                .blur(radius: arrived || under != nil ? 0 : 10)
+                .opacity(arrived ? 1 : 0)       // only that: grown into place from 90 %, the pixel-exact picture shimmered
                 .animation(.smooth(duration: fade), value: arrived)
         }
         .onChange(of: image) { _, new in

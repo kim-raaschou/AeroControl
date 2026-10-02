@@ -30,7 +30,7 @@ public class OverviewStore {
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
     /// Window previews, captured when the overview is summoned and dropped when it hides.
-    /// They land one by one into a grid that is already on screen.
+    /// They land a card at a time into a grid that is already on screen.
     public private(set) var previews: [Int: NSImage] = [:]
     /// Each window's on-screen size, known before any picture is: the grid takes its
     /// shape from these, so pictures landing later change nothing but the pictures.
@@ -200,20 +200,32 @@ public class OverviewStore {
     /// load that gets an answer, and kept for the process. See `LayoutRects`.
     public private(set) var layoutRects: LayoutRects = .unknown
 
-    /// A visit's pictures are held back until the capture is in, or `revealAfter` has passed,
-    /// then land together: shown at once rather than one by one as they are taken.
-    static let revealAfter: Duration = .milliseconds(120)
-    private var revealTask: Task<Void, Never>?
-    /// Pictures taken but not yet in `previews`: they land together — at the reveal, and the
-    /// rest when the capture is in.
+    /// Pictures taken but not yet in `previews`. A workspace's land together once all of them
+    /// are in, the cards in reading order and `cardEvery` apart: one by one, or each card as it
+    /// was in, they came in all over the screen. And every picture stored redraws the whole
+    /// overview — on the main thread that drew the map once per window and kept the captures
+    /// still in flight from landing.
     private var arrivingPictures: [Int: NSImage] = [:]
-    /// This visit's pictures are still held back, to land together.
-    private var holdsPictures = false
+    static let cardEvery: Duration = .milliseconds(25)
+    /// Cards whose pictures are in, waiting their turn.
+    private var cards: [[Int]] = []
+    private var landing: Task<Void, Never>?
 
-    private func landPictures() {
-        guard !arrivingPictures.isEmpty else { return }
-        previews.merge(arrivingPictures) { $1 }
-        arrivingPictures = [:]
+    private func land(_ card: [Int]) {
+        cards.append(card)
+        guard landing == nil else { return }
+        let generation = captureGeneration
+        landing = Task { [weak self] in
+            while let self, generation == self.captureGeneration {
+                guard !self.cards.isEmpty else { self.landing = nil; return }
+                let card = Set(self.cards.removeFirst())
+                let landed = self.arrivingPictures.filter { card.contains($0.key) }
+                guard !landed.isEmpty else { continue }
+                self.previews.merge(landed) { $1 }
+                for id in landed.keys { self.arrivingPictures[id] = nil }
+                try? await Task.sleep(for: Self.cardEvery)
+            }
+        }
     }
 
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
@@ -247,9 +259,6 @@ public class OverviewStore {
         }
     }
 
-    /// While the overview is on screen it follows AeroSpace live; while it is hidden there
-    /// is nothing to keep in sync, so the subscription is scoped to visibility rather than
-    /// to the process. Nothing reads the model between summons.
     /// While the overview is up, AeroSpace's changes are read and drawn; while it is hidden only
     /// the focus changes are kept, for the order windows were used in.
     public func startFollowingAerospace() {
@@ -308,35 +317,28 @@ public class OverviewStore {
     private var captureSize: CGSize?
 
     /// Captures a preview of every window drawn — the model's, or in the strip every window of
-    /// its workspaces — once, at `maxSize`, each stored the moment it lands. Returns when
-    /// all are in. A `clearPreviews()` in the meantime discards the rest. The pictures are held
-    /// back to come in together.
+    /// its workspaces — once, at `maxSize`, each landing a moment after it is taken. Returns
+    /// when all are in. A `clearPreviews()` in the meantime discards the rest.
     public func capturePreviews(maxSize: CGSize) async {
-        let generation = captureGeneration
         captureSize = maxSize
-        holdsPictures = true
-        revealTask?.cancel()
-        revealTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.revealAfter)
-            guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
-            self.holdsPictures = false
-            self.landPictures()
-        }
         await take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }, at: maxSize)
-        if generation == captureGeneration { holdsPictures = false; landPictures() }
     }
 
-    /// Takes these windows' pictures, each held as it arrives rather than stored: every picture
-    /// stored redraws the whole overview, and on the main thread that drew the map once per
-    /// window and kept the captures still in flight from landing — 19 windows came in batches,
-    /// the last 230 ms after it was taken. They land when all are in, or at the reveal.
+    /// Takes these windows' pictures, landing a workspace's once all of them and the cards before
+    /// it are in; when the capture is, the rest — a workspace with a window that gave no picture.
     private func take(_ ids: [Int], at size: CGSize) async {
         let generation = captureGeneration
+        let wanted = Set(ids)
+        var waiting = model.workspaces.map { $0.windows.map(\.windowId).filter(wanted.contains) }.filter { !$0.isEmpty }
         await nativeSystem.windowPreviews(windowIds: ids, maxSize: size) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.arrivingPictures[id] = image
+            while let card = waiting.first, card.allSatisfy({ self.arrivingPictures[$0] != nil }) {
+                self.land(waiting.removeFirst())
+            }
         }
-        if !holdsPictures { landPictures() }
+        for card in waiting where generation == captureGeneration { land(card) }
+        await landing?.value
     }
 
     /// The pixels a tile draws a picture at, as the tiles report them; a picture taken smaller
@@ -367,8 +369,10 @@ public class OverviewStore {
     /// The overview closes: its pictures go, with whatever was still being taken.
     public func clearPreviews() {
         captureGeneration += 1
-        for task in [sharpenTask, revealTask] { task?.cancel() }
+        for task in [sharpenTask, landing] { task?.cancel() }
         sharpenTask = nil
+        landing = nil
+        cards = []
         wanted = [:]
         asked = [:]
         arrivingPictures = [:]

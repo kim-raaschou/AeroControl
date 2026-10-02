@@ -12,6 +12,9 @@ final class OverlayWindowManager {
     private var window: OverviewWindow?
     /// One-shot overview: starts hidden, summoned by the toggle.
     private var requestedVisible = false
+    /// The overview is shown this long after its pictures start being taken, so the first cards
+    /// are about to land: shown at once, its plates stood empty for 230 ms.
+    private static let revealAfter: Duration = .milliseconds(120)
     init(
         state: OverviewStore,
         settings: SettingsStore
@@ -89,8 +92,8 @@ final class OverlayWindowManager {
     /// display changes and settings changes free of special cases.
     private func show(_ summon: Summon) {
         requestedVisible = true
-        // Read AeroSpace's whole state and every window's size, reveal the grid in its
-        // final shape with a plate per window, then let the pictures land one by one —
+        // Read AeroSpace's whole state and every window's size, start taking the pictures and
+        // reveal the grid in its final shape a moment later, the cards landing in a wave —
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
@@ -113,7 +116,14 @@ final class OverlayWindowManager {
                 self.state.requestPreviewAccess()
             }
             self.state.startFollowingAerospace()
-            self.rebuild()
+            self.window?.orderOut(nil)
+            let window = self.makeWindow(for: self.targetScreen(), hidden: true)
+            self.window = window
+            Task { [weak self] in
+                if self?.state.previewsAvailable == true { try? await Task.sleep(for: Self.revealAfter) }
+                guard let self, self.requestedVisible, self.window === window else { return }
+                window.reveal()
+            }
             if self.state.previewsAvailable {
                 // As large as a strip card draws a window on this screen, in its pixels; a tile drawn larger asks again.
                 let screen = self.window?.screen ?? NSScreen.main

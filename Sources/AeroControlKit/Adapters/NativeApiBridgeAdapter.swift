@@ -110,8 +110,9 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         // The enumeration is kept for the visit: re-taking a few pictures while a query
         // stands must not cost a second system-wide scan. A window opened after the summon
         // is not in it and is simply not re-taken; the next summon enumerates afresh.
-        let wanted = Set(windowIds.map { CGWindowID($0) })
-        let windows = content.windows.filter { wanted.contains($0.windowID) }
+        // Taken in the order asked, the overview's reading order, so its first cards are in first.
+        let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
+        let windows = windowIds.compactMap { byId[$0] }
         let started = ContinuousClock.now
         let captured = await withTaskGroup(of: (Int, NSImage)?.self, returning: Int.self) { group in
             var captured = 0

@@ -488,27 +488,63 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("the pictures land in the store together, not one by one: held until the capture is in or the reveal is due")
-    func picturesLandTogether() async throws {
+    @Test("a workspace's pictures land together once all of its windows are taken, without waiting for the other workspaces")
+    func picturesLandPerWorkspace() async throws {
         let bridge = FakeBridge()
         bridge.granted = true
-        bridge.holdAfter = 1
-        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"])), nativeSystem: bridge)
+        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1"), (3, "2")]), workspaces: workspacesJSON(["1", "2"])), nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        for (taken, landed) in [(1, [Int]()), (2, [1, 2])] {
+            bridge.holdAfter = taken
+            let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
+            for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
+            try await Task.sleep(for: .milliseconds(80))
+            #expect(bridge.isHolding && store.previews.keys.sorted() == landed)
+            bridge.release()
+            await capture.value
+            #expect(store.previews.keys.sorted() == [1, 2, 3])
+            store.clearPreviews()
+        }
+        store.stop()
+    }
+
+    @Test("the cards land in reading order: a workspace that is in waits for the ones before it")
+    func cardsLandInReadingOrder() async throws {
+        let bridge = FakeBridge()
+        bridge.granted = true
+        bridge.blank = [1]                                                       // workspace 1 never completes
+        bridge.holdAfter = 2
+        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "2"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"])), nativeSystem: bridge)
         store.start()
         await store.reload()
         let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
         for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
-        #expect(bridge.isHolding && store.previews.isEmpty)                             // one picture in, held back
-        try await Task.sleep(for: .milliseconds(250))                                   // past the reveal
-        #expect(store.previews.keys.sorted() == [1])                                   // landed at the reveal
+        try await Task.sleep(for: .milliseconds(80))
+        #expect(bridge.isHolding && store.previews.isEmpty)                     // 2 is in, behind 1
         bridge.release()
+        await capture.value                                                      // the capture is in: the rest land
+        #expect(store.previews.keys.sorted() == [2, 3])
+        store.stop()
+    }
+
+    @Test("cards that are in together still land one after the other, so the wave can be seen")
+    func cardsLandApart() async {
+        let bridge = FakeBridge()
+        bridge.granted = true
+        let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "2")]), workspaces: workspacesJSON(["1", "2"])), nativeSystem: bridge)
+        store.start()
+        await store.reload()
+        let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
+        await waitUntil { store.previews[1] != nil }
+        #expect(store.previews[2] == nil)
         await capture.value
         #expect(store.previews.keys.sorted() == [1, 2])
         store.stop()
     }
 
-    @Test("the pictures are shown together once they are in, and dropped on close")
-    func picturesRevealTogether() async {
+    @Test("the pictures are all in once the capture is, and dropped on close")
+    func picturesInThenDropped() async {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"])), nativeSystem: bridge)
