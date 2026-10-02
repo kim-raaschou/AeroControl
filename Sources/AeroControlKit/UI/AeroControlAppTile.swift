@@ -194,8 +194,8 @@ struct AeroControlAppTile: View {
     /// How long a picture takes to fade in, or over the one before it.
     private static let fade: Double = 0.6
 
-    /// Focus: a thin accent ring on the picture's edge, with its corners and a soft glow,
-    /// matching the focused workspace card's accent border.
+    /// Focus: a thin accent ring on the picture's edge, with its corners. Sharp: a glow round it
+    /// made it read wide and soft.
     /// A floating window is not in the tiling layout: it lies on top of it. The map already
     /// draws it there, so the tile only has to look raised — a real shadow, no extra outline
     /// competing with the focus ring. Focused floating windows keep both.
@@ -216,8 +216,7 @@ struct AeroControlAppTile: View {
         let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
         if isFocused {
             shape
-                .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth)
-                .shadow(color: palette.accent.opacity(0.45), radius: 3)
+                .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
                 .frame(width: size.width, height: size.height)
         } else if isOrigin {
             outline.frame(width: size.width, height: size.height)

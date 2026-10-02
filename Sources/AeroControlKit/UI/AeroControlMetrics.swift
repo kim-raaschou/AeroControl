@@ -25,8 +25,9 @@ public struct AeroControlMetrics: Equatable, Sendable {
         CGSize(width: max(1, (size.width * scale).rounded()) / scale, height: max(1, (size.height * scale).rounded()) / scale)
     }
 
-    /// Stroke of the focus ring, laid on the picture's edge: thin, and the same at every size.
-    public static let focusRingWidth: CGFloat = 2.5
+    /// Stroke of the focus ring, laid on the picture's edge: thin, the same at every size, and
+    /// 1.5 pt in whole pixels — at 2.5 pt its edge fell between pixels on a 1x screen and blurred.
+    public static func focusRingWidth(scale: CGFloat) -> CGFloat { (1.5 * scale).rounded() / scale }
     /// Corner radius of a snapshot; small, like a real window's corners.
     public static let snapshotRadius: CGFloat = 6
 

@@ -21,6 +21,12 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 100.3, height: 50.7), scale: 2) == CGSize(width: 100.5, height: 50.5))
         #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 0.2, height: 0.2), scale: 1) == CGSize(width: 1, height: 1))   // never nothing
     }
+
+    @Test("the focus ring is 1.5 pt in whole pixels: three on a Retina screen, two at 1x, where one and a half blurred")
+    func focusRingWholePixels() {
+        #expect(AeroControlMetrics.focusRingWidth(scale: 2) == 1.5)
+        #expect(AeroControlMetrics.focusRingWidth(scale: 1) == 2)
+    }
 }
 
 @Suite("where the tiles sit in a card")
