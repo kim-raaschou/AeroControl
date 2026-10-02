@@ -250,17 +250,30 @@ public enum AeroControlLayout {
     }
 
     /// The gap AeroSpace keeps between windows, read once for the overview: the median of what
-    /// every workspace with a nested container shows. It is one setting, so any workspace that
-    /// shows it speaks for all, and a card whose own tree is flat still draws it. Nil when no
-    /// workspace shows it.
+    /// every workspace shows — from AeroSpace's rects, else from a nested container's sizes. It
+    /// is one setting, so any workspace that shows it speaks for all, and an accordion or a flat
+    /// card still draws it. Nil when no workspace shows it.
     public static func innerGap(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect]) -> CGFloat? {
         let gaps = workspaces.compactMap { ws -> CGFloat? in
+            if let gap = rectGap(of: ws.windows) { return gap }
             guard let screen = screens[ws.screenIndex],
                   let (tree, measured) = tree(of: ws.windows, sizes: sizes, rootLayout: ws.rootLayout, screen: screen)
             else { return nil }
             return WorkspaceTree.innerGap(of: tree, windows: measured)
         }.sorted()
         return gaps.isEmpty ? nil : gaps[gaps.count / 2]
+    }
+
+    /// AeroSpace's gap, read from its rects: the narrowest space between two tiled windows side
+    /// by side or one above the other. Nil without two such — an accordion stacks its windows
+    /// on one another, and a workspace of flat tiles has no nested column for the sizes to tell.
+    static func rectGap(of windows: [WindowInfo]) -> CGFloat? {
+        let rects = windows.filter { !$0.isFloating && !$0.isFullscreen }.compactMap(\.layoutRect)
+        return rects.flatMap { a in rects.compactMap { b -> CGFloat? in
+            if b.minX >= a.maxX, b.minY < a.maxY, a.minY < b.maxY { return b.minX - a.maxX }
+            if b.minY >= a.maxY, b.minX < a.maxX, a.minX < b.maxX { return b.minY - a.maxY }
+            return nil
+        } }.min()
     }
 
     /// The smallest box pictures are taken to fit, in pixels: what the overview used for every

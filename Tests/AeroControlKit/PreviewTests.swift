@@ -142,6 +142,18 @@ struct TreeLayoutTests {
         #expect(abs((laid.frames[2]!.minX - laid.frames[1]!.maxX) - 12 * scale) < 0.5)
     }
 
+    @Test("with AeroSpace's rects the gap is read straight from them: windows side by side tell it, an accordion's stacked ones do not")
+    func gapFromRects() {
+        let flat = WorkspaceInfo(name: "9", windows: [rected(5428, "Postman", 16, 48, 842, 1052), rected(12700, "IntelliJ", 870, 48, 842, 1052)],
+                                 screenIndex: 1, rootLayout: "h_tiles")
+        let stacked = WorkspaceInfo(name: "3", windows: [rected(287, "Claude", 16, 48, 1696, 1052), rected(10727, "Ghostty", 16, 48, 1696, 1052)],
+                                    screenIndex: 1, rootLayout: "h_accordion")
+        #expect(AeroControlLayout.innerGap(workspaces: [flat, stacked], sizes: [:], screens: [1: screen]) == 12)
+        #expect(AeroControlLayout.innerGap(workspaces: [stacked], sizes: [:], screens: [1: screen]) == nil)
+        let column = WorkspaceInfo(name: "7", windows: ws7Rected, screenIndex: 1, rootLayout: "h_tiles")
+        #expect(AeroControlLayout.innerGap(workspaces: [column], sizes: [:], screens: [1: screen]) == 12)   // above one another too
+    }
+
     /// The owner's workspace 7 as AeroSpace's `%{window-layout-rect}` reports it: screen coordinates, top-left origin,
     /// the visible frame starting under the 33-point menu bar, 16-point outer and 12-point inner gaps.
     private func rected(_ id: Int, _ app: String, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> WindowInfo {
