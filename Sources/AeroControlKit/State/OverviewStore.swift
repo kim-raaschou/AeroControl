@@ -88,6 +88,8 @@ public class OverviewStore {
         }
     }
     public private(set) var strip: Strip?
+    /// AeroSpace took the focus out of the overview for good; the host closes it.
+    public var onFocusLeft: (() -> Void)?
 
     /// Windows in the order they last had the focus, most recent first, as AeroSpace reports
     /// focus changes for as long as AeroControl runs (`startListening`): AeroSpace keeps no
@@ -423,6 +425,17 @@ public class OverviewStore {
         return .pick
     }
 
+    /// An app's key while the overview is up (`Summon.again`): the app's window used last gets
+    /// the focus, or from within the app its next — two windows toggle, as the key does without
+    /// the overview — and the overview follows it. False when the app has no window to focus.
+    public func focusApp(_ bundleId: String) -> Bool {
+        let ids = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }.map(\.windowId)
+        guard let id = AppStripModel.start(origin: model.focusedWindowId, ids: ids, recent: recentWindows) else { return false }
+        // Focused already, AeroSpace sends no event for the strip to follow: it goes to the app.
+        if id == model.focusedWindowId, strip != nil { onFocusLeft?() } else { send(.action(.focusWindow(id))) }
+        return true
+    }
+
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and
     /// the ring are the store's — and the caller learns what became of it: `.none` is not
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
@@ -555,9 +568,28 @@ public class OverviewStore {
             guard generation == self.refreshGeneration else { return }
             self.layoutRects = result.layoutRects
             self.error = nil
+            let focused = self.model.focusedWindowId
             self.apply(.loaded(result))
+            await self.stripFollowsFocus(from: focused)
             await self.refreshChangedPictures()
         }
+    }
+
+    /// While the strip is up, AeroSpace moving the focus to another app's window — that app's
+    /// key, or any command — turns the strip to that app, marked there: the strip mirrors
+    /// AeroSpace, as the map does. Only a move: a strip summoned from another app was turned to
+    /// it by the next event of any kind, a mode key. The pictures its cards lack are taken. An
+    /// app of one window leaves nothing to choose: the strip goes (`onFocusLeft`) to the app.
+    private func stripFollowsFocus(from before: Int) async {
+        guard let strip, model.focusedWindowId != before, let focused = model.focusedWindow,
+              focused.bundleId != strip.bundleId else { return }
+        guard model.workspaces.flatMap(\.windows).count(where: { $0.bundleId == focused.bundleId }) > 1 else {
+            onFocusLeft?()
+            return
+        }
+        self.strip = Strip(bundleId: focused.bundleId, origin: focused.windowId, marked: focused.windowId)
+        guard let size = captureSize else { return }
+        await take(stripWorkspaces.flatMap(\.windows).map(\.windowId).filter { previews[$0] == nil }, at: size)
     }
 
     /// After AeroSpace has moved, closed or opened windows, the sizes measured at summon are stale

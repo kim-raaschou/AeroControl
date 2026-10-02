@@ -21,6 +21,8 @@ final class OverlayWindowManager {
     ) {
         self.state = state
         self.settings = settings
+        // The overview took the keyboard back when AeroSpace focused the app: give it to the app.
+        state.onFocusLeft = { [weak self] in self?.hide(restoreFocus: true) }
     }
 
     private func makePanel(availableSize: NSSize) -> AeroControlPanel {
@@ -97,7 +99,7 @@ final class OverlayWindowManager {
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
-            if case .map = summon { self.state.presentation = .map } else { self.state.presentation = .strip }
+            self.state.presentation = summon == .map ? .map : .strip
             self.state.prepareCapture()
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading
@@ -117,7 +119,8 @@ final class OverlayWindowManager {
             }
             self.state.startFollowingAerospace()
             self.window?.orderOut(nil)
-            let window = self.makeWindow(for: self.targetScreen(), hidden: true)
+            let screen = self.targetScreen()
+            let window = self.makeWindow(for: screen, hidden: true)
             self.window = window
             Task { [weak self] in
                 if self?.state.previewsAvailable == true { try? await Task.sleep(for: Self.revealAfter) }
@@ -126,10 +129,7 @@ final class OverlayWindowManager {
             }
             if self.state.previewsAvailable {
                 // As large as a strip card draws a window on this screen, in its pixels; a tile drawn larger asks again.
-                let screen = self.window?.screen ?? NSScreen.main
-                let available = screen?.frame.size ?? CGSize(width: 1440, height: 900)
-                let scale = screen?.backingScaleFactor ?? 2
-                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: available, backingScale: scale))
+                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor))
             }
         }
     }
@@ -173,18 +173,15 @@ final class OverlayWindowManager {
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
     }
 
-    /// The summon key again while its app's strip is up moves the marking on, as Cmd-` does;
-    /// any other summon while the overview is up closes it.
+    /// A summon while the overview is up: see `Summon.again`.
     func toggleVisibility(_ summon: Summon = .map) {
         guard requestedVisible else { return show(summon) }
-        if let strip = state.strip {
-            switch summon {
-            case .app(let id) where id == strip.bundleId: return state.stepStrip()
-            case .focusedApp: return state.stepStrip()
-            default: break
-            }
+        switch summon.again(stripApp: state.strip?.bundleId) {
+        case .close: hide(restoreFocus: true)
+        case .step: state.stepStrip()
+        case .focus(let app) where !state.focusApp(app): hide(restoreFocus: false); launch(app)
+        case .focus: break
         }
-        hide(restoreFocus: true)
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
