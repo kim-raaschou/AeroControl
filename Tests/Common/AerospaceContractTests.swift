@@ -48,6 +48,19 @@ struct AerospaceCommandArgvTests {
 // with either: `list-windows` has no `--window-id` filter, and the ~2.2 ms per-command
 // floor means the narrowest available filter saves 0.5 ms out of 3.5.
 
+@Suite("AerospaceEvent.focusedWindow")
+struct AerospaceFocusedWindowTests {
+    @Test("a focus change names the window that took the focus; nothing else does", arguments: [
+        (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, Int?.some(42)),
+        (#"{"_event":"focus-changed","workspace":"7"}"#, nil),                    // an empty workspace
+        (#"{"_event":"window-detected","windowId":511,"workspace":"2"}"#, nil),
+        ("not json", nil),
+    ] as [(String, Int?)])
+    func focused(json: String, expected: Int?) {
+        #expect(AerospaceEvent.focusedWindow(json) == expected)
+    }
+}
+
 @Suite("AerospaceEvent.parse")
 struct AerospaceEventParseTests {
 

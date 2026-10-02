@@ -20,6 +20,15 @@ extension AerospaceEvent {
         return AerospaceEventName(rawValue: raw.event) == nil ? .other : .changed
     }
 
+    /// The window a focus change gave the focus to; nil for any other line, or a focus change
+    /// to an empty workspace.
+    public static func focusedWindow(_ json: String) -> Int? {
+        struct Focus: Decodable { let _event: String; let windowId: Int? }
+        guard let focus = try? JSONDecoder().decode(Focus.self, from: Data(json.utf8)),
+              focus._event == AerospaceEventName.focusChanged.rawValue else { return nil }
+        return focus.windowId
+    }
+
     private struct RawEvent: Decodable {
         let event: String
 

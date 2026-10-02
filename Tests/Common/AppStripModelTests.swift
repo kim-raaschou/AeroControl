@@ -28,6 +28,13 @@ struct AppStripStepTests {
         #expect(M.start(origin: 1, ids: []) == nil)
     }
 
+    @Test("from outside the app the marking opens on the app's window you used last, as ⌘Tab goes back to it; known none, on the first")
+    func startOnLastUsed() {
+        #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [9, 3, 1]) == 3)          // 9 is another app's
+        #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [8, 9]) == 1)
+        #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [1]) == 3)                  // inside the app: the next, as before
+    }
+
     @Test("the marked window keeps the marking when others move; a closed one hands it to its successor")
     func keepSelection() {
         #expect(M.keepSelection(3, lastIndex: 0, ids: [1, 2, 3]) == 3)

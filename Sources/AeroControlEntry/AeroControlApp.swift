@@ -62,6 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         installStatusItem()
 
         state.start()
+        state.startListening()
 
         NSApp.activate(ignoringOtherApps: true)
 

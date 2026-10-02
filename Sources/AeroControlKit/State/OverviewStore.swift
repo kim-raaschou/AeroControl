@@ -89,6 +89,18 @@ public class OverviewStore {
     }
     public private(set) var strip: Strip?
 
+    /// Windows in the order they last had the focus, most recent first, as AeroSpace reports
+    /// focus changes for as long as AeroControl runs (`startListening`): AeroSpace keeps no
+    /// such order to ask for, and the window server's stacking does not follow it.
+    public private(set) var recentWindows: [Int] = []
+
+    public func noteFocus(_ windowId: Int) {
+        recentWindows.removeAll { $0 == windowId }
+        recentWindows.insert(windowId, at: 0)
+        if recentWindows.count > 64 { recentWindows.removeLast() }
+    }
+
+
     /// The strip's windows, in the order the map draws them.
     public var stripWindows: [ParsedWindow] {
         guard let strip else { return [] }
@@ -238,17 +250,19 @@ public class OverviewStore {
     /// While the overview is on screen it follows AeroSpace live; while it is hidden there
     /// is nothing to keep in sync, so the subscription is scoped to visibility rather than
     /// to the process. Nothing reads the model between summons.
+    /// While the overview is up, AeroSpace's changes are read and drawn; while it is hidden only
+    /// the focus changes are kept, for the order windows were used in.
     public func startFollowingAerospace() {
-        guard subscribeTask == nil else { return }
-        startSubscribeListener()
+        following = true
+        startListening()
     }
 
     public func stopFollowingAerospace() {
-        subscribeTask?.cancel()
-        subscribeTask = nil
+        following = false
         refreshTask?.cancel()
         refreshTask = nil
     }
+    private var following = false
 
     public func stop() {
         inboxContinuation.finish()
@@ -401,7 +415,7 @@ public class OverviewStore {
         guard picker else { return .launch }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
         let origin = focusedAt.map { _ in model.focusedWindowId }
-        strip = Strip(bundleId: bundleId, origin: origin, marked: AppStripModel.start(origin: origin, ids: windows.map(\.windowId)))
+        strip = Strip(bundleId: bundleId, origin: origin, marked: AppStripModel.start(origin: origin, ids: windows.map(\.windowId), recent: recentWindows))
         return .pick
     }
 
@@ -447,7 +461,9 @@ public class OverviewStore {
         }
     }
 
-    private func startSubscribeListener() {
+    /// One connection to AeroSpace's events for as long as AeroControl runs, from launch: one
+    /// socket line per change, nothing taken from the screen.
+    public func startListening() {
         guard subscribeTask == nil else { return }
         subscribeTask = Task.detached(priority: .utility) { [weak self] in
             var reconnecting = false
@@ -455,11 +471,12 @@ public class OverviewStore {
                 // Everything that happened while the stream was down is lost — and we pass
                 // `--no-send-initial`, so AeroSpace will not replay it either. Read once
                 // after a reconnect so a dropped stream costs latency, never correctness.
-                if reconnecting { await self.reload() }
+                if reconnecting, await self.following { await self.reload() }
                 do {
                     let stream = self.runner.subscribe(AerospaceCommand.subscribe())
                     for try await line in stream {
-                        if let event = AerospaceEvent.parse(line) {
+                        if let id = AerospaceEvent.focusedWindow(line) { await self.noteFocus(id) }
+                        if let event = AerospaceEvent.parse(line), await self.following {
                             await self.send(.event(event))
                         }
                     }

@@ -134,20 +134,26 @@ struct OverviewStoreTests {
 
     // MARK: Following AeroSpace, only while on screen
 
-    @Test("the subscription is scoped to visibility")
-    func followingIsScopedToVisibility() async {
+    @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, it only keeps the order of focus; shown, it reads every change")
+    func listeningOutlivesVisibility() async {
         let runner = ScriptRunner()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let store = started(runner)
-        #expect(!runner.isSubscribed)             // hidden: nothing to stay in sync with
+        await store.reload()
+        store.startListening()
+        await waitUntil { runner.isSubscribed }
+
+        runner.setState(windows: windowsJSON([(1, "1"), (4, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.sendEvent(#"{"_event":"focus-changed","windowId":4,"workspace":"1"}"#)
+        await waitUntil { store.recentWindows.first == 4 }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(windowIds(store) == [1])                                                // hidden: nothing read again
 
         store.startFollowingAerospace()
-        await waitUntil { runner.isSubscribed }
-        #expect(runner.isSubscribed)
-
+        runner.sendEvent(#"{"_event":"window-detected","windowId":4,"workspace":"1"}"#)
+        await waitUntil { windowIds(store) == [1, 4] }
         store.stopFollowingAerospace()
-        await waitUntil { !runner.isSubscribed }
-        #expect(!runner.isSubscribed)
+        #expect(runner.isSubscribed)                                                    // still listening
         store.stop()
     }
 
@@ -376,6 +382,23 @@ struct OverviewStoreTests {
         #expect(store.handle(.commandDigit(2)) == .focus(windowId: 2))
         #expect(store.handle(.enter) == .focus(windowId: 3))
         #expect(store.handle(.escape) == .none)                                        // the window closes the strip
+        store.stop()
+    }
+
+    @Test("from another app the strip opens on the app's window that had the focus last")
+    func stripOpensOnLastUsed() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"), oneWindow(3, "3", app: "Teams"),
+                                        oneWindow(9, "1", app: "Slack", bundleId: "com.slack")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "3"]))
+        runner.setFocus(windowId: 9, workspace: "1")                                    // in Slack
+        let store = started(runner)
+        await store.reload()
+        store.noteFocus(2)
+        store.noteFocus(9)
+        store.presentation = .strip
+        _ = store.summonApp(bundleId: "com.app", picker: true)
+        #expect(store.strip?.marked == 2)
         store.stop()
     }
 
