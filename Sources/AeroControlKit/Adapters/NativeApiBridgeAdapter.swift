@@ -32,13 +32,13 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return largeRepresentation(of: original)
     }
 
-    /// Keeps only the 256 px representation of a macOS icon. Left to itself, AppKit picks
-    /// the representation nearest the drawn size, and for a 28 pt badge on a 1x display that
-    /// is the 32 px one, which for pre-Tahoe icons (VS Code, IntelliJ) carries macOS 26's
-    /// grey wrapper rim and looks smaller than its neighbours. Downscaling the large
-    /// representation with high interpolation gives the same clean artwork at every size
-    /// and on every display scale.
-    private static func largeRepresentation(of image: NSImage) -> NSImage {
+    /// Keeps only the 256-point representation of a macOS icon (512 pixels on a 2x screen).
+    /// Left to itself, AppKit picks the representation nearest the drawn size, and for a 28 pt
+    /// badge on a 1x display that is the 32 px one, which for pre-Tahoe icons (VS Code,
+    /// IntelliJ) carries macOS 26's grey wrapper rim and looks smaller than its neighbours.
+    /// Scaled down from the large one (`PixelImage`), the artwork is the same clean one at
+    /// every size and on every display scale.
+    static func largeRepresentation(of image: NSImage) -> NSImage {
         let side: CGFloat = 256
         let rect = NSRect(x: 0, y: 0, width: side, height: side)
         guard let rep = image.bestRepresentation(for: rect, context: nil, hints: nil) else { return image }

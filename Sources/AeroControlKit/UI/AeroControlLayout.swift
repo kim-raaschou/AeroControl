@@ -276,31 +276,12 @@ public enum AeroControlLayout {
         } }.min()
     }
 
-    /// The smallest box pictures are taken to fit, in pixels: what the overview used for every
-    /// screen before cards drew one window as large as the card.
-    public static let minimumCaptureSize = CGSize(width: 720, height: 480)
-
-    /// The box pictures are taken to fit, in pixels: the inner box of a lattice cell for this
-    /// many workspaces on a screen of `available` points, times the screen's backing scale. A
-    /// card draws no window larger than that, so the picture is never stretched; a fixed size
-    /// was sharp on a laptop and a blur on a 34-inch screen. Slightly generous, since the panel's
-    /// box is a little smaller than `available` times `usableScreenFraction`.
-    public static func captureSize(workspaces: Int, available: CGSize, backingScale: CGFloat) -> CGSize {
-        let box = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
-        let layout = CardGrid.lattice(count: max(1, workspaces), in: box, cellRatio: screenRatio(for: available), gap: cardGap,
-                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
-        let inner = innerSize(of: layout.cells.first?.frame.size ?? .zero)
-        return CGSize(width: max(minimumCaptureSize.width, (inner.width * backingScale).rounded(.up)),
-                      height: max(minimumCaptureSize.height, (inner.height * backingScale).rounded(.up)))
-    }
-
-    /// The box the strip's pictures are taken to fit, in pixels: a strip card is at most half
-    /// the panel high, in the screen's shape, so a window in it is never larger than that.
-    public static func stripCaptureSize(available: CGSize, backingScale: CGFloat) -> CGSize {
+    /// The box pictures are first taken to fit, in pixels: a strip card at its largest — half the
+    /// panel high, in the screen's shape — which holds every window the map draws as well. A tile
+    /// that draws one larger asks for it again at its size (`OverviewStore.wantPicture`).
+    public static func captureSize(available: CGSize, backingScale: CGFloat) -> CGSize {
         let height = (available.height * usableScreenFraction * 0.5).rounded(.up)
-        let size = CGSize(width: (height * screenRatio(for: available)).rounded(.up), height: height)
-        return CGSize(width: max(minimumCaptureSize.width, (size.width * backingScale).rounded(.up)),
-                      height: max(minimumCaptureSize.height, (size.height * backingScale).rounded(.up)))
+        return CGSize(width: (height * screenRatio(for: available) * backingScale).rounded(.up), height: (height * backingScale).rounded(.up))
     }
 
     /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with

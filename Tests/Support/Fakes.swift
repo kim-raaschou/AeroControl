@@ -109,6 +109,8 @@ final class FakeBridge: NativeApiBridge {
         measured += 1
         return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, sizes[$0] ?? CGSize(width: 300, height: 200)) })
     }
+    /// The largest picture a window gives, as a real window gives none larger than itself.
+    var largest: CGSize?
     /// When set, a capture delivers this many pictures and then waits for `release()`.
     var holdAfter: Int?
     private var held: CheckedContinuation<Void, Never>?
@@ -118,7 +120,11 @@ final class FakeBridge: NativeApiBridge {
         captured.append(windowIds)
         for (n, id) in windowIds.enumerated() {
             if n == holdAfter { await withCheckedContinuation { held = $0 } }
-            deliver(id, NSImage(size: maxSize))
+            // In the window's shape, as large as fits — like a real capture.
+            let box = largest.map { CGSize(width: min($0.width, maxSize.width), height: min($0.height, maxSize.height)) } ?? maxSize
+            let shape = sizes[id] ?? CGSize(width: 300, height: 200)
+            let scale = min(box.width / shape.width, box.height / shape.height)
+            deliver(id, NSImage(size: CGSize(width: shape.width * scale, height: shape.height * scale)))
         }
     }
 }

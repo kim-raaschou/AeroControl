@@ -114,9 +114,10 @@ moves the marking on, as Cmd-` does.
   apps' windows grey at 0.3, outlined, with their icons and out of reach (`AeroControlAppTile.faded`): 0.45 drew the
   eye, krn.overview's 0.15 vanished on a dark card. The window you came from wears the same outline at full strength. A card
   whose layout cannot be read packs only the app's windows. Each card is the map's card (`AeroControlCardFace`).
-- The strip takes its pictures once, at the strip's size: every window of its workspaces and no others
-  (`capturePreviews` in the strip). The pictures are held back until the capture is in, or 120 ms have passed, and
-  then fade in together (`revealsPictures`); a picture taken again fades over the one it replaces.
+- Pictures are taken at one size, a strip card's at its largest (`AeroControlLayout.captureSize`); a tile that draws
+  one larger asks for it again at its size (`OverviewStore.wantPicture`), once. The strip takes only its workspaces'
+  windows. A visit's pictures are held back until the capture is in, or 120 ms have passed, then land together;
+  closing drops them. A picture taken again fades in over the one it replaces (`FadingPicture`).
 
 Verified on screen with Ghostty on two workspaces: screen-shaped cards, labels, keys on every window, the marking on the
 first window when coming from another app, and the summon link stepping it. The ring (cards wider than the view) is

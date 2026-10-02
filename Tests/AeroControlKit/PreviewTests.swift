@@ -11,27 +11,13 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    @Test("pictures are taken as large as a card can draw one: the lattice cell's inner box, in the screen's pixels, never under the old floor")
-    func captureSizeFollowsTheCard() {
+    @Test("pictures are taken first as large as a strip card can be: half the panel high, the screen's shape, in pixels")
+    func captureSize() {
         let wide = CGSize(width: 3440, height: 1440)
-        let one = AeroControlLayout.captureSize(workspaces: 1, available: wide, backingScale: 1)
-        let seven = AeroControlLayout.captureSize(workspaces: 7, available: wide, backingScale: 1)
-        let retina = AeroControlLayout.captureSize(workspaces: 7, available: wide, backingScale: 2)
-        #expect(one.width > 2000)                                   // one card nearly fills the 3440-point screen
-        #expect(seven.width > 720 && seven.width < one.width)       // the old fixed 720 was a blur on this screen
-        #expect(abs(retina.width - 2 * seven.width) < 1)            // pixels, not points
-        #expect(AeroControlLayout.captureSize(workspaces: 40, available: CGSize(width: 800, height: 500), backingScale: 1)
-                == AeroControlLayout.minimumCaptureSize)
-    }
-
-    @Test("the strip's pictures are taken as large as its cards can be: half the panel high, the screen's shape, in pixels")
-    func stripCaptureSize() {
-        let wide = CGSize(width: 3440, height: 1440)
-        let strip = AeroControlLayout.stripCaptureSize(available: wide, backingScale: 1)
+        let size = AeroControlLayout.captureSize(available: wide, backingScale: 1)
         let half = (1440 * AeroControlLayout.usableScreenFraction * 0.5).rounded(.up)
-        #expect(strip.height == half && abs(strip.width - (half * 3440 / 1440).rounded(.up)) <= 1)
-        #expect(strip.width > AeroControlLayout.captureSize(workspaces: 7, available: wide, backingScale: 1).width)
-        #expect(abs(AeroControlLayout.stripCaptureSize(available: wide, backingScale: 2).width - 2 * strip.width) <= 2)
+        #expect(size.height == half && abs(size.width - (half * 3440 / 1440).rounded(.up)) <= 1)
+        #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2).width - 2 * size.width) <= 2)
     }
 
     @Test("packed tiles keep the gap the trees draw, scaled to the card, so every card reads as one screen; unknown, the old spacing")
@@ -381,5 +367,16 @@ private let oneWorkspace = workspacesJSON(["1"])
         let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
         previewStore(FakeBridge()).clearPreviews()
         #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
+    }
+}
+
+@Suite("an app's icon")
+@MainActor struct AppIconTests {
+    @Test("an icon is held as one large picture, the same each time it is asked for, so its exact-size copy can be kept")
+    func iconIsOneStablePicture() throws {
+        let icon = NativeApiBridgeAdapter.largeRepresentation(of: NSWorkspace.shared.icon(for: .applicationBundle))
+        let first = try #require(icon.cgImage(forProposedRect: nil, context: nil, hints: nil))
+        #expect(first.width >= 256 && first.width == first.height)          // 256 points: 512 pixels on a 2x screen
+        #expect(icon.cgImage(forProposedRect: nil, context: nil, hints: nil) === first)
     }
 }

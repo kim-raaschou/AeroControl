@@ -102,6 +102,10 @@ struct AeroControlAppTile: View {
             artwork
         }
             .frame(width: tileSize.width, height: tileSize.height)
+            // Drawn larger than it was taken, the picture is asked for again at this size.
+            .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
+                state.wantPicture(window.windowId, pixels: drawnPixels)
+            }
             .contentShape(Rectangle())
             .onTapGesture(perform: onFocusWindow)
             .onHover(perform: hoverChanged)
@@ -129,17 +133,8 @@ struct AeroControlAppTile: View {
             .padding(metrics.badgeSize * 0.2)
     }
 
-    /// The capture at exactly the pixels it fills, drawn one to one and unfiltered
-    /// (`PictureResampler`); scaled by the renderer only when it cannot be had.
-    @ViewBuilder private func picture(_ preview: NSImage) -> some View {
-        let pixels = CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale)
-        if let source = preview.cgImage(forProposedRect: nil, context: nil, hints: nil),
-           let exact = PictureResampler.picture(source, pixels: pixels) {
-            Image(decorative: exact, scale: displayScale).resizable().interpolation(.none)
-        } else {
-            Image(nsImage: preview).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
-        }
-    }
+    /// The pixels the picture fills on screen.
+    private var drawnPixels: CGSize { CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale) }
 
     /// The window's own name, centred over the picture it belongs to. Never truncated: a
     /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
@@ -167,32 +162,26 @@ struct AeroControlAppTile: View {
             .overlay(alignment: .topLeading) { stateBadge }
     }
 
-    /// The plate, and the picture over it once the overview shows its pictures
-    /// (`OverviewStore.revealsPictures`): all of them fade in together, and a picture taken
+    /// The plate, and the picture over it once it has landed (the store lands a visit's
+    /// pictures together): they fade in together, and a picture taken
     /// again fades over the one it replaces rather than swapping in. The key or the icon is on
     /// the plate from the start, so the keys can be read before the pictures are in.
     private var tile: some View {
         let plate = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
         return ZStack {
             plate.fill(palette.badgeFill.opacity(0.35))
-            if let preview, state.revealsPictures {
-                picture(preview)
+            FadingPicture(image: preview, fade: Self.fade * motion) { image in
+                PixelImage(image: image, size: contentSize)
                     .clipShape(plate)
                     // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
                     .overlay(plate.strokeBorder(palette.cardBorder, lineWidth: 1))
-                    .id(ObjectIdentifier(preview))           // a new picture is a new view, fading over the old
-                    .transition(Sharpen())
             }
         }
-        .animation(.smooth(duration: Self.fade * motion), value: shownPicture)
         .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
             if let key {
                 keyCap(key.label, marked: key.marked)
             } else if showsIcon, let icon = state.icons[window.bundleId] {
-                Image(nsImage: icon)
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: metrics.badgeSize, height: metrics.badgeSize)
+                PixelImage(image: icon, size: CGSize(width: metrics.badgeSize, height: metrics.badgeSize))
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .padding(metrics.badgeSize * 0.2)
             }
@@ -204,8 +193,6 @@ struct AeroControlAppTile: View {
     private static let fadedOpacity: Double = 0.3
     /// How long a picture takes to come into focus, or over the one before it.
     private static let fade: Double = 0.45
-    /// The picture on screen, if any: what the fade follows.
-    private var shownPicture: ObjectIdentifier? { state.revealsPictures ? preview.map(ObjectIdentifier.init) : nil }
 
     /// Focus: a thin accent ring on the picture's edge, with its corners and a soft glow,
     /// matching the focused workspace card's accent border.
@@ -270,12 +257,49 @@ struct AeroControlAppTile: View {
     }
 }
 
-/// A picture coming in: from faint and soft to there and sharp, as a window comes into focus,
-/// rather than only fading — the softer of the two to the eye.
-private struct Sharpen: Transition {
-    func body(content: Content, phase: TransitionPhase) -> some View {
-        content
-            .opacity(phase.isIdentity ? 1 : 0)
-            .blur(radius: phase.isIdentity ? 0 : 10)
+/// A tile's picture as it changes. One already there when the tile opens is simply there,
+/// from the first frame. One that lands while the tile is open comes into focus from faint and
+/// soft; one that replaces another fades in over it, the old staying whole beneath until the new
+/// one is all there, so the plate never shows between two pictures.
+private struct FadingPicture<Content: View>: View {
+    let image: NSImage?
+    let fade: Double
+    let content: (NSImage) -> Content
+
+    @State private var shown: NSImage?
+    @State private var under: NSImage?
+    @State private var arrived = true
+
+    init(image: NSImage?, fade: Double, @ViewBuilder content: @escaping (NSImage) -> Content) {
+        self.image = image
+        self.fade = fade
+        self.content = content
+        _shown = State(initialValue: image)     // set on appearing instead, the first frame was the plate
+    }
+
+    var body: some View {
+        ZStack {
+            if let under { content(under) }
+            // The layer is there before its first picture, so that picture is a change to animate.
+            Group { if let shown { content(shown) } else { Color.clear } }
+                .opacity(arrived ? 1 : 0)
+                .blur(radius: arrived || under != nil ? 0 : 10)
+                .animation(.smooth(duration: fade), value: arrived)
+        }
+        .onChange(of: image) { _, new in
+            guard let new else { shown = nil; under = nil; return }
+            var faint = Transaction()
+            faint.disablesAnimations = true
+            withTransaction(faint) { under = shown; shown = new; arrived = false }
+            // Brought in only once it has been drawn faint: set and animated in one turn, SwiftUI
+            // never drew the faint start and the picture snapped in.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(20))
+                guard shown === new else { return }
+                arrived = true
+                try? await Task.sleep(for: .seconds(fade))
+                if shown === new { under = nil }
+            }
+        }
     }
 }

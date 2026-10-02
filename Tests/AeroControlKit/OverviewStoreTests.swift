@@ -477,25 +477,24 @@ struct OverviewStoreTests {
         for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
         #expect(bridge.isHolding && store.previews.isEmpty)                             // one picture in, held back
         try await Task.sleep(for: .milliseconds(250))                                   // past the reveal
-        #expect(store.revealsPictures && store.previews.keys.sorted() == [1])
+        #expect(store.previews.keys.sorted() == [1])                                   // landed at the reveal
         bridge.release()
         await capture.value
         #expect(store.previews.keys.sorted() == [1, 2])
         store.stop()
     }
 
-    @Test("the pictures are shown together once they are in, and hidden again with them on close")
+    @Test("the pictures are shown together once they are in, and dropped on close")
     func picturesRevealTogether() async {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"])), nativeSystem: bridge)
         store.start()
         await store.reload()
-        #expect(!store.revealsPictures)
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        #expect(store.revealsPictures)
+        #expect(store.previews.count == 2)
         store.clearPreviews()
-        #expect(!store.revealsPictures)
+        #expect(store.previews.isEmpty)
         store.stop()
     }
 
@@ -514,8 +513,8 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("once a query has matches their pictures are re-taken, only theirs, once, and larger")
-    func filteredPicturesRefresh() async {
+    @Test("a tile that draws a picture larger than it was taken asks for it again at its size, once; a smaller one asks nothing")
+    func picturesTakenAgainLarger() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
         let bridge = FakeBridge()
@@ -524,35 +523,33 @@ struct OverviewStoreTests {
         store.start()
         await store.reload()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        #expect(bridge.captured == [[1, 2, 3]])
-
-        store.filter = "standup"                                                 // matches window 1 only
-        await waitUntil { bridge.captured.count >= 2 }
+        store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // drawn three times larger
+        store.wantPicture(2, pixels: CGSize(width: 80, height: 50))             // drawn smaller: as taken
+        await waitUntil { (store.previews[1]?.size.width ?? 0) >= 300 }               // landed with its capture
         #expect(bridge.captured.last == [1])
-        #expect(store.previews[1]!.size.width > 100 && store.previews[2]!.size.width == 100)   // sharper, the rest as taken
-
-        try? await Task.sleep(for: .milliseconds(400))
-        #expect(bridge.captured.count == 2)                                      // once, not on a clock
-        store.filter = ""
-        try? await Task.sleep(for: .milliseconds(200))
-        #expect(bridge.captured.count == 2)                                      // nothing narrowed: nothing re-taken
+        #expect(store.previews[2]!.size.width == 100)
+        store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // has it now
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(bridge.captured.count == 2)
         store.stop()
     }
 
-    @Test("a summon that filters before the first picture still gets sharp pictures for its matches")
-    func summonWithFilterRefreshesAfterFirstCapture() async {
+    @Test("a picture that cannot be had larger — the window is no bigger — is not asked for again")
+    func pictureAskedForOnce() async {
         let runner = ScriptRunner()
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        runner.setState(windows: teams(1), workspaces: workspacesJSON(["1"]))
         let bridge = FakeBridge()
         bridge.granted = true
+        bridge.largest = CGSize(width: 150, height: 150)
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         store.start()
         await store.reload()
-        store.filter = "standup"                                                 // the app summon: filtered before any picture exists
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        store.wantPicture(1, pixels: CGSize(width: 300, height: 300))
         await waitUntil { bridge.captured.count >= 2 }
-        #expect(bridge.captured.last == [1])
-        #expect(store.previews[1]!.size.width > 100)
+        store.wantPicture(1, pixels: CGSize(width: 300, height: 300))           // still smaller than drawn: asked already
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(bridge.captured.count == 2 && store.previews[1]!.size.width == 150)
         store.stop()
     }
 

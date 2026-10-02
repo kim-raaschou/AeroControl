@@ -115,13 +115,11 @@ final class OverlayWindowManager {
             self.state.startFollowingAerospace()
             self.rebuild()
             if self.state.previewsAvailable {
-                // As large as a card can draw a window on the screen the overview is on, in its pixels.
+                // As large as a strip card draws a window on this screen, in its pixels; a tile drawn larger asks again.
                 let screen = self.window?.screen ?? NSScreen.main
-                let available = screen?.frame.size ?? AeroControlLayout.minimumCaptureSize
+                let available = screen?.frame.size ?? CGSize(width: 1440, height: 900)
                 let scale = screen?.backingScaleFactor ?? 2
-                await self.state.capturePreviews(maxSize: self.state.strip != nil
-                    ? AeroControlLayout.stripCaptureSize(available: available, backingScale: scale)
-                    : AeroControlLayout.captureSize(workspaces: self.state.model.workspaces.count, available: available, backingScale: scale))
+                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: available, backingScale: scale))
             }
         }
     }

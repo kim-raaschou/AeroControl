@@ -48,7 +48,7 @@ struct AeroControlFilterPill: View {
     private func appPill(_ app: StripApp) -> some View {
         HStack(spacing: 8) {
             if let icon = app.icon {
-                Image(nsImage: icon).resizable().interpolation(.high).frame(width: 20, height: 20)
+                PixelImage(image: icon, size: CGSize(width: 20, height: 20))
             }
             Text(app.name)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))

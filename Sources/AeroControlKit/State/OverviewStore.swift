@@ -50,7 +50,6 @@ public class OverviewStore {
             selection = nil
             filterMatches = model.matching(filter)
             cursor = model.cursor(for: filterMatches)
-            refreshFilteredPictures()
         }
     }
 
@@ -189,32 +188,22 @@ public class OverviewStore {
     /// load that gets an answer, and kept for the process. See `LayoutRects`.
     public private(set) var layoutRects: LayoutRects = .unknown
 
-    /// The pictures are shown together rather than one by one as they land: held back until
-    /// the capture is in, or `revealAfter` has passed, then faded in at once.
-    public private(set) var revealsPictures = false
+    /// A visit's pictures are held back until the capture is in, or `revealAfter` has passed,
+    /// then land together: shown at once rather than one by one as they are taken.
     static let revealAfter: Duration = .milliseconds(120)
     private var revealTask: Task<Void, Never>?
-    /// Pictures taken but not yet in `previews`: they land together, at the reveal, and after
-    /// it at most once a frame.
+    /// Pictures taken but not yet in `previews`: they land together — at the reveal, and the
+    /// rest when the capture is in.
     private var arrivingPictures: [Int: NSImage] = [:]
-    private var landingTask: Task<Void, Never>?
+    /// This visit's pictures are still held back, to land together.
+    private var holdsPictures = false
 
     private func landPictures() {
-        landingTask?.cancel()
-        landingTask = nil
         guard !arrivingPictures.isEmpty else { return }
         previews.merge(arrivingPictures) { $1 }
         arrivingPictures = [:]
     }
 
-    private func landPicturesSoon() {
-        guard landingTask == nil else { return }
-        landingTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(16))
-            guard !Task.isCancelled else { return }
-            self?.landPictures()
-        }
-    }
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private var captureGeneration = 0
 
@@ -303,71 +292,72 @@ public class OverviewStore {
 
     /// The box the pictures were taken to fit, kept for re-taking a few of them.
     private var captureSize: CGSize?
-    private var refreshPicturesTask: Task<Void, Never>?
 
     /// Captures a preview of every window drawn — the model's, or in the strip every window of
-    /// its workspaces, once, at the strip's size — each stored the moment it lands. Returns when
-    /// all are in. A `clearPreviews()` in the meantime discards the rest.
+    /// its workspaces — once, at `maxSize`, each stored the moment it lands. Returns when
+    /// all are in. A `clearPreviews()` in the meantime discards the rest. The pictures are held
+    /// back to come in together.
     public func capturePreviews(maxSize: CGSize) async {
         let generation = captureGeneration
         captureSize = maxSize
+        holdsPictures = true
         revealTask?.cancel()
         revealTask = Task { [weak self] in
             try? await Task.sleep(for: Self.revealAfter)
             guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
-            self.revealsPictures = true
+            self.holdsPictures = false
             self.landPictures()
         }
-        let ids = strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }
-        // Held, not stored: every picture stored redraws the whole overview, and on the main
-        // thread that drew the map once per window and kept the captures still in flight from
-        // landing — 19 windows came in batches, the last 230 ms after it was taken.
-        await nativeSystem.windowPreviews(windowIds: ids, maxSize: maxSize) { [weak self] id, image in
+        await take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }, at: maxSize)
+        if generation == captureGeneration { holdsPictures = false; landPictures() }
+    }
+
+    /// Takes these windows' pictures, each held as it arrives rather than stored: every picture
+    /// stored redraws the whole overview, and on the main thread that drew the map once per
+    /// window and kept the captures still in flight from landing — 19 windows came in batches,
+    /// the last 230 ms after it was taken. They land when all are in, or at the reveal.
+    private func take(_ ids: [Int], at size: CGSize) async {
+        let generation = captureGeneration
+        await nativeSystem.windowPreviews(windowIds: ids, maxSize: size) { [weak self] id, image in
             guard let self, generation == self.captureGeneration else { return }
             self.arrivingPictures[id] = image
-            if self.revealsPictures { self.landPicturesSoon() }
         }
-        if generation == captureGeneration { revealsPictures = true; landPictures() }
-        // A summon can arrive already filtered — the app picker — before any size was known
-        // for the re-take to work from; the pictures are in now, so it starts here.
-        refreshFilteredPictures()
+        if !holdsPictures { landPictures() }
     }
 
-    /// A filtered tile is three to four times the size of one on the map, so the picture
-    /// taken for the map is a blur there; a few are re-taken this much larger.
-    private static let detailScale: CGFloat = 3
-
-    /// Once a query has narrowed the grid to a few windows and the keystrokes have settled
-    /// (150 ms), their pictures are re-taken — a handful of captures, at the size the
-    /// filtered tiles are drawn — so what you are choosing between is current and sharp
-    /// instead of the map's small picture from summon, scaled up. Once, not on a clock:
-    /// the overview is a picture, not a screen share.
-    private func refreshFilteredPictures() {
-        refreshPicturesTask?.cancel()
-        refreshPicturesTask = nil
-        guard !filterMatches.isEmpty, let size = captureSize else { return }
+    /// The pixels a tile draws a picture at, as the tiles report them; a picture taken smaller
+    /// is taken again at that size, the few that need it together once the reports settle
+    /// (150 ms) — a filter narrowing to one window, a workspace alone on a card. What was asked
+    /// is kept, so a window too small to give more is not asked again: no loop, no clock.
+    public func wantPicture(_ id: Int, pixels: CGSize) {
+        func covers(_ size: CGSize?) -> Bool { size.map { $0.width >= pixels.width * 0.95 && $0.height >= pixels.height * 0.95 } ?? false }
+        guard previews[id] != nil, !covers(previews[id]?.size), !covers(asked[id]) else { return }
+        wanted[id] = pixels
+        guard sharpenTask == nil else { return }
         let generation = captureGeneration
-        let detail = CGSize(width: size.width * Self.detailScale, height: size.height * Self.detailScale)
-        refreshPicturesTask = Task { [weak self] in
+        sharpenTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
-            let ids = self.filterMatches.map(\.window.windowId)
-            await self.nativeSystem.windowPreviews(windowIds: ids, maxSize: detail) { [weak self] id, image in
-                guard let self, generation == self.captureGeneration else { return }
-                self.previews[id] = image
-            }
+            let wanted = self.wanted
+            self.wanted = [:]
+            self.sharpenTask = nil
+            self.asked.merge(wanted) { $1 }
+            let size = CGSize(width: wanted.values.map(\.width).max() ?? 0, height: wanted.values.map(\.height).max() ?? 0)
+            await self.take(Array(wanted.keys).sorted(), at: size)
         }
     }
+    private var wanted: [Int: CGSize] = [:]
+    private var asked: [Int: CGSize] = [:]
+    private var sharpenTask: Task<Void, Never>?
 
+    /// The overview closes: its pictures go, with whatever was still being taken.
     public func clearPreviews() {
         captureGeneration += 1
-        revealTask?.cancel()
-        landingTask?.cancel()
-        landingTask = nil
+        for task in [sharpenTask, revealTask] { task?.cancel() }
+        sharpenTask = nil
+        wanted = [:]
+        asked = [:]
         arrivingPictures = [:]
-        revealsPictures = false
-        refreshPicturesTask?.cancel()
-        refreshPicturesTask = nil
         captureSize = nil
         previews = [:]
         previewSizes = [:]
@@ -568,9 +558,6 @@ public class OverviewStore {
             return abs(now.width - was.width) > 2 || abs(now.height - was.height) > 2
         }
         guard !changed.isEmpty else { return }
-        await nativeSystem.windowPreviews(windowIds: changed, maxSize: size) { [weak self] id, image in
-            guard let self, generation == self.captureGeneration else { return }
-            self.previews[id] = image
-        }
+        await take(changed, at: size)
     }
 }
