@@ -35,11 +35,11 @@ struct AeroControlFilterPill: View {
         .frame(height: Self.laneHeight)
     }
 
-    /// The lane's idle content: the three keys the overview answers to, faint enough to be
+    /// The lane's idle content: the two keys the overview answers to, faint enough to be
     /// furniture. Nothing else on screen says the keyboard works, and a filter nobody can
     /// find is a filter nobody uses.
     private var hint: some View {
-        Text("type to filter  ·  ⇥ next  ·  ⏎ focus")
+        Text("type to filter  ·  ⏎ focus")
             .font(.system(size: 12, weight: .medium, design: .rounded))
             .foregroundStyle(palette.badgeText.opacity(0.4))
     }

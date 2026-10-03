@@ -92,7 +92,7 @@ struct AppStripKeyTests {
 
     @Test("keys the strip has no use for are nothing: no typing, no rows")
     func others() {
-        #expect(act(.backspace) == .none && act(.up) == .none && act(.down) == .none)
+        #expect(act(.backspace) == .none && act(.character("x")) == .none)
     }
 
     @Test("every window is labelled with its key, ⌘1–⌘9, and none past the ninth")

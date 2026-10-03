@@ -67,7 +67,7 @@ fails on any violation.
   response decoding (`Aerospace/`), the `AerospaceProcessRunner` port.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
   socket protocol; `OverviewStore` (`@MainActor @Observable`) owns the model, runs the
-  reducer, interprets effects, and holds the UI-only filter state (`filter`, `selection`,
+  reducer, interprets effects, and holds the UI-only filter state (`filter`,
   `filterMatches`, `ringWindowId`); SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`.
 - `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
   `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.

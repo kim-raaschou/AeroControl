@@ -140,7 +140,7 @@ the card across always on the left, is gone.
 
 AeroSpace lists a workspace's windows by app name, then title. With rects, `buildOverviewResult` now orders each
 workspace's windows by the layout (`WorkspaceTree.order`): the rects are cut along lines that cross no window, columns
-before rows, and read left to right and top to bottom, which is AeroSpace's own tree order for a tiling layout. Tab,
-the arrows, the strip's steps and its keys all follow it. Found on the owner's workspace 4, Mail on the left and
-Ghostty on the right: Tab from workspace 3 went to Ghostty first. Overlapping rects (an accordion) and windows without
+before rows, and read left to right and top to bottom, which is AeroSpace's own tree order for a tiling layout. The
+first match, the strip's steps and its keys all follow it. Found on the owner's workspace 4, Mail on the left and
+Ghostty on the right: Tab from workspace 3 went to Ghostty first (the map's Tab has since been removed, 2026-10-03). Overlapping rects (an accordion) and windows without
 a rect keep the listing's order, the latter after the placed ones.

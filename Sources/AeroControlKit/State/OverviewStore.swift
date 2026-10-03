@@ -13,7 +13,6 @@ public class OverviewStore {
                 self.strip = strip
             }
             filterMatches = model.matching(filter)
-            cursor = model.cursor(for: filterMatches)
             for window in model.workspaces.lazy.flatMap(\.windows) where icons[window.bundleId] == nil {
                 icons[window.bundleId] = nativeSystem.appIcon(bundleId: window.bundleId)
             }
@@ -46,17 +45,8 @@ public class OverviewStore {
     /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
     /// change — the grid would jump on every letter.
     public var filter: String = "" {
-        didSet {
-            selection = nil
-            filterMatches = model.matching(filter)
-            cursor = model.cursor(for: filterMatches)
-        }
+        didSet { filterMatches = model.matching(filter) }
     }
-
-    /// The window the ring is on and Enter picks, as an index into `cursor`; nil until a
-    /// key moves it, meaning the first match while filtering and AeroSpace's focused window
-    /// on the map. Back to nil on every keystroke: the list under it has just changed.
-    public var selection: Int?
 
     /// How the overview is drawn this visit: the map of every workspace, or the strip — one
     /// row of one app's windows, like macOS's own switcher. Set by the host per summon.
@@ -162,34 +152,17 @@ public class OverviewStore {
         self.strip = strip
     }
 
-    /// What the ring walks: the matches while a query has some, every window in grid order
-    /// otherwise — the map is navigable too.
-    public private(set) var cursor: [ParsedWindow] = []
-
-    /// Where the ring stands before any key has moved it.
-    private var restingSelection: Int {
-        filterMatches.isEmpty ? (cursor.firstIndex { $0.window.windowId == model.focusedWindowId } ?? 0) : 0
-    }
-
-    /// What the panel drew, reported as it lays out, because only it knows a card's width
-    /// and place: each card's tile rows (window ids, by workspace) and which cards share a
-    /// row. What ↑/↓ steer by.
-    public var tileRows: [String: [[Int]]] = [:]
-    public var cardRows: [[String]] = []
-
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
     /// and Enter all read this one list, so what the ring is on is what Enter focuses. Derived
     /// when the query or the model changes, not on read: every tile asks for the ring, and a
     /// computed property here was a scan of every title per tile per pass.
     public private(set) var filterMatches: [ParsedWindow] = []
 
-    /// The window wearing the ring: the selected match while the filter has any, AeroSpace's
+    /// The window wearing the ring: the first match while the filter has any, AeroSpace's
     /// focused window otherwise — so on the map, and on a miss, the ring means what it always
-    /// did.
+    /// did. Nothing walks it: the overview follows AeroSpace, it does not steer it.
     public var ringWindowId: Int? {
-        if let strip { return strip.marked }
-        guard selection != nil || !filterMatches.isEmpty else { return model.focusedWindowId }
-        return cursor.selected(selection ?? restingSelection)?.window.windowId ?? model.focusedWindowId
+        strip?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId
     }
 
     private let inbox: AsyncStream<OverviewInput>
@@ -437,13 +410,8 @@ public class OverviewStore {
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
         if let strip { return handleStrip(key, strip) }
-        let action = filterKeyAction(query: filter, matches: cursor, selection: selection ?? restingSelection,
-                                     tileRows: tileRows, cardRows: cardRows, key: key)
-        switch action {
-        case .setQuery(let query): filter = query
-        case .select(let index): selection = index
-        case .none, .focus, .handled: break
-        }
+        let action = filterKeyAction(query: filter, ring: ringWindowId, key: key)
+        if case .setQuery(let query) = action { filter = query }
         return action
     }
 

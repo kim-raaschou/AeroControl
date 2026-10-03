@@ -81,7 +81,6 @@ struct TreeLayoutTests {
         #expect(abs(ghost.width - 1200 * scale) < 1)
         #expect(abs(ghost.height - 800 * scale) < 1)
         #expect(abs(ghost.midX - box.midX) < 1 && abs(ghost.midY - box.midY) < 1)
-        #expect(laid.rows.last == [99])
     }
 
     @Test("a ghost whose size is unknown (no Screen Recording) takes the screen box and leaves the map standing")
@@ -122,7 +121,6 @@ struct TreeLayoutTests {
         #expect(abs(right.width - 842 * scale) < 0.01 && abs(right.height - 1052 * scale) < 0.01)
         let third = try #require(laid.frames[3352])
         #expect(abs(third.minY - (origin.y + (581 - 33) * scale)) < 0.01)
-        #expect(laid.rows == [[8243, 8266], [8240], [3352], [5022]])
     }
 
     @Test("a window is where AeroSpace's layout put it, as big as the app made it, hidden or not: AeroSpace sizes hidden windows for their slot too")

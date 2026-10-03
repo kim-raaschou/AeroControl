@@ -75,10 +75,9 @@ public enum AeroControlLayout {
     /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
     /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
     /// shown), when the rects overlap (an accordion: only the front one would show), or when the
-    /// screen is unknown; the card then packs tiles. `rows` are the windows by top edge and then
-    /// the ghosts, for ↑/↓.
+    /// screen is unknown; the card then packs tiles.
     public static func treeLayout(windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
-        -> (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>)? {
+        -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let ghosts = windows.filter { $0.isFloating || $0.isFullscreen }.map(\.windowId)
         let tiled = windows.filter { !ghosts.contains($0.windowId) }
         let rects = tiled.compactMap(\.layoutRect)
@@ -96,15 +95,12 @@ public enum AeroControlLayout {
             frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
                                              width: size.width * scale, height: size.height * scale)
         }
-        let byTop = Dictionary(grouping: frames, by: { $0.value.minY.rounded() })
-        var rows = byTop.keys.sorted().map { top in byTop[top]!.sorted { $0.value.minX < $1.value.minX }.map(\.key) }
         for id in ghosts {
             // A ghost's size is the window server's; without one (no Screen Recording) the screen's box.
             let size = sizes[id].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
             frames[id] = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
         }
-        if !ghosts.isEmpty { rows.append(ghosts) }
-        return (frames, rows, Set(ghosts))
+        return (frames, Set(ghosts))
     }
 
     /// One workspace in the strip: its place on the unrolled row, where each window is drawn

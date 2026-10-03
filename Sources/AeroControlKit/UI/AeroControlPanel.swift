@@ -98,7 +98,6 @@ public struct AeroControlPanel: View {
         let namesMonitors = self.namesMonitors
         let layout = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
                                       chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
-        let cardRows = layout.rows.map { $0.map { all[$0].name } }
         return ZStack(alignment: .topLeading) {
             ForEach(layout.cells, id: \.index) { cell in
                 let workspace = all[cell.index]
@@ -118,7 +117,6 @@ public struct AeroControlPanel: View {
         // The map holds still through ordinary churn; the filtered result re-flows as the
         // query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * motion), value: all)
-        .onChange(of: cardRows, initial: true) { _, cardRows in state.cardRows = cardRows }   // for ↑/↓ across cards
     }
 
     private func errorView(_ message: String) -> some View {

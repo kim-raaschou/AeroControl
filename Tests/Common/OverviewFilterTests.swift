@@ -69,7 +69,7 @@ struct OverviewMatchingTests {
         #expect(model.matching("Café").first?.workspace == "2")
     }
 
-    @Test("matches come back in the order the grid draws them: workspace by workspace, so Tab walks across")
+    @Test("matches come back in the order the grid draws them: workspace by workspace, so the first is the top-left one")
     func orderIsPlacement() {
         // A title match on workspace 2 must not jump ahead of the app-name matches on workspace 1.
         let spread = OverviewModel(workspaces: [
@@ -106,19 +106,11 @@ struct FilteredWorkspacesTests {
 
 @Suite("filterKeyAction")
 struct FilterKeyActionTests {
-    /// The two Teams windows: what most rows resolve Enter and Tab against.
+    /// The two Teams windows: what most rows resolve Enter against.
     private var two: [ParsedWindow] { model.matching("Teams") }
 
-    private func action(_ query: String, _ key: FilterKey, matches: [ParsedWindow]? = nil, selection: Int = 0) -> FilterKeyAction {
-        filterKeyAction(query: query, matches: matches ?? two, selection: selection, key: key)
-    }
-
-    /// Six Teams windows on workspace 1 (drawn 3 wide) and two on workspace 2 (2 wide).
-    private var eight: [ParsedWindow] {
-        OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: (1...6).map { window($0, "Teams") }),
-            WorkspaceInfo(name: "2", windows: (7...8).map { window($0, "Teams") }),
-        ]).matching("Teams")
+    private func action(_ query: String, _ key: FilterKey, ring: Int?? = nil) -> FilterKeyAction {
+        filterKeyAction(query: query, ring: ring ?? two[0].window.windowId, key: key)
     }
 
     @Test("what a keystroke does to the query, against two matches", arguments: [
@@ -138,78 +130,23 @@ struct FilterKeyActionTests {
         #expect(action(query, key) == expected)
     }
 
-    @Test("Enter picks the match the ring is on — the first until Tab says otherwise")
+    /// Nothing walks the map: the ring is AeroSpace's focus, or the first match while typing,
+    /// and Enter picks whichever it is on.
+    @Test("Enter picks the window under the ring, and nothing when there is none; the map does not answer to the strip's keys")
     func picks() {
         #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
-        #expect(action("Teams", .enter, selection: 1) == .focus(windowId: two[1].window.windowId))
-        #expect(action("standup", .enter, matches: model.matching("standup")) == .focus(windowId: 1))
-        #expect(action("zzz", .enter, matches: []) == .none)               // a miss: nothing to stand on
-        // The list shrank under the index (a window closed mid-query): the ring clamps to the
-        // last match, and Enter picks that same one rather than nothing.
-        #expect(action("Teams", .enter, selection: 5) == .focus(windowId: two[1].window.windowId))
-        #expect(two.selected(5)?.window.windowId == two[1].window.windowId)
+        #expect(action("", .enter, ring: .some(7)) == .focus(windowId: 7))         // no query: AeroSpace's focused window
+        #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
+        for key in [FilterKey.next, .previous, .home, .end] { #expect(action("Teams", key) == .none) }
     }
 
-    @Test("↑/↓ move a tile row: same column, next row; off the card, the same column on the next card", arguments: [
-        (0, true, 3),        // ws 1 is 3 wide: down from the first is the one below it
-        (3, true, 6),        // last row of ws 1, column 0: down lands on ws 2's first
-        (5, true, 7),        // column 2, but ws 2 is 2 wide: clamped to its last column
-        (6, true, 0),        // off the last card: round to the first
-        (4, false, 1),       // up within the card
-        (7, false, 4),       // up out of ws 2, column 1: ws 1's last row, column 1
-        (0, false, 6),       // up off the first card: the last card's last row
-    ])
-    func rows(from: Int, down: Bool, expected: Int) {
-        #expect(eight.neighbor(of: from, tileRows: ["1": [[1, 2, 3], [4, 5, 6]], "2": [[7, 8]]], cardRows: [["1", "2"]], down: down) == expected)
-    }
-
-    @Test("across rows of cards: ↓ leaves for the card below, nearest column, skipping cards with nothing in them")
-    func acrossCardRows() {
-        // Cards drawn   1 2      ws 1: two windows (2 wide)   ws 2: one window
-        //               3 4      ws 3: empty                  ws 4: two windows (2 wide)
-        let map = OverviewModel(workspaces: [
-            WorkspaceInfo(name: "1", windows: [window(1, "A"), window(2, "B")]),
-            WorkspaceInfo(name: "2", windows: [window(3, "C")]),
-            WorkspaceInfo(name: "3", windows: []),
-            WorkspaceInfo(name: "4", windows: [window(4, "D"), window(5, "E")]),
-        ]).windowsInGridOrder
-        let rows = [["1", "2"], ["3", "4"]]
-        let tiles = ["1": [[1, 2]], "2": [[3]], "4": [[4, 5]]]
-        #expect(map.neighbor(of: 0, tileRows: tiles, cardRows: rows, down: true) == 3)     // ws 1 → below is empty ws 3, so ws 4, column 0
-        #expect(map.neighbor(of: 1, tileRows: tiles, cardRows: rows, down: true) == 4)     // column 1 of ws 1 → column 1 of ws 4
-        #expect(map.neighbor(of: 2, tileRows: tiles, cardRows: rows, down: true) == 3)     // ws 2 → ws 4 right below
-        #expect(map.neighbor(of: 3, tileRows: tiles, cardRows: rows, down: false) == 2)    // ws 4 (card column 1) ↑ → ws 2, right above it
-        #expect(map.neighbor(of: 2, tileRows: tiles, cardRows: rows, down: false) == 3)    // ws 2 ↑ wraps to the row below: ws 4
-    }
-
-    @Test("a card nobody reported stacks its tiles one per row and all cards form one row; one window has nowhere to go")
-    func rowsDefaults() {
-        #expect(two.neighbor(of: 0, tileRows: [:], cardRows: [], down: true) == 1)
-        #expect(two.neighbor(of: 1, tileRows: [:], cardRows: [], down: true) == 0)          // wraps within the only card
-        #expect(eight.neighbor(of: 3, tileRows: ["1": [[1, 2, 3], [4, 5, 6]]], cardRows: [], down: true) == 6)   // the next card along
-        #expect(model.matching("standup").neighbor(of: 0, tileRows: [:], cardRows: [], down: true) == nil)
-        #expect(action("Teams", .down) == .select(1))
-        #expect(action("zzz", .up, matches: []) == .none)
-    }
-
-    @Test("Tab and the arrows walk the matches and wrap at both ends")
-    func walks() {
-        #expect(action("Teams", .next) == .select(1))
-        #expect(action("Teams", .next, selection: 1) == .select(0))
-        #expect(action("Teams", .previous) == .select(1))
-        #expect(action("Teams", .next, selection: 5) == .select(0))                          // walks on from the clamp
-        #expect(action("standup", .next, matches: model.matching("standup")) == .none)   // one match: nowhere to go
-        #expect(action("zzz", .previous, matches: []) == .none)
-    }
-
-    @Test("the action vocabulary is exactly these five; the map's filter never answers handled, the strip's keys do")
+    @Test("the action vocabulary is exactly these four; the map's filter never answers handled, the strip's keys do")
     func exhaustive() {
         // A compile-time guard: there is no case here promising a dismissal that this
         // function's one caller only ever turns back into "not ours".
         switch action("", .escape) {
-        case .none, .setQuery, .select, .focus, .handled: break
+        case .none, .setQuery, .focus, .handled: break
         }
-        #expect(action("", .home) == .none && action("", .end) == .none)
     }
 }
 
@@ -228,8 +165,7 @@ struct FilterKeyCodeTests {
         (123, false, nil, .previous),                    // ←
         (0, false, "a", .character("a")),
         (0, true, "A", .character("A")),                 // Shift types capitals, it does not modify
-        (126, false, "\u{F700}", .up),                   // ↑ — a private-use scalar, never text
-        (125, false, "\u{F701}", .down),
+        (126, false, "\u{F700}", nil),                   // ↑ — a private-use scalar, never text, and nobody's
         (122, false, "\u{F704}", nil),                   // F1 is nobody's
     ] as [(UInt16, Bool, String?, FilterKey?)])
     func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {

@@ -190,39 +190,23 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("keys go through the store: text narrows, Tab walks the ring, Enter hands back a pick")
+    @Test("keys go through the store: text narrows, the ring is on the first match, Enter hands back whatever wears the ring")
     func keysGoThroughTheStore() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
-
-        #expect(store.handle(.character("T")) == .setQuery("T"))
-        store.filter = "Teams"
-        let second = store.filterMatches[1].window.windowId
-        #expect(store.handle(.next) == .select(1) && store.ringWindowId == second)
-        #expect(store.handle(.enter) == .focus(windowId: second))
-        store.tileRows["1"] = [[1], [2]]                                         // what the card reports as it lays out
-        #expect(store.handle(.down) == .select(0))                               // one column, from the last: round to the first
-        // A keystroke puts the ring back on the first match: the list under it changed.
-        #expect(store.handle(.character("x")) == .setQuery("Teamsx") && store.selection == nil)
-        #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == store.model.focusedWindowId)
-        store.stop()
-    }
-
-    @Test("the map is navigable too: the ring rests on the focused window, and the same keys move it and pick")
-    func mapNavigation() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
         runner.setFocus(windowId: 2, workspace: "1")
         let store = started(runner)
         await store.reload()
 
-        #expect(store.selection == nil && store.ringWindowId == 2)
-        #expect(store.handle(.next) == .select(2) && store.ringWindowId == 3)
-        #expect(store.handle(.enter) == .focus(windowId: 3))
-        #expect(store.handle(.previous) == .select(1) && store.handle(.previous) == .select(0))
-        #expect(store.handle(.character("x")) == .setQuery("x") && store.selection == nil)   // typing resets the ring
+        #expect(store.ringWindowId == 2)
+        #expect(store.handle(.character("T")) == .setQuery("T"))
+        store.filter = "Teams"
+        let first = store.filterMatches[0].window.windowId
+        #expect(store.ringWindowId == first)
+        #expect(store.handle(.next) == .none)                                            // nothing walks the map
+        #expect(store.handle(.enter) == .focus(windowId: first))
+        #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == 2)
+        #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
         store.stop()
     }
 

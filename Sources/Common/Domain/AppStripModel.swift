@@ -90,7 +90,7 @@ public enum AppStripModel {
         case .end: return ids.last.map { .select($0) } ?? .none
         case .commandDigit(let n):
             return n >= 1 && n <= min(keyCount, ids.count) ? .commit(ids[n - 1]) : .none
-        case .character, .backspace, .up, .down: return .none
+        case .character, .backspace: return .none
         }
     }
 }

@@ -85,7 +85,7 @@ final class OverlayWindowManager {
         case .focus(let windowId):
             state.send(.action(.focusWindow(windowId)))
             hide(restoreFocus: false)       // the filter chose a window; it gets the keyboard
-        case .setQuery, .select, .handled:
+        case .setQuery, .handled:
             break
         }
         return true

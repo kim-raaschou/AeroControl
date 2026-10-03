@@ -63,7 +63,7 @@ struct AerospaceLiveTests {
         func one() async throws -> WorkspaceInfo {
             try #require(try await loadOverview(using: runner).workspaces.first { $0.name == "1" })
         }
-        func card(_ ws: WorkspaceInfo) -> (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>)? {
+        func card(_ ws: WorkspaceInfo) -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
             AeroControlLayout.treeLayout(windows: ws.windows, sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 600))
         }
 
@@ -73,7 +73,8 @@ struct AerospaceLiveTests {
         print("live: ws 1 tiled, \(tiled.windows.count) windows at x \(xs.map { Int($0) })")
         #expect(tiled.rootLayout == "h_tiles" && xs.count == tiled.windows.count && xs == xs.sorted() && Set(xs).count == xs.count)  // side by side, in order
         let laid = try #require(card(tiled), "a tiled workspace with rects is a map")
-        #expect(laid.rows == [tiled.windows.map(\.windowId)])            // one row, AeroSpace's order
+        let tops = Set(tiled.windows.compactMap { laid.frames[$0.windowId]?.minY.rounded() })
+        #expect(tops.count == 1 && laid.frames.count == tiled.windows.count)   // one row: every window drawn, all at one top
 
         _ = try aerospace("layout", "--workspace", "1", "--root", "h_accordion")
         let stacked = try await one()

@@ -70,9 +70,9 @@ struct AeroControlWorkspaceCard: View {
 
     private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
 
-    /// Where every window goes in the card's inner box, how they read as rows for ↑/↓, and
-    /// which windows float over the layout rather than sit in it.
-    private typealias Placement = (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>)
+    /// Where every window goes in the card's inner box, and which windows float over the
+    /// layout rather than sit in it.
+    private typealias Placement = (frames: [Int: CGRect], ghosts: Set<Int>)
 
     /// The workspace as AeroSpace laid it out, when it said where (`AeroControlLayout.treeLayout`);
     /// otherwise `TilePacker`'s tiles, each at its own shape at one shared picture height,
@@ -90,7 +90,7 @@ struct AeroControlWorkspaceCard: View {
         let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
         let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
                                 uniquingKeysWith: { _, b in b })
-        return (frames, packed.rows.map { $0.map { windows[$0].windowId } }, ghosts: [])
+        return (frames, ghosts: [])
     }
 
     private func grid(_ placement: Placement) -> some View {
@@ -108,7 +108,6 @@ struct AeroControlWorkspaceCard: View {
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15 * motion), value: windows)
-        .onChange(of: placement.rows, initial: true) { _, rows in state.tileRows[workspace.name] = rows }   // for ↑/↓
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
