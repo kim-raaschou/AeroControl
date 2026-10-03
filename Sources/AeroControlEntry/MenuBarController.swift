@@ -1,64 +1,22 @@
 import AppKit
 import AeroControlKit
 
+/// The menu under the status item. Every item carries what it does, so there is one handler;
+/// the menu is rebuilt each time it opens, so it always shows the current settings.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
-    private let onQuit: () -> Void
-    private let onToggle: () -> Void
     /// Any setting changed: the host redraws the overview with it.
     private let onSettingsChanged: () -> Void
     private let previewsAvailable: () -> Bool
     private let onRequestPreviewAccess: () -> Void
     private let settings: SettingsStore
 
-    private var signalSources: [DispatchSourceSignal] = []
-
-    init(
-        onQuit: @escaping () -> Void,
-        onToggle: @escaping () -> Void,
-        onSettingsChanged: @escaping () -> Void,
-        previewsAvailable: @escaping () -> Bool,
-        onRequestPreviewAccess: @escaping () -> Void,
-        settings: SettingsStore
-    ) {
-        self.onQuit = onQuit
-        self.onToggle = onToggle
+    init(onSettingsChanged: @escaping () -> Void, previewsAvailable: @escaping () -> Bool,
+         onRequestPreviewAccess: @escaping () -> Void, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
         self.previewsAvailable = previewsAvailable
         self.onRequestPreviewAccess = onRequestPreviewAccess
         self.settings = settings
-    }
-
-    func install() {
-        installTerminationSignalHandlers()
-        installToggleSignalHandler()
-    }
-
-    func teardown() {
-        for source in signalSources { source.cancel() }
-        signalSources.removeAll()
-    }
-
-    private func installTerminationSignalHandlers() {
-        for sig in [SIGTERM, SIGINT] {
-            signal(sig, SIG_IGN)
-            let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-            source.setEventHandler { [weak self] in
-                MainActor.assumeIsolated { self?.onQuit() }
-            }
-            source.resume()
-            signalSources.append(source)
-        }
-    }
-
-    private func installToggleSignalHandler() {
-        signal(SIGUSR1, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
-        source.setEventHandler { [weak self] in
-            MainActor.assumeIsolated { self?.onToggle() }
-        }
-        source.resume()
-        signalSources.append(source)
     }
 
     func settingsMenu() -> NSMenu {
@@ -78,80 +36,61 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
-        // A submenu, not nine items: the palette list would otherwise be most of the menu.
-        // The parent carries the current theme's name and swatch, so the choice is visible
-        // without opening it.
-        let themeItem = NSMenuItem(title: "Theme: \(settings.theme.name)", action: nil, keyEquivalent: "")
-        themeItem.image = swatch(for: settings.theme)
-        let themeMenu = NSMenu()
-        for theme in AeroControlTheme.all {
-            let item = NSMenuItem(title: theme.name, action: #selector(setThemeFromMenu(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = theme.id
-            item.state = settings.theme == theme ? .on : .off
-            item.image = swatch(for: theme)
-            themeMenu.addItem(item)
-        }
-        themeItem.submenu = themeMenu
-        menu.addItem(themeItem)
-        menu.addItem(choice("Backdrop", current: "\(Int(settings.backdropOpacity * 100)) %",
-                            options: SettingsStore.backdropOpacities.map { ("\(Int($0 * 100)) %", $0) },
-                            isCurrent: { ($0 as? Double) == settings.backdropOpacity },
-                            action: #selector(setBackdropFromMenu(_:))))
-        menu.addItem(choice("Animation", current: settings.animationSpeed.name,
-                            options: AnimationSpeed.allCases.map { ($0.name, $0.rawValue) },
-                            isCurrent: { ($0 as? String) == settings.animationSpeed.rawValue },
-                            action: #selector(setAnimationFromMenu(_:))))
-        menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off",
-                            options: [("On", true), ("Off", false)],
-                            isCurrent: { ($0 as? Bool) == settings.appPicker },
-                            action: #selector(setAppPickerFromMenu(_:))))
+        // Submenus, not thirty items: each parent names the current choice, the theme with its swatch.
+        let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
+            (t.name, swatch(for: t), settings.theme == t, { self.settings.setTheme(t) }) })
+        theme.image = swatch(for: settings.theme)
+        menu.addItem(theme)
+        menu.addItem(choice("Backdrop", current: "\(Int(settings.backdropOpacity * 100)) %", options: SettingsStore.backdropOpacities.map { o in
+            ("\(Int(o * 100)) %", nil, o == settings.backdropOpacity, { self.settings.setBackdropOpacity(o) }) }))
+        menu.addItem(choice("Animation", current: settings.animationSpeed.name, options: AnimationSpeed.allCases.map { a in
+            (a.name, nil, a == settings.animationSpeed, { self.settings.setAnimationSpeed(a) }) }))
+        menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off", options: [true, false].map { on in
+            (on ? "On" : "Off", nil, on == settings.appPicker, { self.settings.setAppPicker(on) }) }))
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
         if previewsAvailable() {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
         } else {
-            let grant = NSMenuItem(
-                title: "Enable window previews (Screen Recording)…",
-                action: #selector(requestPreviewAccessFromMenu),
-                keyEquivalent: ""
-            )
-            grant.target = self
+            let grant = item("Enable window previews (Screen Recording)…", onRequestPreviewAccess)
             grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
             menu.addItem(grant)
         }
 
         menu.addItem(.separator())
-        let resetSettingsItem = NSMenuItem(
-            title: "Reset settings",
-            action: #selector(resetSettingsFromMenu),
-            keyEquivalent: ""
-        )
-        resetSettingsItem.target = self
-        menu.addItem(resetSettingsItem)
-
+        menu.addItem(item("Reset settings") { self.settings.reset(); self.onSettingsChanged() })
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit AeroControl", action: #selector(quitFromMenu), keyEquivalent: "")
-        quitItem.target = self
-        menu.addItem(quitItem)
+        menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
     }
 
-    /// A submenu of exclusive choices; the parent names the current one, like the theme item.
-    private func choice(_ label: String, current: String, options: [(name: String, value: Any)],
-                        isCurrent: (Any) -> Bool, action: Selector) -> NSMenuItem {
-        let item = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")
-        let submenu = NSMenu()
-        for option in options {
-            let entry = NSMenuItem(title: option.name, action: action, keyEquivalent: "")
-            entry.target = self
-            entry.representedObject = option.value
-            entry.state = isCurrent(option.value) ? .on : .off
-            submenu.addItem(entry)
-        }
-        item.submenu = submenu
+    /// An item that does `run` when chosen.
+    private func item(_ title: String, _ run: @escaping () -> Void) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: #selector(choose(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = Action(run)
         return item
     }
+
+    /// A submenu of exclusive choices; the parent names the current one. Choosing one applies
+    /// the setting and redraws the overview.
+    private func choice(_ label: String, current: String,
+                        options: [(name: String, image: NSImage?, isOn: Bool, select: () -> Void)]) -> NSMenuItem {
+        let parent = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for option in options {
+            let entry = item(option.name) { option.select(); self.onSettingsChanged() }
+            entry.state = option.isOn ? .on : .off
+            entry.image = option.image
+            submenu.addItem(entry)
+        }
+        parent.submenu = submenu
+        return parent
+    }
+
+    private final class Action { let run: () -> Void; init(_ run: @escaping () -> Void) { self.run = run } }
+
+    @objc private func choose(_ sender: NSMenuItem) { (sender.representedObject as? Action)?.run() }
 
     private func sectionHeader(_ title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -185,42 +124,5 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             ring.stroke()
             return true
         }
-    }
-
-    @objc private func setThemeFromMenu(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String, let theme = AeroControlTheme.named(id) else { return }
-        settings.setTheme(theme)
-        onSettingsChanged()
-    }
-
-    @objc private func setBackdropFromMenu(_ sender: NSMenuItem) {
-        guard let value = sender.representedObject as? Double else { return }
-        settings.setBackdropOpacity(value)
-        onSettingsChanged()
-    }
-
-    @objc private func setAnimationFromMenu(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let speed = AnimationSpeed(rawValue: raw) else { return }
-        settings.setAnimationSpeed(speed)
-        onSettingsChanged()
-    }
-
-    @objc private func setAppPickerFromMenu(_ sender: NSMenuItem) {
-        guard let on = sender.representedObject as? Bool else { return }
-        settings.setAppPicker(on)
-        onSettingsChanged()
-    }
-
-    @objc private func quitFromMenu() {
-        onQuit()
-    }
-
-    @objc private func requestPreviewAccessFromMenu() {
-        onRequestPreviewAccess()
-    }
-
-    @objc private func resetSettingsFromMenu() {
-        settings.reset()
-        onSettingsChanged()
     }
 }

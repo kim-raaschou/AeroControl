@@ -40,23 +40,4 @@ struct SingleInstanceGuardTests {
         let guard2 = SingleInstanceGuard()
         #expect(guard2.tryAcquire(name: name))
     }
-
-    @Test("runningInstancePID returns the holder's pid")
-    func runningInstancePIDReturnsHolderPID() {
-        let name = uniqueName()
-        let guard1 = SingleInstanceGuard()
-        #expect(guard1.tryAcquire(name: name))
-
-        // A second invocation can discover the running instance's PID to signal it.
-        let guard2 = SingleInstanceGuard()
-        #expect(guard2.runningInstancePID(name: name) == getpid())
-
-        withExtendedLifetime(guard1) {}
-    }
-
-    @Test("runningInstancePID is nil when there is no lock file")
-    func runningInstancePIDNilWhenNoLockFile() {
-        let guard1 = SingleInstanceGuard()
-        #expect(guard1.runningInstancePID(name: uniqueName()) == nil)
-    }
 }

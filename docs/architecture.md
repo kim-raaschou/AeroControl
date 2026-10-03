@@ -24,7 +24,7 @@ flowchart LR
 | Common | `Aerospace/AerospaceProcessRunner.swift` | `AerospaceProcessRunner` |
 | Common | `Domain/AeroControlAction.swift` | `AeroControlAction` |
 | Common | `Domain/AerospaceEvent.swift` | `AerospaceEvent` |
-| Common | `Domain/AppStripModel.swift` | `Action`, `AppStripModel`, `LegendRow`, `Span` |
+| Common | `Domain/AppStripModel.swift` | `AppStripModel`, `LegendRow`, `Span` |
 | Common | `Domain/CardGrid.swift` | `CardGrid`, `Cell`, `Layout` |
 | Common | `Domain/Models.swift` | `Focus`, `OverviewResult`, `WindowInfo`, `WorkspaceInfo` |
 | Common | `Domain/OverviewFilter.swift` | `FilterKey`, `FilterKeyAction` |
@@ -49,7 +49,7 @@ flowchart LR
 | AeroControlKit | `UI/PictureResampler.swift` | `PixelImage` |
 | AeroControlKit | `UI/SettingsStore.swift` | `AnimationSpeed`, `SettingsStore` |
 | AeroControl | `AeroControlApp.swift` | `AeroControlApp`, `AppDelegate` |
-| AeroControl | `MenuBarController.swift` | `MenuBarController` |
+| AeroControl | `MenuBarController.swift` | `Action`, `MenuBarController` |
 | AeroControl | `OverlayWindowManager.swift` | `OverlayWindowManager` |
 | AeroControl | `OverviewWindow.swift` | `BackdropBlur`, `InteractiveHostingView`, `OverviewRoot`, `OverviewWindow` |
 
@@ -83,6 +83,7 @@ flowchart LR
     Sources_AeroControlKit_UI -->|1| Sources_Common_Aerospace
     Sources_AeroControlKit_UI -->|14| Sources_Common_Domain
     Sources_Common_Aerospace -->|4| Sources_Common_Domain
+    Sources_Common_Domain -->|1| Sources_AeroControlEntry
     Sources_Common_Domain -->|2| Sources_Common_Aerospace
 ```
 
@@ -115,7 +116,7 @@ flowchart LR
 | `Common/Aerospace/AerospaceProcessRunner.swift` | — |
 | `Common/Domain/AeroControlAction.swift` | — |
 | `Common/Domain/AerospaceEvent.swift` | — |
-| `Common/Domain/AppStripModel.swift` | `AerospaceCliParser`, `OverviewFilter` |
+| `Common/Domain/AppStripModel.swift` | `MenuBarController`, `AerospaceCliParser`, `OverviewFilter` |
 | `Common/Domain/CardGrid.swift` | — |
 | `Common/Domain/Models.swift` | — |
 | `Common/Domain/OverviewFilter.swift` | `AerospaceCliParser`, `Models`, `OverviewUpdate` |
@@ -315,6 +316,6 @@ What the AppKit side calls on the kit. Everything above this line is windows and
 | Entry file | Calls into the kit |
 |---|---|
 | AeroControlApp | **OverlayWindowManager**: rebuild(), toggleVisibility()<br/>**OverviewStore**: requestPreviewAccess(), startListening() |
-| MenuBarController | **AeroControlTheme**: all, named<br/>**AnimationSpeed**: allCases<br/>**SettingsStore**: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme() |
+| MenuBarController | **AeroControlTheme**: all<br/>**AnimationSpeed**: allCases<br/>**SettingsStore**: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme() |
 | OverlayWindowManager | **AeroControlLayout**: captureSize<br/>**OverviewStore**: capturePreviews(), clearPreviews(), dropStrip(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
 | OverviewWindow | — |

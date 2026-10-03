@@ -29,15 +29,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let lockName = "com.aerocontrol.single-instance.lock"
-        guard instanceGuard.tryAcquire(name: lockName) else {
-            if let pid = instanceGuard.runningInstancePID(name: lockName) {
-                kill(pid, SIGUSR1)
-            }
-            exit(0)
-        }
-
-        signal(SIGUSR1, SIG_IGN)
+        // A second instance (a `make run` beside the installed app) leaves at once. Launch
+        // Services never starts one from a link or a reopen; those reach the running instance.
+        guard instanceGuard.tryAcquire(name: "com.aerocontrol.single-instance.lock") else { exit(0) }
 
         NSApp.setActivationPolicy(.accessory)
 
@@ -49,8 +43,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settings = SettingsStore()
 
         menuBarController = MenuBarController(
-            onQuit: { [weak self] in self?.quit() },
-            onToggle: { [weak self] in self?.overlayManager.toggleVisibility() },
             onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
             previewsAvailable: { [weak self] in self?.state.previewsAvailable ?? false },
             onRequestPreviewAccess: { [weak self] in self?.state.requestPreviewAccess() },
@@ -67,8 +59,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         state.startListening()
 
         NSApp.activate(ignoringOtherApps: true)
-
-        menuBarController.install()
 
         if let summon = pendingSummon {
             pendingSummon = nil
@@ -90,22 +80,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
-    @MainActor private func performTeardown() {
-        menuBarController?.teardown()
-        state?.stop()
-        overlayManager?.removeAll()
-        if let statusItem {
-            NSStatusBar.system.removeStatusItem(statusItem)
-            self.statusItem = nil
-        }
-    }
-
-    @MainActor private func quit() {
-        performTeardown()
-        UserDefaults.standard.synchronize()
-        exit(0)
-    }
-
     /// `open -a AeroControl` (or a Dock/Spotlight launch) while running: toggle the overview.
     /// No second process, no signal; Launch Services delivers a reopen to this instance.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -125,7 +99,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        performTeardown()
+        state?.stop()
     }
 
 }

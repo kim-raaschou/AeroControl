@@ -16,20 +16,7 @@ public final class SingleInstanceGuard {
         }
 
         fileDescriptor = fd
-
-        ftruncate(fd, 0)
-        let pidLine = "\(getpid())\n"
-        _ = unsafe pidLine.withCString { unsafe write(fd, $0, strlen($0)) }
-
         return true
-    }
-
-    public func runningInstancePID(name: String) -> pid_t? {
-        let path = (NSTemporaryDirectory() as NSString).appendingPathComponent(name)
-        guard let contents = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
-        let trimmed = contents.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let pid = pid_t(trimmed), pid > 0 else { return nil }
-        return pid
     }
 
     deinit {

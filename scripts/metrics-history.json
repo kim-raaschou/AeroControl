@@ -1564,5 +1564,14 @@
     "complexity": 927,
     "prodComplexity": 565,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-03T21:36:51+02:00",
+    "commit": "6068e6e",
+    "subject": "Dead weight out: Presentation, the second icon cache, scales, the inert event, the legacy sweep",
+    "code": 5625,
+    "complexity": 900,
+    "prodComplexity": 540,
+    "files": 56
   }
 ]

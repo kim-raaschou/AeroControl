@@ -162,11 +162,6 @@ final class OverlayWindowManager {
         window = makeWindow(for: targetScreen(), hidden: !requestedVisible)
     }
 
-    func removeAll() {
-        window?.dismiss()
-        window = nil
-    }
-
     /// Starts an app that has no window, as `open -b` would.
     private func launch(_ bundleId: String) {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else { return }
