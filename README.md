@@ -54,8 +54,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
 - **This app's windows**: a second summon, `open aerocontrol://windows`, opens the overview
   already filtered to the app you are in — three Arc windows, nothing else — with the ring
-  on the next one, so Enter alone switches instance and Tab walks the rest. With a single
-  window nothing appears.
+  on the next one, so Enter alone switches instance and Tab walks the rest. Under the cards a
+  legend lists the windows, key and title each, so a window is read there when its picture is
+  a sliver on a crowded workspace. With a single window nothing appears.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
@@ -164,9 +165,15 @@ last), and keys to move it and confirm. The marking is your choice in the making
 in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
 screen: the ring is the marking, the thin outline is where AeroSpace's focus is now.
 
+The cards are true to AeroSpace's geometry, and on a crowded workspace that is slivers under
+slivers: eighteen windows in `h_tiles` get 82 points each, and no picture of that is readable.
+So the strip carries a legend under the cards, one line per window — its key, its title, its
+workspace when the app spans more than one — with the marked line in the accent. The cards say
+where a window is; the legend says which it is, and the key on its line picks it.
+
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 Tab is the exception. It handles more — the row turns into a carousel when it does not fit,
-⌘1–⌘9 reach the first nine, Tab the rest.
+⌘1–⌘9 reach the first nine, Tab the rest, and the legend stays readable throughout.
 
 ## Keyboard
 

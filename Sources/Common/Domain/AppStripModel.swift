@@ -15,10 +15,24 @@ public enum AppStripModel {
         index >= 0 && index < keyCount ? "⌘\(index + 1)" : nil
     }
 
-    /// The marked window's title, said after the app's name; nil when it would only repeat it.
-    public static func title(_ caption: String, appName: String) -> String? {
-        let text = caption.trimmingCharacters(in: .whitespaces)
-        return text.isEmpty || text == appName ? nil : text
+    /// One line of the legend under the strip: the window's key, its caption, the workspace it
+    /// is on when the app spans more than one, and whether it is the marked one.
+    public struct LegendRow: Equatable, Sendable {
+        public let key: String?
+        public let title: String
+        public let workspace: String?
+        public let marked: Bool
+    }
+
+    /// The legend: where a window is told apart when its picture cannot be. The cards stay true
+    /// to AeroSpace's geometry, which on a crowded workspace is slivers under slivers; the legend
+    /// is readable whatever AeroSpace did, and the key on each line is the pick.
+    public static func legend(_ windows: [ParsedWindow], marked: Int?) -> [LegendRow] {
+        let several = Set(windows.map(\.workspace)).count > 1
+        return windows.enumerated().map { i, w in
+            LegendRow(key: keyLabel(i), title: w.window.caption, workspace: several ? w.workspace : nil,
+                      marked: w.window.windowId == marked)
+        }
     }
 
     /// What the strip says after the app's name: how many windows, and on how many workspaces when more than one.

@@ -65,18 +65,17 @@ public struct AeroControlPanel: View {
     private var usable: CGSize {
         CGSize(width: availableWidth * AeroControlLayout.usableScreenFraction,
                height: availableHeight * AeroControlLayout.usableScreenFraction
-                   - AeroControlFilterPill.laneHeight - Self.pillGap)
+                   - AeroControlFilterPill.laneHeight(rows: stripApp?.rows.count ?? 0) - Self.pillGap)
     }
 
     private static let pillGap: CGFloat = 18
 
-    /// The app the strip shows, for the pill under it; nil on the map.
+    /// The app the strip shows and its legend, for the lane under the cards; nil on the map.
     private var stripApp: AeroControlFilterPill.StripApp? {
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
-        let marked = state.stripWindows.first { $0.window.windowId == strip.marked }?.window
         return .init(name: first.appName, icon: state.icons[strip.bundleId],
-                     title: marked.flatMap { AppStripModel.title($0.caption, appName: $0.appName) },
-                     summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count))
+                     summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count),
+                     rows: AppStripModel.legend(state.stripWindows, marked: strip.marked))
     }
 
     /// The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.

@@ -107,10 +107,22 @@ struct AppStripKeyTests {
         #expect(M.summary(windows: 2, workspaces: 1) == "2 windows")
     }
 
-    @Test("the marked window's title follows the app's name, unless it only repeats it")
-    func markedTitle() {
-        #expect(M.title("adv tui", appName: "Ghostty") == "adv tui")
-        #expect(M.title("Ghostty", appName: "Ghostty") == nil)
-        #expect(M.title("  ", appName: "Ghostty") == nil)
+    /// The legend is where a window is told apart when its picture cannot be: a key, its
+    /// caption, and its workspace when the app spans more than one. The cards stay true to
+    /// AeroSpace; the legend is readable whatever AeroSpace did to the geometry.
+    @Test("the legend names every window of the app: key, caption, the workspace only when there are several, the marked one marked")
+    func legend() {
+        func w(_ id: Int, _ title: String, _ ws: String) -> ParsedWindow {
+            ParsedWindow(window: WindowInfo(windowId: id, appName: "Ghostty", bundleId: "g", title: title), workspace: ws)
+        }
+        let rows = M.legend([w(1, "btop", "1"), w(2, "", "1"), w(3, "adv — Ghostty", "4")], marked: 2)
+        #expect(rows.map(\.key) == ["⌘1", "⌘2", "⌘3"])
+        #expect(rows.map(\.title) == ["btop", "Ghostty", "adv"])               // untitled: the app; the app's name pushed out
+        #expect(rows.map(\.workspace) == ["1", "1", "4"])
+        #expect(rows.map(\.marked) == [false, true, false])
+        let one = M.legend([w(1, "a", "1"), w(2, "b", "1")], marked: nil)
+        #expect(one.map(\.workspace) == [nil, nil] && !one.contains { $0.marked })   // one workspace: not said
+        let many = M.legend((1...11).map { w($0, "t\($0)", "1") }, marked: 11)
+        #expect(many[8].key == "⌘9" && many[9].key == nil && many[10].marked)        // past the ninth: no key, still a row
     }
 }
