@@ -11,7 +11,7 @@ ifneq ($(wildcard $(SDK26)),)
 export SDKROOT ?= $(SDK26)
 endif
 
-.PHONY: build bundle install run clean test release
+.PHONY: build bundle install run clean test live-test release
 
 run:
 	swift build --product AeroControl && swift run AeroControl $(ARGS)
@@ -60,4 +60,8 @@ release:
 TESTING_PLUGINS := /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
 test:
 	swift test $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
+
+# Against the running AeroSpace, with windows of its own: it uses the screen, so only on request.
+live-test:
+	AEROCONTROL_LIVE=1 swift test --filter AerospaceLiveTests $(if $(wildcard $(TESTING_PLUGINS)),-Xswiftc -plugin-path -Xswiftc $(TESTING_PLUGINS),)
 

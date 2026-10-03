@@ -53,6 +53,7 @@ def layer_for(path: str) -> str:
         ("Sources/AeroControlKit/UI/", "Kit · UI (SwiftUI views)"),
         ("Sources/Common/Aerospace/", "Common · Aerospace (CLI parsing)"),
         ("Sources/Common/Domain/", "Common · Domain (models)"),
+        ("Tests/Live/", LIVE_LAYER),
         ("Tests/", "Tests"),
         ("Benchmarks/", BENCH_LAYER),
     ]
@@ -65,12 +66,15 @@ def layer_for(path: str) -> str:
 # Development-only performance harness. It is committed but ships nothing to
 # users, so it is excluded from the gated size/complexity totals (like Tests).
 BENCH_LAYER = "Tools · Benchmarks (perf harness)"
-NON_PROD_LAYERS = ("Tests", BENCH_LAYER)
+# Live tests drive the real AeroSpace and the screen; they run on request (`make live-test`),
+# not in `make test` or CI, and like the benchmarks they ship nothing.
+LIVE_LAYER = "Tests · Live (against the real AeroSpace)"
+NON_PROD_LAYERS = ("Tests", BENCH_LAYER, LIVE_LAYER)
 
 
 def counts_toward_gate(layer: str) -> bool:
-    """Benchmarks are not part of the shipped product; keep them out of the gate."""
-    return layer != BENCH_LAYER
+    """Benchmarks and live tests are not part of the shipped product; keep them out of the gate."""
+    return layer not in (BENCH_LAYER, LIVE_LAYER)
 
 
 # Architecture guardrail: files under Common/ are the pure domain and must not
