@@ -119,10 +119,8 @@ pre.mermaid{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:1
 <h2>4. The store, method by method</h2>
 <p>Every method of <code>OverviewStore</code> and the methods it calls, with the pure functions of <code>Common</code> it reaches. The reducer is a leaf: it is called, it calls nothing back.</p>
 <pre class="mermaid">flowchart TD
-    s_apply[&quot;apply&quot;]
     s_capturePreviews[&quot;capturePreviews&quot;]
     s_covers[&quot;covers&quot;]
-    s_executeEffects[&quot;executeEffects&quot;]
     s_focusApp[&quot;focusApp&quot;]
     s_handle[&quot;handle&quot;]
     s_handleStrip[&quot;handleStrip&quot;]
@@ -135,12 +133,9 @@ pre.mermaid{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:1
     s_runAction[&quot;runAction&quot;]
     s_runSequence[&quot;runSequence&quot;]
     s_sameShape[&quot;sameShape&quot;]
-    s_selectStrip[&quot;selectStrip&quot;]
     s_send[&quot;send&quot;]
     s_settled[&quot;settled&quot;]
-    s_start[&quot;start&quot;]
     s_startFollowingAerospace[&quot;startFollowingAerospace&quot;]
-    s_startInbox[&quot;startInbox&quot;]
     s_startListening[&quot;startListening&quot;]
     s_stepStrip[&quot;stepStrip&quot;]
     s_stripFollowsFocus[&quot;stripFollowsFocus&quot;]
@@ -148,32 +143,29 @@ pre.mermaid{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:1
     s_wantPicture[&quot;wantPicture&quot;]
     c_loadOverview([&quot;Common · loadOverview&quot;])
     c_filterKeyAction([&quot;Common · filterKeyAction&quot;])
-    s_apply --&gt; s_executeEffects
     s_capturePreviews --&gt; s_take
-    s_executeEffects --&gt; s_runAction
-    s_executeEffects --&gt; s_runSequence
-    s_executeEffects --&gt; s_requestRefresh
     s_focusApp --&gt; s_send
     s_handle --&gt; s_handleStrip
     s_handle --&gt; c_filterKeyAction
     s_handleStrip --&gt; s_stepStrip
-    s_handleStrip --&gt; s_selectStrip
+    s_handleStrip --&gt; s_markStrip
     s_pointStrip --&gt; s_markStrip
-    s_reload --&gt; s_apply
+    s_reload --&gt; s_send
     s_reload --&gt; c_loadOverview
-    s_requestRefresh --&gt; s_apply
+    s_requestRefresh --&gt; s_send
     s_requestRefresh --&gt; s_settled
     s_requestRefresh --&gt; s_stripFollowsFocus
     s_requestRefresh --&gt; c_loadOverview
     s_runAction --&gt; s_requestRefresh
     s_runSequence --&gt; s_requestRefresh
+    s_send --&gt; s_runAction
+    s_send --&gt; s_runSequence
+    s_send --&gt; s_requestRefresh
     s_settled --&gt; s_sameShape
-    s_start --&gt; s_startInbox
     s_startFollowingAerospace --&gt; s_startListening
-    s_startInbox --&gt; s_apply
     s_startListening --&gt; s_noteFocus
-    s_startListening --&gt; s_send
     s_startListening --&gt; s_reload
+    s_startListening --&gt; s_send
     s_take --&gt; s_land
     s_wantPicture --&gt; s_take
     s_wantPicture --&gt; s_covers</pre>
@@ -206,7 +198,7 @@ pre.mermaid{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:1
     AeroControlWorkspaceCard --&gt; AeroControlCardFace</pre>
 <h2>7. The entry layer&#x27;s seam</h2>
 <p>What the AppKit side calls on the kit. Everything above this line is windows and events; everything below is the model.</p>
-<table><tr><td>Entry file</td><td>Calls into the kit</td></tr><tr><td>AeroControlApp</td><td><b>OverlayWindowManager</b>: rebuild(), toggleVisibility()<br/><b>OverviewStore</b>: requestPreviewAccess(), start(), startListening()</td></tr><tr><td>MenuBarController</td><td><b>AeroControlTheme</b>: all, named<br/><b>AnimationSpeed</b>: allCases<br/><b>SettingsStore</b>: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme()</td></tr><tr><td>OverlayWindowManager</td><td><b>AeroControlLayout</b>: captureSize<br/><b>OverviewStore</b>: capturePreviews(), clearPreviews(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp()</td></tr><tr><td>OverviewWindow</td><td>—</td></tr></table>
+<table><tr><td>Entry file</td><td>Calls into the kit</td></tr><tr><td>AeroControlApp</td><td><b>OverlayWindowManager</b>: rebuild(), toggleVisibility()<br/><b>OverviewStore</b>: requestPreviewAccess(), startListening()</td></tr><tr><td>MenuBarController</td><td><b>AeroControlTheme</b>: all, named<br/><b>AnimationSpeed</b>: allCases<br/><b>SettingsStore</b>: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme()</td></tr><tr><td>OverlayWindowManager</td><td><b>AeroControlLayout</b>: captureSize<br/><b>OverviewStore</b>: capturePreviews(), clearPreviews(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp()</td></tr><tr><td>OverviewWindow</td><td>—</td></tr></table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad: true, securityLevel: "loose", flowchart: {useMaxWidth: false}, class: {useMaxWidth: false}});</script>
 </body></html>

@@ -13,7 +13,6 @@ struct OverviewStoreTests {
 
     private func started(_ runner: ScriptRunner, _ bridge: FakeBridge = FakeBridge()) -> OverviewStore {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         return store
     }
 
@@ -484,7 +483,6 @@ struct OverviewStoreTests {
                                         oneWindow(7, "3", app: "Slack", bundleId: "com.slack")].joined(separator: ",") + "]",
                         workspaces: workspacesJSON(["1", "2", "3"]))
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
         store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
@@ -499,7 +497,6 @@ struct OverviewStoreTests {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "1"), (3, "2")]), workspaces: workspacesJSON(["1", "2"])), nativeSystem: bridge)
-        store.start()
         await store.reload()
         for (taken, landed) in [(1, [Int]()), (2, [1, 2])] {
             bridge.holdAfter = taken
@@ -522,7 +519,6 @@ struct OverviewStoreTests {
         bridge.blank = [1]                                                       // workspace 1 never completes
         bridge.holdAfter = 2
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "2"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"])), nativeSystem: bridge)
-        store.start()
         await store.reload()
         let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
         for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
@@ -539,7 +535,6 @@ struct OverviewStoreTests {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "2")]), workspaces: workspacesJSON(["1", "2"])), nativeSystem: bridge)
-        store.start()
         await store.reload()
         let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
         await waitUntil { store.previews[1] != nil }
@@ -555,7 +550,6 @@ struct OverviewStoreTests {
         let bridge = FakeBridge()
         bridge.hidden = ["com.app"]
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
         #expect(store.hiddenBundleIds == ["com.app"])
         bridge.hidden = []
@@ -571,7 +565,6 @@ struct OverviewStoreTests {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // drawn three times larger
@@ -593,7 +586,6 @@ struct OverviewStoreTests {
         bridge.granted = true
         bridge.largest = CGSize(width: 150, height: 150)
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         store.wantPicture(1, pixels: CGSize(width: 300, height: 300))
@@ -610,7 +602,6 @@ struct OverviewStoreTests {
     private func summoned(_ runner: ScriptRunner, _ bridge: FakeBridge) async -> OverviewStore {
         bridge.granted = true
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
         await store.measurePreviews()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
@@ -680,7 +671,7 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(1, "1"), (2, "4"), (3, "4")]), workspaces: workspacesJSON(["1", "4"]))   // a window came too
         runner.setFocus(windowId: 2, workspace: "4")
         store.send(.event(.focusChanged(windowId: 2, workspace: "4")))                 // `aerospace workspace 4`
-        #expect(store.ringWindowId == 1)                                                // not yet applied: the inbox is a stream
+        #expect(store.ringWindowId == 2)                                                // applied at once: send is a call, not a queue
         await waitUntil { store.ringWindowId == 2 }
         #expect(store.model.focusedWorkspace == "4")
         #expect(windowIds(store) == [1, 2])                                            // the layout not yet: still settling
@@ -852,7 +843,6 @@ struct OverviewStorePreviewTests {
         let bridge = FakeBridge()
         bridge.granted = true
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
         await store.reload()
 
         #expect(store.previewsAvailable)
@@ -872,7 +862,6 @@ struct OverviewStorePreviewTests {
         let runner = ScriptRunner(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        store.start()
 
         #expect(!store.previewsAvailable)
         store.requestPreviewAccess()

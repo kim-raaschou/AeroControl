@@ -105,6 +105,9 @@ sync while hidden — nothing reads it. Events carry **no data**; all state come
 - `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.
 - `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
   meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
+- `recentWindows` / `noteFocus`: the order windows last had the focus, kept from AeroSpace's
+  events for as long as the app runs. AeroSpace keeps no such order to ask for, so this is
+  remembered on purpose — the one thing besides the strip's marking that is.
 
 ### Rule: read, don't infer — and remember nothing that can drift
 

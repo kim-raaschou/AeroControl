@@ -42,9 +42,7 @@ public class OverviewStore {
 
     /// What the user has typed into the overview. UI state that drives no AeroSpace work, so
     /// it lives here beside `hoveredWindowId` rather than in the model: the reducer's contract
-    /// is AeroSpace state in, AeroSpace work out, its inbox is an AsyncStream (a keystroke
-    /// would be applied a hop late, possibly behind a reload), and `apply` animates every model
-    /// change — the grid would jump on every letter.
+    /// is AeroSpace state in, AeroSpace work out.
     public var filter: String = "" {
         didSet { filterMatches = model.matching(filter) }
     }
@@ -141,14 +139,6 @@ public class OverviewStore {
         markStrip(windowId)
     }
 
-    /// A key that puts the marking on a window: the centre goes with it.
-    private func selectStrip(_ windowId: Int) {
-        guard var strip else { return }
-        strip.marked = windowId
-        strip.centre = windowId
-        self.strip = strip
-    }
-
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
     /// and Enter all read this one list, so what the ring is on is what Enter focuses. Derived
     /// when the query or the model changes, not on read: every tile asks for the ring, and a
@@ -162,10 +152,6 @@ public class OverviewStore {
         strip?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId
     }
 
-    private let inbox: AsyncStream<OverviewInput>
-    private let inboxContinuation: AsyncStream<OverviewInput>.Continuation
-
-    private var inboxTask: Task<Void, Never>?
     private var subscribeTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     /// Pictures taken but not yet in `previews`. A workspace's land together once all of them
@@ -202,15 +188,6 @@ public class OverviewStore {
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
         self.nativeSystem = nativeSystem
-        (inbox, inboxContinuation) = AsyncStream.makeStream()
-    }
-
-    public func send(_ input: OverviewInput) {
-        inboxContinuation.yield(input)
-    }
-
-    public func start() {
-        startInbox()
     }
 
     /// Reads AeroSpace's whole state and applies it. The overview is a one shot: the host
@@ -219,7 +196,7 @@ public class OverviewStore {
         previewsAvailable = nativeSystem.canCapturePreviews
         do {
             let result = try await loadOverview(using: runner)
-            apply(.loaded(result))
+            send(.loaded(result))
             error = nil
         } catch {
             self.error = "Load error: \(error.localizedDescription)"
@@ -241,9 +218,6 @@ public class OverviewStore {
     private var following = false
 
     public func stop() {
-        inboxContinuation.finish()
-        inboxTask?.cancel()
-        inboxTask = nil
         subscribeTask?.cancel()
         subscribeTask = nil
         refreshTask?.cancel()
@@ -418,23 +392,12 @@ public class OverviewStore {
         let ids = stripWindows.map(\.window.windowId)
         switch AppStripModel.action(for: key, ids: ids, marked: strip.marked) {
         case .step(let direction): stepStrip(direction)
-        case .select(let id): selectStrip(id)
+        case .select(let id): markStrip(id); self.strip?.centre = id   // a key moves the centre with the marking
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
         case .none: break
         }
         return .handled
-    }
-
-    private func startInbox() {
-        guard inboxTask == nil else { return }
-        inboxTask = Task { [weak self] in
-            guard let self else { return }
-            for await input in self.inbox {
-                if Task.isCancelled { return }
-                self.apply(input)
-            }
-        }
     }
 
     /// One connection to AeroSpace's events for as long as AeroControl runs, from launch: one
@@ -463,30 +426,25 @@ public class OverviewStore {
         }
     }
 
-    /// The grid animates its own reflow; the model changes in one step.
-    private func apply(_ input: OverviewInput) {
+    /// The one entrance: the reducer runs in the caller's turn, the model changes in one step
+    /// (the grid animates its own reflow), and the effects run at once — each is a Task or a
+    /// removal, and `.loaded` never asks for a refresh, so nothing here re-enters. A queue in
+    /// front of this was tried and cut (2026-10-03): it added a turn of latency to every input
+    /// and let an event land behind a later read, and bought no ordering the main actor did
+    /// not already give.
+    public func send(_ input: OverviewInput) {
         var input = input
         // The strip still takes its focus from the read, for now: only the overview moves on the event.
         if strip != nil, case .event(.focusChanged) = input { input = .event(.changed) }
         let (newState, effects) = Common.updateOverview(model, input)
         if newState != model { model = newState }
         if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
-        DispatchQueue.main.async { [self] in
-            self.executeEffects(effects)
-        }
-    }
-
-    private func executeEffects(_ effects: [OverviewEffect]) {
         for effect in effects {
             switch effect {
-            case .windowRemoved(let id):
-                previews.removeValue(forKey: id)
-            case .refresh:
-                requestRefresh()
-            case .runAction(let action):
-                runAction(action)
-            case .runSequence(let actions):
-                runSequence(actions)
+            case .windowRemoved(let id): previews.removeValue(forKey: id)
+            case .refresh: requestRefresh()
+            case .runAction(let action): runAction(action)
+            case .runSequence(let actions): runSequence(actions)
             }
         }
     }
@@ -537,7 +495,7 @@ public class OverviewStore {
             let (sizes, pictures) = await self.settled(result)
             guard !Task.isCancelled, generation == self.refreshGeneration else { return }
             self.error = nil
-            self.apply(.loaded(result))
+            self.send(.loaded(result))
             if let sizes, pictureGeneration == self.captureGeneration {
                 self.previewSizes = sizes
                 self.previews.merge(pictures) { $1 }

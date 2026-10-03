@@ -1546,5 +1546,14 @@
     "complexity": 950,
     "prodComplexity": 584,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-03T20:08:39+02:00",
+    "commit": "4281814",
+    "subject": "The architecture is drawn from the code, at every commit",
+    "code": 5807,
+    "complexity": 937,
+    "prodComplexity": 571,
+    "files": 56
   }
 ]

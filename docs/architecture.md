@@ -211,10 +211,8 @@ Every method of `OverviewStore` and the methods it calls, with the pure function
 
 ```mermaid
 flowchart TD
-    s_apply["apply"]
     s_capturePreviews["capturePreviews"]
     s_covers["covers"]
-    s_executeEffects["executeEffects"]
     s_focusApp["focusApp"]
     s_handle["handle"]
     s_handleStrip["handleStrip"]
@@ -227,12 +225,9 @@ flowchart TD
     s_runAction["runAction"]
     s_runSequence["runSequence"]
     s_sameShape["sameShape"]
-    s_selectStrip["selectStrip"]
     s_send["send"]
     s_settled["settled"]
-    s_start["start"]
     s_startFollowingAerospace["startFollowingAerospace"]
-    s_startInbox["startInbox"]
     s_startListening["startListening"]
     s_stepStrip["stepStrip"]
     s_stripFollowsFocus["stripFollowsFocus"]
@@ -240,32 +235,29 @@ flowchart TD
     s_wantPicture["wantPicture"]
     c_loadOverview(["Common · loadOverview"])
     c_filterKeyAction(["Common · filterKeyAction"])
-    s_apply --> s_executeEffects
     s_capturePreviews --> s_take
-    s_executeEffects --> s_runAction
-    s_executeEffects --> s_runSequence
-    s_executeEffects --> s_requestRefresh
     s_focusApp --> s_send
     s_handle --> s_handleStrip
     s_handle --> c_filterKeyAction
     s_handleStrip --> s_stepStrip
-    s_handleStrip --> s_selectStrip
+    s_handleStrip --> s_markStrip
     s_pointStrip --> s_markStrip
-    s_reload --> s_apply
+    s_reload --> s_send
     s_reload --> c_loadOverview
-    s_requestRefresh --> s_apply
+    s_requestRefresh --> s_send
     s_requestRefresh --> s_settled
     s_requestRefresh --> s_stripFollowsFocus
     s_requestRefresh --> c_loadOverview
     s_runAction --> s_requestRefresh
     s_runSequence --> s_requestRefresh
+    s_send --> s_runAction
+    s_send --> s_runSequence
+    s_send --> s_requestRefresh
     s_settled --> s_sameShape
-    s_start --> s_startInbox
     s_startFollowingAerospace --> s_startListening
-    s_startInbox --> s_apply
     s_startListening --> s_noteFocus
-    s_startListening --> s_send
     s_startListening --> s_reload
+    s_startListening --> s_send
     s_take --> s_land
     s_wantPicture --> s_take
     s_wantPicture --> s_covers
@@ -323,7 +315,7 @@ What the AppKit side calls on the kit. Everything above this line is windows and
 
 | Entry file | Calls into the kit |
 |---|---|
-| AeroControlApp | **OverlayWindowManager**: rebuild(), toggleVisibility()<br/>**OverviewStore**: requestPreviewAccess(), start(), startListening() |
+| AeroControlApp | **OverlayWindowManager**: rebuild(), toggleVisibility()<br/>**OverviewStore**: requestPreviewAccess(), startListening() |
 | MenuBarController | **AeroControlTheme**: all, named<br/>**AnimationSpeed**: allCases<br/>**SettingsStore**: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme() |
 | OverlayWindowManager | **AeroControlLayout**: captureSize<br/>**OverviewStore**: capturePreviews(), clearPreviews(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
 | OverviewWindow | — |
