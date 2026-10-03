@@ -39,8 +39,8 @@ struct LayoutTests {
 
     /// What the card does: the largest shared picture height that fits, then the rows at it.
     private func pack(_ ratios: [CGFloat], _ inner: CGSize) -> TilePacker.Packed {
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: AeroControlLayout.tileSpacing, caption: 0, scales: nil)
-        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: AeroControlLayout.tileSpacing, caption: 0, scales: nil)
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: AeroControlLayout.tileSpacing, caption: 0)
+        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: AeroControlLayout.tileSpacing, caption: 0)
     }
 
     @Test("a card's tiles are packed inside its inner box at the largest height that fits, each at its window's own shape")

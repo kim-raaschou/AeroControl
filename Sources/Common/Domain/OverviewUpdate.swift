@@ -84,6 +84,5 @@ private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (Ove
         new.focusedWorkspace = workspace
         return (new, [.refresh])
     case .changed: return (state, [.refresh])
-    case .other: return (state, [])
     }
 }

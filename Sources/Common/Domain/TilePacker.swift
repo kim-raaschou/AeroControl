@@ -24,17 +24,15 @@ public enum TilePacker {
         public let tiles: [Tile]
     }
 
-    /// Tiles at picture height `tileHeight` (each times its scale), in rows no wider than
-    /// `width`. A tile wider than the card is clamped to it and loses height on its own,
-    /// rather than capping the shared height for every tile beside it. A row is as tall as
-    /// its tallest tile; shorter ones sit centred in it, each with `caption` under it.
+    /// Tiles at picture height `tileHeight`, in rows no wider than `width`. A tile wider than
+    /// the card is clamped to it and loses height on its own, in a row of its own, rather than
+    /// capping the shared height for every tile beside it. Each tile has `caption` under it.
     public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
-                                gap: CGFloat, caption: CGFloat, scales: [CGFloat]?) -> Packed {
+                                gap: CGFloat, caption: CGFloat) -> Packed {
         let n = ratios.count
         var widths: [CGFloat] = [], heights: [CGFloat] = []
         for j in 0..<n {
-            let scale = scales.map { $0[j] > 0 ? $0[j] : 1 } ?? 1
-            var h = (tileHeight * scale).rounded(.down)
+            var h = tileHeight.rounded(.down)
             var w = (ratios[j] * h).rounded(.down)
             if w > width { w = width; h = (width / max(0.01, ratios[j])).rounded(.down) }
             widths.append(max(1, w))
@@ -74,8 +72,7 @@ public enum TilePacker {
         for (r, row) in rows.enumerated() {
             x = ((widest - rowWidths[r]) / 2).rounded(.down)
             for j in row {
-                tiles[j] = Tile(x: x, y: y + ((rowHeights[r] - heights[j]) / 2).rounded(.down),
-                                width: widths[j], height: heights[j] + caption)
+                tiles[j] = Tile(x: x, y: y, width: widths[j], height: heights[j] + caption)
                 x += widths[j] + gap
             }
             y += rowHeights[r] + caption + gap
@@ -86,13 +83,12 @@ public enum TilePacker {
     /// The largest shared picture height whose rows fit in `width` × `height`: fitting is
     /// monotone in the height for a greedy fill, so a binary search finds it.
     public static func packHeight(ratios: [CGFloat], width: CGFloat, height: CGFloat,
-                                  gap: CGFloat, caption: CGFloat, scales: [CGFloat]?) -> CGFloat {
+                                  gap: CGFloat, caption: CGFloat) -> CGFloat {
         guard !ratios.isEmpty, width > 0, height > 0 else { return 0 }
-        let maxScale = scales?.max() ?? 1
         var lo: CGFloat = 1
-        var hi = max(1, ((height - caption) / max(1, maxScale)).rounded(.down))
+        var hi = max(1, (height - caption).rounded(.down))
         func fits(_ th: CGFloat) -> Bool {
-            packRows(ratios: ratios, tileHeight: th, width: width, gap: gap, caption: caption, scales: scales).height <= height
+            packRows(ratios: ratios, tileHeight: th, width: width, gap: gap, caption: caption).height <= height
         }
         while lo < hi {
             let mid = ((lo + hi) / 2).rounded(.up)

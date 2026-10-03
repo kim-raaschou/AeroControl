@@ -304,7 +304,6 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 2, workspace: "2")
         let store = started(runner)
         await store.reload()
-        store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
         return (runner, store)
     }
@@ -346,7 +345,6 @@ struct OverviewStoreTests {
         await store.reload()
         store.noteFocus(2)
         store.noteFocus(9)
-        store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
         #expect(store.strip?.marked == 2)
         store.stop()
@@ -386,7 +384,6 @@ struct OverviewStoreTests {
         var left = 0
         store.onFocusLeft = { left += 1 }
         await store.reload()
-        store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
         await store.measurePreviews()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
@@ -469,7 +466,7 @@ struct OverviewStoreTests {
         store.markStrip(3)
         await store.reload()
         #expect(store.strip?.marked == 2)
-        store.presentation = .map
+        store.dropStrip()
         #expect(store.strip == nil)
         store.stop()
     }
@@ -484,7 +481,6 @@ struct OverviewStoreTests {
                         workspaces: workspacesJSON(["1", "2", "3"]))
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
-        store.presentation = .strip
         _ = store.summonApp(bundleId: "com.app", picker: true)
         await store.capturePreviews(maxSize: CGSize(width: 400, height: 300))
         #expect(bridge.captured == [[1, 9, 2, 3]])                  // Slack on 1 is drawn grey in the card; Slack on 3 is in no card

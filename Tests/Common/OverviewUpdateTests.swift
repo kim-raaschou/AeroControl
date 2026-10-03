@@ -95,13 +95,6 @@ struct EventTests {
         #expect(new.focusedWorkspace == "3")
     }
 
-    @Test("an event that moves no window does nothing at all")
-    func inertEvent() {
-        let s = OverviewModel(workspaces: [ws("1", window(1, "A"))], focusedWorkspace: "1")
-        let (new, effects) = updateOverview(s, .event(.other))
-        #expect(new == s)
-        #expect(effects.isEmpty)
-    }
 }
 
 @Suite("update — action")

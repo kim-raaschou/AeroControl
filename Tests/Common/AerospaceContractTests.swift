@@ -74,15 +74,15 @@ struct AerospaceEventParseTests {
         #expect(AerospaceEvent.parse(json) == .changed)
     }
 
-    @Test("names that move no window, and names we do not know, are inert", arguments: [
+    @Test("names that move no window, and names we do not know, are not events", arguments: [
         #"{"_event":"mode-changed","mode":"resize"}"#,
         #"{"_event":"some-future-event","workspace":"1"}"#,
         // Stock AeroSpace emits no close event; the overview learns about closes from the
         // reload it does anyway. If upstream ever adds one, it lands here as a doorbell.
         #"{"_event":"window-closed","windowId":7}"#,
     ])
-    func otherNamesAreInert(json: String) {
-        #expect(AerospaceEvent.parse(json) == .other)
+    func otherNamesAreNotEvents(json: String) {
+        #expect(AerospaceEvent.parse(json) == nil)
     }
 
     @Test("a line that is not an event at all is not an event", arguments: [

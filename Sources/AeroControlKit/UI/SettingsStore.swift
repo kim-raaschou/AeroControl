@@ -73,10 +73,5 @@ public final class SettingsStore {
         setBackdropOpacity(1)
         setAnimationSpeed(.normal)
         setAppPicker(true)
-        // Keys written by versions before the one-shot overview.
-        for key in ["settings.displayConfigs", "settings.iconSize", "settings.edge",
-                    "settings.orientation", "settings.activeDisplay", "settings.multiScreenEnabled"] {
-            defaults.removeObject(forKey: key)
-        }
     }
 }

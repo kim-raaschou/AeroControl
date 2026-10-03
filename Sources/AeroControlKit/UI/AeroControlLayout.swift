@@ -142,7 +142,7 @@ public enum AeroControlLayout {
                 frames = mirror.frames
                 others = Set(groups[g].windows.map(\.windowId)).subtracting(ours[g].map(\.windowId))
             } else {
-                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: widths[g], gap: gaps[g], caption: 0, scales: nil)
+                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: widths[g], gap: gaps[g], caption: 0)
                 let top = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: CGSize(width: packed.width, height: height)).y
                 frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
                     CGRect(x: $0.x, y: top + $0.y, width: $0.width, height: $0.height) }))

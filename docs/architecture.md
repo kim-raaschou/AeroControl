@@ -35,7 +35,7 @@ flowchart LR
 | AeroControlKit | `Adapters/NativeApiBridge.swift` | `NativeApiBridge` |
 | AeroControlKit | `Adapters/NativeApiBridgeAdapter.swift` | `NativeApiBridgeAdapter` |
 | AeroControlKit | `Adapters/SingleInstanceGuard.swift` | `SingleInstanceGuard` |
-| AeroControlKit | `State/OverviewStore.swift` | `AppSummon`, `OverviewStore`, `Presentation`, `Strip` |
+| AeroControlKit | `State/OverviewStore.swift` | `AppSummon`, `OverviewStore`, `Strip` |
 | AeroControlKit | `State/Summon.swift` | `Again`, `Summon` |
 | AeroControlKit | `UI/AeroControlAppStrip.swift` | `AeroControlAppStrip` |
 | AeroControlKit | `UI/AeroControlAppTile.swift` | `AeroControlAppTile`, `FadingPicture` |
@@ -146,7 +146,6 @@ classDiagram
         <<AerospaceEvent>>
         focusChanged(windowId: Int?, workspace: String)
         changed
-        other
     }
     class AeroControlAction {
         <<AeroControlAction>>
@@ -263,7 +262,7 @@ flowchart TD
     s_wantPicture --> s_covers
 ```
 
-Methods that neither call nor are called by another method of the store, so the views and the host call them directly: `clearPreviews`, `measurePreviews`, `notePointer`, `prepareCapture`, `requestPreviewAccess`, `stop`, `stopFollowingAerospace`, `summonApp`.
+Methods that neither call nor are called by another method of the store, so the views and the host call them directly: `clearPreviews`, `dropStrip`, `icon`, `measurePreviews`, `notePointer`, `prepareCapture`, `requestPreviewAccess`, `stop`, `stopFollowingAerospace`, `summonApp`.
 
 ## 5. What is sent to AeroSpace
 
@@ -317,5 +316,5 @@ What the AppKit side calls on the kit. Everything above this line is windows and
 |---|---|
 | AeroControlApp | **OverlayWindowManager**: rebuild(), toggleVisibility()<br/>**OverviewStore**: requestPreviewAccess(), startListening() |
 | MenuBarController | **AeroControlTheme**: all, named<br/>**AnimationSpeed**: allCases<br/>**SettingsStore**: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme() |
-| OverlayWindowManager | **AeroControlLayout**: captureSize<br/>**OverviewStore**: capturePreviews(), clearPreviews(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
+| OverlayWindowManager | **AeroControlLayout**: captureSize<br/>**OverviewStore**: capturePreviews(), clearPreviews(), dropStrip(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
 | OverviewWindow | — |

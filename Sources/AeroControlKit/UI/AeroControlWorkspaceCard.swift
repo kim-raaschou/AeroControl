@@ -89,8 +89,8 @@ struct AeroControlWorkspaceCard: View {
         }
         let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
         let gap = AeroControlLayout.packedGap(screen: screen?.size, inner: inner), caption: CGFloat = filtering ? AeroControlLayout.captionLane : 0
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption, scales: nil)
-        let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption, scales: nil)
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
+        let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
         let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
         let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
                                 uniquingKeysWith: { _, b in b })
@@ -170,9 +170,7 @@ struct AeroControlCardFace<Content: View>: View {
     }
 
     /// The badge, and with more than one display the name of this workspace's. The tiles
-    /// say how many windows there are. The layout symbol fades when the tree is drawn from
-    /// sizes alone rather than from AeroSpace's own rects: the shape is right, the places may
-    /// be swapped.
+    /// say how many windows there are; the layout symbol says how AeroSpace arranges them.
     private var header: some View {
         HStack(spacing: 6) {
             badge

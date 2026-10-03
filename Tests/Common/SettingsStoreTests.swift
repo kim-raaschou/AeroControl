@@ -41,15 +41,6 @@ struct SettingsStoreTests {
         #expect(AnimationSpeed.off.scale == 0 && AnimationSpeed.slow.scale == 2)
     }
 
-    @Test func resetClearsTheKeysOfOlderVersions() {
-        let defaults = makeDefaults()
-        defaults.set(true, forKey: "settings.multiScreenEnabled")
-        defaults.set("uuid", forKey: "settings.activeDisplay")
-        SettingsStore(defaults: defaults).reset()
-        #expect(defaults.object(forKey: "settings.multiScreenEnabled") == nil)
-        #expect(defaults.object(forKey: "settings.activeDisplay") == nil)
-    }
-
     @Test func appPickerIsOnUntilSwitchedOff() {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)

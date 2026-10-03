@@ -177,8 +177,8 @@ struct AeroControlAppTile: View {
         .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
             if let key {
                 keyCap(key.label, marked: key.marked)
-            } else if showsIcon, let icon = state.icons[window.bundleId] {
-                PixelImage(image: icon, size: CGSize(width: metrics.badgeSize, height: metrics.badgeSize))
+            } else if showsIcon {
+                PixelImage(image: state.icon(for: window.bundleId), size: CGSize(width: metrics.badgeSize, height: metrics.badgeSize))
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .padding(metrics.badgeSize * 0.2)
             }

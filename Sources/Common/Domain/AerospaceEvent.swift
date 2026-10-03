@@ -11,6 +11,4 @@ public enum AerospaceEvent: Equatable, Sendable {
     case focusChanged(windowId: Int?, workspace: String)
     /// Something changed in AeroSpace.
     case changed
-    /// A name we do not act on.
-    case other
 }

@@ -41,10 +41,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   The focus ring is AeroSpace's: it sits on the focused window and follows every focus change
   AeroSpace reports, the moment it reports it. Nothing in the overview walks it. See *Keyboard*.
 - A grid that spends the screen on the windows: one card per workspace, in AeroSpace's
-  order. An empty workspace is a narrow strip, one with four or more windows takes a double
-  share, and rows break where the windows come out largest and are only as tall as they
-  need. Cards hold still through ordinary window churn — only crossing one of those steps
-  moves them. Inside a card every window is drawn at its own shape, all at one height, in
+  order, every card the same size and the shape of its screen, as GNOME and KWin shape their
+  workspace cells. Cards hold still through window churn. Inside a card every window is drawn
+  where AeroSpace put it, at its own shape, or packed at one height when AeroSpace has not said, in
   AeroSpace's order. The layout engine is shared with
   [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview
   for Omarchy/Hyprland.

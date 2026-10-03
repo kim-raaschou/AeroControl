@@ -52,7 +52,7 @@ final class OverlayWindowManager {
         state.stopFollowingAerospace()      // nothing to stay in sync with while hidden
         state.clearPreviews()
         state.filter = ""
-        state.presentation = .map           // and the strip with it
+        state.dropStrip()
         window?.dismiss()
         guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
         app.activate()
@@ -100,7 +100,6 @@ final class OverlayWindowManager {
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
-            self.state.presentation = summon == .map ? .map : .strip
             self.state.prepareCapture()
             await self.state.reload()
             guard self.requestedVisible else { return }   // toggled away while loading

@@ -2,8 +2,8 @@ import Foundation
 
 extension AerospaceEvent {
     /// The names that mean "AeroSpace changed, read it again". `mode-changed` is deliberately
-    /// absent: it moves no window, so it falls through to `.other` like any future name we do
-    /// not know. A focus change is read whole; of every other line only the name.
+    /// absent: it moves no window, so it is no event to us, like any future name we do not
+    /// know. A focus change is read whole; of every other line only the name.
     private static let readAgain: Set<String> = ["focused-workspace-changed", "focused-monitor-changed", "window-detected", "binding-triggered"]
 
     public static func parse(_ json: String) -> AerospaceEvent? {
@@ -11,7 +11,7 @@ extension AerospaceEvent {
             return nil
         }
         if raw.event == "focus-changed" { return .focusChanged(windowId: raw.windowId, workspace: raw.workspace ?? "") }
-        return readAgain.contains(raw.event) ? .changed : .other
+        return readAgain.contains(raw.event) ? .changed : nil
     }
 
     private struct RawEvent: Decodable {

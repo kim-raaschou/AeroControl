@@ -9,8 +9,8 @@ import Foundation
 private let gap: CGFloat = 8
 private let caption: CGFloat = 18
 
-private func pack(_ ratios: [CGFloat], height: CGFloat, width: CGFloat, scales: [CGFloat]? = nil) -> TilePacker.Packed {
-    TilePacker.packRows(ratios: ratios, tileHeight: height, width: width, gap: gap, caption: caption, scales: scales)
+private func pack(_ ratios: [CGFloat], height: CGFloat, width: CGFloat) -> TilePacker.Packed {
+    TilePacker.packRows(ratios: ratios, tileHeight: height, width: width, gap: gap, caption: caption)
 }
 
 private func overlap(_ tiles: [TilePacker.Tile]) -> (Int, Int)? {
@@ -54,23 +54,17 @@ struct PackRowsTests {
         #expect(r.tiles.allSatisfy { $0.width <= 600 })
     }
 
-    @Test("a tile with a bigger scale is drawn bigger")
-    func scales() {
-        let r = pack([1.6, 1.6], height: 100, width: 2000, scales: [2.0, 0.5])
-        #expect(r.tiles[0].width > r.tiles[1].width)
-    }
-
     @Test("rows are spread evenly once their number is known: six alike are 3 + 3, not 4 + 2")
     func spreadsEvenly() {
         let r = pack(Array(repeating: 1.6, count: 6), height: 100, width: 4 * 160 + 3 * gap)
         #expect(r.rows.map(\.count) == [3, 3])
     }
 
-    @Test("shorter tiles sit centred in a row as tall as its tallest")
-    func centresInRow() {
-        let r = pack([1.0, 1.0], height: 100, width: 300, scales: [1.0, 0.5])   // 100 tall beside 50 tall
-        #expect(r.rows.count == 1)
-        #expect(r.tiles[1].y == 25 && r.tiles[0].y == 0)
+    @Test("a tile wider than the card is clamped to it and loses height alone, in a row of its own")
+    func clampedAlone() {
+        let r = pack([1.0, 4.0], height: 100, width: 300)
+        #expect(r.rows == [[0], [1]])
+        #expect(r.tiles[1].width == 300 && r.tiles[1].height == 75 + caption)
     }
 }
 
@@ -87,7 +81,7 @@ struct PackHeightTests {
     @Test("the largest shared height that still fits: usable, fitting, non-overlapping, and maximal", arguments: cases.indices)
     func maximal(index: Int) {
         let c = Self.cases[index]
-        let th = TilePacker.packHeight(ratios: c.ratios, width: c.width, height: c.height, gap: gap, caption: caption, scales: nil)
+        let th = TilePacker.packHeight(ratios: c.ratios, width: c.width, height: c.height, gap: gap, caption: caption)
         #expect(th >= 1)
         let fit = pack(c.ratios, height: th, width: c.width)
         #expect(fit.width <= c.width + 1 && fit.height <= c.height + 1)
@@ -102,7 +96,7 @@ struct PackHeightTests {
 
     @Test("nothing to pack is height 0")
     func empty() {
-        #expect(TilePacker.packHeight(ratios: [], width: 100, height: 100, gap: gap, caption: caption, scales: nil) == 0)
-        #expect(TilePacker.packHeight(ratios: [1.5], width: 0, height: 100, gap: gap, caption: caption, scales: nil) == 0)
+        #expect(TilePacker.packHeight(ratios: [], width: 100, height: 100, gap: gap, caption: caption) == 0)
+        #expect(TilePacker.packHeight(ratios: [1.5], width: 0, height: 100, gap: gap, caption: caption) == 0)
     }
 }

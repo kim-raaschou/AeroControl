@@ -73,7 +73,7 @@ public struct AeroControlPanel: View {
     /// The app the strip shows and its legend, for the lane under the cards; nil on the map.
     private var stripApp: AeroControlFilterPill.StripApp? {
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
-        return .init(name: first.appName, icon: state.icons[strip.bundleId],
+        return .init(name: first.appName, icon: state.icon(for: strip.bundleId),
                      summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count),
                      rows: AppStripModel.legend(state.stripWindows, marked: strip.marked))
     }

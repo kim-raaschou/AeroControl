@@ -14,18 +14,15 @@ public class OverviewStore {
                 self.strip = strip
             }
             filterMatches = model.matching(filter)
-            for window in model.workspaces.lazy.flatMap(\.windows) where icons[window.bundleId] == nil {
-                icons[window.bundleId] = nativeSystem.appIcon(bundleId: window.bundleId)
-            }
         }
     }
 
     /// Apps macOS has hidden, read with every load: their tiles are dimmed.
     public private(set) var hiddenBundleIds: Set<String> = []
 
-    /// App icons by bundle id, for the badge in a picture's corner: the one thing a picture
-    /// does not say about a window is which app it is. Loaded once per app, kept for good.
-    public private(set) var icons: [String: NSImage] = [:]
+    /// An app's icon, for the badge in a picture's corner: the one thing a picture does not say
+    /// about a window is which app it is. The bridge keeps them, once per app, for good.
+    public func icon(for bundleId: String) -> NSImage { nativeSystem.appIcon(bundleId: bundleId) }
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
@@ -47,12 +44,6 @@ public class OverviewStore {
         didSet { filterMatches = model.matching(filter) }
     }
 
-    /// How the overview is drawn this visit: the map of every workspace, or the strip — one
-    /// row of one app's windows, like macOS's own switcher. Set by the host per summon.
-    public enum Presentation: Sendable { case map, strip }
-    public var presentation: Presentation = .map {
-        didSet { if presentation == .map { strip = nil } }
-    }
 
     /// The strip this visit: whose windows, and the marking. Its own state, not a query: the app
     /// is named by bundle id, so a window of another app whose title happens to name this one is
@@ -73,6 +64,8 @@ public class OverviewStore {
         }
     }
     public private(set) var strip: Strip?
+    /// The visit is over: the next summon decides afresh whether there is a strip.
+    public func dropStrip() { strip = nil }
     /// AeroSpace took the focus out of the overview for good; the host closes it.
     public var onFocusLeft: (() -> Void)?
 
