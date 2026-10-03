@@ -38,23 +38,6 @@ public enum AeroControlLayout {
     /// between the badge and the first row of tiles.
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
 
-    /// The room inside a card for its tiles: below the badge lane and its gap, inside the padding.
-    public static func innerSize(of card: CGSize) -> CGSize {
-        CGSize(width: card.width - 2 * cardPadding, height: card.height - cardChrome)
-    }
-
-    /// A card's tiles as drawn: `TilePacker` at the largest picture height that fits `inner`,
-    /// with `caption` under each tile (the caption lane while filtering, nothing on the map).
-    /// Each card on its own: every cell is the same size, and a card fills its cell with what
-    /// it has. One height for the whole screen was tried on 2026-09-30 and dropped the same
-    /// day: a single six-window workspace shrank every picture on the map to a stamp.
-    public static func packTiles(ratios: [CGFloat], inner: CGSize, gap: CGFloat = tileSpacing, caption: CGFloat) -> TilePacker.Packed {
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height,
-                                           gap: gap, caption: caption, scales: nil)
-        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width,
-                                   gap: gap, caption: caption, scales: nil)
-    }
-
     /// The gap between packed tiles, in the screen's points: one constant, scaled to the card like
     /// everything else, so a packed card (an accordion, a filtered subset, a workspace a release
     /// AeroSpace cannot place) reads like a card drawn from AeroSpace's rects. It is an assumption
@@ -125,47 +108,48 @@ public enum AeroControlLayout {
         public func runsRound(in viewWidth: CGFloat) -> Bool {
             cards.count >= carouselFrom || width > viewWidth
         }
-
-        /// The box a card's pictures fill, which its frames are in.
-        public func innerSize(of card: StripCard) -> CGSize {
-            CGSize(width: card.span.width - 2 * cardPadding, height: inner)
-        }
     }
 
     /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
     /// the app, its pictures in its screen's shape at one height (`AppStripModel.cardHeight`)
-    /// inside the map card's padding and badge lane, mirroring the workspace as the
-    /// map does — from AeroSpace's rects — with the other apps' windows
-    /// marked to be drawn faint. A card whose layout cannot be read packs only the app's
-    /// windows in it, each at its own shape.
+    /// inside the map card's padding and badge lane, mirroring the workspace as the map does — from
+    /// AeroSpace's rects — with the other apps' windows marked to be drawn faint. A card whose
+    /// layout cannot be read packs only the app's windows, each at its own shape, in one row: the
+    /// strip is a row of choices, and two wide windows stacked read as one window over another.
+    /// The packed cards share one picture height, the tightest row's, and each hugs its row: a
+    /// choice is not bigger for being alone on its workspace, and no card is a screen's width
+    /// round a small picture. When no card mirrors a screen, the strip is only as tall as that row.
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
                                    fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
-        let height = AppStripModel.cardHeight(width: viewWidth - 2 * cardPadding * CGFloat(groups.count), gaps: cardGap * CGFloat(max(0, groups.count - 1)),
-                                              sumAspect: aspects.reduce(0, +), panelHeight: panelHeight)
-        var x: CGFloat = 0
-        var cards: [StripCard] = []
-        for (g, workspace) in groups.enumerated() {
+        let full = AppStripModel.cardHeight(width: viewWidth - 2 * cardPadding * CGFloat(groups.count), gaps: cardGap * CGFloat(max(0, groups.count - 1)),
+                                            sumAspect: aspects.reduce(0, +), panelHeight: panelHeight)
+        let widths = aspects.map { (full * $0).rounded() }
+        let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
+        let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
+        let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
+        let mirrors = groups.indices.map { treeLayout(windows: groups[$0].windows, sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
+        let row = groups.indices.filter { mirrors[$0] == nil }.map { g in
+            min(full, ((widths[g] - gaps[g] * CGFloat(max(0, ours[g].count - 1))) / max(0.01, shapes[g].reduce(0, +))).rounded(.down))
+        }.min() ?? full
+        let height = mirrors.contains { $0 != nil } ? full : max(1, row)
+        var x: CGFloat = 0, cards: [StripCard] = []
+        for g in groups.indices {
             if g > 0 { x += cardGap }
-            let size = CGSize(width: (height * aspects[g]).rounded(), height: height)
-            let ours = workspace.windows.filter { $0.bundleId == bundleId }
-            var frames: [Int: CGRect] = [:], others: Set<Int> = []
-            if let mirror = treeLayout(windows: workspace.windows, sizes: sizes, screen: areas[g], inner: size) {
+            var frames: [Int: CGRect] = [:], others: Set<Int> = [], width = widths[g]
+            if let mirror = mirrors[g] {
                 frames = mirror.frames
-                others = Set(workspace.windows.map(\.windowId)).subtracting(ours.map(\.windowId))
+                others = Set(groups[g].windows.map(\.windowId)).subtracting(ours[g].map(\.windowId))
             } else {
-                let ratios = ratios(of: ours, sizes: sizes, fallback: aspects[g])
-                let packed = packTiles(ratios: ratios, inner: size, gap: packedGap(screen: areas[g].size, inner: size), caption: 0)
-                let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: size)
-                for (i, window) in ours.enumerated() {
-                    let t = packed.tiles[i]
-                    frames[window.windowId] = CGRect(x: origin.x + t.x, y: origin.y + t.y, width: t.width, height: t.height)
-                }
+                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: widths[g], gap: gaps[g], caption: 0, scales: nil)
+                let top = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: CGSize(width: packed.width, height: height)).y
+                frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
+                    CGRect(x: $0.x, y: top + $0.y, width: $0.width, height: $0.height) }))
+                width = packed.width
             }
-            let outer = size.width + 2 * cardPadding
-            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: outer), frames: frames, others: others))
-            x += outer
+            cards.append(StripCard(workspace: groups[g].name, span: AppStripModel.Span(x: x, width: width + 2 * cardPadding), frames: frames, others: others))
+            x += width + 2 * cardPadding
         }
         return StripLayout(height: height + cardChrome, inner: height, width: x, cards: cards)
     }

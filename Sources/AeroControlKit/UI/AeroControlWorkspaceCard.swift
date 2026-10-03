@@ -68,15 +68,19 @@ struct AeroControlWorkspaceCard: View {
             .padding(6)
     }
 
-    private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
+    /// The room inside the card for its tiles: below the badge lane and its gap, inside the padding.
+    private var innerSize: CGSize { CGSize(width: size.width - 2 * AeroControlLayout.cardPadding, height: size.height - AeroControlLayout.cardChrome) }
 
     /// Where every window goes in the card's inner box, and which windows float over the
     /// layout rather than sit in it.
     private typealias Placement = (frames: [Int: CGRect], ghosts: Set<Int>)
 
     /// The workspace as AeroSpace laid it out, when it said where (`AeroControlLayout.treeLayout`);
-    /// otherwise `TilePacker`'s tiles, each at its own shape at one shared picture height,
-    /// centred in the inner box. A filtered card shows a subset, so it packs.
+    /// otherwise `TilePacker`'s tiles, each at its own shape at the largest shared picture height
+    /// that fits the inner box, centred in it. A filtered card shows a subset, so it packs. Each
+    /// card on its own: every cell is the same size, and a card fills its cell with what it has.
+    /// One height for the whole screen was tried on 2026-09-30 and dropped the same day: a
+    /// single six-window workspace shrank every picture on the map to a stamp.
     private var placement: Placement {
         let windows = workspace.windows
         let inner = innerSize
@@ -84,9 +88,9 @@ struct AeroControlWorkspaceCard: View {
             return laid
         }
         let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
-        let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner,
-                                                 gap: AeroControlLayout.packedGap(screen: screen?.size, inner: inner),
-                                                 caption: filtering ? AeroControlLayout.captionLane : 0)
+        let gap = AeroControlLayout.packedGap(screen: screen?.size, inner: inner), caption: CGFloat = filtering ? AeroControlLayout.captionLane : 0
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption, scales: nil)
+        let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption, scales: nil)
         let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
         let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
                                 uniquingKeysWith: { _, b in b })
@@ -140,7 +144,8 @@ struct AeroControlCardFace<Content: View>: View {
 
     private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-    private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
+    /// The room inside the card for its tiles: below the badge lane and its gap, inside the padding.
+    private var innerSize: CGSize { CGSize(width: size.width - 2 * AeroControlLayout.cardPadding, height: size.height - AeroControlLayout.cardChrome) }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)

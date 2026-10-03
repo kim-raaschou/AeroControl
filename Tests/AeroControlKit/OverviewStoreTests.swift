@@ -317,7 +317,7 @@ struct OverviewStoreTests {
         // The cards are whole workspaces: workspace 2 keeps its Slack window, to be drawn grey behind the app's.
         #expect(store.stripWorkspaces.map(\.name) == ["1", "2", "3"])
         #expect(store.stripWorkspaces[1].windows.map(\.windowId) == [2, 9])
-        #expect(store.strip?.origin == 2 && store.strip?.marked == 3)
+        #expect(store.strip?.marked == 3)
         store.stop()
     }
 

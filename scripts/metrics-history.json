@@ -1537,5 +1537,14 @@
     "complexity": 941,
     "prodComplexity": 581,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-03T19:20:01+02:00",
+    "commit": "947f30b",
+    "subject": "The strip carries a legend: key, title and workspace per window",
+    "code": 5873,
+    "complexity": 950,
+    "prodComplexity": 584,
+    "files": 56
   }
 ]

@@ -37,18 +37,24 @@ struct LayoutTests {
         #expect(AeroControlLayout.stacking(windowId: 9, focused: 9, ghosts: [9]) == 2)
     }
 
+    /// What the card does: the largest shared picture height that fits, then the rows at it.
+    private func pack(_ ratios: [CGFloat], _ inner: CGSize) -> TilePacker.Packed {
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: AeroControlLayout.tileSpacing, caption: 0, scales: nil)
+        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: AeroControlLayout.tileSpacing, caption: 0, scales: nil)
+    }
+
     @Test("a card's tiles are packed inside its inner box at the largest height that fits, each at its window's own shape")
     func packedTiles() {
-        let inner = AeroControlLayout.innerSize(of: CGSize(width: 1600, height: 900))
+        let inner = CGSize(width: 1600 - 2 * AeroControlLayout.cardPadding, height: 900 - AeroControlLayout.cardChrome)
         let windows = (1...4).map { win($0, "Code") }
         let sizes: [Int: CGSize] = [1: CGSize(width: 1600, height: 1000), 2: CGSize(width: 800, height: 1000)]
         let ratios = AeroControlLayout.ratios(of: windows, sizes: sizes, fallback: 1.5)
         #expect(ratios == [1.6, 0.8, 1.5, 1.5])                                  // measured, measured, screen, screen
-        let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner, caption: 0)
+        let packed = pack(ratios, inner)
         #expect(packed.tiles.count == 4 && packed.width <= inner.width && packed.height <= inner.height)
         #expect(abs(packed.tiles[1].width / packed.tiles[1].height - 0.8) < 0.02)  // the portrait one stays portrait
         // Each card on its own: a card with one window gets a taller picture than one with four.
-        let alone = AeroControlLayout.packTiles(ratios: [1.5], inner: inner, caption: 0)
+        let alone = pack([1.5], inner)
         #expect(alone.tiles[0].height > packed.tiles[0].height)
     }
 }
@@ -164,9 +170,48 @@ struct TreeLayoutTests {
 @Suite("the strip's cards")
 struct StripLayoutTests {
     private let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084)
-    private func layout(_ groups: [WorkspaceInfo], bundleId: String = "com.Ghostty", view: CGFloat = 1600, panel: CGFloat = 1000) -> AeroControlLayout.StripLayout {
-        AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: [:], screens: [1: screen], fallbackScreen: screen,
+    /// The box a card's pictures fill, which its frames are in.
+    private func inner(_ l: AeroControlLayout.StripLayout, _ card: AeroControlLayout.StripCard) -> CGSize {
+        CGSize(width: card.span.width - 2 * AeroControlLayout.cardPadding, height: l.inner)
+    }
+    private func layout(_ groups: [WorkspaceInfo], bundleId: String = "com.Ghostty", sizes: [Int: CGSize] = [:],
+                        view: CGFloat = 1600, panel: CGFloat = 1000) -> AeroControlLayout.StripLayout {
+        AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: sizes, screens: [1: screen], fallbackScreen: screen,
                                       viewWidth: view, panelHeight: panel)
+    }
+
+    /// The strip is a row of choices, so a card that packs the app's windows packs them in one
+    /// row, side by side, even when two rows would give taller pictures: two wide windows on a
+    /// card their own shape stacked, and read as one window over another instead of two choices.
+    @Test("a packed strip card is one row: wide windows go side by side, not one under the other")
+    func packedCardIsOneRow() throws {
+        let ws = WorkspaceInfo(name: "1", windows: [WindowInfo(windowId: 1, appName: "Brave", bundleId: "com.Brave"),
+                                                    WindowInfo(windowId: 2, appName: "Brave", bundleId: "com.Brave")],
+                               screenIndex: 1, rootLayout: "h_accordion")
+        let wide = CGSize(width: 2400, height: 1000)
+        let l = layout([ws], bundleId: "com.Brave", sizes: [1: wide, 2: wide])
+        let card = try #require(l.cards.first)
+        let a = try #require(card.frames[1]), b = try #require(card.frames[2])
+        #expect(a.maxX <= b.minX && a.minY == b.minY)
+        #expect(abs(a.width / a.height - 2.4) < 0.02)
+        #expect(a.maxY <= inner(l, card).height + 0.5 && b.maxX <= inner(l, card).width + 0.5)
+        // No card mirrors a screen, so the strip is as tall as its row, not as a screen round it.
+        #expect(l.inner == a.height && a.minY == 0)
+    }
+
+    /// A choice is not bigger for being alone on its workspace: packed cards share the tightest
+    /// row's height, and each hugs its row, so one window is not a screen wide round a small picture.
+    @Test("packed strip cards share one picture height and hug their windows: a lone window is no bigger than a pair")
+    func packedCardsShareHeightAndHug() throws {
+        func w(_ id: Int) -> WindowInfo { WindowInfo(windowId: id, appName: "Ghostty", bundleId: "com.Ghostty") }
+        let pair = WorkspaceInfo(name: "1", windows: [w(1), w(2)], screenIndex: 1, rootLayout: "h_accordion")
+        let lone = WorkspaceInfo(name: "5", windows: [w(3)], screenIndex: 1, rootLayout: "h_accordion")
+        let l = layout([pair, lone])
+        let heights = Set(l.cards.flatMap { $0.frames.values.map(\.height) })
+        #expect(heights.count == 1 && l.inner == heights.first)
+        let alone = try #require(l.cards[1].frames[3])
+        #expect(l.cards[1].span.width == alone.width + 2 * AeroControlLayout.cardPadding && alone.minX == 0)
+        #expect(l.cards[0].span.width < l.cards[1].span.width * 2.2)                      // two windows and a gap, no screen round them
     }
 
     @Test("every card is the map's card: its pictures in its screen's shape at one height, as tall as the view allows between a fifth and half the panel, inside the map card's chrome")
@@ -178,10 +223,11 @@ struct StripLayoutTests {
         let pad = AeroControlLayout.cardPadding
         #expect(l.inner == AppStripModel.cardHeight(width: 1600 - 4 * pad, gaps: AeroControlLayout.cardGap, sumAspect: 2 * ratio, panelHeight: 1000))
         #expect(l.height == l.inner + AeroControlLayout.cardChrome)
-        #expect(l.cards.count == 2 && l.cards.allSatisfy { abs($0.span.width - (l.inner * ratio).rounded() - 2 * pad) < 1 })
+        // The mirrored card is the screen's shape exactly; the lone window, packed at the full height, within the packer's rounding.
+        #expect(l.cards.count == 2 && l.cards.allSatisfy { abs($0.span.width - (l.inner * ratio).rounded() - 2 * pad) <= 2 })
         #expect(l.cards[1].span.x == l.cards[0].span.width + AeroControlLayout.cardGap)
         #expect(l.width == l.cards[1].span.x + l.cards[1].span.width && l.width <= 1600)
-        #expect(AeroControlLayout.innerSize(of: CGSize(width: l.cards[0].span.width, height: l.height)) == l.innerSize(of: l.cards[0]))
+        #expect(CGSize(width: l.cards[0].span.width - 2 * pad, height: l.height - AeroControlLayout.cardChrome) == inner(l, l.cards[0]))
     }
 
     @Test("a card mirrors its workspace from AeroSpace's rects: the app's windows where they are, the other apps' marked to be drawn faint")
@@ -192,7 +238,7 @@ struct StripLayoutTests {
         let left = try #require(card.frames[1]), right = try #require(card.frames[2])
         #expect(left.maxX < right.minX && abs(left.width - right.width) < 0.5)
         let l = layout([ws])
-        #expect(card.frames.values.allSatisfy { CGRect(origin: .zero, size: l.innerSize(of: card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
+        #expect(card.frames.values.allSatisfy { CGRect(origin: .zero, size: inner(l, card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
     }
 
     private func groups(_ n: Int) -> [WorkspaceInfo] {
@@ -267,7 +313,7 @@ struct StripLayoutTests {
         #expect(Set(card.frames.keys) == [1, 2] && card.others.isEmpty && true)
         let a = try #require(card.frames[1]), b = try #require(card.frames[2])
         #expect(a.maxX <= b.minX)
-        #expect([a, b].allSatisfy { CGRect(origin: .zero, size: l.innerSize(of: card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
+        #expect([a, b].allSatisfy { CGRect(origin: .zero, size: inner(l, card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
     }
 }
 

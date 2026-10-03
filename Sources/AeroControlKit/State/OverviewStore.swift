@@ -10,6 +10,7 @@ public class OverviewStore {
                 let before = oldValue.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }.map(\.window.windowId)
                 let lastIndex = strip.marked.flatMap { before.firstIndex(of: $0) } ?? 0
                 strip.marked = AppStripModel.keepSelection(strip.marked, lastIndex: lastIndex, ids: stripWindows.map(\.window.windowId))
+                strip.centre = strip.marked
                 self.strip = strip
             }
             filterMatches = model.matching(filter)
@@ -55,15 +56,12 @@ public class OverviewStore {
         didSet { if presentation == .map { strip = nil } }
     }
 
-    /// The strip this visit: whose windows, the window you came from, and the marking. Its own
-    /// state, not a query: the app is named by bundle id, so a window of another app whose
-    /// title happens to name this one is not in it, and nothing typed narrows it.
+    /// The strip this visit: whose windows, and the marking. Its own state, not a query: the app
+    /// is named by bundle id, so a window of another app whose title happens to name this one is
+    /// not in it, and nothing typed narrows it.
     public struct Strip: Equatable, Sendable {
         public let bundleId: String
-        public let origin: Int?
-        public internal(set) var marked: Int? {
-            didSet { if !pointed { centre = marked } }
-        }
+        public internal(set) var marked: Int?
         /// The window the carousel centres on: the marking, as keys move it. Pointing marks
         /// without moving it, or the row would slide another window under a hand that had not
         /// moved (krn.overview: "Keys move the centre; the pointer does not").
@@ -71,10 +69,9 @@ public class OverviewStore {
         /// How many times the keys have taken the ring round past its last card, less the times
         /// back past its first: what keeps the carousel turning one way instead of jumping back.
         public internal(set) var turns = 0
-        var pointed = false
 
-        init(bundleId: String, origin: Int?, marked: Int?) {
-            self.bundleId = bundleId; self.origin = origin; self.marked = marked; self.centre = marked
+        init(bundleId: String, marked: Int?) {
+            self.bundleId = bundleId; self.marked = marked; self.centre = marked
         }
     }
     public private(set) var strip: Strip?
@@ -114,6 +111,7 @@ public class OverviewStore {
         let card = { (id: Int?) in id.flatMap { id in self.stripWorkspaces.firstIndex { $0.windows.contains { $0.windowId == id } } } }
         let from = card(strip.centre)
         strip.marked = at >= 0 ? ids[at] : strip.marked
+        strip.centre = strip.marked
         if let from, let to = card(strip.centre) {
             if direction > 0, to < from { strip.turns += 1 }
             if direction < 0, to > from { strip.turns -= 1 }
@@ -124,9 +122,7 @@ public class OverviewStore {
     /// Pointing marks, as in krn.overview's strip; a window that is not the app's is ignored.
     public func markStrip(_ windowId: Int) {
         guard var strip, stripWindows.contains(where: { $0.window.windowId == windowId }) else { return }
-        strip.pointed = true
         strip.marked = windowId
-        strip.pointed = false
         self.strip = strip
     }
 
@@ -149,6 +145,7 @@ public class OverviewStore {
     private func selectStrip(_ windowId: Int) {
         guard var strip else { return }
         strip.marked = windowId
+        strip.centre = windowId
         self.strip = strip
     }
 
@@ -388,8 +385,7 @@ public class OverviewStore {
         }
         guard picker else { return .launch }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
-        let origin = focusedAt.map { _ in model.focusedWindowId }
-        strip = Strip(bundleId: bundleId, origin: origin, marked: AppStripModel.start(origin: origin, ids: windows.map(\.windowId), recent: recentWindows))
+        strip = Strip(bundleId: bundleId, marked: AppStripModel.start(origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recentWindows))
         return .pick
     }
 
@@ -603,7 +599,7 @@ public class OverviewStore {
             onFocusLeft?()
             return
         }
-        self.strip = Strip(bundleId: focused.bundleId, origin: focused.windowId, marked: focused.windowId)
+        self.strip = Strip(bundleId: focused.bundleId, marked: focused.windowId)
     }
 
 }
