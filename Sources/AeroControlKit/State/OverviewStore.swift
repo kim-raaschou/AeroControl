@@ -558,23 +558,74 @@ public class OverviewStore {
         let generation = refreshGeneration
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
-            guard let self else { return }
-            guard let result = try? await loadOverview(using: self.runner) else { return }
-            guard generation == self.refreshGeneration else { return }
+            try? await Task.sleep(for: Self.readAfter)
+            guard let self, !Task.isCancelled,
+                  let result = try? await loadOverview(using: self.runner),
+                  generation == self.refreshGeneration else { return }
+            // Nothing changes until the windows have settled and their pictures are taken, then all of
+            // it at once: drawn as it came, the card showed the new layout with the old sizes and
+            // pictures, then every size the windows passed through, then the pictures.
+            let pictureGeneration = self.captureGeneration
+            let (sizes, pictures) = await self.settled(result)
+            guard !Task.isCancelled, generation == self.refreshGeneration else { return }
             self.error = nil
             let focused = self.model.focusedWindowId
             self.apply(.loaded(result))
-            await self.stripFollowsFocus(from: focused)
-            await self.refreshChangedPictures()
+            if let sizes, pictureGeneration == self.captureGeneration {
+                self.previewSizes = sizes
+                self.previews.merge(pictures) { $1 }
+            }
+            self.stripFollowsFocus(from: focused)
         }
+    }
+
+    /// A refresh reads AeroSpace this long after the event: a key's `binding-triggered` comes before
+    /// its commands run, and nothing after them, so a read at once was of the state before them.
+    static let readAfter: Duration = .milliseconds(20)
+    /// Then the windows' sizes are read from the window server every `settleEvery`, until two reads
+    /// agree or `settleWithin` has passed: apps resize after AeroSpace moves their windows, in their
+    /// own time, 70–280 ms measured. Taken at fixed times, a picture caught a window halfway.
+    static let settleEvery: Duration = .milliseconds(50)
+    static let settleWithin: Duration = .seconds(1)
+
+    /// The windows' sizes once they stand still, and new pictures of those drawn whose picture no
+    /// longer fits their shape, or that have none: the neighbours that widened into a hole, a window
+    /// that appeared, the cards of the app the strip turns to. Nothing is stored, so a refresh cut
+    /// off by the next loses nothing. Nil while the overview is hidden: `clearPreviews` has dropped
+    /// the capture size.
+    private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
+        guard let size = captureSize else { return (nil, [:]) }
+        let ids = result.workspaces.flatMap(\.windows).map(\.windowId)
+        let deadline = ContinuousClock.now + Self.settleWithin
+        var sizes = await nativeSystem.previewSizes(windowIds: ids)
+        while ContinuousClock.now < deadline, !Task.isCancelled {
+            try? await Task.sleep(for: Self.settleEvery)
+            let again = await nativeSystem.previewSizes(windowIds: ids)
+            if again == sizes { break }
+            sizes = again
+        }
+        let focusedApp = result.workspaces.flatMap(\.windows).first { $0.windowId == result.focus?.windowId }?.bundleId
+        let apps = strip.map { [$0.bundleId, focusedApp] }
+        let drawn = result.workspaces.filter { ws in apps.map { apps in ws.windows.contains { apps.contains($0.bundleId) } } ?? true }
+        let stale = drawn.flatMap(\.windows).map(\.windowId).filter { id in sizes[id].map { !Self.sameShape(previews[id]?.size, $0) } ?? false }
+        var pictures: [Int: NSImage] = [:]
+        if !stale.isEmpty { await nativeSystem.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
+        return (sizes, pictures)
+    }
+
+    /// A picture fits its window while their shapes agree to 2 %; none fits nothing.
+    private static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
+        guard let picture, picture.height > 0, window.height > 0 else { return false }
+        return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
     /// While the strip is up, AeroSpace moving the focus to another app's window — that app's
     /// key, or any command — turns the strip to that app, marked there: the strip mirrors
     /// AeroSpace, as the map does. Only a move: a strip summoned from another app was turned to
-    /// it by the next event of any kind, a mode key. The pictures its cards lack are taken. An
-    /// app of one window leaves nothing to choose: the strip goes (`onFocusLeft`) to the app.
-    private func stripFollowsFocus(from before: Int) async {
+    /// it by the next event of any kind, a mode key. The pictures its cards lack are taken with
+    /// the rest (`settled`). An app of one window leaves nothing to choose: the
+    /// strip goes (`onFocusLeft`) to the app.
+    private func stripFollowsFocus(from before: Int) {
         guard let strip, model.focusedWindowId != before, let focused = model.focusedWindow,
               focused.bundleId != strip.bundleId else { return }
         guard model.workspaces.flatMap(\.windows).count(where: { $0.bundleId == focused.bundleId }) > 1 else {
@@ -582,29 +633,6 @@ public class OverviewStore {
             return
         }
         self.strip = Strip(bundleId: focused.bundleId, origin: focused.windowId, marked: focused.windowId)
-        guard let size = captureSize else { return }
-        await take(stripWorkspaces.flatMap(\.windows).map(\.windowId).filter { previews[$0] == nil }, at: size)
     }
 
-    /// After AeroSpace has moved, closed or opened windows, the sizes measured at summon are stale
-    /// for the windows that changed: the neighbours that widened into a hole, the window that
-    /// landed in a new row. All sizes are read again, which is cheap, and only those windows get a
-    /// new picture, plus any that appeared; a picture of a window whose size held is still true.
-    /// Nothing while the overview is hidden: `clearPreviews` has dropped the capture size.
-    private func refreshChangedPictures() async {
-        guard let size = captureSize else { return }
-        let generation = captureGeneration
-        let before = previewSizes
-        let ids = windowIds
-        let sizes = await nativeSystem.previewSizes(windowIds: ids)
-        guard generation == captureGeneration else { return }
-        previewSizes = sizes
-        let changed = ids.filter { id in
-            guard let now = sizes[id] else { return false }
-            guard let was = before[id] else { return true }
-            return abs(now.width - was.width) > 2 || abs(now.height - was.height) > 2
-        }
-        guard !changed.isEmpty else { return }
-        await take(changed, at: size)
-    }
 }

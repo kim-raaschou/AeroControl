@@ -79,12 +79,19 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return content
     }
 
+    /// Read from the window server each time, not from the visit's enumeration: a window resized
+    /// while the overview is up — laid out again by AeroSpace, its app getting round to it — kept
+    /// its size from the summon there, and was never taken again.
     public func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {
-        guard canCapturePreviews, let content = await resolvedContent() else { return [:] }
-        let wanted = Set(windowIds.map { CGWindowID($0) })
-        return Dictionary(uniqueKeysWithValues: content.windows.lazy
-            .filter { wanted.contains($0.windowID) && $0.frame.width > 1 && $0.frame.height > 1 }
-            .map { (Int($0.windowID), $0.frame.size) })
+        guard canCapturePreviews else { return [:] }
+        let wanted = Set(windowIds)
+        let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+        return windows.reduce(into: [:]) { sizes, window in
+            guard let id = window[kCGWindowNumber as String] as? Int, wanted.contains(id),
+                  let bounds = window[kCGWindowBounds as String] as? [String: Double],
+                  let width = bounds["Width"], let height = bounds["Height"], width > 1, height > 1 else { return }
+            sizes[id] = CGSize(width: width, height: height)
+        }
     }
 
     private static func shareableContent() async -> SCShareableContent? {
@@ -106,10 +113,17 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     /// ids are CGWindowIDs.
     public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
-        guard !windowIds.isEmpty, let content = await resolvedContent() else { return }
+        guard !windowIds.isEmpty, var content = await resolvedContent() else { return }
         // The enumeration is kept for the visit: re-taking a few pictures while a query
         // stands must not cost a second system-wide scan. A window opened after the summon
-        // is not in it and is simply not re-taken; the next summon enumerates afresh.
+        // is not in it and is simply not re-taken; the next summon enumerates afresh. One
+        // resized since is enumerated again, or its picture came out in the shape it had.
+        let sizes = await previewSizes(windowIds: windowIds)
+        if content.windows.contains(where: { sizes[Int($0.windowID)].map { [frame = $0.frame.size] in $0 != frame } ?? false }),
+           let fresh = await Self.shareableContent() {
+            self.content = fresh
+            content = fresh
+        }
         // Taken in the order asked, the overview's reading order, so its first cards are in first.
         let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
         let windows = windowIds.compactMap { byId[$0] }

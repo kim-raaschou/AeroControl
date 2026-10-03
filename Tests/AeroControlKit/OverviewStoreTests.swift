@@ -652,6 +652,56 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("a window that resizes in steps is taken once, when it stands still, in its last shape; the cards follow it on the way")
+    func takenOnceSettled() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = await summoned(runner, bridge)
+        store.send(.event(.changed))
+        for width in [400.0, 500.0, 600.0] {                                            // the app on its way
+            try? await Task.sleep(for: .milliseconds(35))
+            bridge.sizes[2] = CGSize(width: width, height: 200)
+        }
+        await waitUntil { bridge.captured.count >= 2 }
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(bridge.captured == [[1, 2], [2]] && (store.previews[2]?.size.height ?? 0) < 40)   // once, 100 × 33
+        store.stop()
+    }
+
+    @Test("a refresh cut off by the next while it takes pictures loses nothing: the next takes them, nothing having been stored")
+    func overlappingRefreshesKeepTheirPictures() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = await summoned(runner, bridge)
+        bridge.holdAfter = 0
+        bridge.sizes[2] = CGSize(width: 600, height: 200)                               // the neighbour widened into the hole
+        store.send(.event(.changed))
+        await waitUntil { bridge.isHolding }
+        bridge.holdAfter = nil
+        store.send(.event(.changed))                                                    // AeroSpace's next event
+        try? await Task.sleep(for: .milliseconds(50))
+        bridge.release()
+        await waitUntil { (store.previews[2]?.size.height ?? 0) < 40 }
+        #expect((store.previews[2]?.size.height ?? 0) < 40)                            // taken in the new shape, 100 × 33, not the old 100 × 67
+        store.stop()
+    }
+
+    @Test("the card changes once, read a moment after the key's binding-triggered, which comes before its commands run: the new layout, the settled sizes and the new pictures together")
+    func cardChangesOnce() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1", "2"]))
+        let store = await summoned(runner, bridge)
+        store.send(.event(.changed))                                                    // the key: its commands not run yet
+        try? await Task.sleep(for: .milliseconds(5))
+        runner.setState(windows: windowsJSON([(1, "2"), (2, "1")]), workspaces: workspacesJSON(["1", "2"]))   // now they have
+        bridge.sizes[2] = CGSize(width: 600, height: 200)                               // and the neighbour widened into the hole
+        try? await Task.sleep(for: .milliseconds(40))                                    // read, still settling
+        #expect(workspaceOf(store, 1) == "1")
+        await waitUntil { workspaceOf(store, 1) == "2" }
+        #expect(store.previewSizes[2]?.width == 600 && (store.previews[2]?.size.height ?? 0) < 40)  // with it, not after
+        store.stop()
+    }
+
     @Test("a window that appears while the overview is open gets a picture; nothing changed, nothing is taken")
     func newWindowGetsPictureAndQuietRefreshTakesNone() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
