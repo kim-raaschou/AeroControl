@@ -29,6 +29,14 @@ struct LayoutTests {
         #expect(AeroControlLayout.packedGap(screen: screen, inner: CGSize(width: 10, height: 5)) == 2)   // never touching
     }
 
+    @Test("stacking: a ghost lies over everything, the focused window over its neighbours, the rest as listed")
+    func stacking() {
+        #expect(AeroControlLayout.stacking(windowId: 9, focused: 9, ghosts: []) == 1)
+        #expect(AeroControlLayout.stacking(windowId: 4, focused: 9, ghosts: []) == 0)
+        #expect(AeroControlLayout.stacking(windowId: 4, focused: 9, ghosts: [4]) == 2)
+        #expect(AeroControlLayout.stacking(windowId: 9, focused: 9, ghosts: [9]) == 2)
+    }
+
     @Test("a card's tiles are packed inside its inner box at the largest height that fits, each at its window's own shape")
     func packedTiles() {
         let inner = AeroControlLayout.innerSize(of: CGSize(width: 1600, height: 900))

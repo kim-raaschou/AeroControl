@@ -232,6 +232,14 @@ public enum AeroControlLayout {
         return CGSize(width: (height * screenRatio(for: available) * backingScale).rounded(.up), height: (height * backingScale).rounded(.up))
     }
 
+    /// What lies over what when frames overlap: a ghost (a float, a fullscreen window) over
+    /// everything, as on the screen; the focused window over its neighbours, since a window that
+    /// refused its slot for a minimum size stands over the one beside it, and the one in front on
+    /// the screen is the one with focus; the rest as AeroSpace listed them.
+    public static func stacking(windowId: Int, focused: Int, ghosts: Set<Int>) -> Double {
+        ghosts.contains(windowId) ? 2 : windowId == focused ? 1 : 0
+    }
+
     /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with
     /// fewer windows than the busiest reads as a centred picture and not as a top-heavy box.
     /// Every cell is the same size, so this is what a lattice wants; a block too big for the

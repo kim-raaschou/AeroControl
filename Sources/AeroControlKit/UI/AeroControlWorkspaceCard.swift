@@ -103,7 +103,7 @@ struct AeroControlWorkspaceCard: View {
                 tile(window, metrics: AeroControlMetrics(tileSize: frame.size))
                     .offset(x: frame.minX, y: frame.minY)
                     .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
-                    .zIndex(ghost ? 1 : 0)
+                    .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: placement.ghosts))
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
