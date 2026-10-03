@@ -11,7 +11,7 @@ import Common
 /// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
 struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state
-    @Environment(\.aeroMotion) private var motion
+    @Environment(\.aeroLook) private var look
 
     let usable: CGSize
     let screens: [Int: CGRect]
@@ -50,7 +50,7 @@ struct AeroControlAppStrip: View {
         .mask(edges(fading: layout.runsRound(in: usable.width)))
         // The ring turns a card along when the keys take the marking to another workspace, the
         // same way round past the last; stepping within a card, or pointing, leaves it.
-        .animation(.smooth(duration: Self.turn * motion), value: [held ?? -1, turns])
+        .animation(.smooth(duration: Self.turn * look.motion), value: [held ?? -1, turns])
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
     }
 

@@ -160,13 +160,14 @@ struct OverviewRoot: View {
     /// shadow. The cards grew the last bit into place too, while the window was still hidden.
 
     var body: some View {
+        let palette = theme.palette(for: colorScheme)
         ZStack {
             // The whole backdrop — blur and tint — takes the opacity, so turning it down lets
             // the desktop through while the cards stay crisp. Tint alone made no visible
             // difference: the blur frosts everything regardless.
             ZStack {
                 BackdropBlur()
-                theme.palette(for: colorScheme).backdrop
+                palette.backdrop
             }
             .opacity(backdropOpacity)
             .ignoresSafeArea()
@@ -174,8 +175,7 @@ struct OverviewRoot: View {
             .onTapGesture(perform: onDismiss)
             panel
         }
-        .environment(\.aeroTheme, theme)
-        .environment(\.aeroMotion, motion)
+        .environment(\.aeroLook, AeroLook(palette: palette, motion: motion))
     }
 }
 

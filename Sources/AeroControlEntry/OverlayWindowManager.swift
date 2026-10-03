@@ -22,7 +22,7 @@ final class OverlayWindowManager {
         self.state = state
         self.settings = settings
         // The overview took the keyboard back when AeroSpace focused the app: give it to the app.
-        state.onFocusLeft = { [weak self] in self?.hide(restoreFocus: true) }
+        state.onShotDone = { [weak self] in self?.hide(restoreFocus: $0) }
     }
 
     private func makePanel(availableSize: NSSize) -> AeroControlPanel {
@@ -37,8 +37,7 @@ final class OverlayWindowManager {
             state: state,
             availableWidth: availableSize.width,
             availableHeight: availableSize.height,
-            screenFrames: screenFrames,
-            onDismiss: { [weak self] in self?.hide(restoreFocus: false) }   // the action focused something
+            screenFrames: screenFrames
         )
     }
 
@@ -83,8 +82,7 @@ final class OverlayWindowManager {
         case .none:
             return false
         case .focus(let windowId):
-            state.send(.action(.focusWindow(windowId)))
-            hide(restoreFocus: false)       // the filter chose a window; it gets the keyboard
+            state.send(.action(.focusWindow(windowId)))     // the store ends the shot; it gets the keyboard
         case .setQuery, .handled:
             break
         }
@@ -142,8 +140,7 @@ final class OverlayWindowManager {
         case .none:
             hide(restoreFocus: true)           // opening the URL activated us; give the keyboard back
         case .focus(let windowId):
-            hide(restoreFocus: false)          // what follows takes the focus itself
-            state.send(.action(.focusWindow(windowId)))
+            state.send(.action(.focusWindow(windowId)))     // what follows takes the focus itself
         case .launch:
             hide(restoreFocus: false)
             if let bundleId { launch(bundleId) }

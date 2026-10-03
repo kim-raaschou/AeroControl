@@ -127,42 +127,23 @@ extension Color {
     }
 }
 
-/// The theme every overview view draws with; the host sets it once on the root.
-/// (A plain `EnvironmentKey`: SwiftUI's `@Entry` macro needs a plugin the Command Line
-/// Tools toolchain does not ship.)
-private struct AeroThemeKey: EnvironmentKey {
-    static let defaultValue: AeroControlTheme = .system
+/// What every overview view draws with, resolved once at the root: the palette for the theme
+/// and the window's appearance, and the animation scale from settings, by which every duration
+/// is multiplied, so 0 is instant and 2 is leisurely. (A plain `EnvironmentKey`: SwiftUI's
+/// `@Entry` macro needs a plugin the Command Line Tools toolchain does not ship.)
+public struct AeroLook: Sendable {
+    public let palette: AeroControlPalette
+    public let motion: Double
+    public init(palette: AeroControlPalette, motion: Double) { self.palette = palette; self.motion = motion }
+}
+
+private struct AeroLookKey: EnvironmentKey {
+    static let defaultValue = AeroLook(palette: AeroControlTheme.system.palette(for: .dark), motion: 1)
 }
 
 public extension EnvironmentValues {
-    var aeroTheme: AeroControlTheme {
-        get { self[AeroThemeKey.self] }
-        set { self[AeroThemeKey.self] = newValue }
-    }
-}
-
-/// The animation scale from settings: every duration in the overview is multiplied by it,
-/// so 0 is instant and 2 is leisurely.
-private struct AeroMotionKey: EnvironmentKey {
-    static var defaultValue: Double { 1 }
-}
-
-public extension EnvironmentValues {
-    var aeroMotion: Double {
-        get { self[AeroMotionKey.self] }
-        set { self[AeroMotionKey.self] = newValue }
-    }
-}
-
-/// The host's "the one shot is over, hide the overview" callback. Lives in the environment
-/// because the views that fire it are the tiles and badges, three levels down.
-private struct AeroDismissKey: EnvironmentKey {
-    static var defaultValue: @MainActor () -> Void { {} }
-}
-
-public extension EnvironmentValues {
-    @MainActor var aeroDismiss: @MainActor () -> Void {
-        get { self[AeroDismissKey.self] }
-        set { self[AeroDismissKey.self] = newValue }
+    var aeroLook: AeroLook {
+        get { self[AeroLookKey.self] }
+        set { self[AeroLookKey.self] = newValue }
     }
 }

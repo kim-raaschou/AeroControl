@@ -19,16 +19,12 @@ struct AeroControlWorkspaceCard: View {
 
     @State private var isDropTarget = false
     @Environment(OverviewStore.self) private var state
-    @Environment(\.aeroDismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.aeroTheme) private var theme
-    @Environment(\.aeroMotion) private var motion
+    @Environment(\.aeroLook) private var look
 
     private func run(_ action: AeroControlAction) {
         state.send(.action(action))
     }
 
-    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
@@ -38,7 +34,7 @@ struct AeroControlWorkspaceCard: View {
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
         .contentShape(shape)
-        .onTapGesture { run(.focusWorkspace(workspace.name)); dismiss() }
+        .onTapGesture { run(.focusWorkspace(workspace.name)) }
         // Grab the card anywhere outside a tile and drop it on another card to merge the
         // workspace into it. Tiles keep their own drag (a single window).
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
@@ -62,9 +58,9 @@ struct AeroControlWorkspaceCard: View {
     private var dragPreview: some View {
         Text(workspace.name)
             .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
-            .foregroundStyle(palette.focusedBadgeText)
+            .foregroundStyle(look.palette.focusedBadgeText)
             .frame(width: 32, height: 32)
-            .background(palette.accent, in: Circle())
+            .background(look.palette.accent, in: Circle())
             .padding(6)
     }
 
@@ -111,7 +107,7 @@ struct AeroControlWorkspaceCard: View {
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
-        .animation(.easeInOut(duration: 0.15 * motion), value: windows)
+        .animation(.easeInOut(duration: 0.15 * look.motion), value: windows)
     }
 
     private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
@@ -121,8 +117,8 @@ struct AeroControlWorkspaceCard: View {
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
             RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
-                .fill(palette.accent.opacity(0.12))
-                .strokeBorder(palette.accent.opacity(0.9), lineWidth: 3)
+                .fill(look.palette.accent.opacity(0.12))
+                .strokeBorder(look.palette.accent.opacity(0.9), lineWidth: 3)
         }
     }
 }
@@ -138,11 +134,8 @@ struct AeroControlCardFace<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     @Environment(OverviewStore.self) private var state
-    @Environment(\.aeroDismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.aeroTheme) private var theme
+    @Environment(\.aeroLook) private var look
 
-    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
     /// The room inside the card for its tiles: below the badge lane and its gap, inside the padding.
     private var innerSize: CGSize { CGSize(width: size.width - 2 * AeroControlLayout.cardPadding, height: size.height - AeroControlLayout.cardChrome) }
@@ -160,13 +153,13 @@ struct AeroControlCardFace<Content: View>: View {
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
         .background(cardFill(shape))
-        .overlay(shape.strokeBorder(palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
+        .overlay(shape.strokeBorder(look.palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
         .clipShape(shape)
     }
 
     /// A solid themed fill, or the platform's frosted glass when the theme is System.
     @ViewBuilder private func cardFill(_ shape: RoundedRectangle) -> some View {
-        if let fill = palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
+        if let fill = look.palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
     }
 
     /// The badge, and with more than one display the name of this workspace's. The tiles
@@ -177,7 +170,7 @@ struct AeroControlCardFace<Content: View>: View {
             if let monitorName, !monitorName.isEmpty {
                 Label(monitorName, systemImage: "display")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(palette.badgeText)
+                    .foregroundStyle(look.palette.badgeText)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -185,7 +178,7 @@ struct AeroControlCardFace<Content: View>: View {
             if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
                 Image(systemName: symbol.name)
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(palette.badgeText.opacity(0.7))
+                    .foregroundStyle(look.palette.badgeText.opacity(0.7))
                     .help(symbol.help)
             }
         }
@@ -197,11 +190,11 @@ struct AeroControlCardFace<Content: View>: View {
         Text(workspace.name)
             .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())
             .lineLimit(1)
-            .foregroundStyle(isFocused ? palette.focusedBadgeText : palette.badgeText)
+            .foregroundStyle(isFocused ? look.palette.focusedBadgeText : look.palette.badgeText)
             .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
-            .background(isFocused ? palette.accent : palette.badgeFill, in: Circle())
+            .background(isFocused ? look.palette.accent : look.palette.badgeFill, in: Circle())
             .contentShape(Circle())
-            .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))); dismiss() }
+            .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
                   : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
     }

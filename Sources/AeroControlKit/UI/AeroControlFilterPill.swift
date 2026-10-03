@@ -17,14 +17,12 @@ struct AeroControlFilterPill: View {
         let rows: [AppStripModel.LegendRow]
     }
 
+    @Environment(\.aeroLook) private var look
     let query: String
     let matchCount: Int
     var app: StripApp?
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.aeroTheme) private var theme
 
-    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
 
     /// The lane is there whether or not anything has been typed. The pill is the only thing
     /// on screen that appears mid-gesture, and a view that appears must not move the grid it
@@ -42,7 +40,7 @@ struct AeroControlFilterPill: View {
     private var hint: some View {
         Text("type to filter  ·  ⏎ focus")
             .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(palette.badgeText.opacity(0.4))
+            .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }
 
     /// The strip has no typing, so no hint: the app, then its windows one per line, the marked
@@ -78,11 +76,11 @@ struct AeroControlFilterPill: View {
                             .opacity(0.6)
                     }
                 }
-                .foregroundStyle(row.marked ? palette.accent : palette.badgeText)
+                .foregroundStyle(row.marked ? look.palette.accent : look.palette.badgeText)
                 .frame(height: Self.rowHeight)
             }
         }
-        .capsule(palette)
+        .capsule(look.palette)
     }
 
     /// Tall enough for the capsule and its shadow, plus a line per window of the strip. The
@@ -107,7 +105,7 @@ struct AeroControlFilterPill: View {
                     .opacity(0.75)
             }
         }
-        .capsule(palette)
+        .capsule(look.palette)
     }
 }
 

@@ -66,8 +66,10 @@ public class OverviewStore {
     public private(set) var strip: Strip?
     /// The visit is over: the next summon decides afresh whether there is a strip.
     public func dropStrip() { strip = nil }
-    /// AeroSpace took the focus out of the overview for good; the host closes it.
-    public var onFocusLeft: (() -> Void)?
+    /// The one shot is over and the host closes the overview: after a focus action (the window
+    /// or workspace asked for takes the keyboard), or when AeroSpace took the focus out of the
+    /// overview for good (`restoreFocus`: the app that has it is brought forward).
+    public var onShotDone: ((_ restoreFocus: Bool) -> Void)?
 
     /// Windows in the order they last had the focus, most recent first, as AeroSpace reports
     /// focus changes for as long as AeroControl runs (`startListening`): AeroSpace keeps no
@@ -363,7 +365,7 @@ public class OverviewStore {
         let ids = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }.map(\.windowId)
         guard let id = AppStripModel.start(origin: model.focusedWindowId, ids: ids, recent: recentWindows) else { return false }
         // Focused already, AeroSpace sends no event for the strip to follow: it goes to the app.
-        if id == model.focusedWindowId, strip != nil { onFocusLeft?() } else { send(.action(.focusWindow(id))) }
+        if id == model.focusedWindowId, strip != nil { onShotDone?(true) } else { send(.action(.focusWindow(id))) }
         return true
     }
 
@@ -432,6 +434,10 @@ public class OverviewStore {
         let (newState, effects) = Common.updateOverview(model, input)
         if newState != model { model = newState }
         if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
+        switch input {
+        case .action(.focusWindow), .action(.focusWorkspace): onShotDone?(false)
+        default: break
+        }
         for effect in effects {
             switch effect {
             case .windowRemoved(let id): previews.removeValue(forKey: id)
@@ -542,12 +548,12 @@ public class OverviewStore {
     /// AeroSpace, as the map does. Only a move: a strip summoned from another app was turned to
     /// it by the next event of any kind, a mode key. The pictures its cards lack are taken with
     /// the rest (`settled`). An app of one window leaves nothing to choose: the
-    /// strip goes (`onFocusLeft`) to the app.
+    /// strip goes (`onShotDone`) to the app.
     private func stripFollowsFocus(from before: Int) {
         guard let strip, model.focusedWindowId != before, let focused = model.focusedWindow,
               focused.bundleId != strip.bundleId else { return }
         guard model.workspaces.flatMap(\.windows).count(where: { $0.bundleId == focused.bundleId }) > 1 else {
-            onFocusLeft?()
+            onShotDone?(true)
             return
         }
         self.strip = Strip(bundleId: focused.bundleId, marked: focused.windowId)

@@ -3,12 +3,8 @@ import Common
 
 struct AeroControlAppTile: View {
     @Environment(OverviewStore.self) private var state
-    @Environment(\.aeroDismiss) private var dismiss
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.aeroTheme) private var theme
-    @Environment(\.aeroMotion) private var motion
+    @Environment(\.aeroLook) private var look
 
-    private var palette: AeroControlPalette { theme.palette(for: colorScheme) }
     let window: WindowInfo
     let metrics: AeroControlMetrics
     /// Whether the grid this tile sits in is a filtered result. The panel decides that once,
@@ -59,7 +55,6 @@ struct AeroControlAppTile: View {
 
     private func onFocusWindow() {
         state.send(.action(.focusWindow(window.windowId)))
-        dismiss()
     }
 
     private func onCloseWindow() {
@@ -121,11 +116,11 @@ struct AeroControlAppTile: View {
         let cap = RoundedRectangle(cornerRadius: 5, style: .continuous)
         return Text(label)
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(marked ? palette.focusedBadgeText : palette.badgeText)
+            .foregroundStyle(marked ? look.palette.focusedBadgeText : look.palette.badgeText)
             .padding(.horizontal, 7)
             .frame(minWidth: AeroControlLayout.badgeSize, minHeight: AeroControlLayout.badgeSize)
-            .background(cap.fill(marked ? palette.accent : palette.cardFill ?? Color(nsColor: .controlBackgroundColor)))
-            .overlay(cap.strokeBorder(palette.cardBorder, lineWidth: 1))
+            .background(cap.fill(marked ? look.palette.accent : look.palette.cardFill ?? Color(nsColor: .controlBackgroundColor)))
+            .overlay(cap.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 0, y: 1.5)
             .padding(metrics.badgeSize * 0.2)
     }
@@ -139,7 +134,7 @@ struct AeroControlAppTile: View {
     private var caption: some View {
         Text(captionText)
             .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(palette.badgeText)
+            .foregroundStyle(look.palette.badgeText)
             .lineLimit(2)
             .multilineTextAlignment(.center)
             .frame(height: AeroControlLayout.captionTitleHeight)
@@ -166,12 +161,12 @@ struct AeroControlAppTile: View {
     private var tile: some View {
         let plate = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
         return ZStack {
-            plate.fill(palette.badgeFill.opacity(0.35))
-            FadingPicture(image: preview, fade: Self.fade * motion) { image in
+            plate.fill(look.palette.badgeFill.opacity(0.35))
+            FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
                 PixelImage(image: image, size: contentSize)
                     .clipShape(plate)
                     // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
-                    .overlay(plate.strokeBorder(palette.cardBorder, lineWidth: 1))
+                    .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
         }
         .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
@@ -205,7 +200,7 @@ struct AeroControlAppTile: View {
     /// faded with its picture — on another app's window in the strip.
     private var outline: some View {
         RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
-            .strokeBorder(palette.badgeText.opacity(0.45), lineWidth: 1.5)
+            .strokeBorder(look.palette.badgeText.opacity(0.45), lineWidth: 1.5)
     }
 
     /// On the picture's edge, not round it: windows drawn at AeroSpace's gaps are 3 to 6 points
@@ -215,7 +210,7 @@ struct AeroControlAppTile: View {
         let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
         if isFocused {
             shape
-                .strokeBorder(palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
+                .strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
                 .frame(width: size.width, height: size.height)
         } else if isOrigin {
             outline.frame(width: size.width, height: size.height)
@@ -228,9 +223,9 @@ struct AeroControlAppTile: View {
         if window.isFullscreen, preview != nil {
             Image(systemName: "arrow.up.left.and.arrow.down.right")
                 .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(palette.badgeText)
+                .foregroundStyle(look.palette.badgeText)
                 .padding(4)
-                .background(palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .background(look.palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .padding(6)
         }
     }
@@ -243,7 +238,7 @@ struct AeroControlAppTile: View {
                     .font(.system(size: diameter * 0.45, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(width: diameter, height: diameter)
-                    .background(palette.closeButtonFill, in: Circle())
+                    .background(look.palette.closeButtonFill, in: Circle())
                     .overlay(Circle().strokeBorder(.separator, lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
                     .contentShape(Circle())

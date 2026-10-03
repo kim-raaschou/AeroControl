@@ -8,8 +8,8 @@ The package's targets, the files in each with the types they declare, and which 
 
 ```mermaid
 flowchart LR
-    Common["Common<br/><small>Sources/Common · 13 files</small>"]
-    AeroControlKit["AeroControlKit<br/><small>Sources/AeroControlKit · 17 files</small>"]
+    Common["Common<br/><small>Sources/Common · 15 files</small>"]
+    AeroControlKit["AeroControlKit<br/><small>Sources/AeroControlKit · 15 files</small>"]
     AeroControl["AeroControl<br/><small>Sources/AeroControlEntry · 4 files</small>"]
     AeroControlKit --> Common
     AeroControl --> Common
@@ -23,6 +23,8 @@ flowchart LR
 | Common | `Aerospace/AerospaceEventParser.swift` | `RawEvent` |
 | Common | `Aerospace/AerospaceProcessRunner.swift` | `AerospaceProcessRunner` |
 | Common | `Domain/AeroControlAction.swift` | `AeroControlAction` |
+| Common | `Domain/AeroControlLayout.swift` | `AeroControlLayout`, `StripCard`, `StripLayout`, `StripPlacement` |
+| Common | `Domain/AeroControlMetrics.swift` | `AeroControlMetrics` |
 | Common | `Domain/AerospaceEvent.swift` | `AerospaceEvent` |
 | Common | `Domain/AppStripModel.swift` | `AppStripModel`, `LegendRow`, `Span` |
 | Common | `Domain/CardGrid.swift` | `CardGrid`, `Cell`, `Layout` |
@@ -40,10 +42,8 @@ flowchart LR
 | AeroControlKit | `UI/AeroControlAppStrip.swift` | `AeroControlAppStrip` |
 | AeroControlKit | `UI/AeroControlAppTile.swift` | `AeroControlAppTile`, `FadingPicture` |
 | AeroControlKit | `UI/AeroControlFilterPill.swift` | `AeroControlFilterPill`, `StripApp` |
-| AeroControlKit | `UI/AeroControlLayout.swift` | `AeroControlLayout`, `StripCard`, `StripLayout`, `StripPlacement` |
-| AeroControlKit | `UI/AeroControlMetrics.swift` | `AeroControlMetrics` |
 | AeroControlKit | `UI/AeroControlPanel.swift` | `AeroControlPanel` |
-| AeroControlKit | `UI/AeroControlTheme.swift` | `AeroControlPalette`, `AeroControlTheme`, `AeroDismissKey`, `AeroMotionKey`, `AeroThemeKey`, `BasePalette` |
+| AeroControlKit | `UI/AeroControlTheme.swift` | `AeroControlPalette`, `AeroControlTheme`, `AeroLook`, `AeroLookKey`, `BasePalette` |
 | AeroControlKit | `UI/AeroControlWorkspaceCard.swift` | `AeroControlCardFace`, `AeroControlWorkspaceCard` |
 | AeroControlKit | `UI/OverviewDragPayload.swift` | `OverviewDragPayload` |
 | AeroControlKit | `UI/PictureResampler.swift` | `PixelImage` |
@@ -68,20 +68,20 @@ flowchart LR
     Sources_AeroControlEntry["AeroControlEntry<br/><small>4 files</small>"]
     Sources_AeroControlKit_Adapters["AeroControlKit/Adapters<br/><small>4 files</small>"]
     Sources_AeroControlKit_State["AeroControlKit/State<br/><small>2 files</small>"]
-    Sources_AeroControlKit_UI["AeroControlKit/UI<br/><small>11 files</small>"]
+    Sources_AeroControlKit_UI["AeroControlKit/UI<br/><small>9 files</small>"]
     Sources_Common_Aerospace["Common/Aerospace<br/><small>4 files</small>"]
-    Sources_Common_Domain["Common/Domain<br/><small>9 files</small>"]
+    Sources_Common_Domain["Common/Domain<br/><small>11 files</small>"]
     Sources_AeroControlEntry -->|3| Sources_AeroControlKit_Adapters
     Sources_AeroControlEntry -->|4| Sources_AeroControlKit_State
-    Sources_AeroControlEntry -->|8| Sources_AeroControlKit_UI
-    Sources_AeroControlEntry -->|2| Sources_Common_Domain
+    Sources_AeroControlEntry -->|7| Sources_AeroControlKit_UI
+    Sources_AeroControlEntry -->|3| Sources_Common_Domain
     Sources_AeroControlKit_Adapters -->|1| Sources_Common_Aerospace
     Sources_AeroControlKit_State -->|1| Sources_AeroControlKit_Adapters
     Sources_AeroControlKit_State -->|3| Sources_Common_Aerospace
     Sources_AeroControlKit_State -->|6| Sources_Common_Domain
     Sources_AeroControlKit_UI -->|4| Sources_AeroControlKit_State
     Sources_AeroControlKit_UI -->|1| Sources_Common_Aerospace
-    Sources_AeroControlKit_UI -->|14| Sources_Common_Domain
+    Sources_AeroControlKit_UI -->|19| Sources_Common_Domain
     Sources_Common_Aerospace -->|4| Sources_Common_Domain
     Sources_Common_Domain -->|1| Sources_AeroControlEntry
     Sources_Common_Domain -->|2| Sources_Common_Aerospace
@@ -91,7 +91,7 @@ flowchart LR
 |---|---|
 | `AeroControlEntry/AeroControlApp.swift` | `MenuBarController`, `OverlayWindowManager`, `AerospaceSocketRunner`, `NativeApiBridgeAdapter`, `SingleInstanceGuard`, `OverviewStore`, `Summon`, `SettingsStore` |
 | `AeroControlEntry/MenuBarController.swift` | `AeroControlTheme`, `SettingsStore` |
-| `AeroControlEntry/OverlayWindowManager.swift` | `OverviewWindow`, `OverviewStore`, `Summon`, `AeroControlLayout`, `AeroControlPanel`, `SettingsStore`, `OverviewFilter` |
+| `AeroControlEntry/OverlayWindowManager.swift` | `OverviewWindow`, `OverviewStore`, `Summon`, `AeroControlPanel`, `SettingsStore`, `AeroControlLayout`, `OverviewFilter` |
 | `AeroControlEntry/OverviewWindow.swift` | `AeroControlPanel`, `AeroControlTheme`, `OverviewFilter` |
 | `AeroControlKit/Adapters/AerospaceSocketRunner.swift` | `AerospaceProcessRunner` |
 | `AeroControlKit/Adapters/NativeApiBridge.swift` | — |
@@ -99,14 +99,12 @@ flowchart LR
 | `AeroControlKit/Adapters/SingleInstanceGuard.swift` | — |
 | `AeroControlKit/State/OverviewStore.swift` | `NativeApiBridge`, `AerospaceCliParser`, `AerospaceCommands`, `AerospaceProcessRunner`, `AeroControlAction`, `AerospaceEvent`, `AppStripModel`, `Models`, `OverviewFilter`, `OverviewUpdate` |
 | `AeroControlKit/State/Summon.swift` | — |
-| `AeroControlKit/UI/AeroControlAppStrip.swift` | `OverviewStore`, `AeroControlAppTile`, `AeroControlLayout`, `AeroControlMetrics`, `AeroControlWorkspaceCard`, `AppStripModel`, `Models` |
-| `AeroControlKit/UI/AeroControlAppTile.swift` | `OverviewStore`, `AeroControlLayout`, `AeroControlMetrics`, `AeroControlTheme`, `OverviewDragPayload`, `PictureResampler`, `Models` |
+| `AeroControlKit/UI/AeroControlAppStrip.swift` | `OverviewStore`, `AeroControlAppTile`, `AeroControlWorkspaceCard`, `AeroControlLayout`, `AeroControlMetrics`, `AppStripModel`, `Models` |
+| `AeroControlKit/UI/AeroControlAppTile.swift` | `OverviewStore`, `OverviewDragPayload`, `PictureResampler`, `AeroControlLayout`, `AeroControlMetrics`, `Models` |
 | `AeroControlKit/UI/AeroControlFilterPill.swift` | `AeroControlTheme`, `PictureResampler`, `AppStripModel`, `OverviewUpdate` |
-| `AeroControlKit/UI/AeroControlLayout.swift` | `AeroControlMetrics`, `AppStripModel`, `Models`, `TilePacker` |
-| `AeroControlKit/UI/AeroControlMetrics.swift` | — |
-| `AeroControlKit/UI/AeroControlPanel.swift` | `OverviewStore`, `AeroControlAppStrip`, `AeroControlFilterPill`, `AeroControlLayout`, `AeroControlWorkspaceCard`, `AerospaceCliParser`, `AppStripModel`, `CardGrid`, `Models` |
+| `AeroControlKit/UI/AeroControlPanel.swift` | `OverviewStore`, `AeroControlAppStrip`, `AeroControlFilterPill`, `AeroControlWorkspaceCard`, `AerospaceCliParser`, `AeroControlLayout`, `AppStripModel`, `CardGrid`, `Models` |
 | `AeroControlKit/UI/AeroControlTheme.swift` | — |
-| `AeroControlKit/UI/AeroControlWorkspaceCard.swift` | `OverviewStore`, `AeroControlAppTile`, `AeroControlLayout`, `AeroControlMetrics`, `AeroControlTheme`, `OverviewDragPayload`, `AeroControlAction`, `Models`, `TilePacker` |
+| `AeroControlKit/UI/AeroControlWorkspaceCard.swift` | `OverviewStore`, `AeroControlAppTile`, `OverviewDragPayload`, `AeroControlAction`, `AeroControlLayout`, `AeroControlMetrics`, `Models`, `TilePacker` |
 | `AeroControlKit/UI/OverviewDragPayload.swift` | — |
 | `AeroControlKit/UI/PictureResampler.swift` | `AeroControlMetrics` |
 | `AeroControlKit/UI/SettingsStore.swift` | `AeroControlTheme` |
@@ -115,6 +113,8 @@ flowchart LR
 | `Common/Aerospace/AerospaceEventParser.swift` | `AerospaceCliParser`, `AerospaceEvent` |
 | `Common/Aerospace/AerospaceProcessRunner.swift` | — |
 | `Common/Domain/AeroControlAction.swift` | — |
+| `Common/Domain/AeroControlLayout.swift` | `AeroControlMetrics`, `AppStripModel`, `Models`, `TilePacker` |
+| `Common/Domain/AeroControlMetrics.swift` | — |
 | `Common/Domain/AerospaceEvent.swift` | — |
 | `Common/Domain/AppStripModel.swift` | `MenuBarController`, `AerospaceCliParser`, `OverviewFilter` |
 | `Common/Domain/CardGrid.swift` | — |
@@ -317,5 +317,5 @@ What the AppKit side calls on the kit. Everything above this line is windows and
 |---|---|
 | AeroControlApp | **OverlayWindowManager**: rebuild(), toggleVisibility()<br/>**OverviewStore**: requestPreviewAccess(), startListening() |
 | MenuBarController | **AeroControlTheme**: all<br/>**AnimationSpeed**: allCases<br/>**SettingsStore**: backdropOpacities, reset(), setAnimationSpeed(), setAppPicker(), setBackdropOpacity(), setTheme() |
-| OverlayWindowManager | **AeroControlLayout**: captureSize<br/>**OverviewStore**: capturePreviews(), clearPreviews(), dropStrip(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
+| OverlayWindowManager | **OverviewStore**: capturePreviews(), clearPreviews(), dropStrip(), focusApp(), handle(), measurePreviews(), prepareCapture(), reload(), requestPreviewAccess(), send(), startFollowingAerospace(), stepStrip(), stopFollowingAerospace(), summonApp() |
 | OverviewWindow | — |

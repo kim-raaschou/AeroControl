@@ -4,30 +4,20 @@ import Common
 /// The full-screen overview content: every workspace as a card, in even rows of equal-sized
 /// cards.
 public struct AeroControlPanel: View {
-    @Bindable var state: OverviewStore
-    @Environment(\.aeroMotion) private var motion
+    let state: OverviewStore
+    @Environment(\.aeroLook) private var look
     let availableWidth: CGFloat
     let availableHeight: CGFloat
     /// The visible frame of every screen in AeroSpace's coordinates (points, top-left origin),
     /// by AeroSpace's 1-based AppKit index: the area a workspace's layout fills, and the shape a
     /// window nothing is known about gets.
     let screenFrames: [Int: CGRect]
-    /// Called after an action that completes the "one shot" (focus a window or a
-    /// workspace); the host hides the overview.
-    let onDismiss: @MainActor () -> Void
 
-    public init(
-        state: OverviewStore,
-        availableWidth: CGFloat = 0,
-        availableHeight: CGFloat = 0,
-        screenFrames: [Int: CGRect] = [:],
-        onDismiss: @escaping @MainActor () -> Void = {}
-    ) {
-        self._state = Bindable(wrappedValue: state)
+    public init(state: OverviewStore, availableWidth: CGFloat = 0, availableHeight: CGFloat = 0, screenFrames: [Int: CGRect] = [:]) {
+        self.state = state
         self.availableWidth = availableWidth
         self.availableHeight = availableHeight
         self.screenFrames = screenFrames
-        self.onDismiss = onDismiss
     }
 
     /// Every workspace, whichever monitor it lives on: the overview is one window.
@@ -56,7 +46,6 @@ public struct AeroControlPanel: View {
         }
         .fixedSize()
         .environment(state)
-        .environment(\.aeroDismiss, onDismiss)
     }
 
     /// The grid's box. The query's lane comes out of it rather than being added to it: added,
@@ -115,7 +104,7 @@ public struct AeroControlPanel: View {
         .frame(width: usable.width, height: usable.height, alignment: .topLeading)
         // The map holds still through ordinary churn; the filtered result re-flows as the
         // query narrows. Animated, or every letter would snap.
-        .animation(.easeInOut(duration: 0.15 * motion), value: all)
+        .animation(.easeInOut(duration: 0.15 * look.motion), value: all)
     }
 
     private func errorView(_ message: String) -> some View {

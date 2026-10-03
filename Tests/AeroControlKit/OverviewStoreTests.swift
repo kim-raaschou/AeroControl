@@ -382,7 +382,7 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 7, workspace: "5")                                    // summoned from Claude
         let store = started(runner, bridge)
         var left = 0
-        store.onFocusLeft = { left += 1 }
+        store.onShotDone = { _ in left += 1 }
         await store.reload()
         _ = store.summonApp(bundleId: "com.app", picker: true)
         await store.measurePreviews()
