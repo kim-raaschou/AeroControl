@@ -24,6 +24,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settings: SettingsStore!
     private let instanceGuard = SingleInstanceGuard()
     private var statusItem: NSStatusItem?
+    /// The link that started the app: AppKit delivers it before `applicationDidFinishLaunching`,
+    /// when nothing is built yet, so it waits here until the end of that.
+    private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let lockName = "com.aerocontrol.single-instance.lock"
@@ -67,6 +70,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         menuBarController.install()
+
+        if let summon = pendingSummon {
+            pendingSummon = nil
+            overlayManager.toggleVisibility(summon)
+        }
     }
 
     @MainActor private func installStatusItem() {
@@ -112,6 +120,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
+        // Started by the link, the app has no overlay yet: the summon is carried out when it has.
+        guard let overlayManager else { pendingSummon = Summon(url); return }
         overlayManager.toggleVisibility(Summon(url))
     }
 
