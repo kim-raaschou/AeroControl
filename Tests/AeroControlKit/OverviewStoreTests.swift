@@ -686,6 +686,24 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("focus moves at once: after a workspace switch the ring is on the window AeroSpace's event named, before any read, while the layout waits for the windows to settle")
+    func focusMovesAtOnce() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "4")]), workspaces: workspacesJSON(["1", "4"]))
+        runner.setFocus(windowId: 1, workspace: "1")
+        let store = await summoned(runner, bridge)
+        #expect(store.ringWindowId == 1)
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "4"), (3, "4")]), workspaces: workspacesJSON(["1", "4"]))   // a window came too
+        runner.setFocus(windowId: 2, workspace: "4")
+        store.send(.event(.focusChanged(windowId: 2, workspace: "4")))                 // `aerospace workspace 4`
+        #expect(store.ringWindowId == 1)                                                // not yet applied: the inbox is a stream
+        await waitUntil { store.ringWindowId == 2 }
+        #expect(store.model.focusedWorkspace == "4")
+        #expect(windowIds(store) == [1, 2])                                            // the layout not yet: still settling
+        await waitUntil { windowIds(store) == [1, 2, 3] }
+        store.stop()
+    }
+
     @Test("the card changes once, read a moment after the key's binding-triggered, which comes before its commands run: the new layout, the settled sizes and the new pictures together")
     func cardChangesOnce() async {
         let runner = ScriptRunner(), bridge = FakeBridge()

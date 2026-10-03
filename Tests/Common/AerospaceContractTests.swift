@@ -44,29 +44,26 @@ struct AerospaceCommandArgvTests {
 // AeroSpace 0.21.3 emits exactly six event names, and is silent about window close, app
 // quit, `close --window-id`, a quiet `move-node-to-workspace`, every layout change,
 // fullscreen, move and resize. A reload is therefore mandatory whatever an event says, so
-// events carry no data and only the name is read. There is no targeted read to narrow it
+// events other than focus carry nothing we take, only the name is read. There is no targeted read to narrow it
 // with either: `list-windows` has no `--window-id` filter, and the ~2.2 ms per-command
 // floor means the narrowest available filter saves 0.5 ms out of 3.5.
 
-@Suite("AerospaceEvent.focusedWindow")
-struct AerospaceFocusedWindowTests {
-    @Test("a focus change names the window that took the focus; nothing else does", arguments: [
-        (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, Int?.some(42)),
-        (#"{"_event":"focus-changed","workspace":"7"}"#, nil),                    // an empty workspace
-        (#"{"_event":"window-detected","windowId":511,"workspace":"2"}"#, nil),
-        ("not json", nil),
-    ] as [(String, Int?)])
-    func focused(json: String, expected: Int?) {
-        #expect(AerospaceEvent.focusedWindow(json) == expected)
+@Suite("AerospaceEvent focus")
+struct AerospaceFocusChangedTests {
+    @Test("a focus change carries the window and the workspace that took the focus", arguments: [
+        (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, AerospaceEvent.focusChanged(windowId: 42, workspace: "2")),
+        (#"{"_event":"focus-changed","workspace":"7"}"#, .focusChanged(windowId: nil, workspace: "7")),   // an empty workspace
+        (#"{"_event":"window-detected","windowId":511,"workspace":"2"}"#, .changed),
+    ] as [(String, AerospaceEvent)])
+    func focus(json: String, expected: AerospaceEvent) {
+        #expect(AerospaceEvent.parse(json) == expected)
     }
 }
 
 @Suite("AerospaceEvent.parse")
 struct AerospaceEventParseTests {
 
-    @Test("every name AeroSpace emits about windows means: read again", arguments: [
-        #"{"_event":"focus-changed","windowId":1,"workspace":"2"}"#,
-        #"{"_event":"focus-changed","workspace":"7"}"#,                       // empty workspace
+    @Test("every other name AeroSpace emits about windows means: read again", arguments: [
         #"{"_event":"focused-workspace-changed","prevWorkspace":"1","workspace":"2"}"#,
         #"{"_event":"focused-monitor-changed","monitorId":1,"workspace":"2"}"#,
         #"{"_event":"window-detected","appBundleId":"com.apple.finder","appName":"Finder","windowId":511,"workspace":"2"}"#,

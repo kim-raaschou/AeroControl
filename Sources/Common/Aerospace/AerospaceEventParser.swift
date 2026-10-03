@@ -12,28 +12,26 @@ public enum AerospaceEventName: String, CaseIterable {
 }
 
 extension AerospaceEvent {
-    /// Only the name is read. The rest of the line is AeroSpace's business.
+    /// A focus change is read whole; of every other line only the name.
     public static func parse(_ json: String) -> AerospaceEvent? {
         guard let raw = try? JSONDecoder().decode(RawEvent.self, from: Data(json.utf8)) else {
             return nil
         }
-        return AerospaceEventName(rawValue: raw.event) == nil ? .other : .changed
-    }
-
-    /// The window a focus change gave the focus to; nil for any other line, or a focus change
-    /// to an empty workspace.
-    public static func focusedWindow(_ json: String) -> Int? {
-        struct Focus: Decodable { let _event: String; let windowId: Int? }
-        guard let focus = try? JSONDecoder().decode(Focus.self, from: Data(json.utf8)),
-              focus._event == AerospaceEventName.focusChanged.rawValue else { return nil }
-        return focus.windowId
+        switch AerospaceEventName(rawValue: raw.event) {
+        case .focusChanged: return .focusChanged(windowId: raw.windowId, workspace: raw.workspace ?? "")
+        case nil: return .other
+        default: return .changed
+        }
     }
 
     private struct RawEvent: Decodable {
         let event: String
+        let windowId: Int?
+        let workspace: String?
 
         private enum CodingKeys: String, CodingKey {
             case event = "_event"
+            case windowId, workspace
         }
     }
 }

@@ -487,10 +487,9 @@ public class OverviewStore {
                 do {
                     let stream = self.runner.subscribe(AerospaceCommand.subscribe())
                     for try await line in stream {
-                        if let id = AerospaceEvent.focusedWindow(line) { await self.noteFocus(id) }
-                        if let event = AerospaceEvent.parse(line), await self.following {
-                            await self.send(.event(event))
-                        }
+                        guard let event = AerospaceEvent.parse(line) else { continue }
+                        if case .focusChanged(let id?, _) = event { await self.noteFocus(id) }
+                        if await self.following { await self.send(.event(event)) }
                     }
                 } catch {}
                 guard !Task.isCancelled else { return }
@@ -502,6 +501,9 @@ public class OverviewStore {
 
     /// The grid animates its own reflow; the model changes in one step.
     private func apply(_ input: OverviewInput) {
+        var input = input
+        // The strip still takes its focus from the read, for now: only the overview moves on the event.
+        if strip != nil, case .event(.focusChanged) = input { input = .event(.changed) }
         let (newState, effects) = Common.updateOverview(model, input)
         if newState != model { model = newState }
         if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
@@ -562,14 +564,15 @@ public class OverviewStore {
             guard let self, !Task.isCancelled,
                   let result = try? await loadOverview(using: self.runner),
                   generation == self.refreshGeneration else { return }
-            // Nothing changes until the windows have settled and their pictures are taken, then all of
-            // it at once: drawn as it came, the card showed the new layout with the old sizes and
-            // pictures, then every size the windows passed through, then the pictures.
+            // The layout waits: nothing changes until the windows have settled and their pictures
+            // are taken, then all of it at once. Drawn as it came, the card showed the new layout
+            // with the old sizes and pictures, then every size the windows passed through, then the
+            // pictures. Focus does not wait: it came with AeroSpace's event, before this read.
+            let focused = self.model.focusedWindowId
             let pictureGeneration = self.captureGeneration
             let (sizes, pictures) = await self.settled(result)
             guard !Task.isCancelled, generation == self.refreshGeneration else { return }
             self.error = nil
-            let focused = self.model.focusedWindowId
             self.apply(.loaded(result))
             if let sizes, pictureGeneration == self.captureGeneration {
                 self.previewSizes = sizes

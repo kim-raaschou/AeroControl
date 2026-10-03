@@ -78,7 +78,12 @@ private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (O
 
 private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (OverviewModel, [OverviewEffect]) {
     switch event {
-    case .changed: (state, [.refresh])
-    case .other: (state, [])
+    case .focusChanged(let windowId, let workspace):
+        var new = state
+        new.focusedWindowId = windowId ?? 0
+        new.focusedWorkspace = workspace
+        return (new, [.refresh])
+    case .changed: return (state, [.refresh])
+    case .other: return (state, [])
     }
 }

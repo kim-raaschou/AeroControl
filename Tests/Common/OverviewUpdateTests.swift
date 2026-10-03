@@ -65,14 +65,34 @@ struct LoadedTests {
 @Suite("update — event")
 struct EventTests {
 
-    /// Events carry no data: AeroSpace is silent about close, quit, quiet moves and every
-    /// layout change, so a reload is mandatory whatever an event might have said.
+    /// AeroSpace is silent about close, quit, quiet moves and every layout change, so a
+    /// reload is mandatory whatever an event might have said.
     @Test("an event that means something reloads and changes nothing itself")
     func eventsOnlyRefresh() {
         let s = OverviewModel(workspaces: [ws("1", window(1, "A"))], focusedWindowId: 1, focusedWorkspace: "1")
         let (new, effects) = updateOverview(s, .event(.changed))
         #expect(new == s)
         #expect(effects == [.refresh])
+    }
+
+    /// Focus is AeroSpace's, and its focus-changed event says where it went: the ring moves
+    /// the moment the event lands, before any read, which only confirms it.
+    @Test("a focus change is applied as said, and reloads")
+    func focusChangedIsApplied() {
+        let s = OverviewModel(workspaces: [ws("1", window(1, "A")), ws("4", window(2, "B"))], focusedWindowId: 1, focusedWorkspace: "1")
+        let (new, effects) = updateOverview(s, .event(.focusChanged(windowId: 2, workspace: "4")))
+        #expect(new.focusedWindowId == 2)
+        #expect(new.focusedWorkspace == "4")
+        #expect(new.workspaces == s.workspaces)
+        #expect(effects == [.refresh])
+    }
+
+    @Test("a focus change to an empty workspace leaves no window focused")
+    func focusChangedToEmptyWorkspace() {
+        let s = OverviewModel(workspaces: [ws("1", window(1, "A"))], focusedWindowId: 1, focusedWorkspace: "1")
+        let (new, _) = updateOverview(s, .event(.focusChanged(windowId: nil, workspace: "3")))
+        #expect(new.focusedWindowId == 0)
+        #expect(new.focusedWorkspace == "3")
     }
 
     @Test("an event that moves no window does nothing at all")
