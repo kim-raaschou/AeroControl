@@ -93,9 +93,6 @@ struct AeroControlAppTile: View {
         return AeroControlMetrics.pixelSnapped(AeroControlMetrics.fit(size, into: pictureBox), scale: displayScale)
     }
 
-    /// The focus frame hugs the drawn content, not the cell.
-    private var plateSize: CGSize { AeroControlMetrics.focusPlateRect(around: contentSize) }
-
     var body: some View {
         VStack(spacing: AeroControlLayout.captionGap) {
             if showsCaption { caption }
@@ -211,8 +208,10 @@ struct AeroControlAppTile: View {
             .strokeBorder(palette.badgeText.opacity(0.45), lineWidth: 1.5)
     }
 
+    /// On the picture's edge, not round it: windows drawn at AeroSpace's gaps are 3 to 6 points
+    /// apart on a card, and a ring outside the picture ran into the neighbour.
     @ViewBuilder private var selectionPlate: some View {
-        let size = plateSize
+        let size = contentSize
         let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
         if isFocused {
             shape

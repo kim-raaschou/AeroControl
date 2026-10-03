@@ -55,75 +55,56 @@ public enum AeroControlLayout {
                                    gap: gap, caption: caption, scales: nil)
     }
 
-    /// The gap between packed tiles: the gap AeroSpace keeps between windows, at the card's
-    /// scale, so a card that packs (an accordion, a subset, a tree the sizes did not decide)
-    /// reads as the same screen as a card that draws its tree. Never under 2 points, so tiles
-    /// never touch. `tileSpacing` when the overview could not read the gap or the screen.
-    public static func tileGap(innerGap: CGFloat?, screen: CGSize?, inner: CGSize) -> CGFloat {
-        guard let innerGap, let screen, screen.width > 0 else { return tileSpacing }
-        return max(2, innerGap * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
+    /// The gap between packed tiles, in the screen's points: one constant, scaled to the card like
+    /// everything else, so a packed card (an accordion, a filtered subset, a workspace a release
+    /// AeroSpace cannot place) reads like a card drawn from AeroSpace's rects. It is an assumption
+    /// about the user's `gaps.inner`, the one in the overview; AeroSpace's own rects carry the real
+    /// gap, and only they are drawn as a map. `tileSpacing` when the screen is unknown; never
+    /// under 2 points, so tiles never touch.
+    public static let packedGapOnScreen: CGFloat = 12
+    public static func packedGap(screen: CGSize?, inner: CGSize) -> CGFloat {
+        guard let screen, screen.width > 0 else { return tileSpacing }
+        return max(2, packedGapOnScreen * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
     }
 
-    /// The workspace drawn as AeroSpace lays it out. Exact when AeroSpace said where its layout
-    /// put every tiled window (`WindowInfo.layoutRect`, the owner's branch): each at that place, at
-    /// the size the window server reports (an app with a minimum size overflows its slot, as on
-    /// the screen), in the screen's coordinates scaled into `inner` and centred. Otherwise
-    /// the tree read from the windows' sizes and the root's axis (`WorkspaceTree`), at the same
-    /// scale. Floating and fullscreen windows are not in either; they lie over it as `ghosts`,
-    /// at their own scale, centred, since where a float lies is not readable, and the card draws
-    /// them faint for that reason. Nil when a size is missing, the root is an accordion of two or
-    /// more without rects, the screen is unknown, or the sizes do not force a tree; the card then
-    /// packs tiles. `rows` are the windows by top edge and then the ghosts, for ↑/↓.
-    public static func treeLayout(windows: [WindowInfo], sizes: [Int: CGSize], rootLayout: String, screen: CGRect?,
-                                  gap: CGFloat?, inner: CGSize) -> (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>, exact: Bool)? {
+    /// The workspace as AeroSpace laid it out, when it said where (`WindowInfo.layoutRect`, the
+    /// owner's AeroSpace branch): each tiled window at that place, at the size the window server
+    /// reports (an app with a minimum size overflows its slot, as on the screen), in the screen's
+    /// coordinates scaled into `inner` and centred. Floating and fullscreen windows are not in the
+    /// layout; they lie over it as `ghosts`, at their own scale, centred, since where a float lies
+    /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
+    /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
+    /// shown), when the rects overlap (an accordion: only the front one would show), or when the
+    /// screen is unknown; the card then packs tiles. `rows` are the windows by top edge and then
+    /// the ghosts, for ↑/↓.
+    public static func treeLayout(windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
+        -> (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>)? {
         let ghosts = windows.filter { $0.isFloating || $0.isFullscreen }.map(\.windowId)
         let tiled = windows.filter { !ghosts.contains($0.windowId) }
-        guard windows.count >= 2, !tiled.isEmpty, ghosts.allSatisfy({ sizes[$0] != nil }), inner.width > 0, inner.height > 0, let screen else { return nil }
+        let rects = tiled.compactMap(\.layoutRect)
+        guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
+              !rects.indices.contains(where: { i in rects.indices.contains { j in
+                  j > i && rects[i].intersection(rects[j]).width > 2 && rects[i].intersection(rects[j]).height > 2 } })
+        else { return nil }
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted)
         let scale = fitted.width / screen.width
         var frames: [Int: CGRect] = [:]
-        // AeroSpace's own rects, when every tiled window has one and they tile: rects that overlap
-        // are an accordion's, and a map of them would show only the front one, so those pack.
-        let rects = tiled.compactMap(\.layoutRect)
-        let exact = rects.count == tiled.count && !rects.indices.contains { i in
-            rects.indices.contains { j in j > i && rects[i].intersection(rects[j]).width > 2 && rects[i].intersection(rects[j]).height > 2 }
-        }
-        if !exact, rects.count == tiled.count { return nil }
-        if exact {
-            // Where AeroSpace put the window, and as big as the app made it: a window with a minimum
-            // size refuses AeroSpace's rect and stands over its neighbour on the screen, so here too.
-            for window in tiled {
-                let r = window.layoutRect!
-                let size = sizes[window.windowId] ?? r.size
-                frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
-                                                 width: size.width * scale, height: size.height * scale)
-            }
-        } else {
-            guard let (tree, measured) = tree(of: windows, sizes: sizes, rootLayout: rootLayout, screen: screen) else { return nil }
-            frames = WorkspaceTree.frames(of: tree, windows: measured, screen: screen.size, in: box, gap: gap)
+        for window in tiled {
+            let r = window.layoutRect!
+            let size = sizes[window.windowId] ?? r.size
+            frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
+                                             width: size.width * scale, height: size.height * scale)
         }
         let byTop = Dictionary(grouping: frames, by: { $0.value.minY.rounded() })
         var rows = byTop.keys.sorted().map { top in byTop[top]!.sorted { $0.value.minX < $1.value.minX }.map(\.key) }
         for id in ghosts {
-            let size = CGSize(width: min(box.width, sizes[id]!.width * scale), height: min(box.height, sizes[id]!.height * scale))
+            // A ghost's size is the window server's; without one (no Screen Recording) the screen's box.
+            let size = sizes[id].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
             frames[id] = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
         }
         if !ghosts.isEmpty { rows.append(ghosts) }
-        return (frames, rows, Set(ghosts), exact)
-    }
-
-    /// The tiling tree of a workspace's tiled windows, and the windows it was read from; nil
-    /// when a size is missing, the root is an accordion of two or more, or the sizes do not
-    /// force a tree. Floating and fullscreen windows are left out.
-    private static func tree(of windows: [WindowInfo], sizes: [Int: CGSize], rootLayout: String, screen: CGRect)
-        -> (WorkspaceTree.Node, [WorkspaceTree.Window])? {
-        let tiled = windows.filter { !$0.isFloating && !$0.isFullscreen }
-        let measured = tiled.compactMap { w in sizes[w.windowId].map { WorkspaceTree.Window(id: w.windowId, size: $0) } }
-        guard !tiled.isEmpty, measured.count == tiled.count,
-              let axis = WorkspaceTree.Axis(rootLayout: rootLayout) ?? (tiled.count == 1 ? .horizontal : nil),
-              let tree = WorkspaceTree.reconstruct(windows: measured, root: axis, area: screen.size) else { return nil }
-        return (tree, measured)
+        return (frames, rows, Set(ghosts))
     }
 
     /// One workspace in the strip: its place on the unrolled row, where each window is drawn
@@ -133,8 +114,6 @@ public enum AeroControlLayout {
         public let span: AppStripModel.Span
         public let frames: [Int: CGRect]
         public let others: Set<Int>
-        /// The tree was read from sizes rather than AeroSpace's rects, so its places may be swapped.
-        public let orderUnknown: Bool
     }
 
     public struct StripLayout: Equatable, Sendable {
@@ -160,11 +139,11 @@ public enum AeroControlLayout {
     /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
     /// the app, its pictures in its screen's shape at one height (`AppStripModel.cardHeight`)
     /// inside the map card's padding and badge lane, mirroring the workspace as the
-    /// map does — AeroSpace's rects, or the tree read from sizes — with the other apps' windows
+    /// map does — from AeroSpace's rects — with the other apps' windows
     /// marked to be drawn faint. A card whose layout cannot be read packs only the app's
     /// windows in it, each at its own shape.
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
-                                   fallbackScreen: CGRect, gap: CGFloat?, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
+                                   fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
         let height = AppStripModel.cardHeight(width: viewWidth - 2 * cardPadding * CGFloat(groups.count), gaps: cardGap * CGFloat(max(0, groups.count - 1)),
@@ -175,16 +154,13 @@ public enum AeroControlLayout {
             if g > 0 { x += cardGap }
             let size = CGSize(width: (height * aspects[g]).rounded(), height: height)
             let ours = workspace.windows.filter { $0.bundleId == bundleId }
-            var frames: [Int: CGRect] = [:], others: Set<Int> = [], orderUnknown = false
-            if let mirror = treeLayout(windows: workspace.windows, sizes: sizes, rootLayout: workspace.rootLayout,
-                                       screen: areas[g], gap: gap, inner: size) {
+            var frames: [Int: CGRect] = [:], others: Set<Int> = []
+            if let mirror = treeLayout(windows: workspace.windows, sizes: sizes, screen: areas[g], inner: size) {
                 frames = mirror.frames
                 others = Set(workspace.windows.map(\.windowId)).subtracting(ours.map(\.windowId))
-                orderUnknown = !mirror.exact
             } else {
                 let ratios = ratios(of: ours, sizes: sizes, fallback: aspects[g])
-                let gapHere = tileGap(innerGap: gap, screen: areas[g].size, inner: size)
-                let packed = packTiles(ratios: ratios, inner: size, gap: gapHere, caption: 0)
+                let packed = packTiles(ratios: ratios, inner: size, gap: packedGap(screen: areas[g].size, inner: size), caption: 0)
                 let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: size)
                 for (i, window) in ours.enumerated() {
                     let t = packed.tiles[i]
@@ -192,8 +168,7 @@ public enum AeroControlLayout {
                 }
             }
             let outer = size.width + 2 * cardPadding
-            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: outer), frames: frames, others: others,
-                                   orderUnknown: orderUnknown))
+            cards.append(StripCard(workspace: workspace.name, span: AppStripModel.Span(x: x, width: outer), frames: frames, others: others))
             x += outer
         }
         return StripLayout(height: height + cardChrome, inner: height, width: x, cards: cards)
@@ -247,33 +222,6 @@ public enum AeroControlLayout {
             let shown = whole.isEmpty ? seen : [whole.min { abs($0.x + span.width / 2 - viewWidth / 2) < abs($1.x + span.width / 2 - viewWidth / 2) }!]
             return near.map { StripPlacement(card: $0.card, copy: $0.copy, x: $0.x, shown: shown.contains($0)) }
         }
-    }
-
-    /// The gap AeroSpace keeps between windows, read once for the overview: the median of what
-    /// every workspace shows — from AeroSpace's rects, else from a nested container's sizes. It
-    /// is one setting, so any workspace that shows it speaks for all, and an accordion or a flat
-    /// card still draws it. Nil when no workspace shows it.
-    public static func innerGap(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect]) -> CGFloat? {
-        let gaps = workspaces.compactMap { ws -> CGFloat? in
-            if let gap = rectGap(of: ws.windows) { return gap }
-            guard let screen = screens[ws.screenIndex],
-                  let (tree, measured) = tree(of: ws.windows, sizes: sizes, rootLayout: ws.rootLayout, screen: screen)
-            else { return nil }
-            return WorkspaceTree.innerGap(of: tree, windows: measured)
-        }.sorted()
-        return gaps.isEmpty ? nil : gaps[gaps.count / 2]
-    }
-
-    /// AeroSpace's gap, read from its rects: the narrowest space between two tiled windows side
-    /// by side or one above the other. Nil without two such — an accordion stacks its windows
-    /// on one another, and a workspace of flat tiles has no nested column for the sizes to tell.
-    static func rectGap(of windows: [WindowInfo]) -> CGFloat? {
-        let rects = windows.filter { !$0.isFloating && !$0.isFullscreen }.compactMap(\.layoutRect)
-        return rects.flatMap { a in rects.compactMap { b -> CGFloat? in
-            if b.minX >= a.maxX, b.minY < a.maxY, a.minY < b.maxY { return b.minX - a.maxX }
-            if b.minY >= a.maxY, b.minX < a.maxX, a.minX < b.maxX { return b.minY - a.maxY }
-            return nil
-        } }.min()
     }
 
     /// The box pictures are first taken to fit, in pixels: a strip card at its largest — half the

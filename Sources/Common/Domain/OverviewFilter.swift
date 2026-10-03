@@ -66,9 +66,10 @@ public extension OverviewModel {
         let ids = Set(matches.map(\.window.windowId))
         guard !ids.isEmpty else { return [] }
         return workspaces.compactMap { workspace in
-            var kept = workspace
-            kept.windows = workspace.windows.filter { ids.contains($0.windowId) }
-            return kept.windows.isEmpty ? nil : kept
+            let kept = workspace.windows.filter { ids.contains($0.windowId) }
+            return kept.isEmpty ? nil : WorkspaceInfo(name: workspace.name, windows: kept, monitorId: workspace.monitorId,
+                                                      monitorName: workspace.monitorName, screenIndex: workspace.screenIndex,
+                                                      rootLayout: workspace.rootLayout)
         }
     }
 }

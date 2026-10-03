@@ -37,39 +37,6 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("the store remembers whether AeroSpace can give layout rects: unknown while AeroSpace is silent, then learned once")
-    func layoutRectsAreLearnedOnce() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        #expect(store.layoutRects == .unknown)
-
-        runner.failing = true
-        await store.reload()
-        #expect(store.layoutRects == .unknown)                       // nothing answered: nothing learned
-
-        runner.failing = false                                     // an AeroSpace release: no --sort-by
-        await store.reload()
-        #expect(store.layoutRects == .absent)
-        let asked = runner.commandsRun.count
-        await store.reload()
-        #expect(!runner.commandsRun[asked...].contains { $0.contains { $0.contains("window-layout-rect") } })
-        store.stop()
-    }
-
-    @Test("an AeroSpace that knows %{window-layout-rect} is read with rects from the first load")
-    func layoutRectsPresent() async {
-        let runner = ScriptRunner()
-        runner.acceptsLayoutRects = true
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
-        #expect(store.layoutRects == .present)
-        #expect(runner.didRun(AerospaceCommand.listWindows(layoutRects: true)))
-        #expect(!runner.didRun(AerospaceCommand.listWindows()))
-        store.stop()
-    }
-
     @Test("a focused workspace with no windows still focuses the workspace")
     func emptyWorkspaceCanBeFocused() async {
         let runner = ScriptRunner()
@@ -715,21 +682,6 @@ struct OverviewStoreTests {
         await waitUntil { windowIds(store) == [1, 4] }
         try? await Task.sleep(for: .milliseconds(50))
         #expect(bridge.captured.count == 1)
-        store.stop()
-    }
-
-    @Test("a refresh keeps what the store learned about layout rects instead of asking again")
-    func refreshKeepsLayoutRects() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
-        #expect(store.layoutRects == .absent)
-        let asked = runner.commandsRun.count
-        store.send(.event(.changed))
-        await waitUntil { runner.commandsRun.count > asked }
-        try? await Task.sleep(for: .milliseconds(50))
-        #expect(!runner.commandsRun[asked...].contains { $0.contains { $0.contains("window-layout-rect") } })
         store.stop()
     }
 

@@ -10,9 +10,6 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.fit(CGSize(width: 1000, height: 1000), into: box) == CGSize(width: 96, height: 96))
         #expect(AeroControlMetrics.fit(CGSize(width: 600, height: 200), into: box) == CGSize(width: 144, height: 48))
         #expect(AeroControlMetrics.fit(.zero, into: box) == box)
-        // The ring lies on the picture's edge, not round it: windows drawn at AeroSpace's gaps are 3 to 6 points
-        // apart on a card, and a ring outside the picture ran into the neighbour.
-        #expect(AeroControlMetrics.focusPlateRect(around: CGSize(width: 96, height: 96)) == CGSize(width: 96, height: 96))
     }
 
     @Test("a picture is drawn a whole number of the screen's pixels wide and high, so one of its pixels is one of the screen's")

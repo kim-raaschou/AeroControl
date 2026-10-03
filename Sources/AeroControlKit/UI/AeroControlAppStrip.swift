@@ -16,7 +16,6 @@ struct AeroControlAppStrip: View {
     let usable: CGSize
     let screens: [Int: CGRect]
     let fallbackScreen: CGRect
-    let gap: CGFloat?
     let namesMonitors: Bool
 
     /// How long the ring takes to turn a card along.
@@ -29,7 +28,7 @@ struct AeroControlAppStrip: View {
         let groups = state.stripWorkspaces
         let bundleId = state.strip?.bundleId ?? ""
         let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.previewSizes, screens: screens,
-                                                   fallbackScreen: fallbackScreen, gap: gap, viewWidth: usable.width, panelHeight: usable.height)
+                                                   fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
         let ids = windows.map(\.window.windowId)
         let centre = state.strip?.centre ?? state.strip?.marked
         let turns = state.strip?.turns ?? 0
@@ -39,7 +38,7 @@ struct AeroControlAppStrip: View {
             ForEach(placements, id: \.self.identity) { placed in
                 let workspace = groups[placed.card], laid = layout.cards[placed.card]
                 AeroControlCardFace(workspace: workspace, monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                                    orderUnknown: laid.orderUnknown, size: CGSize(width: laid.span.width, height: layout.height)) {
+                                    size: CGSize(width: laid.span.width, height: layout.height)) {
                     windowsOf(workspace, laid, ids: ids)
                 }
                 .opacity(placed.shown ? 1 : 0)

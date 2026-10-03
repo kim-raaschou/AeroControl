@@ -95,6 +95,15 @@ sync while hidden — nothing reads it. Events carry **no data**; all state come
 - `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
   meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
 
+### Rule: read, don't infer — and remember nothing that can drift
+
+Workspace and window data are **immutable values from one read** of AeroSpace (`WorkspaceInfo`,
+`WindowInfo` are all `let`). The overview draws what AeroSpace said — its layout rects — or packs
+tiles; it does not reconstruct a layout from sizes, and it keeps no remembered state between loads
+that could drift from AeroSpace's answer (no learned capability, no remembered config value).
+The load-bearing list above is the whole exception. An engine that inferred layouts from sizes
+was built and removed in October 2026; see docs/aerospace-layout-data.md, "Review and cut".
+
 ### Trust boundary
 
 AeroSpace is trusted at the **parsing boundary**: the fields AeroControl explicitly requests

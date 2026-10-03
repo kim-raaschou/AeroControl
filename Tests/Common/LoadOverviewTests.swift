@@ -94,38 +94,26 @@ struct LoadOverviewLayoutRectsTests {
     private let withRects = AerospaceCommand.listWindows(layoutRects: true)
     private let plain = AerospaceCommand.listWindows()
 
-    @Test("an AeroSpace with the variable: windows are read with rects and the capability is learned")
+    @Test("every load asks with the variable; an AeroSpace that knows it answers, and the plain read is never used")
     func present() async throws {
         let runner = LayoutRectsRunner(accepts: true)
-        let result = try await loadOverview(using: runner, layoutRects: .unknown)
-        #expect(result.layoutRects == .present)
+        _ = try await loadOverview(using: runner)
         #expect(runner.ran.contains(withRects) && !runner.ran.contains(plain))
     }
 
-    @Test("an AeroSpace without it: the plain read follows in the same load, and the next load does not ask again")
+    @Test("an AeroSpace without it says it cannot parse the variable; the plain read follows in the same load, every load, nothing remembered")
     func absent() async throws {
         let runner = LayoutRectsRunner(accepts: false)
-        let first = try await loadOverview(using: runner, layoutRects: .unknown)
-        #expect(first.layoutRects == .absent)
-        #expect(runner.ran.contains(withRects) && runner.ran.contains(plain))
-        let asked = runner.ran.count
-        let second = try await loadOverview(using: runner, layoutRects: first.layoutRects)
-        #expect(second.layoutRects == .absent)
-        #expect(!runner.ran[asked...].contains(withRects) && runner.ran[asked...].contains(plain))
+        _ = try await loadOverview(using: runner)
+        _ = try await loadOverview(using: runner)
+        #expect(runner.ran.filter { $0 == withRects }.count == 2 && runner.ran.filter { $0 == plain }.count == 2)
     }
 
-    @Test("a failure that is not the variable being unknown teaches nothing: the load fails and the next one asks again")
-    func hiccupTeachesNothing() async {
+    @Test("a failure that is not the variable being unknown is a failure: no plain read hides it")
+    func hiccupIsAFailure() async {
         let runner = LayoutRectsRunner(accepts: true)
         runner.failNextRects = true
-        await #expect(throws: (any Error).self) { try await loadOverview(using: runner, layoutRects: .unknown) }
+        await #expect(throws: (any Error).self) { try await loadOverview(using: runner) }
         #expect(!runner.ran.contains(plain))
-    }
-
-    @Test("once known present, the plain read is never used")
-    func knownPresent() async throws {
-        let runner = LayoutRectsRunner(accepts: true)
-        _ = try await loadOverview(using: runner, layoutRects: .present)
-        #expect(runner.ran.contains(withRects) && !runner.ran.contains(plain))
     }
 }

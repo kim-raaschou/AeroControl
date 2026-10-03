@@ -38,10 +38,10 @@ Read together with `docs/outer-grid-literature.md` (when written), which asks wh
   Decided 2026-09-30 after the literature review; `CardGrid.hug`, the row-break search, the three weight steps and
   the narrow empty strip are gone. One picture height for the whole screen was tried the same day and dropped: a
   single six-window workspace shrank every picture on the map to about 70 points.
-- **The workspace as AeroSpace laid it out**: exact from `%{window-layout-rect}` when the AeroSpace has it (the
-  owner's branch; `LayoutRects`, learned once), otherwise the tree read from the windows' sizes and the root's
-  axis (`WorkspaceTree`, `AeroControlLayout.treeLayout`), verified against the owner's workspace 7. See
-  docs/aerospace-layout-data.md, "The tree, drawn" and "AeroSpace gives the rects".
+- **The workspace as AeroSpace laid it out**: from `%{window-layout-rect}` when the AeroSpace has it (the owner's
+  branch), asked for on every load; otherwise packed tiles. The engine that read a tree from window sizes was
+  built, verified against the owner's workspace 7, and removed again on 2026-10-03 after review: it inferred what
+  AeroSpace had not said. See docs/aerospace-layout-data.md, "AeroSpace gives the rects" and "Review and cut".
 - **Pictures sized to the screen and kept true while the overview is open** (2026-10-01). A picture is taken as large
   as a card can draw a window on the screen the overview is on, in its pixels (`AeroControlLayout.captureSize`), so a
   34-inch screen at 1x is not a blur; the fixed 720 × 480 is now the floor. After every refresh while the overview is

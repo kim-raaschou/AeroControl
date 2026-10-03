@@ -13,8 +13,6 @@ struct AeroControlWorkspaceCard: View {
     /// The visible frame of the screen this workspace lives on, in AeroSpace's coordinates
     /// (points, top-left origin); the area its layout fills.
     let screen: CGRect?
-    /// The gap AeroSpace keeps between windows, as the overview read it; nil when no workspace showed it.
-    let gap: CGFloat?
     let size: CGSize
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
@@ -35,7 +33,7 @@ struct AeroControlWorkspaceCard: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
         let placement = self.placement
-        AeroControlCardFace(workspace: workspace, monitorName: monitorName, orderUnknown: placement.fromTree && !placement.exact, size: size) {
+        AeroControlCardFace(workspace: workspace, monitorName: monitorName, size: size) {
             grid(placement)
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
@@ -72,30 +70,27 @@ struct AeroControlWorkspaceCard: View {
 
     private var innerSize: CGSize { AeroControlLayout.innerSize(of: size) }
 
-    /// Where every window goes in the card's inner box, how they read as rows for ↑/↓,
-    /// whether that is the workspace's real tree rather than packed tiles, and which windows
-    /// float over the tree rather than sit in it.
-    private typealias Placement = (frames: [Int: CGRect], rows: [[Int]], fromTree: Bool, ghosts: Set<Int>, exact: Bool)
+    /// Where every window goes in the card's inner box, how they read as rows for ↑/↓, and
+    /// which windows float over the layout rather than sit in it.
+    private typealias Placement = (frames: [Int: CGRect], rows: [[Int]], ghosts: Set<Int>)
 
-    /// The workspace as AeroSpace lays it out when that can be read from the windows' sizes
-    /// and the root's axis (`AeroControlLayout.treeLayout`); otherwise `TilePacker`'s tiles,
-    /// each at its own shape at one shared picture height, centred in the inner box. A
-    /// filtered card shows a subset, whose sizes cannot add up to a tree, so it packs.
+    /// The workspace as AeroSpace laid it out, when it said where (`AeroControlLayout.treeLayout`);
+    /// otherwise `TilePacker`'s tiles, each at its own shape at one shared picture height,
+    /// centred in the inner box. A filtered card shows a subset, so it packs.
     private var placement: Placement {
         let windows = workspace.windows
         let inner = innerSize
-        if !filtering, let tree = AeroControlLayout.treeLayout(windows: windows, sizes: state.previewSizes, rootLayout: workspace.rootLayout,
-                                                              screen: screen, gap: gap, inner: inner) {
-            return (tree.frames, tree.rows, fromTree: true, ghosts: tree.ghosts, exact: tree.exact)
+        if !filtering, let laid = AeroControlLayout.treeLayout(windows: windows, sizes: state.previewSizes, screen: screen, inner: inner) {
+            return laid
         }
         let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
         let packed = AeroControlLayout.packTiles(ratios: ratios, inner: inner,
-                                                 gap: AeroControlLayout.tileGap(innerGap: gap, screen: screen?.size, inner: inner),
+                                                 gap: AeroControlLayout.packedGap(screen: screen?.size, inner: inner),
                                                  caption: filtering ? AeroControlLayout.captionLane : 0)
         let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
         let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
                                 uniquingKeysWith: { _, b in b })
-        return (frames, packed.rows.map { $0.map { windows[$0].windowId } }, fromTree: false, ghosts: [], exact: false)
+        return (frames, packed.rows.map { $0.map { windows[$0].windowId } }, ghosts: [])
     }
 
     private func grid(_ placement: Placement) -> some View {
@@ -136,8 +131,6 @@ struct AeroControlCardFace<Content: View>: View {
     let workspace: WorkspaceInfo
     /// The display this workspace lives on; nil with a single display, where naming it is noise.
     let monitorName: String?
-    /// The tree was drawn from sizes alone: the shape is right, the places may be swapped.
-    let orderUnknown: Bool
     let size: CGSize
     @ViewBuilder let content: () -> Content
 
@@ -190,8 +183,8 @@ struct AeroControlCardFace<Content: View>: View {
             if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
                 Image(systemName: symbol.name)
                     .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(palette.badgeText.opacity(orderUnknown ? 0.35 : 0.7))
-                    .help(orderUnknown ? symbol.help + ". Drawn from the windows' sizes; AeroSpace did not say their order." : symbol.help)
+                    .foregroundStyle(palette.badgeText.opacity(0.7))
+                    .help(symbol.help)
             }
         }
     }

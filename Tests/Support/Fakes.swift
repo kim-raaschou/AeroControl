@@ -122,7 +122,7 @@ final class FakeBridge: NativeApiBridge {
         captured.append(windowIds)
         for (n, id) in windowIds.enumerated() {
             if n == holdAfter { await withCheckedContinuation { held = $0 } }
-            guard !blank.contains(id) else { continue }
+            guard !blank.contains(id), !Task.isCancelled else { continue }       // a cancelled capture gives nothing, as ScreenCaptureKit's
             // In the window's shape, as large as fits — like a real capture.
             let box = largest.map { CGSize(width: min($0.width, maxSize.width), height: min($0.height, maxSize.height)) } ?? maxSize
             let shape = sizes[id] ?? CGSize(width: 300, height: 200)

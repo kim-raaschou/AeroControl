@@ -44,17 +44,17 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
 public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public var id: String { name }
     public let name: String
-    public var windows: [WindowInfo]
-    public var monitorId: Int
+    public let windows: [WindowInfo]
+    public let monitorId: Int
     /// The display AeroSpace put this workspace on, e.g. "BenQ RD280U"; shown only when
     /// there is more than one.
-    public var monitorName: String
+    public let monitorName: String
     /// AeroSpace's `monitor-appkit-nsscreen-screens-id`: 1-based into `NSScreen.screens`, 0
     /// when it did not say. The card takes that screen's shape.
-    public var screenIndex: Int
+    public let screenIndex: Int
     /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion` or
     /// `v_accordion`. Empty when AeroSpace did not say.
-    public var rootLayout: String
+    public let rootLayout: String
 
     /// The first word of the display's name: "Built-in Retina Display" -> "Built-in",
     /// "BenQ RD280U" -> "BenQ". Enough to tell two displays apart in a card header, and
@@ -86,27 +86,14 @@ public struct Focus: Equatable, Sendable {
     }
 }
 
-/// Whether this AeroSpace can list where its layout put each window (`%{window-layout-rect}`,
-/// the owner's AeroSpace branch, which no release has yet). Learned from AeroSpace itself,
-/// once: the read with the variable is tried while unknown; if AeroSpace answers that it cannot
-/// parse the variable and the plain read then succeeds, it is absent. Nothing is inferred and
-/// no version is parsed.
-public enum LayoutRects: Equatable, Sendable {
-    case unknown, present, absent
-}
-
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
     /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather
     /// than wiping it. A present-but-empty `Focus` is an answer: nothing is focused.
     public let focus: Focus?
-    /// What this load learned about layout rects; every laid-out window has one iff `.present`.
-    public let layoutRects: LayoutRects
-
-    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil, layoutRects: LayoutRects = .unknown) {
+    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
         self.workspaces = workspaces
         self.focus = focus
-        self.layoutRects = layoutRects
     }
 }
 

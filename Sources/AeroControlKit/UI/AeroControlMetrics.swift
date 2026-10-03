@@ -30,9 +30,4 @@ public struct AeroControlMetrics: Equatable, Sendable {
     public static func focusRingWidth(scale: CGFloat) -> CGFloat { (1.5 * scale).rounded() / scale }
     /// Corner radius of a snapshot; small, like a real window's corners.
     public static let snapshotRadius: CGFloat = 6
-
-    /// The focus ring's frame for a snapshot of the given drawn size: the picture's own. The ring
-    /// lies on the picture's edge with the picture's corners, so it can never run into a
-    /// neighbour drawn at AeroSpace's few points of gap, nor be cut off by the card's edge.
-    public static func focusPlateRect(around content: CGSize) -> CGSize { content }
 }

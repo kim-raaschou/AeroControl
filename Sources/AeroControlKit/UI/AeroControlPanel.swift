@@ -48,7 +48,6 @@ public struct AeroControlPanel: View {
             } else if state.strip != nil, !state.stripWindows.isEmpty {
                 AeroControlAppStrip(usable: usable, screens: screenFrames,
                                     fallbackScreen: CGRect(origin: .zero, size: CGSize(width: availableWidth, height: availableHeight)),
-                                    gap: AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames),
                                     namesMonitors: namesMonitors)
             } else {
                 grid(matches)
@@ -99,8 +98,6 @@ public struct AeroControlPanel: View {
         let namesMonitors = self.namesMonitors
         let layout = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
                                       chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
-        // AeroSpace's gap between windows is one setting: read from whichever workspaces show it, used by every card.
-        let gap = AeroControlLayout.innerGap(workspaces: workspaces, sizes: state.previewSizes, screens: screenFrames)
         let cardRows = layout.rows.map { $0.map { all[$0].name } }
         return ZStack(alignment: .topLeading) {
             ForEach(layout.cells, id: \.index) { cell in
@@ -110,7 +107,6 @@ public struct AeroControlPanel: View {
                     monitorName: namesMonitors ? workspace.monitorShortName : nil,
                     fallbackRatio: ratio(of: workspace),
                     screen: screenFrames[workspace.screenIndex],
-                    gap: gap,
                     size: cell.frame.size,
                     filtering: filtering
                 )

@@ -282,8 +282,60 @@ server reports 600, and on the screen it stands 180 points over its neighbour. A
 that, so neither does the card: a window is drawn where AeroSpace put it and as big as the window server says,
 overlap included. The overlap test that sends accordions to tiles looks at the rects, not the sizes.
 
+Hidden windows sized for their slot (2026-10-03). The tree-only layout gave hidden workspaces true rects, but
+their windows kept the size they had when parked, so a picture of Safari at its old 574 points was fitted into
+a 333-point slot and shrank. The branch now also sizes a hidden window for its slot, in the corner where it is
+parked, and only when the slot changed, so a refresh that changes nothing sends nothing. The app lays its content
+out for the slot it will get, and the picture is what one sees when the workspace is shown. AeroControl then
+draws every window, hidden or not, at the size the window server reports; the earlier special case for hidden
+workspaces is gone. A window with a minimum size still stands over its neighbour, there as on the screen.
+
+The first attempt sized hidden windows from `layoutRecursive` and only the first placement took: `MacApp.setAxFrame`
+cancels a window's pending job when a new one arrives, and `hideInCorner` runs right after the layout to set the
+corner position, so the size job died unborn (the very first time an `await` in `hideInCorner` let it run). The
+test that found it: five windows moved one by one to a hidden workspace, each keeping the slot width of the
+moment it arrived, 1696, 842, 559, 418, and only the last one right. Now `hideInCorner` applies the slot's size
+and the corner position in one call.
+
+The gap is remembered (2026-10-03). The owner toggled workspace 4 between tiles and accordion while on it and
+saw workspace 1's card change too. AeroSpace was innocent: a before-and-after of every workspace's tree and every
+window's frame showed only workspace 4's windows moving. The card changed because the gap was read anew on every
+draw from whatever the workspaces showed at that moment: as a row, workspace 4 had neighbouring rects 12 points
+apart; as an accordion it had none, no other workspace had tiles, and the packed cards fell back to their own
+spacing. The gap is one setting in AeroSpace, so `OverviewStore.innerGap` now keeps it once any load has shown
+it, for the process. A load that shows no gap teaches nothing, as with the capability probe.
+
 The comma matters: in plain-text `--format` output fields are space-separated, so a rect with spaces was four
 columns. The first build used spaces and was replaced the same evening.
+
+## Review and cut (2026-10-03)
+
+A four-model review against AGENTS.md and the owner's own rule — workspace data is immutable, nothing remembered
+that could drift from what AeroSpace says — found, and the owner decided:
+
+- **The sizes engine is gone.** `WorkspaceTree.reconstruct`, `frames`, `innerGap` and their tests: about 250 lines.
+  It drew only what the sizes forced, but the order was always the listing's, marked by a faded glyph nobody
+  reads. It was the one place the overview inferred what AeroSpace had not said. On a release AeroSpace every
+  card now packs tiles, as v0.2.1 did; the map is AeroSpace's rects or nothing. `WorkspaceTree.order` stays:
+  the layout's order from the rects, for the ring, the keys and the strip.
+- **No remembered gap.** `OverviewStore.innerGap` and `screenFrames` are out. Two bugs went with them: the store
+  learned the gap before the host had given it the screens, so on a release AeroSpace the first summon drew one
+  spacing and the second another; and a refresh never learned at all. Packed tiles now stand one constant apart,
+  `AeroControlLayout.packedGapOnScreen` (12 points at the screen's scale), the one assumption in the overview.
+  Cards drawn from rects carry the real gap in the rects.
+- **No remembered capability.** `LayoutRects` is out: every load asks with `%{window-layout-rect}` and reads again
+  without it when AeroSpace cannot parse the variable. One failed call, about 2 ms, per load on a release
+  AeroSpace, and nothing stuck when the AeroSpace build is swapped.
+- **`WorkspaceInfo.isVisible` was dead**, and with it the `workspace-is-visible` field in the read. `WorkspaceInfo`'s
+  fields are `let` now; the filter builds a new value instead of mutating a copy.
+- **A ghost without a size** (no Screen Recording) no longer sends an exact card to tiles; it takes the screen's box.
+- `Tests/Live` runs against the real AeroSpace on request and stays outside the metrics gate, like Benchmarks.
+- The AeroSpace branch: `hideInCorner` sizes a hidden window only when its slot changed since it was last hidden,
+  and the bottom-left corner parks a window by the width the app actually has, so a minimum width no longer pokes
+  onto the screen. Earlier text in this document saying the resize already happened "only when the slot changed"
+  described an intention, not the code, until this fix.
+
+The gate after the cut: 5904 code lines against a baseline of 6211.
 
 ## Presentation options that follow
 

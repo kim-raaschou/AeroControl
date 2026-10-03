@@ -118,7 +118,7 @@ public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
 }
 
 public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor],
-                                focus: Focus? = nil, layoutRects: LayoutRects = .unknown) -> OverviewResult {
+                                focus: Focus? = nil) -> OverviewResult {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
     let workspaces = workspaceMonitors.map { wm in
@@ -132,7 +132,7 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
         )
     }
 
-    return OverviewResult(workspaces: workspaces, focus: focus, layoutRects: layoutRects)
+    return OverviewResult(workspaces: workspaces, focus: focus)
 }
 
 /// A workspace's windows in the layout's order when AeroSpace said where each tiled one is
@@ -165,21 +165,17 @@ public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
 /// A read issued in reaction to an AeroSpace event cannot see stale state: the daemon
 /// queues it behind its own work, so there is no read-too-early race to guard against.
 ///
-/// `layoutRects` is what earlier loads learned about `%{window-layout-rect}`; the result carries
-/// what this one learned. Unknown: the read with the variable is tried, and only when AeroSpace
-/// says it cannot parse the variable *and* the plain read then succeeds is it marked absent, so
-/// an AeroSpace that is down teaches nothing. Present: that read is the read; a failure is a
-/// failure. Absent: the plain read, once.
-public func loadOverview(using runner: AerospaceProcessRunner, layoutRects: LayoutRects = .unknown) async throws -> OverviewResult {
-    var learned = layoutRects
+/// Every load asks for `%{window-layout-rect}` (the owner's AeroSpace branch). A release AeroSpace
+/// answers that it cannot parse the variable, and the plain read follows in the same load: one
+/// failed call, about 2 ms, per load, and nothing remembered that could drift when the AeroSpace
+/// is swapped. Any other failure is a failure.
+public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
     let windowsJson: String
     do {
-        windowsJson = try await runner.run(AerospaceCommand.listWindows(layoutRects: layoutRects != .absent))
-        if layoutRects == .unknown { learned = .present }
+        windowsJson = try await runner.run(AerospaceCommand.listWindows(layoutRects: true))
     } catch {
-        guard layoutRects == .unknown, "\(error)".contains("window-layout-rect") else { throw error }
+        guard "\(error)".contains("window-layout-rect") else { throw error }
         windowsJson = try await runner.run(AerospaceCommand.listWindows())
-        learned = .absent
     }
     let windows = try parseWindows(json: windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces()))
@@ -187,5 +183,5 @@ public func loadOverview(using runner: AerospaceProcessRunner, layoutRects: Layo
     let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow())
     let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace())
     let focus = parseFocus(windowJson: focusedWindow, workspaceJson: focusedWorkspace)
-    return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus, layoutRects: learned)
+    return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus)
 }

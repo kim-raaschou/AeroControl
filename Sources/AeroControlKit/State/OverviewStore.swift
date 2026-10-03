@@ -198,10 +198,6 @@ public class OverviewStore {
     private var inboxTask: Task<Void, Never>?
     private var subscribeTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
-    /// Whether this AeroSpace lists where its layout put each window; learned by the first
-    /// load that gets an answer, and kept for the process. See `LayoutRects`.
-    public private(set) var layoutRects: LayoutRects = .unknown
-
     /// Pictures taken but not yet in `previews`. A workspace's land together once all of them
     /// are in, the cards in reading order and `cardEvery` apart: one by one, or each card as it
     /// was in, they came in all over the screen. And every picture stored redraws the whole
@@ -252,8 +248,7 @@ public class OverviewStore {
     public func reload() async {
         previewsAvailable = nativeSystem.canCapturePreviews
         do {
-            let result = try await loadOverview(using: runner, layoutRects: layoutRects)
-            layoutRects = result.layoutRects
+            let result = try await loadOverview(using: runner)
             apply(.loaded(result))
             error = nil
         } catch {
@@ -564,9 +559,8 @@ public class OverviewStore {
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             guard let self else { return }
-            guard let result = try? await loadOverview(using: self.runner, layoutRects: self.layoutRects) else { return }
+            guard let result = try? await loadOverview(using: self.runner) else { return }
             guard generation == self.refreshGeneration else { return }
-            self.layoutRects = result.layoutRects
             self.error = nil
             let focused = self.model.focusedWindowId
             self.apply(.loaded(result))
