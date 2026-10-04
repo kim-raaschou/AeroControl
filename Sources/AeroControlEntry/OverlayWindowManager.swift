@@ -103,8 +103,7 @@ final class OverlayWindowManager {
             guard self.requestedVisible else { return }   // toggled away while loading
             switch summon {
             case .map: break
-            case .focusedApp: guard self.carryOut(self.state.summonApp(bundleId: nil, picker: self.settings.appPicker), for: nil) else { return }
-            case .app(let id): guard self.carryOut(self.state.summonApp(bundleId: id, picker: self.settings.appPicker), for: id) else { return }
+            case .app(let id): guard self.carryOut(self.state.summonApp(bundleId: id, picker: self.settings.appPicker)) else { return }
             }
             if self.state.previewsAvailable {
                 await self.state.measurePreviews()
@@ -133,17 +132,15 @@ final class OverlayWindowManager {
     }
 
     /// Does what an app summon came to; true when it is the picker, which goes on to show.
-    private func carryOut(_ action: AppSummon, for bundleId: String?) -> Bool {
+    private func carryOut(_ action: AppSummon) -> Bool {
         switch action {
         case .pick:
             return true
-        case .none:
-            hide(restoreFocus: true)           // opening the URL activated us; give the keyboard back
         case .focus(let windowId):
             state.send(.action(.focusWindow(windowId)))     // what follows takes the focus itself
-        case .launch:
+        case .launch(let bundleId):
             hide(restoreFocus: false)
-            if let bundleId { launch(bundleId) }
+            launch(bundleId)
         }
         return false
     }
@@ -171,7 +168,7 @@ final class OverlayWindowManager {
         switch summon.again(stripApp: state.strip?.bundleId) {
         case .close: hide(restoreFocus: true)
         case .step: state.stepStrip()
-        case .summon(let app): _ = carryOut(state.summonApp(bundleId: app, picker: settings.appPicker), for: app)
+        case .summon(let app): _ = carryOut(state.summonApp(bundleId: app, picker: settings.appPicker))
         }
     }
 

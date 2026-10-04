@@ -87,9 +87,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// `open aerocontrol://windows`: the overview opens filtered to the focused window's app —
-    /// every window of the app you are in and nothing else. `aerocontrol://workspaces`, or any
-    /// other link, toggles the map.
+    /// `open aerocontrol://windows?app=<bundle id>`: that app's key. `aerocontrol://workspaces`,
+    /// or any other link, toggles the map.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")

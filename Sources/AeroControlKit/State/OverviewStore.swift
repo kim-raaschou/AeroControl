@@ -287,12 +287,8 @@ public class OverviewStore {
         PictureResampler.forget()
     }
 
-    /// What an app summon comes to.
-
-    /// One key on an app, `aerocontrol://windows?app=<bundle id>` — or, with no bundle id,
-    /// on the app of the focused window, `aerocontrol://windows`: the same link, the
-    /// focused app filled in. The count is free; the model was just read, so the key does
-    /// the right thing whatever the app's state:
+    /// One key on an app, `aerocontrol://windows?app=<bundle id>`. The count is free; the model
+    /// was just read, so the key does the right thing whatever the app's state:
     ///
     /// - none: start it; one: focus it;
     /// - two, and you are in one of them: the other — a toggle needs no picker;
@@ -302,8 +298,8 @@ public class OverviewStore {
     /// The first two lines are the link's own and hold with the strip off. The rest are the
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
     /// decides which window is in front, which for the app you are in changes nothing.
-    public func summonApp(bundleId named: String?, picker: Bool) -> AppSummon {
-        let decision = AppSummon.decide(app: named, model: model, recent: recentWindows, picker: picker)
+    public func summonApp(bundleId: String, picker: Bool) -> AppSummon {
+        let decision = AppSummon.decide(app: bundleId, model: model, recent: recentWindows, picker: picker)
         if case .pick(let opened) = decision { strip = opened }
         return decision
     }

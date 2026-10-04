@@ -9,18 +9,16 @@ struct SummonTests {
 
     @Test func aLinkNamesWhatTheOverviewOpensShowing() {
         #expect(summon("aerocontrol://workspaces") == .map)
-        #expect(summon("aerocontrol://windows") == .focusedApp)
+        #expect(summon("aerocontrol://windows") == .map)                                  // no app named: nothing to pick for
         #expect(summon("aerocontrol://windows?app=com.apple.finder") == .app(bundleId: "com.apple.finder"))
     }
 
     @Test("while the overview is up the strip's own key steps it; any other app key is the app's whole flow again, the strip taking over; the map's key closes")
     func againWhileUp() {
         #expect(Summon.map.again(stripApp: nil) == .close && Summon.map.again(stripApp: "com.arc") == .close)
-        #expect(Summon.focusedApp.again(stripApp: "com.arc") == .step)
         #expect(Summon.app(bundleId: "com.arc").again(stripApp: "com.arc") == .step)
         #expect(Summon.app(bundleId: "com.claude").again(stripApp: nil) == .summon(app: "com.claude"))
         #expect(Summon.app(bundleId: "com.claude").again(stripApp: "com.arc") == .summon(app: "com.claude"))
-        #expect(Summon.focusedApp.again(stripApp: nil) == .summon(app: nil))                 // the map is up: the strip of the app you are in
     }
 
     @Test func anythingElseIsTheMap() {

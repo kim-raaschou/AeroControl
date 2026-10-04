@@ -18,10 +18,10 @@ Five things you do all day, each one summon and one key:
   every window as a live picture, so you see it rather than remember it. Click it, or type
   until it is first and press Enter. Mission Control, but for AeroSpace's workspaces and
   with the windows AeroSpace has parked off-screen.
-- **"Which of my Arc windows?"** You are in Arc with three windows. Press the second key
-  (`aerocontrol://windows`): only the Arc windows appear, with their titles, and the ring is
-  already on the next one — Enter switches. Cmd-` with pictures. With one window nothing
-  appears at all.
+- **"Which of my Arc windows?"** One key per app (`aerocontrol://windows?app=<bundle id>`).
+  With three Arc windows, only they appear, with their titles, and the ring is already on
+  the next one — Enter switches. Cmd-` with pictures. With one window nothing appears at
+  all: the key just focuses it, and with none it starts the app.
 - **"The Teams window with the meeting in it."** Press the key and type `te`: the map
   collapses to the windows whose title or app name starts with that, titles shown. Type more
   to narrow, Enter when it is first. No mouse, no reading a number off a badge.
@@ -51,11 +51,11 @@ between summons, and it asks for no permission except Screen Recording for the p
   name has a word starting with what you typed — `te` finds Teams, `toml` finds
   `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
-- **This app's windows**: a second summon, `open aerocontrol://windows`, opens the overview
-  already filtered to the app you are in — three Arc windows, nothing else — with the ring
-  on the next one, so Enter alone switches instance and Tab walks the rest. Under the cards a
-  legend lists the windows, key and title each, so a window is read there when its picture is
-  a sliver on a crowded workspace. With a single window nothing appears.
+- **One key per app**: `open "aerocontrol://windows?app=<bundle id>"` opens the overview
+  already filtered to that app — three Arc windows, nothing else — with the ring on the next
+  one, so Enter alone switches instance and Tab walks the rest. Under the cards a legend lists
+  the windows, key and title each, so a window is read there when its picture is a sliver on
+  a crowded workspace. With a single window nothing appears; it is focused.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
@@ -113,25 +113,19 @@ To keep the Screen Recording grant across rebuilds, run `script/sign-identity.sh
 
 ### Summon it from AeroSpace
 
-Two summons, two URLs. Both reach the running instance through Launch Services — no second
-process, no signal — and start it when it is not running. Put them in your AeroSpace config
-(`~/.aerospace.toml` or `~/.config/aerospace/aerospace.toml`, whichever you use):
+Two kinds of summon: the map, and one key per app. Both reach the running instance through
+Launch Services — no second process, no signal — and start it when it is not running. Bind
+them to whatever keys you like in your AeroSpace config (`~/.aerospace.toml` or
+`~/.config/aerospace/aerospace.toml`):
 
 ```toml
-cmd-ctrl-alt-space = ['exec-and-forget open aerocontrol://workspaces']   # every workspace
-cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://windows']      # the focused app's windows
+<your key>      = ['exec-and-forget open aerocontrol://workspaces']                      # the map
+<a key per app> = ['exec-and-forget open "aerocontrol://windows?app=<bundle id>"']       # that app
 ```
 
-`aerocontrol://windows` is the same link with the app you are in filled in: with a single window nothing appears,
-with two it switches to the other, with more the strip opens, ring on the next one. `workspaces` closes the overview when it is
-already up; an app's link while it is up is that app's flow again, its strip taking over from whatever was showing.
-The strip is not a third view: it is the part of this rule that cannot be settled without you (see *The map and the strip*).
-
-A third form makes one key per app do the right thing whatever its state:
-
-```toml
-cmd-ctrl-alt-t = ['exec-and-forget open "aerocontrol://windows?app=com.mitchellh.ghostty"']
-```
+`workspaces` closes the overview when it is already up; an app's key while it is up is that app's flow again, its strip
+taking over from whatever was showing. The strip is not a third view: it is the part of the app rule that cannot be
+settled without you (see *The map and the strip*). The rule:
 
 | Windows of the app | What happens |
 |---|---|
@@ -156,7 +150,7 @@ up and the ring is on the new window before the pictures have settled. No key wa
 map with its own cursor would be a state AeroSpace does not have. Find a window by pointing
 at it, or by typing until it is first.
 
-**The strip is a picker.** `aerocontrol://windows` and the per-app keys settle three of their
+**The strip is a picker.** The per-app keys settle three of their
 four cases from AeroSpace's state alone, at once and without a word (none: start; one: focus;
 two and you are in one: the other). The fourth case — two windows from another app, or three
 or more — has no answer without you, and that is the strip: the app's windows in a row, a
@@ -217,10 +211,9 @@ Use the menu-bar icon for all in-app configuration:
 - **Animation**: Off, Fast, Normal or Slow. One scale on every motion — the reveal, the grid
   reflowing under a query, a picture landing.
 - **App picker**: On shows the strip — one row of the app's windows, like macOS's own
-  switcher, and two windows toggle. Off, those rules are off and the links pass through: an
-  app key with more than one window just brings the app forward — for `aerocontrol://windows`,
-  the app you are in, that changes nothing. No windows (start it) and one window (focus it)
-  work either way.
+  switcher, and two windows toggle. Off, those rules are off and the key passes through: an
+  app key with more than one window just brings the app forward. No windows (start it) and
+  one window (focus it) work either way.
 - **Window Previews**: grant Screen Recording when it is missing.
 - **Reset settings** and **Quit**.
 

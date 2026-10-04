@@ -226,11 +226,11 @@ struct OverviewStoreTests {
 
         // The strip off: its rules are off — no picker, no choosing. The app is brought
         // forward and macOS decides which of its windows is in front.
-        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch)
+        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch(bundleId: "com.app"))
         #expect(store.filter == "")
 
         // Not running: start it.
-        #expect(store.summonApp(bundleId: "com.nothing", picker: true) == .launch && store.filter == "")
+        #expect(store.summonApp(bundleId: "com.nothing", picker: true) == .launch(bundleId: "com.nothing") && store.filter == "")
 
         // One window: focus it.
         runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
@@ -261,36 +261,7 @@ struct OverviewStoreTests {
         // The strip off switches the toggle off with it.
         runner.setFocus(windowId: 1, workspace: "1")
         await store.reload()
-        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch)
-        store.stop()
-    }
-
-    @Test("the focused-app summon is the same rule for the app you are in; with nothing focused, it does nothing")
-    func focusedAppSummon() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 2, workspace: "1")
-        let store = started(runner)
-        await store.reload()
-
-        #expect(picks(store.summonApp(bundleId: nil, picker: true)))
-        #expect(store.strip?.marked == 3 && store.ringWindowId == 3)             // the one after the focused
-        #expect(store.handle(.enter) == .focus(windowId: 3))
-
-        store.filter = ""
-        runner.setState(windows: teams(1), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 1, workspace: "1")
-        await store.reload()
-        #expect(store.summonApp(bundleId: nil, picker: true) == .focus(windowId: 1) && store.filter == "")   // one window: already there
-
-        runner.setFocus(windowId: nil, workspace: nil)
-        await store.reload()
-        #expect(store.summonApp(bundleId: nil, picker: true) == .none)            // nothing focused
-
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 2, workspace: "1")
-        await store.reload()
-        #expect(store.summonApp(bundleId: nil, picker: false) == .launch && store.filter == "")   // strip off: passes through
+        #expect(store.summonApp(bundleId: "com.app", picker: false) == .launch(bundleId: "com.app"))
         store.stop()
     }
 
