@@ -12,6 +12,9 @@ final class OverlayWindowManager {
     private var window: OverviewWindow?
     /// One-shot overview: starts hidden, summoned by the toggle.
     private var requestedVisible = false
+    /// The summon is reading AeroSpace: until it has, the model is the last visit's, and a
+    /// second key decided against it focused a closed window or started an app that runs.
+    private var loading = false
     /// The overview is shown this long after its pictures start being taken, so the first cards
     /// are about to land: shown at once, its plates stood empty for 230 ms.
     private static let revealAfter: Duration = .milliseconds(120)
@@ -67,6 +70,7 @@ final class OverlayWindowManager {
     /// display changes and settings changes free of special cases.
     private func show(_ summon: Summon) {
         requestedVisible = true
+        loading = true
         // Read AeroSpace's whole state and every window's size, start taking the pictures and
         // reveal the grid in its final shape a moment later, the cards landing in a wave —
         // waiting for all of them was most of the time between keystroke and overview.
@@ -74,6 +78,7 @@ final class OverlayWindowManager {
             guard let self else { return }
             self.state.prepareCapture()
             await self.state.reload()
+            self.loading = false
             guard self.requestedVisible else { return }   // toggled away while loading
             switch summon {
             case .map: break
@@ -155,6 +160,7 @@ final class OverlayWindowManager {
     /// A summon while the overview is up: see `Summon.again`.
     func toggleVisibility(_ summon: Summon = .map) {
         guard requestedVisible else { return show(summon) }
+        guard !loading else { return }                          // tens of milliseconds; the first key decides
         switch summon.again(stripApp: state.strip?.bundleId, among: state.model.workspaces.flatMap(\.windows)) {
         case .close: hide(restoreFocus: true)
         case .step: state.stepStrip()
