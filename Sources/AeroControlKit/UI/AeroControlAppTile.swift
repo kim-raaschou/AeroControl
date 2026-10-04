@@ -197,7 +197,7 @@ struct AeroControlAppTile: View {
         }
     }
 
-    /// A native-fullscreen window wears the glyph macOS uses for it, so a picture that is
+    /// A window AeroSpace holds fullscreen wears the glyph macOS uses for fullscreen, so a picture that is
     /// the whole screen is read as one.
     @ViewBuilder private var stateBadge: some View {
         if window.isFullscreen, preview != nil {

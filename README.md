@@ -45,7 +45,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   order, every card the same size and the shape of its screen, as GNOME and KWin shape their
   workspace cells. Cards hold still through window churn. Inside a card every window is drawn
   where AeroSpace put it, at its own shape, or packed at one height when AeroSpace has not said, in
-  AeroSpace's order. The layout engine is shared with
+  AeroSpace's order. Where AeroSpace put a window is `%{window-layout-rect}`, which no AeroSpace
+  release has yet (it is a branch of the author's); with a released AeroSpace every card is packed.
+  The layout engine is shared with
   [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview
   for Omarchy/Hyprland.
 - **Type to filter**: start typing and the grid collapses to the windows whose title or app
@@ -63,8 +65,8 @@ between summons, and it asks for no permission except Screen Recording for the p
   windows AeroSpace has parked off-screen). The overview appears first, in its final shape,
   and the pictures land in it as they are taken — about 170 ms to the overview and another
   ~300 ms until the last of twenty pictures. Needs the Screen Recording permission; without
-  it the tiles are empty plates — the overview is built around the pictures — and the menu
-  offers to request it.
+  it the tiles are plates with their app's icon — the overview is built around the pictures —
+  and the menu offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.
 - Drag a tile onto another workspace to move the window there.
 - **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to
