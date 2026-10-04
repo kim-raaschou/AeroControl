@@ -288,16 +288,6 @@ public class OverviewStore {
     }
 
     /// What an app summon comes to.
-    public enum AppSummon: Equatable, Sendable {
-        /// Start the app, or bring it forward if it runs; its windows are macOS's to order.
-        case launch
-        /// One window is the answer: focus it, and show nothing.
-        case focus(windowId: Int)
-        /// Windows to choose between: the filter and the ring are set; show the strip.
-        case pick
-        /// Nothing to do: no app named, and no window focused to name one.
-        case none
-    }
 
     /// One key on an app, `aerocontrol://windows?app=<bundle id>` — or, with no bundle id,
     /// on the app of the focused window, `aerocontrol://windows`: the same link, the
@@ -313,18 +303,9 @@ public class OverviewStore {
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
     /// decides which window is in front, which for the app you are in changes nothing.
     public func summonApp(bundleId named: String?, picker: Bool) -> AppSummon {
-        guard let bundleId = named ?? model.focusedWindow?.bundleId else { return .none }
-        let windows = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }
-        let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
-        switch windows.count {
-        case 0: return .launch
-        case 1: return .focus(windowId: windows[0].windowId)
-        default: break
-        }
-        guard picker else { return .launch }
-        if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
-        strip = .opened(bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recentWindows)
-        return .pick
+        let decision = AppSummon.decide(app: named, model: model, recent: recentWindows, picker: picker)
+        if case .pick(let opened) = decision { strip = opened }
+        return decision
     }
 
 

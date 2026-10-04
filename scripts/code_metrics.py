@@ -54,6 +54,7 @@ def layer_for(path: str) -> str:
         ("Sources/Common/Aerospace/", "Common · Aerospace (CLI parsing)"),
         ("Sources/Common/Domain/", "Common · Domain (models)"),
         ("Tests/Live/", LIVE_LAYER),
+        ("Tools/flowdoc/", FLOW_LAYER),
         ("Tests/", "Tests"),
         ("Benchmarks/", BENCH_LAYER),
     ]
@@ -69,12 +70,14 @@ BENCH_LAYER = "Tools · Benchmarks (perf harness)"
 # Live tests drive the real AeroSpace and the screen; they run on request (`make live-test`),
 # not in `make test` or CI, and like the benchmarks they ship nothing.
 LIVE_LAYER = "Tests · Live (against the real AeroSpace)"
-NON_PROD_LAYERS = ("Tests", BENCH_LAYER, LIVE_LAYER)
+# The flow page generator runs the rules and writes docs/flow.html (`make flow`); it ships nothing.
+FLOW_LAYER = "Tools · flowdoc (docs generator)"
+NON_PROD_LAYERS = ("Tests", BENCH_LAYER, LIVE_LAYER, FLOW_LAYER)
 
 
 def counts_toward_gate(layer: str) -> bool:
     """Benchmarks and live tests are not part of the shipped product; keep them out of the gate."""
-    return layer not in (BENCH_LAYER, LIVE_LAYER)
+    return layer not in (BENCH_LAYER, LIVE_LAYER, FLOW_LAYER)
 
 
 # Architecture guardrail: files under Common/ are the pure domain and must not

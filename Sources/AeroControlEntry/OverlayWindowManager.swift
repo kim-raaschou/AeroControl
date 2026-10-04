@@ -133,7 +133,7 @@ final class OverlayWindowManager {
     }
 
     /// Does what an app summon came to; true when it is the picker, which goes on to show.
-    private func carryOut(_ action: OverviewStore.AppSummon, for bundleId: String?) -> Bool {
+    private func carryOut(_ action: AppSummon, for bundleId: String?) -> Bool {
         switch action {
         case .pick:
             return true

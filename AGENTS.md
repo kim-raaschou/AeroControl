@@ -47,15 +47,17 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   it only as a deliberate, explained exception — in the commit that earns it (a feature and
   its cost are one reviewable change), with the cost stated in the message.
 
-### The flows are drawn in `docs/flow.html`
+### Rule: `docs/flow.html` is written by running the rules — `make flow`
 
-- `docs/flow.html` draws, by hand, what the code cannot say about itself: how a link is decided
-  (the map, start, focus, toggle, or the strip), what the map does from summon to pictures and
-  while it is up, how the strip lives and dies (its five transitions, the keys, AeroSpace moving
-  the focus), and the one way out. Each diagram names the file and function it was read from.
-- When one of those rules changes, the diagram changes in the same commit. A generated drawing
-  of targets, call graphs and view trees was tried on 2026-10-03 and removed the next day: true,
-  and not what anyone needed to know.
+- `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
+  `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,
+  `AppStripModel.action`/`start`/`legend`, the `Strip` transitions) against a fixture and
+  writes what they answered as tables and decision trees. Nothing in a table is written by
+  hand; the prose says only what cannot be run there (the host's order of operations) and
+  where to look for it.
+- `make flow` regenerates; `make flow-check` (CI) fails when the committed page is stale. A
+  rule that moves into `Common` becomes part of the page; one that stays in the store or the
+  host does not — that is a reason to move it.
 
 ### Rule: `Sources/Common/` stays UI-framework-free — enforced
 

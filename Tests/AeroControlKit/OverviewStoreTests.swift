@@ -11,6 +11,8 @@ import Testing
 @Suite("OverviewStore")
 struct OverviewStoreTests {
 
+    private func picks(_ summon: AppSummon) -> Bool { if case .pick = summon { return true } else { return false } }
+
     private func started(_ runner: ScriptRunner, _ bridge: FakeBridge = FakeBridge()) -> OverviewStore {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         return store
@@ -218,7 +220,7 @@ struct OverviewStoreTests {
         await store.reload()
 
         // Three windows and the picker on: the picker, the ring on the one after the focused.
-        #expect(store.summonApp(bundleId: "com.app", picker: true) == .pick)     // every fixture window is com.app
+        #expect(picks(store.summonApp(bundleId: "com.app", picker: true)))     // every fixture window is com.app
         #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")   // the strip has its own state, no query
         store.filter = ""
 
@@ -253,7 +255,7 @@ struct OverviewStoreTests {
 
         runner.setFocus(windowId: nil, workspace: nil)                            // coming from another app
         await store.reload()
-        #expect(store.summonApp(bundleId: "com.app", picker: true) == .pick)
+        #expect(picks(store.summonApp(bundleId: "com.app", picker: true)))
         store.filter = ""
 
         // The strip off switches the toggle off with it.
@@ -271,7 +273,7 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        #expect(store.summonApp(bundleId: nil, picker: true) == .pick)
+        #expect(picks(store.summonApp(bundleId: nil, picker: true)))
         #expect(store.strip?.marked == 3 && store.ringWindowId == 3)             // the one after the focused
         #expect(store.handle(.enter) == .focus(windowId: 3))
 

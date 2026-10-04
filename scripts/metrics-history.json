@@ -1600,5 +1600,23 @@
     "complexity": 906,
     "prodComplexity": 540,
     "files": 57
+  },
+  {
+    "timestamp": "2026-10-04T08:36:28+02:00",
+    "commit": "c78e89f",
+    "subject": "An app's key means the same whether the overview is up or not",
+    "code": 5621,
+    "complexity": 905,
+    "prodComplexity": 537,
+    "files": 57
+  },
+  {
+    "timestamp": "2026-10-04T09:27:56+02:00",
+    "commit": "b293cdc",
+    "subject": "docs/flow.html is written by running the rules: make flow",
+    "code": 5641,
+    "complexity": 937,
+    "prodComplexity": 542,
+    "files": 59
   }
 ]

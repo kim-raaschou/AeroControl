@@ -22,6 +22,12 @@ let package = Package(
             path: "Sources/AeroControlEntry",
             swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
         ),
+        .executableTarget(
+            name: "flowdoc",
+            dependencies: ["Common"],
+            path: "Tools/flowdoc",
+            swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
+        ),
         .testTarget(
             name: "AeroControlTests",
             dependencies: ["Common", "AeroControlKit"],
