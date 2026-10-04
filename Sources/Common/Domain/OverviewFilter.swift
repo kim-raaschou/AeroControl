@@ -1,6 +1,10 @@
 import Foundation
 
 private extension String {
+    /// Runs of letters and digits: what a title and a query are both cut into, so a query typed
+    /// whole, "aerospace.toml" or "BECT-938", has the same boundaries as the title it names.
+    var words: [Substring] { split(whereSeparator: { !$0.isLetter && !$0.isNumber }) }
+
     /// True when every word of the query begins some word here, case- and diacritic-insensitively.
     ///
     /// Word-anchored rather than anywhere in the string: a mid-word hit is the surprising
@@ -13,7 +17,7 @@ private extension String {
     /// folds to "ı", so "Inbox" stops matching "i" — and a test in the host's locale would
     /// never see it.
     func hasWordsStarting(with needles: [Substring]) -> Bool {
-        let words = split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        let words = self.words
         // Every typed word must start some word here, in any order — so "cafe mun" finds
         // "Café Münster" and "lars teams" finds a chat window whichever way round you type it.
         return needles.allSatisfy { needle in
@@ -32,14 +36,12 @@ public extension OverviewModel {
 
     /// Windows with a word starting with `query` in their title or app name, each with the
     /// workspace it lives on, in the order the grid draws them: workspace by workspace,
-    /// AeroSpace's own order inside each. That order is the one Tab walks, and its first
-    /// entry is what Enter picks until Tab says otherwise. A query shorter than
+    /// AeroSpace's own order inside each; the first is what Enter picks. A query shorter than
     /// `minQueryLength` matches nothing: the filter is not on yet, which is not the same as
     /// matching everything.
     func matching(_ query: String) -> [ParsedWindow] {
-        let needle = query.trimmingCharacters(in: .whitespaces)
-        guard needle.count >= Self.minQueryLength else { return [] }
-        let needles = needle.split(separator: " ")
+        let needles = query.words
+        guard query.trimmingCharacters(in: .whitespaces).count >= Self.minQueryLength, !needles.isEmpty else { return [] }
         return windowsInGridOrder.filter {
             $0.window.title.hasWordsStarting(with: needles) || $0.window.appName.hasWordsStarting(with: needles)
         }

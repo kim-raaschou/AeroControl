@@ -59,6 +59,9 @@ struct OverviewMatchingTests {
         ("938", [3]),               // after a hyphen: a digit reached through the filter
         ("in", [4]),                // the fold is locale-invariant: "Inbox" must match "in" everywhere
         ("space", []),              // mid-word in "aerospace"
+        ("aerospace.toml", [2]),    // typed whole, punctuation and all: the same boundaries as the title's
+        ("BECT-938", [3]),
+        ("..", []),                 // punctuation alone is no word, and matches nothing
     ])
     func wordRules(query: String, expected: [Int]) {
         #expect(ids(query, in: words) == expected)

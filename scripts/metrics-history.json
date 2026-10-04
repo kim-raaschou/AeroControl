@@ -1726,5 +1726,14 @@
     "complexity": 880,
     "prodComplexity": 487,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:46:54+02:00",
+    "commit": "37f8d25",
+    "subject": "Baseline ratcheted down: 5637/540 -> 5325/487",
+    "code": 5328,
+    "complexity": 879,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]
