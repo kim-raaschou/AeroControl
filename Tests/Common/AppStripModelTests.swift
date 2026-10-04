@@ -80,10 +80,10 @@ struct StripValueTests {
     func kept() {
         let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)                  // pointed at 2, the keys left the centre on 1
         #expect(s.kept(before: [1, 2, 3], after: [1, 2, 3]) == s)                      // a title tick turns nothing under a still hand
-        #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1]).marked == 2)
+        #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1])?.marked == 2)
         #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))
-        #expect(Strip(bundleId: "a", marked: 3, centre: 3, turns: 0).kept(before: [1, 2, 3], after: [1, 2]).marked == 2)   // the last closed: the one before
-        #expect(s.kept(before: [1, 2, 3], after: []).marked == nil)
+        #expect(Strip(bundleId: "a", marked: 3, centre: 3, turns: 0).kept(before: [1, 2, 3], after: [1, 2])?.marked == 2)   // the last closed: the one before
+        #expect(s.kept(before: [1, 2, 3], after: []) == nil)                              // none left: the strip is over
     }
 }
 

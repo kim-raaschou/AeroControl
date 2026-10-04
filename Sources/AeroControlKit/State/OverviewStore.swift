@@ -356,14 +356,15 @@ public class OverviewStore {
     public func send(_ input: OverviewInput) {
         let (newState, effects) = Common.updateOverview(model, input)
         let focusMoved = newState.focusedWindowId != model.focusedWindowId
-        if newState != model { model = newState }
+        let hadStrip = strip != nil
+        if newState != model { model = newState }               // keeps the strip, or ends it with its app's last window
         if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
         // The strip follows AeroSpace's focus, from the event or the read: to another app of
-        // several windows it turns, to one of a single window it is over and the host closes.
+        // several windows it turns, to one of a single window it is over.
         if focusMoved, let strip {
             self.strip = strip.following(model.focusedWindow, among: model.workspaces.flatMap(\.windows))
-            if self.strip == nil { onShotDone?(true) }
         }
+        if hadStrip, strip == nil { onShotDone?(true) }        // over: the host closes and the focused app gets the keyboard
         if case .action(let action) = input, action.isFocus { onShotDone?(false) }
         for effect in effects {
             switch effect {

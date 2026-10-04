@@ -49,11 +49,12 @@ public struct Strip: Equatable, Sendable {
 
     /// After the windows changed: the marking stays on its window and the centre where it was —
     /// AeroSpace's churn must not turn the carousel under a still hand. A closed marked window
-    /// hands the marking, and the centre, to the one that took its place.
-    public func kept(before: [Int], after: [Int]) -> Strip {
+    /// hands the marking, and the centre, to the one that took its place. With none left there
+    /// is nothing to choose: nil, the strip is over.
+    public func kept(before: [Int], after: [Int]) -> Strip? {
         if let marked, after.contains(marked) { return self }
-        let at = marked.flatMap { before.firstIndex(of: $0) } ?? 0
-        let now = after.isEmpty ? nil : after[min(after.count - 1, at)]
+        guard !after.isEmpty else { return nil }
+        let now = after[min(after.count - 1, marked.flatMap { before.firstIndex(of: $0) } ?? 0)]
         return Strip(bundleId: bundleId, marked: now, centre: now, turns: turns)
     }
 }

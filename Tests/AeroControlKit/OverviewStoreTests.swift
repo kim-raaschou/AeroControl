@@ -435,6 +435,18 @@ struct OverviewStoreTests {
         #expect(store.strip == nil)
     }
 
+    @Test("a strip whose app has no window left is over: the host closes and gives the keyboard back, rather than a map that swallows every key")
+    func stripEndsWithItsLastWindow() async {
+        let (runner, store) = await stripOnTeams()
+        var done: [Bool] = []
+        store.onShotDone = { done.append($0) }
+        runner.setState(windows: "[" + [oneWindow(9, "1", app: "Slack", bundleId: "com.slack")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1"]))
+        await store.reload()
+        #expect(store.strip == nil && done == [true])
+        #expect(store.handle(.character("s")) == .setQuery("s"))                      // the keys are the map's again
+    }
+
     @Test("the strip takes its pictures once: every window of its workspaces, at the strip's size, and nothing else")
     func stripTakesItsPicturesOnce() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
