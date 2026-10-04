@@ -32,7 +32,7 @@ struct LoadedTests {
         #expect(effects.isEmpty)
     }
 
-    @Test("a load drops windows AeroSpace no longer lists")
+    @Test("a load drops windows AeroSpace no longer lists, and asks for nothing")
     func loadedRemovesStale() {
         let s = OverviewModel(workspaces: [ws("1", window(1, "A"), window(2, "B"))], focusedWorkspace: "1")
         let result = OverviewResult(workspaces: [ws("1", window(1, "A"))], focus: Focus(workspace: "1"))
@@ -40,7 +40,7 @@ struct LoadedTests {
         let (new, effects) = updateOverview(s, .loaded(result))
 
         #expect(windowIds(new, workspace: "1") == [1])
-        #expect(effects.contains(.windowRemoved(2)))
+        #expect(effects.isEmpty)
     }
 
     @Test("a load whose focus reads did not answer leaves focus alone")
@@ -102,20 +102,20 @@ struct ActionTests {
 
     /// Every action but a merge is forwarded untouched: AeroSpace is the source of truth,
     /// so the model changes only when a load says it did.
-    @Test("actions run their command and leave the model alone", arguments: [
-        AeroControlAction.focusWorkspace("2"),
-        .focusWindow(1),
-        .closeWindow(1),
-        .closeWindow(999),                                       // an id the model does not hold
-        .moveWindow(windowId: 1, toWorkspace: "2"),
-        .moveWindowQuietly(windowId: 1, toWorkspace: "2"),
+    @Test("actions run their command and leave the model alone; what changes windows is read after, a focus is not: the overview closes on it", arguments: [
+        (AeroControlAction.focusWorkspace("2"), false),
+        (.focusWindow(1), false),
+        (.closeWindow(1), true),
+        (.closeWindow(999), true),                               // an id the model does not hold
+        (.moveWindow(windowId: 1, toWorkspace: "2"), true),
+        (.moveWindowQuietly(windowId: 1, toWorkspace: "2"), true),
     ])
-    func actionsAreForwarded(action: AeroControlAction) {
+    func actionsAreForwarded(action: AeroControlAction, reads: Bool) {
         let s = OverviewModel(workspaces: [ws("1", window(1, "A")), ws("2")],
                               focusedWindowId: 1, focusedWorkspace: "1")
         let (new, effects) = updateOverview(s, .action(action))
         #expect(new == s)
-        #expect(effects == [.runAction(action)])
+        #expect(effects == [.run([action], thenRead: reads)])
     }
 }
 

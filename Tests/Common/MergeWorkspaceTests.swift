@@ -16,12 +16,12 @@ struct MergeWorkspaceTests {
     func expandsInOrder() {
         let (new, effects) = updateOverview(state, .action(.mergeWorkspace(source: "1", into: "2")))
         #expect(new == state)   // AeroSpace is the source of truth; the reload updates the model
-        #expect(effects == [.runSequence([
+        #expect(effects == [.run([
             .moveWindowQuietly(windowId: 10, toWorkspace: "2"),
             .moveWindowQuietly(windowId: 11, toWorkspace: "2"),
             .moveWindowQuietly(windowId: 12, toWorkspace: "2"),
             .focusWorkspace("2"),
-        ])])
+        ], thenRead: true)])
     }
 
     @Test("merging a workspace into itself does nothing")
@@ -39,7 +39,7 @@ struct MergeWorkspaceTests {
     @Test("merge into an empty workspace is allowed")
     func intoEmpty() {
         let (_, effects) = updateOverview(state, .action(.mergeWorkspace(source: "2", into: "3")))
-        #expect(effects == [.runSequence([.moveWindowQuietly(windowId: 20, toWorkspace: "3"), .focusWorkspace("3")])])
+        #expect(effects == [.run([.moveWindowQuietly(windowId: 20, toWorkspace: "3"), .focusWorkspace("3")], thenRead: true)])
     }
 }
 

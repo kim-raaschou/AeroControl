@@ -30,59 +30,34 @@ public enum OverviewInput: Sendable {
 }
 
 public enum OverviewEffect: Equatable {
-    case windowRemoved(Int)
     case refresh
-    case runAction(AeroControlAction)
-    /// Actions that must run one after another, in order (e.g. a merge).
-    case runSequence([AeroControlAction])
+    /// AeroSpace commands one after another, in order (a merge keeps the tiling order and focuses
+    /// last), then, `thenRead`, AeroSpace read again. A focus is not read after: the overview
+    /// closes on it.
+    case run([AeroControlAction], thenRead: Bool)
 }
 
 public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (OverviewModel, [OverviewEffect]) {
+    var new = state
     switch input {
     case .loaded(let result):
-        return applyLoaded(state, result)
-    case .event(let event):
-        return applyEvent(state, event)
-    case .action(let action):
-        return applyAction(state, action)
-    }
-}
-
-private func applyAction(_ state: OverviewModel, _ action: AeroControlAction) -> (OverviewModel, [OverviewEffect]) {
-    guard case .mergeWorkspace(let source, let target) = action else {
-        return (state, [.runAction(action)])
-    }
-    guard source != target,
-          let windows = state.workspaces.first(where: { $0.name == source })?.windows,
-          !windows.isEmpty else {
-        return (state, [])
-    }
-    let moves = windows.map { AeroControlAction.moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) }
-    return (state, [.runSequence(moves + [.focusWorkspace(target)])])
-}
-
-private func applyLoaded(_ state: OverviewModel, _ result: OverviewResult) -> (OverviewModel, [OverviewEffect]) {
-    let oldIds = Set(state.workspaces.flatMap(\.windows).map(\.windowId))
-    let freshIds = Set(result.workspaces.flatMap(\.windows).map(\.windowId))
-
-    var new = state
-    new.workspaces = result.workspaces
-    if let focus = result.focus {
-        new.focusedWindowId = focus.windowId
-        new.focusedWorkspace = focus.workspace
-    }
-
-    let removedIds = oldIds.subtracting(freshIds)
-    return (new, removedIds.sorted().map { .windowRemoved($0) })
-}
-
-private func applyEvent(_ state: OverviewModel, _ event: AerospaceEvent) -> (OverviewModel, [OverviewEffect]) {
-    switch event {
-    case .focusChanged(let windowId, let workspace):
-        var new = state
+        new.workspaces = result.workspaces
+        if let focus = result.focus {
+            new.focusedWindowId = focus.windowId
+            new.focusedWorkspace = focus.workspace
+        }
+        return (new, [])
+    case .event(.focusChanged(let windowId, let workspace)):
         new.focusedWindowId = windowId ?? 0
         new.focusedWorkspace = workspace
         return (new, [.refresh])
-    case .changed: return (state, [.refresh])
+    case .event(.changed):
+        return (state, [.refresh])
+    case .action(.mergeWorkspace(let source, let target)):
+        let windows = source == target ? [] : state.workspaces.first { $0.name == source }?.windows ?? []
+        guard !windows.isEmpty else { return (state, []) }
+        return (state, [.run(windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)], thenRead: true)])
+    case .action(let action):
+        return (state, [.run([action], thenRead: !action.isFocus)])
     }
 }

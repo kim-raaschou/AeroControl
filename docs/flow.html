@@ -133,12 +133,12 @@ flowchart TD
 <table><tr><th>Input</th><th>Model after</th><th>Effects</th></tr>
 <tr><td>event: focus-changed to window 5 on workspace 2</td><td>focus → window 5 on workspace 2</td><td>read AeroSpace again</td></tr>
 <tr><td>event: anything else AeroSpace reports</td><td>unchanged</td><td>read AeroSpace again</td></tr>
-<tr><td>a read came back</td><td>focus → window 2 on workspace 1, workspaces replaced</td><td>forget window 4's picture<br/>forget window 5's picture<br/>forget window 6's picture<br/>forget window 7's picture<br/>forget window 8's picture<br/>forget window 9's picture</td></tr>
+<tr><td>a read came back</td><td>focus → window 2 on workspace 1, workspaces replaced</td><td>—</td></tr>
 <tr><td>action: focus window 5</td><td>unchanged</td><td>run <code>focus --window-id 5</code></td></tr>
 <tr><td>action: focus workspace 2</td><td>unchanged</td><td>run <code>workspace 2</code></td></tr>
-<tr><td>action: move window 3 to workspace 2</td><td>unchanged</td><td>run <code>move-node-to-workspace --window-id 3 --focus-follows-window 2</code></td></tr>
-<tr><td>action: close window 3</td><td>unchanged</td><td>run <code>close --window-id 3</code></td></tr>
-<tr><td>action: merge workspace 1 into 2</td><td>unchanged</td><td>run in order: <code>move-node-to-workspace --window-id 1 2</code>, <code>move-node-to-workspace --window-id 2 2</code>, <code>move-node-to-workspace --window-id 3 2</code>, <code>workspace 2</code></td></tr>
+<tr><td>action: move window 3 to workspace 2</td><td>unchanged</td><td>run <code>move-node-to-workspace --window-id 3 --focus-follows-window 2</code>, then read AeroSpace again</td></tr>
+<tr><td>action: close window 3</td><td>unchanged</td><td>run <code>close --window-id 3</code>, then read AeroSpace again</td></tr>
+<tr><td>action: merge workspace 1 into 2</td><td>unchanged</td><td>run <code>move-node-to-workspace --window-id 1 2</code>, then <code>move-node-to-workspace --window-id 2 2</code>, then <code>move-node-to-workspace --window-id 3 2</code>, then <code>workspace 2</code>, then read AeroSpace again</td></tr>
 </table>
 <p>What AeroSpace's lines mean to us (<code>AerospaceEvent.parse</code>):</p>
 <table><tr><th>Line</th><th>Event</th></tr>

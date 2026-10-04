@@ -80,9 +80,9 @@ func describe(_ k: FilterKey?) -> String {
 func describe(_ e: OverviewEffect) -> String {
     switch e {
     case .refresh: return "read AeroSpace again"
-    case .windowRemoved(let id): return "forget window \(id)'s picture"
-    case .runAction(let a): return "run \(code(AerospaceCommand.argv(for: a).joined(separator: " ")))"
-    case .runSequence(let as_): return "run in order: " + as_.map { code(AerospaceCommand.argv(for: $0).joined(separator: " ")) }.joined(separator: ", ")
+    case .run(let actions, let thenRead):
+        return "run " + actions.map { code(AerospaceCommand.argv(for: $0).joined(separator: " ")) }.joined(separator: ", then ")
+            + (thenRead ? ", then read AeroSpace again" : "")
     }
 }
 func describe(_ s: Strip?) -> String {

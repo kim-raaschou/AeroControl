@@ -353,8 +353,8 @@ public class OverviewStore {
     }
 
     /// The one entrance: the reducer runs in the caller's turn, the model changes in one step
-    /// (the grid animates its own reflow), and the effects run at once — each is a Task or a
-    /// removal, and `.loaded` never asks for a refresh, so nothing here re-enters. A queue in
+    /// (the grid animates its own reflow), and the effects run at once — each is a Task, and
+    /// `.loaded` never asks for a refresh, so nothing here re-enters. A queue in
     /// front of this was tried and cut (2026-10-03): it added a turn of latency to every input
     /// and let an event land behind a later read, and bought no ordering the main actor did
     /// not already give.
@@ -369,43 +369,25 @@ public class OverviewStore {
             self.strip = strip.following(model.focusedWindow, among: model.workspaces.flatMap(\.windows))
             if self.strip == nil { onShotDone?(true) }
         }
-        switch input {
-        case .action(.focusWindow), .action(.focusWorkspace): onShotDone?(false)
-        default: break
-        }
+        if case .action(let action) = input, action.isFocus { onShotDone?(false) }
         for effect in effects {
             switch effect {
-            case .windowRemoved(let id): previews.removeValue(forKey: id)
             case .refresh: requestRefresh()
-            case .runAction(let action): runAction(action)
-            case .runSequence(let actions): runSequence(actions)
+            case .run(let actions, let thenRead): run(actions, thenRead: thenRead)
             }
         }
     }
 
-    private func runAction(_ action: AeroControlAction) {
-        Task { [weak self] in
-            guard let self else { return }
-            _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
-            switch action {
-            case .moveWindow, .moveWindowQuietly, .closeWindow:
-                self.requestRefresh()
-            default:
-                break
-            }
-        }
-    }
-
-    /// Runs actions strictly one after another (a merge must keep the tiling order and
-    /// switch focus last), then reloads once. A failing step does not stop the rest:
-    /// AeroSpace stays the source of truth and the reload shows what actually happened.
-    private func runSequence(_ actions: [AeroControlAction]) {
+    /// Runs the commands strictly one after another, then reads once if asked. A failing step
+    /// does not stop the rest: AeroSpace stays the source of truth and the read shows what
+    /// actually happened.
+    private func run(_ actions: [AeroControlAction], thenRead: Bool) {
         Task { [weak self] in
             guard let self else { return }
             for action in actions {
                 _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
             }
-            self.requestRefresh()
+            if thenRead { self.requestRefresh() }
         }
     }
 
