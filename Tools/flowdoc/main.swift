@@ -187,13 +187,7 @@ let mapRows: [[String]] = keys.compactMap { name, kc, shift, chars in
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
 p("Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.")
-p("⌘ and a character (<code>FilterKey(command:)</code>). The window takes ⌘W and ⌘Q before the filter sees them (<code>OverviewWindow.performKeyEquivalent</code>, hand-written here): ⌘W closes, ⌘Q quits the app under the pointer and the overview stays up.")
-table(["⌘ + character", "FilterKey", "On the map", "In the strip of fifteen windows"], ["1", "9", "a", "f", "g", "0", "q", "w"].map { c in
-    let k = FilterKey(command: c)
-    let map = c == "w" ? "the window closes" : c == "q" ? "quit the app under the pointer" : k.map { describe(filterKeyAction(query: "", ring: ring1, key: $0)) } ?? "nothing"
-    let strip = k.map { describe(AppStripModel.action(for: $0, ids: Array(1...15), marked: 1)) } ?? (c == "w" ? "the window closes" : c == "q" ? "quit the app under the pointer" : "nothing")
-    return ["⌘\(c)", describe(k), map, strip]
-})
+p("Two ⌘ keys are the window's, on the map and in the strip alike, taken before the filter sees them (<code>OverviewWindow.performKeyEquivalent</code>, hand-written here): ⌘W closes, ⌘Q quits the app under the pointer and the overview stays up. Every other ⌘ key does nothing on the map.")
 
 // MARK: - 4. The strip
 
@@ -205,7 +199,10 @@ table(["Key", "Does"], stripKeys.compactMap { k in
     let does = describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))
     return does == "nothing" ? nil : [describe(k), does]
 })
-p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The ⌘ table in section 3 runs all fifteen keys, ⌘1–⌘9 and ⌘a–⌘f, against a strip of fifteen.")
+p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>AppStripModel.action</code>), run against a strip of fifteen windows:")
+table(["⌘ + character", "In a strip of fifteen windows"], ["1", "9", "a", "f", "g", "0"].map { c in
+    ["⌘\(c)", FilterKey(command: c).map { describe(AppStripModel.action(for: $0, ids: Array(1...15), marked: 1)) } ?? "nothing: not a window's key"]
+})
 p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
 p("The transitions, from a strip of app A opened from its window 1 (A's windows are 1, 2, 8):")
