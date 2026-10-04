@@ -200,7 +200,8 @@ enum AerospaceSocket {
         let rc = unsafe withUnsafePointer(to: &addr) { pointer in
             unsafe pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { unsafe connect(fd, $0, size) }
         }
-        if rc != 0 { throw AerospaceSocketError.io("connect() errno=\(errno) path=\(socketPath)") }
+        // No socket, or one nobody listens on: what the user needs to hear is that AeroSpace is not running.
+        if rc != 0 { throw AerospaceSocketError.io([ENOENT, ECONNREFUSED].contains(errno) ? "AeroSpace is not running" : "connect() errno=\(errno) path=\(socketPath)") }
 
         try writeUInt32(fd, aerospaceSocketProtocolVersion)
         // The server always sends its version next; we must read it to stay

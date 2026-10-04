@@ -7,9 +7,14 @@ import Testing
 
 // Exercises `AerospaceSocketRunner` against a mock AeroSpace server that speaks
 // the wire protocol independently (its own raw framing), so the tests validate
-// our client, not our own helpers echoed back. A final live smoke test talks to
-// the real AeroSpace socket when one is present.
+// our client, not our own helpers echoed back.
 @Suite struct AerospaceSocketRunnerTests {
+
+    @Test("no AeroSpace at the socket says so in words, not as an errno")
+    func notRunning() async {
+        let runner = AerospaceSocketRunner(socketPath: NSTemporaryDirectory() + "no-aerospace-\(UUID().uuidString).sock")
+        await #expect { try await runner.run(["list-workspaces"]) } throws: { "\($0)".contains("AeroSpace is not running") }
+    }
 
     @Test func runReturnsTrimmedStdoutOnSuccess() async throws {
         let server = try MockAerospaceServer { _ in
