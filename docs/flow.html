@@ -116,18 +116,18 @@ flowchart TD
 <tr><td>⌘0</td><td>nothing: not a window's key</td></tr>
 </table>
 <p>The keys the windows carry (<code>AppStripModel.keyLabel</code>): ⌘1, ⌘2, ⌘3, ⌘4, ⌘5, ⌘6, ⌘7, ⌘8, ⌘9, ⌘a, ⌘b, ⌘c, ⌘d, ⌘e, ⌘f, none, none for the first seventeen windows.</p>
-<p>The transitions, from a strip of app A opened from its window 1 (A's windows are 1, 2, 8):</p>
-<table><tr><th>Transition</th><th>Before</th><th>After</th></tr>
-<tr><td><code>opened</code> from window 1</td><td>—</td><td>com.a · marked 2 · centre 2 · turns 0</td></tr>
-<tr><td><code>stepped(+1)</code></td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.a · marked 8 · centre 8 · turns 0</td></tr>
-<tr><td><code>stepped(+1)</code> round the end, a turn</td><td>com.a · marked 8 · centre 8 · turns 0</td><td>com.a · marked 1 · centre 1 · turns 1</td></tr>
-<tr><td><code>stepped(-1)</code> back</td><td>com.a · marked 1 · centre 1 · turns 1</td><td>com.a · marked 8 · centre 8 · turns 0</td></tr>
-<tr><td><code>marking(8)</code>, the pointer</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.a · marked 8 · centre 2 · turns 0</td></tr>
-<tr><td><code>kept</code>: window 2 closed</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.a · marked 8 · centre 8 · turns 0</td></tr>
-<tr><td><code>following</code>: focus moved to A's window 8</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.a · marked 2 · centre 2 · turns 0</td></tr>
-<tr><td><code>following</code>: focus moved to C's window 4 (two windows)</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.c · marked 4 · centre 4 · turns 0</td></tr>
-<tr><td><code>following</code>: focus moved to B's window 3 (two windows, on two workspaces)</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>com.b · marked 3 · centre 3 · turns 0</td></tr>
-<tr><td><code>following</code>: focus moved to an app of one window</td><td>com.a · marked 2 · centre 2 · turns 0</td><td>no strip</td></tr>
+<p>What happens to a strip of app A, opened from its window 1 (A's windows are 1, 2 and 8, on two workspaces), as each thing happens to it. Every line is the value the transition returned:</p>
+<table><tr><th>What happened</th><th>The strip</th></tr>
+<tr><td>opened from window 1</td><td>marked on window 2, the one after yours; the carousel centred on it</td></tr>
+<tr><td>Tab</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
+<tr><td>Tab again, past the last window</td><td>the marking goes to window 1; the carousel centres on it; and turns round past the last card</td></tr>
+<tr><td>Shift-Tab</td><td>the marking goes to window 8; the carousel centres on it; and turns back past the first</td></tr>
+<tr><td>the pointer moves onto window 8</td><td>the marking goes to window 8; the carousel stays where it was</td></tr>
+<tr><td>window 2, the marked one, closes</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
+<tr><td>AeroSpace moves the focus to A's window 8</td><td>nothing changes</td></tr>
+<tr><td>AeroSpace moves the focus to C's window 4; C has two</td><td>the strip is com.c's now; the marking goes to window 4; the carousel centres on it</td></tr>
+<tr><td>AeroSpace moves the focus to B's window 3; B has two, on two workspaces</td><td>the strip is com.b's now; the marking goes to window 3; the carousel centres on it</td></tr>
+<tr><td>AeroSpace moves the focus to an app of one window</td><td>the strip is over: nothing to choose</td></tr>
 </table>
 <pre class="mermaid">
 flowchart TD

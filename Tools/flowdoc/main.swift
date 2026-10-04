@@ -205,23 +205,35 @@ table(["⌘ + character", "In a strip of fifteen windows"], ["1", "9", "a", "f",
 })
 p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
-p("The transitions, from a strip of app A opened from its window 1 (A's windows are 1, 2, 8):")
+p("What happens to a strip of app A, opened from its window 1 (A's windows are 1, 2 and 8, on two workspaces), as each thing happens to it. Every line is the value the transition returned:")
 let opened = Strip.opened("com.a", origin: 1, ids: [1, 2, 8], recent: [])
 let card: (Int) -> Int? = { id in model.workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } }
 let stepped = opened.stepped(1, ids: [1, 2, 8], card: card)
 let round = stepped.stepped(1, ids: [1, 2, 8], card: card)
 let all = model.workspaces.flatMap(\.windows)
-table(["Transition", "Before", "After"], [
-    ["<code>opened</code> from window 1", "—", describe(opened)],
-    ["<code>stepped(+1)</code>", describe(opened), describe(stepped)],
-    ["<code>stepped(+1)</code> round the end, a turn", describe(stepped), describe(round)],
-    ["<code>stepped(-1)</code> back", describe(round), describe(round.stepped(-1, ids: [1, 2, 8], card: card))],
-    ["<code>marking(8)</code>, the pointer", describe(opened), describe(opened.marking(8))],
-    ["<code>kept</code>: window 2 closed", describe(opened), describe(opened.kept(before: [1, 2, 8], after: [1, 8]))],
-    ["<code>following</code>: focus moved to A's window 8", describe(opened), describe(opened.following(w(8, "A"), among: all))],
-    ["<code>following</code>: focus moved to C's window 4 (two windows)", describe(opened), describe(opened.following(w(4, "C"), among: all))],
-    ["<code>following</code>: focus moved to B's window 3 (two windows, on two workspaces)", describe(opened), describe(opened.following(w(3, "B"), among: all))],
-    ["<code>following</code>: focus moved to an app of one window", describe(opened), describe(opened.following(w(99, "E"), among: all + [w(99, "E")]))],
+/// What a transition did, in the strip's own terms: where the marking went, whether the
+/// carousel followed it or turned, whose strip it is now, or that it is over.
+func tell(_ before: Strip, _ after: Strip?) -> String {
+    guard let after else { return "the strip is over: nothing to choose" }
+    var parts: [String] = []
+    if after.bundleId != before.bundleId { parts.append("the strip is \(after.bundleId)'s now") }
+    if after.marked != before.marked { parts.append("the marking goes to window \(after.marked.map(String.init) ?? "none")") }
+    if after.centre != before.centre { parts.append("the carousel centres on it") } else if after.marked != before.marked { parts.append("the carousel stays where it was") }
+    if after.turns > before.turns { parts.append("and turns round past the last card") }
+    if after.turns < before.turns { parts.append("and turns back past the first") }
+    return parts.isEmpty ? "nothing changes" : parts.joined(separator: "; ")
+}
+table(["What happened", "The strip"], [
+    ["opened from window 1", "marked on window \(opened.marked ?? 0), the one after yours; the carousel centred on it"],
+    ["Tab", tell(opened, stepped)],
+    ["Tab again, past the last window", tell(stepped, round)],
+    ["Shift-Tab", tell(round, round.stepped(-1, ids: [1, 2, 8], card: card))],
+    ["the pointer moves onto window 8", tell(opened, opened.marking(8))],
+    ["window 2, the marked one, closes", tell(opened, opened.kept(before: [1, 2, 8], after: [1, 8]))],
+    ["AeroSpace moves the focus to A's window 8", tell(opened, opened.following(w(8, "A"), among: all))],
+    ["AeroSpace moves the focus to C's window 4; C has two", tell(opened, opened.following(w(4, "C"), among: all))],
+    ["AeroSpace moves the focus to B's window 3; B has two, on two workspaces", tell(opened, opened.following(w(3, "B"), among: all))],
+    ["AeroSpace moves the focus to an app of one window", tell(opened, opened.following(w(99, "E"), among: all + [w(99, "E")]))],
 ])
 mermaid("""
 flowchart TD
