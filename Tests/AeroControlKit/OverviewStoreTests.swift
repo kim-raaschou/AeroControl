@@ -321,16 +321,14 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("in the strip Tab steps round, Home and End go to the ends, ⌘ and a digit picks, and typing is no query")
+    @Test("in the strip Tab steps round, ⌘ and a window's key picks, and typing is no query")
     func stripKeys() async {
         let (_, store) = await stripOnTeams()
         #expect(store.handle(.next) == .handled && store.strip?.marked == 1)          // wraps round
         #expect(store.handle(.previous) == .handled && store.strip?.marked == 3)
-        #expect(store.handle(.home) == .handled && store.strip?.marked == 1)
-        #expect(store.handle(.end) == .handled && store.strip?.marked == 3)
         #expect(store.handle(.character("x")) == .handled && store.filter == "" && store.strip?.marked == 3)
         #expect(store.handle(.character("2")) == .handled && store.strip?.marked == 3)     // a plain digit is not a key
-        #expect(store.handle(.commandDigit(2)) == .focus(windowId: 2))
+        #expect(store.handle(.commandKey(2)) == .focus(windowId: 2))
         #expect(store.handle(.enter) == .focus(windowId: 3))
         #expect(store.handle(.escape) == .none)                                        // the window closes the strip
         store.stop()
@@ -450,7 +448,7 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 1 && store.strip?.centre == 3)
         _ = store.handle(.next)
         #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
-        _ = store.handle(.home)
+        _ = store.handle(.previous)
         #expect(store.strip?.centre == 1)
         store.stepStrip()
         #expect(store.strip?.centre == 2)

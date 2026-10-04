@@ -173,7 +173,7 @@ where a window is; the legend says which it is, and the key on its line picks it
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 Tab is the exception. It handles more — the row turns into a carousel when it does not fit,
-⌘1–⌘9 reach the first nine, Tab the rest, and the legend stays readable throughout.
+⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, Tab the rest, and the legend stays readable throughout.
 
 ## Keyboard
 
@@ -197,8 +197,7 @@ In the strip:
 | Key | Does |
 |---|---|
 | Tab, → / Shift-Tab, ← | move the marking to the next / previous window, wrapping |
-| Home / End | the first / last window |
-| ⌘1 – ⌘9 | focus that window |
+| ⌘1 – ⌘9, ⌘a – ⌘f | focus that window: the keys the windows carry, fifteen in all |
 | the app's own key again | move the marking on, as Cmd-` does |
 | Enter | focus the marked window |
 | Escape | dismiss, back on the window you came from |

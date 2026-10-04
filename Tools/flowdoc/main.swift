@@ -60,7 +60,6 @@ func describe(_ a: AppStripModel.Action) -> String {
     switch a {
     case .none: return "nothing"
     case .step(let d): return d > 0 ? "step the marking on" : "step the marking back"
-    case .select(let id): return "mark window \(id), centre with it"
     case .commit(let id): return "focus window \(id) · close"
     case .cancel: return "close, back on the window you came from"
     }
@@ -69,7 +68,7 @@ func describe(_ k: FilterKey?) -> String {
     guard let k else { return "—" }
     switch k {
     case .character(let c): return "character \(code(String(c)))"
-    case .commandDigit(let n): return "⌘\(n)"
+    case .commandKey(let n): return "⌘\(AppStripModel.keys[n - 1])"
     default: return "\(k)"
     }
 }
@@ -176,7 +175,7 @@ table(["Line", "Event"], [
 p("Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>filterKeyAction</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>te</code> the first match is Teams, window 6:")
 let keys: [(String, UInt16, Bool, String?)] = [
     ("Escape", 53, false, nil), ("Backspace", 51, false, nil), ("Enter", 36, false, "\r"), ("Tab", 48, false, "\t"), ("Shift-Tab", 48, true, "\t"),
-    ("→", 124, false, nil), ("←", 123, false, nil), ("↑", 126, false, "\u{F700}"), ("↓", 125, false, "\u{F701}"), ("Home", 115, false, nil), ("End", 119, false, nil),
+    ("→", 124, false, nil), ("←", 123, false, nil), ("↑", 126, false, "\u{F700}"), ("↓", 125, false, "\u{F701}"), ("Home", 115, false, nil),
     ("a", 0, false, "a"), ("2", 19, false, "2"), ("space", 49, false, " "), ("F1", 122, false, "\u{F704}"),
 ]
 let ring1: Int? = 1, ring6: Int? = 6
@@ -186,16 +185,16 @@ table(["Key", "FilterKey", "No query, ring on 1", "Query <code>te</code>, ring o
             k.map { describe(filterKeyAction(query: "", ring: ring1, key: $0)) } ?? "nobody's",
             k.map { describe(filterKeyAction(query: "te", ring: ring6, key: $0)) } ?? "nobody's"]
 })
-table(["⌘ + character", "FilterKey"], ["1", "9", "0", "q", "w"].map { ["⌘\($0)", describe(FilterKey(command: $0))] })
+table(["⌘ + character", "FilterKey"], ["1", "9", "a", "f", "g", "0", "q", "w"].map { ["⌘\($0)", describe(FilterKey(command: $0))] })
 
 // MARK: - 4. The strip
 
 h(2, "4. The strip")
-p("A value in Common (<code>Strip</code>) with five transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:")
+p("A value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:")
 let stripIds = [1, 2, 8]
-let stripKeys: [FilterKey] = [.next, .previous, .home, .end, .enter, .escape, .commandDigit(1), .commandDigit(3), .commandDigit(4), .character("a"), .backspace]
+let stripKeys: [FilterKey] = [.next, .previous, .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
 table(["Key", "Does"], stripKeys.map { k in [describe(k), describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))] })
-p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<11).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first eleven windows.")
+p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
 p("The transitions, from a strip of Arc opened from Arc's window 1 (the fixture's three Arc windows are 1, 2, 8):")
 let opened = Strip.opened("com.arc", origin: 1, ids: [1, 2, 8], recent: [])
@@ -208,7 +207,6 @@ table(["Transition", "Before", "After"], [
     ["<code>stepped(+1)</code>", describe(opened), describe(stepped)],
     ["<code>stepped(+1)</code> round the end, a turn", describe(stepped), describe(round)],
     ["<code>stepped(-1)</code> back", describe(round), describe(round.stepped(-1, ids: [1, 2, 8], card: card))],
-    ["<code>selecting(8)</code>, a key", describe(opened), describe(opened.selecting(8))],
     ["<code>marking(8)</code>, the pointer", describe(opened), describe(opened.marking(8))],
     ["<code>kept</code>: window 2 closed", describe(opened), describe(opened.kept(before: [1, 2, 8], after: [1, 8]))],
     ["<code>following</code>: focus moved to Arc's window 8", describe(opened), describe(opened.following(w(8, "Arc"), among: all))],
@@ -220,9 +218,8 @@ mermaid("""
 flowchart TD
   OPEN["opened: \(label(describe(opened)))"] --> UP(("up"))
   UP -- "Tab · → · the app's key again" --> STEP["stepped: marking and centre move;<br/>past the last card: a turn"]
-  UP -- "Home · End" --> SEL["selecting: first · last"]
   UP -- "pointer onto a window" --> MARK["marking: marking moves, centre stays"]
-  UP -- "⌘1–⌘9 · Enter · click" --> COMMIT["focus that window · close"]
+  UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
   UP -- "Escape · ⌘W · backdrop" --> CANCEL["close"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
   WHERE -- "this app, or none" --> UP
@@ -230,7 +227,6 @@ flowchart TD
   WHERE -- "an app of one window" --> OVER["over: nothing to choose · close"]
   UP -- "a read changed the windows" --> KEPT["kept: marking stays, or passes<br/>to a closed one's successor"]
   STEP --> UP
-  SEL --> UP
   MARK --> UP
   TURN --> UP
   KEPT --> UP

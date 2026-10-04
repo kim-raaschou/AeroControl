@@ -122,7 +122,7 @@ struct FilterKeyActionTests {
         ("", .escape, .none),                            // …then the window dismisses
         ("code", .character("2"), .setQuery("code2")),   // a digit is text: nothing on screen answers to a key
         ("x", .character("٣"), .setQuery("x٣")),
-        ("code", .commandDigit(2), .none),               // ⌘2 is the strip's; the map leaves it be
+        ("code", .commandKey(2), .none),                 // ⌘2 is the strip's; the map leaves it be
         ("", .character(" "), .none),                    // a query cannot start with a space…
         ("cafe", .character(" "), .setQuery("cafe ")),   // …but can hold one
     ])
@@ -137,7 +137,7 @@ struct FilterKeyActionTests {
         #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
         #expect(action("", .enter, ring: .some(7)) == .focus(windowId: 7))         // no query: AeroSpace's focused window
         #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
-        for key in [FilterKey.next, .previous, .home, .end] { #expect(action("Teams", key) == .none) }
+        for key in [FilterKey.next, .previous, .commandKey(1)] { #expect(action("Teams", key) == .none) }
     }
 
     @Test("the action vocabulary is exactly these four; the map's filter never answers handled, the strip's keys do")
@@ -154,8 +154,7 @@ struct FilterKeyActionTests {
 struct FilterKeyCodeTests {
     @Test("the keys the overview answers to, by macOS key code; Shift only matters to Tab", arguments: [
         (53, false, nil, .escape),
-        (115, false, nil, .home),
-        (119, false, nil, .end),
+        (115, false, nil, nil),                          // Home and End are nobody's
         (51, false, nil, .backspace),
         (36, false, "\r", .enter),
         (76, false, nil, .enter),                        // keypad Enter
@@ -175,10 +174,13 @@ struct FilterKeyCodeTests {
 
 @Suite("FilterKey(command:)")
 struct FilterKeyCommandTests {
-    @Test("⌘ with a digit 1–9 is a key; ⌘ with anything else is somebody else's", arguments: [
-        ("1", FilterKey?.some(.commandDigit(1))),
-        ("9", .commandDigit(9)),
+    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order; ⌘ with anything else is somebody else's", arguments: [
+        ("1", FilterKey?.some(.commandKey(1))),
+        ("9", .commandKey(9)),
+        ("a", .commandKey(10)),
+        ("f", .commandKey(15)),
         ("0", nil),
+        ("g", nil),
         ("q", nil),
         ("", nil),
     ] as [(String, FilterKey?)])

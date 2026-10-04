@@ -25,9 +25,6 @@ public struct Strip: Equatable, Sendable {
         return Strip(bundleId: bundleId, marked: first, centre: first, turns: 0)
     }
 
-    /// A key put the marking here: the centre goes with it.
-    public func selecting(_ id: Int) -> Strip { Strip(bundleId: bundleId, marked: id, centre: id, turns: turns) }
-
     /// The pointer marks; the centre stays where the keys left it.
     public func marking(_ id: Int) -> Strip { Strip(bundleId: bundleId, marked: id, centre: centre, turns: turns) }
 

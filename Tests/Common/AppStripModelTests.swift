@@ -58,10 +58,9 @@ struct StripValueTests {
         #expect(Strip.opened("com.app", origin: nil, ids: [1, 2], recent: [2]).marked == 2)
     }
 
-    @Test("a key selects: marking and centre move; the pointer marks: the centre stays")
-    func selectingAndMarking() {
+    @Test("the pointer marks: the marking moves, the centre stays")
+    func marking() {
         let s = Strip(bundleId: "a", marked: 1, centre: 1, turns: 0)
-        #expect(s.selecting(4) == Strip(bundleId: "a", marked: 4, centre: 4, turns: 0))
         #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1, turns: 0))
     }
 
@@ -123,10 +122,14 @@ struct AppStripKeyTests {
         #expect(act(.next) == .step(1) && act(.previous) == .step(-1))
     }
 
-    @Test("⌘ and a digit goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")
-    func commandDigits() {
-        #expect(act(.commandDigit(2)) == .commit(20))
-        #expect(act(.commandDigit(4)) == .none)
+    @Test("⌘ and a window's key goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")
+    func commandKeys() {
+        #expect(act(.commandKey(2)) == .commit(20))
+        #expect(act(.commandKey(4)) == .none)
+        let fifteen = Array(1...15), sixteen = Array(1...16)
+        #expect(M.action(for: .commandKey(10), ids: fifteen, marked: nil) == .commit(10))     // ⌘a
+        #expect(M.action(for: .commandKey(15), ids: sixteen, marked: nil) == .commit(15))     // ⌘f, the last key
+        #expect(M.action(for: .commandKey(16), ids: sixteen, marked: nil) == .none)           // the sixteenth has no key
     }
 
     @Test("a plain digit or letter is nothing: the strip has no typing, and the keys are ⌘'s")
@@ -134,20 +137,16 @@ struct AppStripKeyTests {
         #expect(act(.character("2")) == .none && act(.character("c")) == .none && act(.character("@")) == .none)
     }
 
-    @Test("Home and End mark the first and the last window")
-    func homeEnd() {
-        #expect(act(.home) == .select(10) && act(.end) == .select(30))
-    }
-
     @Test("keys the strip has no use for are nothing: no typing, no rows")
     func others() {
         #expect(act(.backspace) == .none && act(.character("x")) == .none)
     }
 
-    @Test("every window is labelled with its key, ⌘1–⌘9, and none past the ninth")
+    @Test("every window is labelled with its key, ⌘1–⌘9 then ⌘a–⌘f, and none past the fifteenth")
     func labels() {
         #expect(M.keyLabel(0) == "⌘1" && M.keyLabel(8) == "⌘9")
-        #expect(M.keyLabel(9) == nil && M.keyLabel(-1) == nil)
+        #expect(M.keyLabel(9) == "⌘a" && M.keyLabel(14) == "⌘f")
+        #expect(M.keyLabel(15) == nil && M.keyLabel(-1) == nil)
     }
 
     @Test("the strip says how many windows, and on how many workspaces only when there is more than one")
@@ -172,6 +171,6 @@ struct AppStripKeyTests {
         let one = M.legend([w(1, "a", "1"), w(2, "b", "1")], marked: nil)
         #expect(one.map(\.workspace) == [nil, nil] && !one.contains { $0.marked })   // one workspace: not said
         let many = M.legend((1...11).map { w($0, "t\($0)", "1") }, marked: 11)
-        #expect(many[8].key == "⌘9" && many[9].key == nil && many[10].marked)        // past the ninth: no key, still a row
+        #expect(many[8].key == "⌘9" && many[9].key == "⌘a" && many[10].marked)       // the tenth is ⌘a; every window is a row
     }
 }

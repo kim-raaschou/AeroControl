@@ -1618,5 +1618,14 @@
     "complexity": 937,
     "prodComplexity": 542,
     "files": 59
+  },
+  {
+    "timestamp": "2026-10-04T09:55:17+02:00",
+    "commit": "9a283b4",
+    "subject": "flowdoc: main-actor helpers instead of unsafe globals",
+    "code": 5632,
+    "complexity": 934,
+    "prodComplexity": 540,
+    "files": 59
   }
 ]

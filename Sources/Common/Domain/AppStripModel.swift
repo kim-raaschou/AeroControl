@@ -7,12 +7,12 @@ import Foundation
 /// difference by decision: the marking only chooses — Enter, a key or a click focuses —
 /// so stepping never switches AeroSpace's workspace behind the strip.
 public enum AppStripModel {
-    /// How many windows carry a key: ⌘1–⌘9, as macOS numbers tabs.
-    static let keyCount = 9
+    /// The keys windows carry, in order: ⌘1–⌘9 as macOS numbers tabs, then ⌘a–⌘f, fifteen in all.
+    public static let keys: [Character] = Array("123456789abcdef")
 
-    /// The key on the window at `index`, nil past the ninth.
+    /// The key on the window at `index`, nil past the fifteenth.
     public static func keyLabel(_ index: Int) -> String? {
-        index >= 0 && index < keyCount ? "⌘\(index + 1)" : nil
+        keys.indices.contains(index) ? "⌘\(keys[index])" : nil
     }
 
     /// One line of the legend under the strip: the window's key, its caption, the workspace it
@@ -84,8 +84,6 @@ public enum AppStripModel {
         case none
         /// Move the marking this many windows, wrapping.
         case step(Int)
-        /// Move the marking to this window.
-        case select(Int)
         /// Focus this window and close.
         case commit(Int)
         /// Close, back on the window you came from.
@@ -93,17 +91,15 @@ public enum AppStripModel {
     }
 
     /// What a key does in the strip. There is no typing here, search belongs to the map: ⌘ and
-    /// a digit goes straight to that window; Home and End to the first and the last.
+    /// a window's key goes straight to that window.
     public static func action(for key: FilterKey, ids: [Int], marked: Int?) -> Action {
         switch key {
         case .escape: return .cancel
         case .enter: return marked.map { .commit($0) } ?? .none
         case .next: return .step(1)
         case .previous: return .step(-1)
-        case .home: return ids.first.map { .select($0) } ?? .none
-        case .end: return ids.last.map { .select($0) } ?? .none
-        case .commandDigit(let n):
-            return n >= 1 && n <= min(keyCount, ids.count) ? .commit(ids[n - 1]) : .none
+        case .commandKey(let n):
+            return n >= 1 && n <= min(keys.count, ids.count) ? .commit(ids[n - 1]) : .none
         case .character, .backspace: return .none
         }
     }

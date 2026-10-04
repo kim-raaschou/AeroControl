@@ -80,11 +80,8 @@ public enum FilterKey: Equatable, Sendable {
     /// Tab and →, Shift-Tab and ←: the strip's next or previous window; nothing on the map.
     case next
     case previous
-    /// Home and End: the strip's first and last window; nothing on the map.
-    case home
-    case end
-    /// ⌘1–⌘9: the strip's window with that key; nothing on the map.
-    case commandDigit(Int)
+    /// ⌘1–⌘9, ⌘a–⌘f: the strip's window with that key, 1 to 15; nothing on the map.
+    case commandKey(Int)
 }
 
 public extension FilterKey {
@@ -99,18 +96,17 @@ public extension FilterKey {
         case 48: self = shift ? .previous : .next
         case 124: self = .next
         case 123: self = .previous
-        case 115: self = .home
-        case 119: self = .end
         default:
             guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key
         }
     }
 
-    /// ⌘ with a digit 1–9 is one of ours; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
+    /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order; ⌘ with anything else is
+    /// somebody else's (⌘Q, ⌘W).
     init?(command characters: String) {
-        guard characters.count == 1, let n = Int(characters), (1...9).contains(n) else { return nil }
-        self = .commandDigit(n)
+        guard let n = AppStripModel.keys.firstIndex(of: Character(characters.isEmpty ? " " : characters)), characters.count == 1 else { return nil }
+        self = .commandKey(n + 1)
     }
 
     /// The key a typed character stands for, or nil when it is not text. Arrow and function
@@ -143,7 +139,7 @@ public func filterKeyAction(query: String, ring: Int?, key: FilterKey) -> Filter
         return query.isEmpty ? .none : .setQuery("")
     case .enter:
         return ring.map { .focus(windowId: $0) } ?? .none
-    case .next, .previous, .home, .end, .commandDigit:
+    case .next, .previous, .commandKey:
         return .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))

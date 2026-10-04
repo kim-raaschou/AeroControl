@@ -320,14 +320,13 @@ public class OverviewStore {
         return action
     }
 
-    /// A key in the strip, by its own rules (`AppStripModel.action`): steps and Home/End move the
-    /// marking, a key or Enter picks, Escape is the window's to close with; anything else is
+    /// A key in the strip, by its own rules (`AppStripModel.action`): steps move the marking,
+    /// a key or Enter picks, Escape is the window's to close with; anything else is
     /// swallowed, since there is no typing in the strip.
     private func handleStrip(_ key: FilterKey, _ strip: Strip) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
         switch AppStripModel.action(for: key, ids: ids, marked: strip.marked) {
         case .step(let direction): stepStrip(direction)
-        case .select(let id): self.strip = strip.selecting(id)
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
         case .none: break

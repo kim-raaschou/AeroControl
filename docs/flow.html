@@ -99,8 +99,7 @@ flowchart TD
 <tr><td>←</td><td>previous</td><td>not the map's: the window handles it (Escape closes)</td><td>not the map's: the window handles it (Escape closes)</td></tr>
 <tr><td>↑</td><td>—</td><td>nobody's</td><td>nobody's</td></tr>
 <tr><td>↓</td><td>—</td><td>nobody's</td><td>nobody's</td></tr>
-<tr><td>Home</td><td>home</td><td>not the map's: the window handles it (Escape closes)</td><td>not the map's: the window handles it (Escape closes)</td></tr>
-<tr><td>End</td><td>end</td><td>not the map's: the window handles it (Escape closes)</td><td>not the map's: the window handles it (Escape closes)</td></tr>
+<tr><td>Home</td><td>—</td><td>nobody's</td><td>nobody's</td></tr>
 <tr><td>a</td><td>character <code>a</code></td><td>query becomes <code>a</code></td><td>query becomes <code>tea</code></td></tr>
 <tr><td>2</td><td>character <code>2</code></td><td>query becomes <code>2</code></td><td>query becomes <code>te2</code></td></tr>
 <tr><td>space</td><td>character <code> </code></td><td>not the map's: the window handles it (Escape closes)</td><td>query becomes <code>te </code></td></tr>
@@ -109,17 +108,18 @@ flowchart TD
 <table><tr><th>⌘ + character</th><th>FilterKey</th></tr>
 <tr><td>⌘1</td><td>⌘1</td></tr>
 <tr><td>⌘9</td><td>⌘9</td></tr>
+<tr><td>⌘a</td><td>⌘a</td></tr>
+<tr><td>⌘f</td><td>⌘f</td></tr>
+<tr><td>⌘g</td><td>—</td></tr>
 <tr><td>⌘0</td><td>—</td></tr>
 <tr><td>⌘q</td><td>—</td></tr>
 <tr><td>⌘w</td><td>—</td></tr>
 </table>
 <h2>4. The strip</h2>
-<p>A value in Common (<code>Strip</code>) with five transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
+<p>A value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
 <table><tr><th>Key</th><th>Does</th></tr>
 <tr><td>next</td><td>step the marking on</td></tr>
 <tr><td>previous</td><td>step the marking back</td></tr>
-<tr><td>home</td><td>mark window 1, centre with it</td></tr>
-<tr><td>end</td><td>mark window 8, centre with it</td></tr>
 <tr><td>enter</td><td>focus window 2 · close</td></tr>
 <tr><td>escape</td><td>close, back on the window you came from</td></tr>
 <tr><td>⌘1</td><td>focus window 1 · close</td></tr>
@@ -128,14 +128,13 @@ flowchart TD
 <tr><td>character <code>a</code></td><td>nothing</td></tr>
 <tr><td>backspace</td><td>nothing</td></tr>
 </table>
-<p>The keys the windows carry (<code>AppStripModel.keyLabel</code>): ⌘1, ⌘2, ⌘3, ⌘4, ⌘5, ⌘6, ⌘7, ⌘8, ⌘9, none, none for the first eleven windows.</p>
+<p>The keys the windows carry (<code>AppStripModel.keyLabel</code>): ⌘1, ⌘2, ⌘3, ⌘4, ⌘5, ⌘6, ⌘7, ⌘8, ⌘9, ⌘a, ⌘b, ⌘c, ⌘d, ⌘e, ⌘f, none, none for the first seventeen windows.</p>
 <p>The transitions, from a strip of Arc opened from Arc's window 1 (the fixture's three Arc windows are 1, 2, 8):</p>
 <table><tr><th>Transition</th><th>Before</th><th>After</th></tr>
 <tr><td><code>opened</code> from window 1</td><td>—</td><td>com.arc · marked 2 · centre 2 · turns 0</td></tr>
 <tr><td><code>stepped(+1)</code></td><td>com.arc · marked 2 · centre 2 · turns 0</td><td>com.arc · marked 8 · centre 8 · turns 0</td></tr>
 <tr><td><code>stepped(+1)</code> round the end, a turn</td><td>com.arc · marked 8 · centre 8 · turns 0</td><td>com.arc · marked 1 · centre 1 · turns 1</td></tr>
 <tr><td><code>stepped(-1)</code> back</td><td>com.arc · marked 1 · centre 1 · turns 1</td><td>com.arc · marked 8 · centre 8 · turns 0</td></tr>
-<tr><td><code>selecting(8)</code>, a key</td><td>com.arc · marked 2 · centre 2 · turns 0</td><td>com.arc · marked 8 · centre 8 · turns 0</td></tr>
 <tr><td><code>marking(8)</code>, the pointer</td><td>com.arc · marked 2 · centre 2 · turns 0</td><td>com.arc · marked 8 · centre 2 · turns 0</td></tr>
 <tr><td><code>kept</code>: window 2 closed</td><td>com.arc · marked 2 · centre 2 · turns 0</td><td>com.arc · marked 8 · centre 8 · turns 0</td></tr>
 <tr><td><code>following</code>: focus moved to Arc's window 8</td><td>com.arc · marked 2 · centre 2 · turns 0</td><td>com.arc · marked 2 · centre 2 · turns 0</td></tr>
@@ -147,9 +146,8 @@ flowchart TD
 flowchart TD
   OPEN["opened: com.arc · marked 2 · centre 2 · turns 0"] --> UP(("up"))
   UP -- "Tab · → · the app's key again" --> STEP["stepped: marking and centre move;<br/>past the last card: a turn"]
-  UP -- "Home · End" --> SEL["selecting: first · last"]
   UP -- "pointer onto a window" --> MARK["marking: marking moves, centre stays"]
-  UP -- "⌘1–⌘9 · Enter · click" --> COMMIT["focus that window · close"]
+  UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
   UP -- "Escape · ⌘W · backdrop" --> CANCEL["close"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
   WHERE -- "this app, or none" --> UP
@@ -157,7 +155,6 @@ flowchart TD
   WHERE -- "an app of one window" --> OVER["over: nothing to choose · close"]
   UP -- "a read changed the windows" --> KEPT["kept: marking stays, or passes<br/>to a closed one's successor"]
   STEP --> UP
-  SEL --> UP
   MARK --> UP
   TURN --> UP
   KEPT --> UP
