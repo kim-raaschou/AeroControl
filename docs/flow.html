@@ -57,11 +57,9 @@ flowchart TD
 <pre class="mermaid">
 flowchart TD
   L["the link again"] --> AGAIN{"which?"}
-  AGAIN -- "workspaces · windows<br/>with no strip up" --> CLOSE["close, back on the<br/>window you came from"]
+  AGAIN -- "workspaces" --> CLOSE["close, back on the<br/>window you came from"]
   AGAIN -- "windows while a strip is up ·<br/>the strip's own app's key" --> STEP["step the marking on,<br/>as ⌘` does"]
-  AGAIN -- "another app's key" --> HAS{"has it a window?"}
-  HAS -- "yes" --> FOC["focus its window used last,<br/>or the next · close"]
-  HAS -- "no" --> START["close · start it"]
+  AGAIN -- "windows while the map is up ·<br/>another app's key" --> FLOW["that app's flow, as on the left:<br/>start, focus, toggle, or its strip<br/>takes over from what was showing"]
 </pre>
 </div>
 </div>

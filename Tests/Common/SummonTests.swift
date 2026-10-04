@@ -12,14 +12,14 @@ struct SummonTests {
         #expect(summon("aerocontrol://windows?app=com.apple.finder") == .app(bundleId: "com.apple.finder"))
     }
 
-    @Test("while the overview is up the strip's own key steps it and another app's key focuses that app; anything else closes it")
+    @Test("while the overview is up the strip's own key steps it; any other app key is the app's whole flow again, the strip taking over; the map's key closes")
     func againWhileUp() {
-        #expect(Summon.map.again(stripApp: nil) == .close)
+        #expect(Summon.map.again(stripApp: nil) == .close && Summon.map.again(stripApp: "com.arc") == .close)
         #expect(Summon.focusedApp.again(stripApp: "com.arc") == .step)
         #expect(Summon.app(bundleId: "com.arc").again(stripApp: "com.arc") == .step)
-        #expect(Summon.app(bundleId: "com.claude").again(stripApp: nil) == .focus(app: "com.claude"))
-        #expect(Summon.app(bundleId: "com.claude").again(stripApp: "com.arc") == .focus(app: "com.claude"))
-        #expect(Summon.map.again(stripApp: "com.arc") == .close && Summon.focusedApp.again(stripApp: nil) == .close)
+        #expect(Summon.app(bundleId: "com.claude").again(stripApp: nil) == .summon(app: "com.claude"))
+        #expect(Summon.app(bundleId: "com.claude").again(stripApp: "com.arc") == .summon(app: "com.claude"))
+        #expect(Summon.focusedApp.again(stripApp: nil) == .summon(app: nil))                 // the map is up: the strip of the app you are in
     }
 
     @Test func anythingElseIsTheMap() {

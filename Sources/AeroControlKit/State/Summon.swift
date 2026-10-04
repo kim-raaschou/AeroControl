@@ -17,19 +17,19 @@ public enum Summon: Equatable, Sendable {
     }
 
     /// What this summon does while the overview is already up, showing the strip of `stripApp`
-    /// or else the map. The strip's own key moves its marking on, as Cmd-` does. Another app's
-    /// key only focuses that app, and the overview stays and follows it — the map mirrors
-    /// AeroSpace, the strip turns to that app — so the keys bound to apps go on working through
-    /// it: closing gave the keyboard back to the window from before, so the key for Claude
-    /// brought Ghostty forward. Anything else closes the overview.
-    public enum Again: Equatable, Sendable { case close, step, focus(app: String) }
+    /// or else the map. The strip's own key moves its marking on, as Cmd-` does. Any other
+    /// app's key is that app's whole flow again — start, focus, toggle, or its strip taking
+    /// over from whatever was up — so an app key means the same whether the overview is up or
+    /// not. The map's key closes.
+    public enum Again: Equatable, Sendable { case close, step, summon(app: String?) }
 
     public func again(stripApp: String?) -> Again {
         switch (self, stripApp) {
+        case (.map, _): .close
         case (.focusedApp, .some): .step
         case (.app(let id), let strip?) where id == strip: .step
-        case (.app(let id), _): .focus(app: id)
-        default: .close
+        case (.app(let id), _): .summon(app: id)
+        case (.focusedApp, nil): .summon(app: nil)
         }
     }
 }

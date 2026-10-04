@@ -171,8 +171,7 @@ final class OverlayWindowManager {
         switch summon.again(stripApp: state.strip?.bundleId) {
         case .close: hide(restoreFocus: true)
         case .step: state.stepStrip()
-        case .focus(let app) where !state.focusApp(app): hide(restoreFocus: false); launch(app)
-        case .focus: break
+        case .summon(let app): _ = carryOut(state.summonApp(bundleId: app, picker: settings.appPicker), for: app)
         }
     }
 

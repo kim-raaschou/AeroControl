@@ -327,16 +327,6 @@ public class OverviewStore {
         return .pick
     }
 
-    /// An app's key while the overview is up (`Summon.again`): the app's window used last gets
-    /// the focus, or from within the app its next — two windows toggle, as the key does without
-    /// the overview — and the overview follows it. False when the app has no window to focus.
-    public func focusApp(_ bundleId: String) -> Bool {
-        let ids = model.windowsInGridOrder.map(\.window).filter { $0.bundleId == bundleId }.map(\.windowId)
-        guard let id = AppStripModel.start(origin: model.focusedWindowId, ids: ids, recent: recentWindows) else { return false }
-        // Focused already, AeroSpace sends no event for the strip to follow: it goes to the app.
-        if id == model.focusedWindowId, strip != nil { onShotDone?(true) } else { send(.action(.focusWindow(id))) }
-        return true
-    }
 
     /// Type-to-filter. A keystroke the filter has a use for is applied here — the query and
     /// the ring are the store's — and the caller learns what became of it: `.none` is not

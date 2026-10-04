@@ -123,7 +123,8 @@ cmd-ctrl-alt-comma = ['exec-and-forget open aerocontrol://windows']      # the f
 ```
 
 `aerocontrol://windows` is the same link with the app you are in filled in: with a single window nothing appears,
-with two it switches to the other, with more the strip opens, ring on the next one. Either URL closes the overview when it is already up.
+with two it switches to the other, with more the strip opens, ring on the next one. `workspaces` closes the overview when it is
+already up; an app's link while it is up is that app's flow again, its strip taking over from whatever was showing.
 The strip is not a third view: it is the part of this rule that cannot be settled without you (see *The map and the strip*).
 
 A third form makes one key per app do the right thing whatever its state:

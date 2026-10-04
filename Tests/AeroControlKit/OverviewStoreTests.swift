@@ -350,28 +350,7 @@ struct OverviewStoreTests {
         store.stop()
     }
 
-    @Test("an app's key while the overview is up focuses the app's window used last, or from within the app its next, and opens nothing")
-    func appKeyWhileUpFocuses() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
-                                        oneWindow(9, "1", app: "Slack", bundleId: "com.slack")].joined(separator: ",") + "]",
-                        workspaces: workspacesJSON(["1", "2"]))
-        let store = started(runner)
-        await store.reload()
-        store.noteFocus(2)
-        #expect(store.focusApp("com.app"))
-        await waitUntil { runner.didRun(["focus", "--window-id", "2"]) }
-        #expect(runner.didRun(["focus", "--window-id", "2"]) && store.strip == nil)
-        runner.setFocus(windowId: 2, workspace: "2")                                    // in Teams now: the key goes on to its next
-        await store.reload()
-        #expect(store.focusApp("com.app"))
-        await waitUntil { runner.didRun(["focus", "--window-id", "1"]) }
-        #expect(runner.didRun(["focus", "--window-id", "1"]))
-        #expect(!store.focusApp("com.absent"))
-        store.stop()
-    }
-
-    @Test("AeroSpace moving the focus to another app's window while the strip is up turns the strip to that app, marked there, with the pictures it lacks; to an app of one window, or its key when that window has the focus, it leaves")
+    @Test("AeroSpace moving the focus to another app's window while the strip is up turns the strip to that app, marked there, with the pictures it lacks; to an app of one window it leaves")
     func stripFollowsFocus() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
         bridge.granted = true
@@ -399,8 +378,6 @@ struct OverviewStoreTests {
         store.send(.event(.changed))
         await waitUntil { left == 1 }
         #expect(left == 1)
-        #expect(store.focusApp("com.claude"))                                            // its key, in Claude already: no event comes
-        #expect(left == 2)
         store.stop()
     }
 
