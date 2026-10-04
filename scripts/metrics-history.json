@@ -1717,5 +1717,14 @@
     "complexity": 880,
     "prodComplexity": 487,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:46:43+02:00",
+    "commit": "413a78a",
+    "subject": "The views and the host say each thing once",
+    "code": 5325,
+    "complexity": 880,
+    "prodComplexity": 487,
+    "files": 60
   }
 ]
