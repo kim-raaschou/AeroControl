@@ -44,13 +44,12 @@ final class OverlayWindowManager {
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
     }
 
-    /// Quits the app whose window the mouse is over, falling back to the focused one, and
-    /// leaves the overview up so several can go in one visit. `terminate()` is the polite
-    /// quit macOS sends for Cmd-Q, so an app with unsaved work still gets to ask.
+    /// Quits the app whose window the mouse is over and leaves the overview up so several can go
+    /// in one visit; with nothing under the mouse, nothing, as in Mission Control — a reflexive ⌘Q
+    /// once quit the app you came from. `terminate()` is the polite quit macOS sends for Cmd-Q,
+    /// so an app with unsaved work still gets to ask.
     func quitPointedApp() {
-        guard requestedVisible else { return }
-        let target = state.hoveredWindowId ?? state.model.focusedWindowId
-        guard let app = owner(ofWindow: target) else { return }
+        guard requestedVisible, let target = state.hoveredWindowId, let app = owner(ofWindow: target) else { return }
         app.terminate()
     }
 
