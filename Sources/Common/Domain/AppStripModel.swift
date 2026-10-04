@@ -58,14 +58,6 @@ public enum AppStripModel {
         return ids[stepIndex(at, count: ids.count, direction: 1)]
     }
 
-    /// The marking after the windows changed: it stays on its window, or goes to the one that
-    /// took the closed window's place.
-    public static func keepSelection(_ id: Int?, lastIndex: Int, ids: [Int]) -> Int? {
-        guard !ids.isEmpty else { return nil }
-        if let id, ids.contains(id) { return id }
-        return ids[max(0, min(ids.count - 1, lastIndex))]
-    }
-
     /// How tall the strip's cards are: as tall as `width` allows for cards whose shapes add up
     /// to `sumAspect`, never more than half the panel and never less than a fifth.
     public static func cardHeight(width: CGFloat, gaps: CGFloat, sumAspect: CGFloat, panelHeight: CGFloat) -> CGFloat {

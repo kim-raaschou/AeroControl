@@ -34,15 +34,6 @@ struct AppStripStepTests {
         #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [8, 9]) == 1)
         #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [1]) == 3)                  // inside the app: the next, as before
     }
-
-    @Test("the marked window keeps the marking when others move; a closed one hands it to its successor")
-    func keepSelection() {
-        #expect(M.keepSelection(3, lastIndex: 0, ids: [1, 2, 3]) == 3)
-        #expect(M.keepSelection(9, lastIndex: 1, ids: [1, 3]) == 3)
-        #expect(M.keepSelection(9, lastIndex: 5, ids: [1, 3]) == 3)
-        #expect(M.keepSelection(1, lastIndex: 0, ids: []) == nil)
-    }
-
 }
 
 /// The strip as a value: every change is a new strip, so nothing is ever half-updated and a
@@ -85,11 +76,14 @@ struct StripValueTests {
         #expect(s.following(w(4, "c"), among: windows) == nil)                          // nothing to choose there
     }
 
-    @Test("after the windows changed the marking stays on its window, or passes to the one that took a closed one's place")
+    @Test("after the windows changed the marking stays on its window, the centre where it was; a closed one hands the marking, and the centre, to the one that took its place")
     func kept() {
-        let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)
-        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))
+        let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)                  // pointed at 2, the keys left the centre on 1
+        #expect(s.kept(before: [1, 2, 3], after: [1, 2, 3]) == s)                      // a title tick turns nothing under a still hand
         #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1]).marked == 2)
+        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))
+        #expect(Strip(bundleId: "a", marked: 3, centre: 3, turns: 0).kept(before: [1, 2, 3], after: [1, 2]).marked == 2)   // the last closed: the one before
+        #expect(s.kept(before: [1, 2, 3], after: []).marked == nil)
     }
 }
 

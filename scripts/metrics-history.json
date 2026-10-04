@@ -1735,5 +1735,14 @@
     "complexity": 879,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:50:14+02:00",
+    "commit": "d577086",
+    "subject": "A query typed whole, punctuation and all, finds what it names",
+    "code": 5321,
+    "complexity": 877,
+    "prodComplexity": 485,
+    "files": 60
   }
 ]
