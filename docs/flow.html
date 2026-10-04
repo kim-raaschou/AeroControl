@@ -95,15 +95,16 @@ flowchart TD
 <tr><td>space</td><td>character <code> </code></td><td>nothing</td><td>query becomes <code>d </code></td></tr>
 </table>
 <p>Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.</p>
-<table><tr><th>⌘ + character</th><th>FilterKey</th></tr>
-<tr><td>⌘1</td><td>⌘1</td></tr>
-<tr><td>⌘9</td><td>⌘9</td></tr>
-<tr><td>⌘a</td><td>⌘a</td></tr>
-<tr><td>⌘f</td><td>⌘f</td></tr>
-<tr><td>⌘g</td><td>—</td></tr>
-<tr><td>⌘0</td><td>—</td></tr>
-<tr><td>⌘q</td><td>—</td></tr>
-<tr><td>⌘w</td><td>—</td></tr>
+<p>⌘ and a character (<code>FilterKey(command:)</code>). The window takes ⌘W and ⌘Q before the filter sees them (<code>OverviewWindow.performKeyEquivalent</code>, hand-written here): ⌘W closes, ⌘Q quits the app under the pointer and the overview stays up.</p>
+<table><tr><th>⌘ + character</th><th>FilterKey</th><th>On the map</th><th>In the strip of fifteen windows</th></tr>
+<tr><td>⌘1</td><td>⌘1</td><td>nothing</td><td>focus window 1 · close</td></tr>
+<tr><td>⌘9</td><td>⌘9</td><td>nothing</td><td>focus window 9 · close</td></tr>
+<tr><td>⌘a</td><td>⌘a</td><td>nothing</td><td>focus window 10 · close</td></tr>
+<tr><td>⌘f</td><td>⌘f</td><td>nothing</td><td>focus window 15 · close</td></tr>
+<tr><td>⌘g</td><td>—</td><td>nothing</td><td>nothing</td></tr>
+<tr><td>⌘0</td><td>—</td><td>nothing</td><td>nothing</td></tr>
+<tr><td>⌘q</td><td>—</td><td>quit the app under the pointer</td><td>quit the app under the pointer</td></tr>
+<tr><td>⌘w</td><td>—</td><td>the window closes</td><td>the window closes</td></tr>
 </table>
 <h2>4. The strip</h2>
 <p>A value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
@@ -115,7 +116,7 @@ flowchart TD
 <tr><td>⌘1</td><td>focus window 1 · close</td></tr>
 <tr><td>⌘3</td><td>focus window 8 · close</td></tr>
 </table>
-<p>Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing.</p>
+<p>Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The ⌘ table in section 3 runs all fifteen keys, ⌘1–⌘9 and ⌘a–⌘f, against a strip of fifteen.</p>
 <p>The keys the windows carry (<code>AppStripModel.keyLabel</code>): ⌘1, ⌘2, ⌘3, ⌘4, ⌘5, ⌘6, ⌘7, ⌘8, ⌘9, ⌘a, ⌘b, ⌘c, ⌘d, ⌘e, ⌘f, none, none for the first seventeen windows.</p>
 <p>The transitions, from a strip of app A opened from its window 1 (A's windows are 1, 2, 8):</p>
 <table><tr><th>Transition</th><th>Before</th><th>After</th></tr>
