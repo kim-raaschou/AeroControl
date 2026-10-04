@@ -1663,5 +1663,14 @@
     "complexity": 950,
     "prodComplexity": 545,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T19:32:10+02:00",
+    "commit": "d7f3ee5",
+    "subject": "Version 0.3.0",
+    "code": 5683,
+    "complexity": 950,
+    "prodComplexity": 545,
+    "files": 60
   }
 ]

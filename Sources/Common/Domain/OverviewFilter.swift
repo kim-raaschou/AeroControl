@@ -105,7 +105,7 @@ public extension FilterKey {
     /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order; ⌘ with anything else is
     /// somebody else's (⌘Q, ⌘W).
     init?(command characters: String) {
-        guard let n = AppStripModel.keys.firstIndex(of: Character(characters.isEmpty ? " " : characters)), characters.count == 1 else { return nil }
+        guard characters.count == 1, let n = AppStripModel.keys.firstIndex(of: Character(characters)) else { return nil }
         self = .commandKey(n + 1)
     }
 

@@ -183,6 +183,7 @@ struct FilterKeyCommandTests {
         ("g", nil),
         ("q", nil),
         ("", nil),
+        ("ab", nil),                       // a key that types two characters is not one key, and no crash
     ] as [(String, FilterKey?)])
     func command(characters: String, expected: FilterKey?) {
         #expect(FilterKey(command: characters) == expected)
