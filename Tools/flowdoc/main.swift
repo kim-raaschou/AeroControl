@@ -49,7 +49,7 @@ func describe(_ a: Summon.Again) -> String {
 }
 func describe(_ a: FilterKeyAction) -> String {
     switch a {
-    case .none: return "not the map's: the window handles it (Escape closes)"
+    case .none: return "nothing"
     case .setQuery(let q): return q.isEmpty ? "clear the query" : "query becomes \(code(q))"
     case .focus(let id): return "focus window \(id) · the shot is done"
     case .handled: return "swallowed"
@@ -174,12 +174,19 @@ let keys: [(String, UInt16, Bool, String?)] = [
     ("a", 0, false, "a"), ("2", 19, false, "2"), ("space", 49, false, " "), ("F1", 122, false, "\u{F704}"),
 ]
 let ring1: Int? = 1, ring6: Int? = 6
-table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], keys.map { name, kc, shift, chars in
-    let k = FilterKey(keyCode: kc, shift: shift, characters: chars)
-    return [name, describe(k),
-            k.map { describe(filterKeyAction(query: "", ring: ring1, key: $0)) } ?? "nobody's",
-            k.map { describe(filterKeyAction(query: "d", ring: ring6, key: $0)) } ?? "nobody's"]
-})
+/// On the map an Escape the filter has no use for is the window's: it closes. Every other key
+/// the filter answers `.none` to does nothing.
+func onMap(_ k: FilterKey, query: String, ring: Int?) -> String {
+    let action = filterKeyAction(query: query, ring: ring, key: k)
+    return action == .none && k == .escape ? "the window closes" : describe(action)
+}
+let mapRows: [[String]] = keys.compactMap { name, kc, shift, chars in
+    guard let k = FilterKey(keyCode: kc, shift: shift, characters: chars) else { return nil }
+    let row = [name, describe(k), onMap(k, query: "", ring: ring1), onMap(k, query: "d", ring: ring6)]
+    return row[2] == "nothing" && row[3] == "nothing" ? nil : row
+}
+table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
+p("Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.")
 table(["⌘ + character", "FilterKey"], ["1", "9", "a", "f", "g", "0", "q", "w"].map { ["⌘\($0)", describe(FilterKey(command: $0))] })
 
 // MARK: - 4. The strip
@@ -188,7 +195,11 @@ h(2, "4. The strip")
 p("A value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:")
 let stripIds = [1, 2, 8]
 let stripKeys: [FilterKey] = [.next, .previous, .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
-table(["Key", "Does"], stripKeys.map { k in [describe(k), describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))] })
+table(["Key", "Does"], stripKeys.compactMap { k in
+    let does = describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))
+    return does == "nothing" ? nil : [describe(k), does]
+})
+p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing.")
 p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
 p("The transitions, from a strip of app A opened from its window 1 (A's windows are 1, 2, 8):")
