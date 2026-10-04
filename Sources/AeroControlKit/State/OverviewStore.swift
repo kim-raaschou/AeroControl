@@ -287,7 +287,7 @@ public class OverviewStore {
         PictureResampler.forget()
     }
 
-    /// One key on an app, `aerocontrol://<bundle id>`. The count is free; the model
+    /// One key on an app, `aerocontrol://app-id=<bundle id>` or `app-name=<name>`. The count is free; the model
     /// was just read, so the key does the right thing whatever the app's state:
     ///
     /// - none: start it; one: focus it;
@@ -298,8 +298,8 @@ public class OverviewStore {
     /// The first two lines are the link's own and hold with the strip off. The rest are the
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
     /// decides which window is in front, which for the app you are in changes nothing.
-    public func summonApp(bundleId: String, picker: Bool) -> AppSummon {
-        let decision = AppSummon.decide(app: bundleId, model: model, recent: recentWindows, picker: picker)
+    public func summonApp(_ app: AppRef, picker: Bool) -> AppSummon {
+        let decision = AppSummon.decide(app: app, model: model, recent: recentWindows, picker: picker)
         if case .pick(let opened) = decision { strip = opened }
         return decision
     }

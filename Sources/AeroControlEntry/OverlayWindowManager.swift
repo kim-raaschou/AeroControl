@@ -103,7 +103,7 @@ final class OverlayWindowManager {
             guard self.requestedVisible else { return }   // toggled away while loading
             switch summon {
             case .map: break
-            case .app(let id): guard self.carryOut(self.state.summonApp(bundleId: id, picker: self.settings.appPicker)) else { return }
+            case .app(let ref): guard self.carryOut(self.state.summonApp(ref, picker: self.settings.appPicker)) else { return }
             }
             if self.state.previewsAvailable {
                 await self.state.measurePreviews()
@@ -138,9 +138,9 @@ final class OverlayWindowManager {
             return true
         case .focus(let windowId):
             state.send(.action(.focusWindow(windowId)))     // what follows takes the focus itself
-        case .launch(let bundleId):
+        case .launch(let ref):
             hide(restoreFocus: false)
-            launch(bundleId)
+            launch(ref)
         }
         return false
     }
@@ -156,19 +156,25 @@ final class OverlayWindowManager {
         window = makeWindow(for: targetScreen(), hidden: !requestedVisible)
     }
 
-    /// Starts an app that has no window, as `open -b` would.
-    private func launch(_ bundleId: String) {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else { return }
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    /// Starts an app that has no window, with `open`: `-b` by bundle id, `-a` by name, the one
+    /// lookup by name macOS offers. A name or id nothing answers to is `open`'s to complain about.
+    private func launch(_ ref: AppRef) {
+        let open = Process()
+        open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        switch ref {
+        case .bundleId(let id): open.arguments = ["-b", id]
+        case .name(let name): open.arguments = ["-a", name]
+        }
+        try? open.run()
     }
 
     /// A summon while the overview is up: see `Summon.again`.
     func toggleVisibility(_ summon: Summon = .map) {
         guard requestedVisible else { return show(summon) }
-        switch summon.again(stripApp: state.strip?.bundleId) {
+        switch summon.again(stripApp: state.strip?.bundleId, among: state.model.workspaces.flatMap(\.windows)) {
         case .close: hide(restoreFocus: true)
         case .step: state.stepStrip()
-        case .summon(let app): _ = carryOut(state.summonApp(bundleId: app, picker: settings.appPicker))
+        case .summon(let ref): _ = carryOut(state.summonApp(ref, picker: settings.appPicker))
         }
     }
 

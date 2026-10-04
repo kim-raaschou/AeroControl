@@ -1645,5 +1645,14 @@
     "complexity": 933,
     "prodComplexity": 534,
     "files": 59
+  },
+  {
+    "timestamp": "2026-10-04T13:04:40+02:00",
+    "commit": "d71e549",
+    "subject": "The app's link is its bundle id: aerocontrol://<bundle id>",
+    "code": 5637,
+    "complexity": 943,
+    "prodComplexity": 540,
+    "files": 60
   }
 ]

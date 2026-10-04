@@ -87,7 +87,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// `open aerocontrol://<bundle id>`: that app's key. `aerocontrol://workspaces` toggles the map.
+    /// `open aerocontrol://app-id=<bundle id>` or `app-name=<name>`: that app's key.
+    /// `aerocontrol://workspaces` toggles the map.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
