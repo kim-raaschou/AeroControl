@@ -184,14 +184,6 @@ public class OverviewStore {
     }
     private var following = false
 
-    public func stop() {
-        subscribeTask?.cancel()
-        subscribeTask = nil
-        refreshTask?.cancel()
-        refreshTask = nil
-        captureGeneration += 1
-    }
-
     // MARK: Window previews
 
     /// True when macOS lets us capture windows; decides the tile layout up front so the

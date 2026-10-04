@@ -1690,5 +1690,14 @@
     "complexity": 902,
     "prodComplexity": 510,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:37:48+02:00",
+    "commit": "0abe565",
+    "subject": "Mechanical cuts: one-use builders, defaults nobody takes, rows nobody reads",
+    "code": 5460,
+    "complexity": 901,
+    "prodComplexity": 509,
+    "files": 60
   }
 ]

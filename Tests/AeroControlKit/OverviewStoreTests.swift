@@ -116,7 +116,6 @@ struct OverviewStoreTests {
         await waitUntil { windowIds(store) == [1, 4] }
         store.stopFollowingAerospace()
         #expect(runner.isSubscribed)                                                    // still listening
-        store.stop()
     }
 
     @Test("while following, an event reconciles against AeroSpace")
@@ -133,7 +132,6 @@ struct OverviewStoreTests {
         runner.sendEvent(#"{"_event":"focus-changed","windowId":1,"workspace":"1"}"#)
         await waitUntil { windowIds(store) == [1] }
         #expect(windowIds(store) == [1])
-        store.stop()
     }
 
     @Test("an event that moves no window neither changes the model nor reloads")
@@ -151,7 +149,6 @@ struct OverviewStoreTests {
         try? await Task.sleep(for: .milliseconds(100))
         #expect(windowIds(store) == [1])
         #expect(runner.commandsRun.count == before)
-        store.stop()
     }
 
     // MARK: The typed filter

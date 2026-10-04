@@ -97,8 +97,6 @@ public enum AeroControlLayout {
     public struct StripLayout: Equatable, Sendable {
         /// The cards' shared height, the map card's chrome included.
         public let height: CGFloat
-        /// The height of the box the pictures fill: the card less its chrome.
-        public let inner: CGFloat
         /// The unrolled row, gaps included.
         public let width: CGFloat
         public let cards: [StripCard]
@@ -150,7 +148,7 @@ public enum AeroControlLayout {
             cards.append(StripCard(workspace: groups[g].name, span: AppStripModel.Span(x: x, width: width + 2 * cardPadding), frames: frames, others: others))
             x += width + 2 * cardPadding
         }
-        return StripLayout(height: height + cardChrome, inner: height, width: x, cards: cards)
+        return StripLayout(height: height + cardChrome, width: x, cards: cards)
     }
 
     /// From this many workspaces the strip is always a carousel: the marked card in the middle,

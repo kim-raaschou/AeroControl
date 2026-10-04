@@ -148,6 +148,7 @@ separate menu line. Bump AeroControl's version for AeroControl changes only.
 ## Workflow conventions
 
 - Smallest targeted test for the change; full `make test` before declaring done.
+- No production code exists only for tests: no field, accessor or teardown that only a test reads or calls. A test derives what it needs from what production uses.
 - Never read the user's dotfiles or execute config; AeroControl is public and Homebrew-distributed.
 - Never send synthetic keystrokes to verify the overlay unless it is confirmed on screen
   (`lsof -p $(pgrep -x AeroControl) | grep -c unix` ≥ 2) — they land in whatever is focused.
