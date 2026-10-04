@@ -12,7 +12,7 @@ import Common
 // MARK: - A fixture: the windows the rules are run against
 
 func w(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo { WindowInfo(windowId: id, appName: app, bundleId: "com.\(app.lowercased())", title: title) }
-nonisolated(unsafe) let model = OverviewModel(workspaces: [
+let model = OverviewModel(workspaces: [
     WorkspaceInfo(name: "1", windows: [w(1, "Arc", "Inbox"), w(2, "Arc", "Docs"), w(3, "Mail")]),
     WorkspaceInfo(name: "2", windows: [w(4, "Ghostty", "btop"), w(5, "Ghostty", "adv"), w(6, "Teams"), w(7, "Teams")]),
     WorkspaceInfo(name: "3", windows: [w(8, "Arc", "Mail"), w(9, "Mail")]),
@@ -20,17 +20,17 @@ nonisolated(unsafe) let model = OverviewModel(workspaces: [
 
 // MARK: - HTML
 
-nonisolated(unsafe) var out = ""
-func h(_ level: Int, _ text: String) { out += "<h\(level)>\(text)</h\(level)>\n" }
-func p(_ text: String) { out += "<p>\(text)</p>\n" }
+var out = ""
+@MainActor func h(_ level: Int, _ text: String) { out += "<h\(level)>\(text)</h\(level)>\n" }
+@MainActor func p(_ text: String) { out += "<p>\(text)</p>\n" }
 func esc(_ s: String) -> String { s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;") }
 func code(_ s: String) -> String { "<code>\(esc(s))</code>" }
-func table(_ head: [String], _ rows: [[String]]) {
+@MainActor func table(_ head: [String], _ rows: [[String]]) {
     out += "<table><tr>" + head.map { "<th>\($0)</th>" }.joined() + "</tr>\n"
     for r in rows { out += "<tr>" + r.map { "<td>\($0)</td>" }.joined() + "</tr>\n" }
     out += "</table>\n"
 }
-func mermaid(_ body: String) { out += "<pre class=\"mermaid\">\n\(body)\n</pre>\n" }
+@MainActor func mermaid(_ body: String) { out += "<pre class=\"mermaid\">\n\(body)\n</pre>\n" }
 func label(_ s: String) -> String { s.replacingOccurrences(of: "\"", with: "'") }
 
 func describe(_ s: AppSummon) -> String {
@@ -99,7 +99,7 @@ table(["URL", "Summon"], [
 
 p("For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture, with the picker on and off:")
 struct Case { let title: String; let app: String?; let model: OverviewModel }
-func focused(_ id: Int) -> OverviewModel { OverviewModel(workspaces: model.workspaces, focusedWindowId: id, focusedWorkspace: "1") }
+@MainActor func focused(_ id: Int) -> OverviewModel { OverviewModel(workspaces: model.workspaces, focusedWindowId: id, focusedWorkspace: "1") }
 let cases = [
     Case(title: "no window of the app (Finder)", app: "com.apple.finder", model: model),
     Case(title: "one window (Mail ×… no: Teams has two; use a one-window app)", app: nil, model: model),
