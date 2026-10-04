@@ -45,6 +45,44 @@ struct AppStripStepTests {
 
 }
 
+/// The strip as a value: every change is a new strip, so nothing is ever half-updated and a
+/// change is one assignment. The store only holds the current one.
+@Suite("Strip: a value that steps")
+struct StripValueTests {
+    private let cards: (Int) -> Int? = { [1, 2, 3].contains($0) ? 0 : [4, 5].contains($0) ? 1 : nil }
+
+    @Test("opened on the window after the one you are in, the centre with it, no turns yet")
+    func opened() {
+        let s = Strip.opened("com.app", origin: 2, ids: [1, 2, 3], recent: [])
+        #expect(s == Strip(bundleId: "com.app", marked: 3, centre: 3, turns: 0))
+        #expect(Strip.opened("com.app", origin: nil, ids: [1, 2], recent: [2]).marked == 2)
+    }
+
+    @Test("a key selects: marking and centre move; the pointer marks: the centre stays")
+    func selectingAndMarking() {
+        let s = Strip(bundleId: "a", marked: 1, centre: 1, turns: 0)
+        #expect(s.selecting(4) == Strip(bundleId: "a", marked: 4, centre: 4, turns: 0))
+        #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1, turns: 0))
+    }
+
+    @Test("stepping wraps round the ids and counts a turn when it passes the last card forward, or the first backward")
+    func stepped() {
+        let s = Strip(bundleId: "a", marked: 5, centre: 5, turns: 0)
+        let on = s.stepped(1, ids: [1, 2, 3, 4, 5], card: cards)
+        #expect(on.marked == 1 && on.centre == 1 && on.turns == 1)            // 5 (card 1) → 1 (card 0): round the end
+        let back = on.stepped(-1, ids: [1, 2, 3, 4, 5], card: cards)
+        #expect(back.marked == 5 && back.turns == 0)                          // and back again
+        #expect(s.stepped(1, ids: [], card: cards).marked == 5)               // nothing to step onto: unchanged
+    }
+
+    @Test("after the windows changed the marking stays on its window, or passes to the one that took a closed one's place")
+    func kept() {
+        let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)
+        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))
+        #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1]).marked == 2)
+    }
+}
+
 @Suite("AppStripModel: geometry")
 struct AppStripGeometryTests {
     @Test("cards are as tall as the width allows, up to half the panel and never below a fifth")

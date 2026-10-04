@@ -6,12 +6,9 @@ import Common
 public class OverviewStore {
     public private(set) var model = OverviewModel() {
         didSet {
-            if var strip {
+            if let strip {
                 let before = oldValue.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }.map(\.window.windowId)
-                let lastIndex = strip.marked.flatMap { before.firstIndex(of: $0) } ?? 0
-                strip.marked = AppStripModel.keepSelection(strip.marked, lastIndex: lastIndex, ids: stripWindows.map(\.window.windowId))
-                strip.centre = strip.marked
-                self.strip = strip
+                self.strip = strip.kept(before: before, after: stripWindows.map(\.window.windowId))
             }
             filterMatches = model.matching(filter)
         }
@@ -45,24 +42,6 @@ public class OverviewStore {
     }
 
 
-    /// The strip this visit: whose windows, and the marking. Its own state, not a query: the app
-    /// is named by bundle id, so a window of another app whose title happens to name this one is
-    /// not in it, and nothing typed narrows it.
-    public struct Strip: Equatable, Sendable {
-        public let bundleId: String
-        public internal(set) var marked: Int?
-        /// The window the carousel centres on: the marking, as keys move it. Pointing marks
-        /// without moving it, or the row would slide another window under a hand that had not
-        /// moved (krn.overview: "Keys move the centre; the pointer does not").
-        public internal(set) var centre: Int?
-        /// How many times the keys have taken the ring round past its last card, less the times
-        /// back past its first: what keeps the carousel turning one way instead of jumping back.
-        public internal(set) var turns = 0
-
-        init(bundleId: String, marked: Int?) {
-            self.bundleId = bundleId; self.marked = marked; self.centre = marked
-        }
-    }
     public private(set) var strip: Strip?
     /// The visit is over: the next summon decides afresh whether there is a strip.
     public func dropStrip() { strip = nil }
@@ -98,25 +77,15 @@ public class OverviewStore {
 
     /// The summon key again while the strip is up: the marking moves on, as Cmd-` does.
     public func stepStrip(_ direction: Int = 1) {
-        guard var strip else { return }
-        let ids = stripWindows.map(\.window.windowId)
-        let at = AppStripModel.stepIndex(strip.marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: direction)
-        let card = { (id: Int?) in id.flatMap { id in self.stripWorkspaces.firstIndex { $0.windows.contains { $0.windowId == id } } } }
-        let from = card(strip.centre)
-        strip.marked = at >= 0 ? ids[at] : strip.marked
-        strip.centre = strip.marked
-        if let from, let to = card(strip.centre) {
-            if direction > 0, to < from { strip.turns += 1 }
-            if direction < 0, to > from { strip.turns -= 1 }
-        }
-        self.strip = strip
+        let workspaces = stripWorkspaces
+        strip = strip?.stepped(direction, ids: stripWindows.map(\.window.windowId),
+                               card: { id in workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } })
     }
 
     /// Pointing marks, as in krn.overview's strip; a window that is not the app's is ignored.
     public func markStrip(_ windowId: Int) {
-        guard var strip, stripWindows.contains(where: { $0.window.windowId == windowId }) else { return }
-        strip.marked = windowId
-        self.strip = strip
+        guard stripWindows.contains(where: { $0.window.windowId == windowId }) else { return }
+        strip = strip?.marking(windowId)
     }
 
     /// Where the mouse was when the strip last heard from it, in screen points.
@@ -354,7 +323,7 @@ public class OverviewStore {
         }
         guard picker else { return .launch }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
-        strip = Strip(bundleId: bundleId, marked: AppStripModel.start(origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recentWindows))
+        strip = .opened(bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recentWindows)
         return .pick
     }
 
@@ -387,7 +356,7 @@ public class OverviewStore {
         let ids = stripWindows.map(\.window.windowId)
         switch AppStripModel.action(for: key, ids: ids, marked: strip.marked) {
         case .step(let direction): stepStrip(direction)
-        case .select(let id): markStrip(id); self.strip?.centre = id   // a key moves the centre with the marking
+        case .select(let id): self.strip = strip.selecting(id)
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
         case .none: break
@@ -556,7 +525,7 @@ public class OverviewStore {
             onShotDone?(true)
             return
         }
-        self.strip = Strip(bundleId: focused.bundleId, marked: focused.windowId)
+        self.strip = Strip(bundleId: focused.bundleId, marked: focused.windowId, centre: focused.windowId, turns: 0)
     }
 
 }

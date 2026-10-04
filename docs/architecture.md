@@ -8,7 +8,7 @@ The package's targets, the files in each with the types they declare, and which 
 
 ```mermaid
 flowchart LR
-    Common["Common<br/><small>Sources/Common · 15 files</small>"]
+    Common["Common<br/><small>Sources/Common · 16 files</small>"]
     AeroControlKit["AeroControlKit<br/><small>Sources/AeroControlKit · 15 files</small>"]
     AeroControl["AeroControl<br/><small>Sources/AeroControlEntry · 4 files</small>"]
     AeroControlKit --> Common
@@ -31,13 +31,14 @@ flowchart LR
 | Common | `Domain/Models.swift` | `Focus`, `OverviewResult`, `WindowInfo`, `WorkspaceInfo` |
 | Common | `Domain/OverviewFilter.swift` | `FilterKey`, `FilterKeyAction` |
 | Common | `Domain/OverviewUpdate.swift` | `OverviewEffect`, `OverviewInput`, `OverviewModel` |
+| Common | `Domain/Strip.swift` | `Strip` |
 | Common | `Domain/TilePacker.swift` | `Packed`, `Tile`, `TilePacker` |
 | Common | `Domain/WorkspaceTree.swift` | `Axis`, `WorkspaceTree` |
 | AeroControlKit | `Adapters/AerospaceSocketRunner.swift` | `AerospaceSocket`, `AerospaceSocketError`, `AerospaceSocketRunner`, `ServerAnswer`, `SocketHandle` |
 | AeroControlKit | `Adapters/NativeApiBridge.swift` | `NativeApiBridge` |
 | AeroControlKit | `Adapters/NativeApiBridgeAdapter.swift` | `NativeApiBridgeAdapter` |
 | AeroControlKit | `Adapters/SingleInstanceGuard.swift` | `SingleInstanceGuard` |
-| AeroControlKit | `State/OverviewStore.swift` | `AppSummon`, `OverviewStore`, `Strip` |
+| AeroControlKit | `State/OverviewStore.swift` | `AppSummon`, `OverviewStore` |
 | AeroControlKit | `State/Summon.swift` | `Again`, `Summon` |
 | AeroControlKit | `UI/AeroControlAppStrip.swift` | `AeroControlAppStrip` |
 | AeroControlKit | `UI/AeroControlAppTile.swift` | `AeroControlAppTile`, `FadingPicture` |
@@ -70,7 +71,7 @@ flowchart LR
     Sources_AeroControlKit_State["AeroControlKit/State<br/><small>2 files</small>"]
     Sources_AeroControlKit_UI["AeroControlKit/UI<br/><small>9 files</small>"]
     Sources_Common_Aerospace["Common/Aerospace<br/><small>4 files</small>"]
-    Sources_Common_Domain["Common/Domain<br/><small>11 files</small>"]
+    Sources_Common_Domain["Common/Domain<br/><small>12 files</small>"]
     Sources_AeroControlEntry -->|3| Sources_AeroControlKit_Adapters
     Sources_AeroControlEntry -->|4| Sources_AeroControlKit_State
     Sources_AeroControlEntry -->|7| Sources_AeroControlKit_UI
@@ -78,7 +79,7 @@ flowchart LR
     Sources_AeroControlKit_Adapters -->|1| Sources_Common_Aerospace
     Sources_AeroControlKit_State -->|1| Sources_AeroControlKit_Adapters
     Sources_AeroControlKit_State -->|3| Sources_Common_Aerospace
-    Sources_AeroControlKit_State -->|6| Sources_Common_Domain
+    Sources_AeroControlKit_State -->|7| Sources_Common_Domain
     Sources_AeroControlKit_UI -->|4| Sources_AeroControlKit_State
     Sources_AeroControlKit_UI -->|1| Sources_Common_Aerospace
     Sources_AeroControlKit_UI -->|19| Sources_Common_Domain
@@ -97,7 +98,7 @@ flowchart LR
 | `AeroControlKit/Adapters/NativeApiBridge.swift` | — |
 | `AeroControlKit/Adapters/NativeApiBridgeAdapter.swift` | `NativeApiBridge` |
 | `AeroControlKit/Adapters/SingleInstanceGuard.swift` | — |
-| `AeroControlKit/State/OverviewStore.swift` | `NativeApiBridge`, `AerospaceCliParser`, `AerospaceCommands`, `AerospaceProcessRunner`, `AeroControlAction`, `AerospaceEvent`, `AppStripModel`, `Models`, `OverviewFilter`, `OverviewUpdate` |
+| `AeroControlKit/State/OverviewStore.swift` | `NativeApiBridge`, `AerospaceCliParser`, `AerospaceCommands`, `AerospaceProcessRunner`, `AeroControlAction`, `AerospaceEvent`, `AppStripModel`, `Models`, `OverviewFilter`, `OverviewUpdate`, `Strip` |
 | `AeroControlKit/State/Summon.swift` | — |
 | `AeroControlKit/UI/AeroControlAppStrip.swift` | `OverviewStore`, `AeroControlAppTile`, `AeroControlWorkspaceCard`, `AeroControlLayout`, `AeroControlMetrics`, `AppStripModel`, `Models` |
 | `AeroControlKit/UI/AeroControlAppTile.swift` | `OverviewStore`, `OverviewDragPayload`, `PictureResampler`, `AeroControlLayout`, `AeroControlMetrics`, `Models` |
@@ -121,6 +122,7 @@ flowchart LR
 | `Common/Domain/Models.swift` | — |
 | `Common/Domain/OverviewFilter.swift` | `AerospaceCliParser`, `Models`, `OverviewUpdate` |
 | `Common/Domain/OverviewUpdate.swift` | `AeroControlAction`, `AerospaceEvent`, `Models` |
+| `Common/Domain/Strip.swift` | `AppStripModel` |
 | `Common/Domain/TilePacker.swift` | — |
 | `Common/Domain/WorkspaceTree.swift` | — |
 
@@ -240,7 +242,6 @@ flowchart TD
     s_handle --> s_handleStrip
     s_handle --> c_filterKeyAction
     s_handleStrip --> s_stepStrip
-    s_handleStrip --> s_markStrip
     s_pointStrip --> s_markStrip
     s_reload --> s_send
     s_reload --> c_loadOverview
