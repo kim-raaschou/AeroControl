@@ -291,7 +291,10 @@ public class OverviewStore {
     public func summonApp(_ app: AppRef, picker: Bool) -> AppSummon {
         missingApp = nil
         let decision = AppSummon.decide(app: app, model: model, recent: recentWindows, picker: picker)
-        if case .pick(let opened) = decision { strip = opened }
+        guard case .pick(let opened) = decision else { return decision }
+        strip = opened
+        // Up already, the strip takes over another's: its pictures come as a focus event's would.
+        if following { requestRefresh() }
         return decision
     }
 

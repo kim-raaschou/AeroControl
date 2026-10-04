@@ -354,6 +354,27 @@ struct OverviewStoreTests {
         #expect(left == 1)
     }
 
+    @Test("another app's key while a strip is up turns the strip to that app with the pictures it lacks, as a focus event would")
+    func stripTakeoverTakesItsPictures() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        bridge.granted = true
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
+                                        oneWindow(8, "3", app: "Slack", bundleId: "com.slack"), oneWindow(9, "4", app: "Slack", bundleId: "com.slack"),
+                                        oneWindow(7, "5", app: "Claude", bundleId: "com.claude")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "3", "4", "5"]))
+        runner.setFocus(windowId: 7, workspace: "5")
+        let store = started(runner, bridge)
+        await store.reload()
+        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        await store.measurePreviews()
+        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
+        store.following = true                                                          // the overview is up
+        #expect(store.previews[9] == nil)
+        _ = store.summonApp(.bundleId("com.slack"), picker: true)
+        await waitUntil { store.previews[9] != nil }
+        #expect(store.strip?.bundleId == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
+    }
+
     @Test("stepping past the last workspace turns the ring once more the same way; back past the first turns it back")
     func stripTurns() async {
         let (_, store) = await stripOnTeams()                                           // Teams on 1, 2 and 3, marked on 3
