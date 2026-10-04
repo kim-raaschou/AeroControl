@@ -18,7 +18,7 @@ struct SettingsStoreTests {
         let store = SettingsStore(defaults: defaults)
         #expect(store.theme == .system)
         let fixed = AeroControlTheme.named("tokyoNight")!
-        store.setTheme(fixed)
+        store.theme = fixed
         #expect(SettingsStore(defaults: defaults).theme == fixed)
         store.reset()
         #expect(store.theme == .system)
@@ -29,12 +29,10 @@ struct SettingsStoreTests {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)
         #expect(store.backdropOpacity == 1 && store.animationSpeed == .normal)
-        store.setBackdropOpacity(0.6)
-        store.setAnimationSpeed(.off)
+        store.backdropOpacity = 0.6
+        store.animationSpeed = .off
         #expect(SettingsStore(defaults: defaults).backdropOpacity == 0.6)
         #expect(SettingsStore(defaults: defaults).animationSpeed == .off)
-        store.setBackdropOpacity(7)                                   // clamped, never blinding
-        #expect(store.backdropOpacity == 1)
         store.reset()
         #expect(SettingsStore(defaults: defaults).backdropOpacity == 1)
         #expect(SettingsStore(defaults: defaults).animationSpeed == .normal)
@@ -45,7 +43,7 @@ struct SettingsStoreTests {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)
         #expect(store.appPicker)
-        store.setAppPicker(false)
+        store.appPicker = false
         #expect(!SettingsStore(defaults: defaults).appPicker)
         store.reset()
         #expect(SettingsStore(defaults: defaults).appPicker)

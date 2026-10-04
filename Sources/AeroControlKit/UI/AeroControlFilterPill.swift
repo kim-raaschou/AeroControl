@@ -10,19 +10,28 @@ import Common
 /// legend is where a window is read and picked whatever the geometry did.
 struct AeroControlFilterPill: View {
     /// The app the strip shows, its icon, how many windows on how many workspaces, and its windows.
-    struct StripApp {
+    private struct StripApp {
         let name: String
         let icon: NSImage?
         let summary: String
         let rows: [AppStripModel.LegendRow]
     }
 
+    @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
-    let query: String
     let matchCount: Int
-    var app: StripApp?
 
+    private var query: String { state.filter }
 
+    /// The strip's app and its legend; or an app `open` could not find, named as the link named
+    /// it, with why nothing came; nil on the map.
+    private var app: StripApp? {
+        if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, rows: []) }
+        guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
+        return StripApp(name: first.appName, icon: state.icon(for: strip.bundleId),
+                        summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count),
+                        rows: AppStripModel.legend(state.stripWindows, marked: strip.marked))
+    }
 
     /// The lane is there whether or not anything has been typed. The pill is the only thing
     /// on screen that appears mid-gesture, and a view that appears must not move the grid it

@@ -36,6 +36,8 @@ public enum AeroControlLayout {
     /// A card's height that is not pictures: the padding, the badge lane, and the gap
     /// between the badge and the first row of tiles.
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
+    /// The room inside a card of `size` for its tiles: below the badge lane and its gap, inside the padding.
+    public static func inner(of size: CGSize) -> CGSize { CGSize(width: size.width - 2 * cardPadding, height: size.height - cardChrome) }
 
     /// The gap between packed tiles, in the screen's points: one constant, scaled to the card like
     /// everything else, so a packed card (an accordion, a filtered subset, a workspace a release

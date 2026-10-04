@@ -6,10 +6,6 @@ import Common
 /// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
-    /// The display this workspace lives on; nil with a single display, where naming it is noise.
-    let monitorName: String?
-    /// Width / height of a window whose size is not known yet: the screen's own shape.
-    let fallbackRatio: CGFloat
     /// The visible frame of the screen this workspace lives on, in AeroSpace's coordinates
     /// (points, top-left origin); the area its layout fills.
     let screen: CGRect?
@@ -21,20 +17,15 @@ struct AeroControlWorkspaceCard: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
 
-    private func run(_ action: AeroControlAction) {
-        state.send(.action(action))
-    }
-
-
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
         let placement = self.placement
-        AeroControlCardFace(workspace: workspace, monitorName: monitorName, size: size) {
+        AeroControlCardFace(workspace: workspace, size: size) {
             grid(placement)
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
         .contentShape(shape)
-        .onTapGesture { run(.focusWorkspace(workspace.name)) }
+        .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
         // Grab the card anywhere outside a tile and drop it on another card to merge the
         // workspace into it. Tiles keep their own drag (a single window).
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
@@ -45,10 +36,10 @@ struct AeroControlWorkspaceCard: View {
             case .window(let id):
                 // Dropped back where it came from: nothing to move, like a card on itself.
                 guard !workspace.windows.contains(where: { $0.windowId == id }) else { return false }
-                run(.moveWindow(windowId: id, toWorkspace: workspace.name))
+                state.send(.action(.moveWindow(windowId: id, toWorkspace: workspace.name)))
             case .workspace(let source):
                 guard source != workspace.name else { return false }
-                run(.mergeWorkspace(source: source, into: workspace.name))
+                state.send(.action(.mergeWorkspace(source: source, into: workspace.name)))
             }
             return true
         } isTargeted: { isDropTarget = $0 }
@@ -64,9 +55,6 @@ struct AeroControlWorkspaceCard: View {
             .padding(6)
     }
 
-    /// The room inside the card for its tiles: below the badge lane and its gap, inside the padding.
-    private var innerSize: CGSize { CGSize(width: size.width - 2 * AeroControlLayout.cardPadding, height: size.height - AeroControlLayout.cardChrome) }
-
     /// Where every window goes in the card's inner box, and which windows float over the
     /// layout rather than sit in it.
     private typealias Placement = (frames: [Int: CGRect], ghosts: Set<Int>)
@@ -79,11 +67,12 @@ struct AeroControlWorkspaceCard: View {
     /// single six-window workspace shrank every picture on the map to a stamp.
     private var placement: Placement {
         let windows = workspace.windows
-        let inner = innerSize
+        let inner = AeroControlLayout.inner(of: size)
         if !filtering, let laid = AeroControlLayout.treeLayout(windows: windows, sizes: state.previewSizes, screen: screen, inner: inner) {
             return laid
         }
-        let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: fallbackRatio)
+        // A window whose size is not known yet takes its screen's shape.
+        let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: AeroControlLayout.screenRatio(for: screen?.size ?? inner))
         let gap = AeroControlLayout.packedGap(screen: screen?.size, inner: inner), caption: CGFloat = filtering ? AeroControlLayout.captionLane : 0
         let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
         let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
@@ -95,12 +84,12 @@ struct AeroControlWorkspaceCard: View {
 
     private func grid(_ placement: Placement) -> some View {
         let windows = workspace.windows
-        let inner = innerSize
+        let inner = AeroControlLayout.inner(of: size)
         return ZStack(alignment: .topLeading) {
             ForEach(windows, id: \.windowId) { window in
                 let frame = placement.frames[window.windowId] ?? .zero
                 let ghost = placement.ghosts.contains(window.windowId)
-                tile(window, metrics: AeroControlMetrics(tileSize: frame.size))
+                AeroControlAppTile(window: window, size: frame.size, filtering: filtering)
                     .offset(x: frame.minX, y: frame.minY)
                     .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
                     .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: placement.ghosts))
@@ -108,10 +97,6 @@ struct AeroControlWorkspaceCard: View {
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15 * look.motion), value: windows)
-    }
-
-    private func tile(_ window: WindowInfo, metrics: AeroControlMetrics) -> AeroControlAppTile {
-        AeroControlAppTile(window: window, metrics: metrics, filtering: filtering)
     }
 
     @ViewBuilder private var dropTargetHint: some View {
@@ -128,8 +113,6 @@ struct AeroControlWorkspaceCard: View {
 /// and the pictures in the inner box under them, on the card's fill and hairline.
 struct AeroControlCardFace<Content: View>: View {
     let workspace: WorkspaceInfo
-    /// The display this workspace lives on; nil with a single display, where naming it is noise.
-    let monitorName: String?
     let size: CGSize
     @ViewBuilder let content: () -> Content
 
@@ -137,8 +120,8 @@ struct AeroControlCardFace<Content: View>: View {
     @Environment(\.aeroLook) private var look
 
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-    /// The room inside the card for its tiles: below the badge lane and its gap, inside the padding.
-    private var innerSize: CGSize { CGSize(width: size.width - 2 * AeroControlLayout.cardPadding, height: size.height - AeroControlLayout.cardChrome) }
+    /// The display this workspace lives on; nil with a single display, where naming it is noise.
+    private var monitorName: String? { state.model.spansMonitors ? workspace.monitorShortName : nil }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
@@ -148,7 +131,8 @@ struct AeroControlCardFace<Content: View>: View {
         // stack and push the badge out of its corner.
         VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
-            content().frame(width: innerSize.width, height: innerSize.height, alignment: .topLeading)
+            let inner = AeroControlLayout.inner(of: size)
+            content().frame(width: inner.width, height: inner.height, alignment: .topLeading)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)

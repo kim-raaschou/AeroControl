@@ -6,43 +6,35 @@ import Common
 public struct AeroControlPanel: View {
     let state: OverviewStore
     @Environment(\.aeroLook) private var look
-    let availableWidth: CGFloat
-    let availableHeight: CGFloat
+    /// The screen the overview covers.
+    let available: CGSize
     /// The visible frame of every screen in AeroSpace's coordinates (points, top-left origin),
     /// by AeroSpace's 1-based AppKit index: the area a workspace's layout fills, and the shape a
     /// window nothing is known about gets.
     let screenFrames: [Int: CGRect]
 
-    public init(state: OverviewStore, availableWidth: CGFloat = 0, availableHeight: CGFloat = 0, screenFrames: [Int: CGRect] = [:]) {
+    public init(state: OverviewStore, available: CGSize = .zero, screenFrames: [Int: CGRect] = [:]) {
         self.state = state
-        self.availableWidth = availableWidth
-        self.availableHeight = availableHeight
+        self.available = available
         self.screenFrames = screenFrames
     }
-
-    /// Every workspace, whichever monitor it lives on: the overview is one window.
-    private var workspaces: [WorkspaceInfo] { state.model.workspaces }
-
-    /// With one display the cards say nothing about it; with several, each card names its own.
-    private var namesMonitors: Bool { state.model.spansMonitors }
 
     public var body: some View {
         let matches = state.filterMatches
         // The pill sits under the result rather than over it: the cards are only as tall as
         // their pictures need now, so an overlay at the bottom would land on a card edge.
+        // A missing app has the lane alone; a map without workspaces has nothing to draw.
         return VStack(spacing: Self.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
-            } else if workspaces.isEmpty || state.missingApp != nil {
+            } else if state.model.workspaces.isEmpty || state.missingApp != nil {
                 EmptyView()
             } else if state.strip != nil, !state.stripWindows.isEmpty {
-                AeroControlAppStrip(usable: usable, screens: screenFrames,
-                                    fallbackScreen: CGRect(origin: .zero, size: CGSize(width: availableWidth, height: availableHeight)),
-                                    namesMonitors: namesMonitors)
+                AeroControlAppStrip(usable: usable, screens: screenFrames, fallbackScreen: CGRect(origin: .zero, size: available))
             } else {
                 grid(matches)
             }
-            AeroControlFilterPill(query: state.strip == nil ? state.filter : "", matchCount: matches.count, app: stripApp)
+            AeroControlFilterPill(matchCount: matches.count)
         }
         .fixedSize()
         .environment(state)
@@ -52,29 +44,12 @@ public struct AeroControlPanel: View {
     /// the panel grew taller than the screen the moment anything was typed, and the lane was
     /// clipped off the bottom.
     private var usable: CGSize {
-        CGSize(width: availableWidth * AeroControlLayout.usableScreenFraction,
-               height: availableHeight * AeroControlLayout.usableScreenFraction
-                   - AeroControlFilterPill.laneHeight(rows: stripApp?.rows.count ?? 0) - Self.pillGap)
+        CGSize(width: available.width * AeroControlLayout.usableScreenFraction,
+               height: available.height * AeroControlLayout.usableScreenFraction
+                   - AeroControlFilterPill.laneHeight(rows: state.strip == nil ? 0 : state.stripWindows.count) - Self.pillGap)
     }
 
     private static let pillGap: CGFloat = 18
-
-    /// The app the strip shows and its legend, for the lane under the cards; nil on the map.
-    private var stripApp: AeroControlFilterPill.StripApp? {
-        if let missing = state.missingApp?.notFound { return .init(name: missing.name, icon: nil, summary: missing.reason, rows: []) }
-        guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
-        return .init(name: first.appName, icon: state.icon(for: strip.bundleId),
-                     summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count),
-                     rows: AppStripModel.legend(state.stripWindows, marked: strip.marked))
-    }
-
-    /// The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.
-    private var cellRatio: CGFloat { AeroControlLayout.screenRatio(for: CGSize(width: availableWidth, height: availableHeight)) }
-
-    /// The shape of the screen a workspace lives on; this screen's when AeroSpace did not say.
-    private func ratio(of workspace: WorkspaceInfo) -> CGFloat {
-        AeroControlLayout.screenRatio(for: screenFrames[workspace.screenIndex]?.size ?? usable)
-    }
 
     /// The result takes over the grid's geometry: a query that found something draws only the
     /// workspaces that hold a match, each with only its matching windows, in the same lattice
@@ -83,17 +58,15 @@ public struct AeroControlPanel: View {
     private func grid(_ matches: [ParsedWindow]) -> some View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
-        let all = filtering ? filtered : workspaces
-        let namesMonitors = self.namesMonitors
-        let frames = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
+        let all = filtering ? filtered : state.model.workspaces
+        // The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.
+        let frames = CardGrid.lattice(count: all.count, in: usable, cellRatio: AeroControlLayout.screenRatio(for: available), gap: AeroControlLayout.cardGap,
                                       chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
         return ZStack(alignment: .topLeading) {
             ForEach(frames.indices, id: \.self) { i in
                 let workspace = all[i]
                 AeroControlWorkspaceCard(
                     workspace: workspace,
-                    monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                    fallbackRatio: ratio(of: workspace),
                     screen: screenFrames[workspace.screenIndex],
                     size: frames[i].size,
                     filtering: filtering

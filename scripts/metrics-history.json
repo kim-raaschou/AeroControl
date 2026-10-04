@@ -1708,5 +1708,14 @@
     "complexity": 896,
     "prodComplexity": 503,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:40:43+02:00",
+    "commit": "e84cd86",
+    "subject": "The reducer says what is read after a command: one run effect",
+    "code": 5325,
+    "complexity": 880,
+    "prodComplexity": 487,
+    "files": 60
   }
 ]

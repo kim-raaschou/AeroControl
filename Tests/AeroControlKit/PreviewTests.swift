@@ -355,7 +355,7 @@ private let oneWorkspace = workspacesJSON(["1"])
     func forgottenOnClose() throws {
         let source = image(1100, 690)
         let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
-        previewStore(FakeBridge()).clearPreviews()
+        previewStore(FakeBridge()).endVisit()
         #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
     }
 }

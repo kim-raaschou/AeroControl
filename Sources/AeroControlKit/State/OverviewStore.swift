@@ -41,13 +41,22 @@ public class OverviewStore {
         didSet { filterMatches = model.matching(filter) }
     }
 
-
     public private(set) var strip: Strip?
     /// An app `open` could not start, told on the strip's lane until the visit ends: a typo in a
     /// key's link is otherwise a key that does nothing.
     public var missingApp: AppRef?
-    /// The visit is over: the next summon decides afresh whether there is a strip.
-    public func dropStrip() { strip = nil; missingApp = nil }
+
+    /// The visit is over: nothing to stay in sync with while hidden, no pictures kept, no query,
+    /// and the next summon decides afresh whether there is a strip.
+    public func endVisit() {
+        following = false
+        refreshTask?.cancel()
+        refreshTask = nil
+        filter = ""
+        strip = nil
+        missingApp = nil
+        clearPreviews()
+    }
     /// The one shot is over and the host closes the overview: after a focus action (the window
     /// or workspace asked for takes the keyboard), or when AeroSpace took the focus out of the
     /// overview for good (`restoreFocus`: the app that has it is brought forward).
@@ -160,7 +169,6 @@ public class OverviewStore {
     /// Reads AeroSpace's whole state and applies it. The overview is a one shot: the host
     /// awaits this at summon, so what is drawn is what AeroSpace says right now.
     public func reload() async {
-        previewsAvailable = nativeSystem.canCapturePreviews
         do {
             let result = try await loadOverview(using: runner)
             send(.loaded(result))
@@ -172,34 +180,21 @@ public class OverviewStore {
 
     /// While the overview is up, AeroSpace's changes are read and drawn; while it is hidden only
     /// the focus changes are kept, for the order windows were used in.
-    public func startFollowingAerospace() {
-        following = true
-        startListening()
-    }
-
-    public func stopFollowingAerospace() {
-        following = false
-        refreshTask?.cancel()
-        refreshTask = nil
-    }
-    private var following = false
+    /// While the overview is up, every event is applied and read against AeroSpace; hidden, the
+    /// listener only keeps the order of focus. `endVisit` turns it off.
+    public var following = false
 
     // MARK: Window previews
 
     /// True when macOS lets us capture windows; decides the tile layout up front so the
-    /// overview does not jump when the images arrive. Read from the system once per reload
-    /// and after a request, not on access: every card asked on every body, and the answer
-    /// is a TCC round-trip.
-    public private(set) var previewsAvailable = false
+    /// overview does not jump when the images arrive. Asked a few times a summon, by the host.
+    public var previewsAvailable: Bool { nativeSystem.canCapturePreviews }
 
     /// Warms the capture path before `reload()`, so the system's window enumeration and
     /// AeroSpace's answer arrive together rather than one after the other.
     public func prepareCapture() { nativeSystem.prepareCapture() }
 
-    public func requestPreviewAccess() {
-        nativeSystem.requestPreviewAccess()
-        previewsAvailable = nativeSystem.canCapturePreviews
-    }
+    public func requestPreviewAccess() { nativeSystem.requestPreviewAccess() }
 
     private var windowIds: [Int] { model.workspaces.flatMap(\.windows).map(\.windowId) }
 
@@ -267,7 +262,7 @@ public class OverviewStore {
     private var sharpenTask: Task<Void, Never>?
 
     /// The overview closes: its pictures go, with whatever was still being taken.
-    public func clearPreviews() {
+    private func clearPreviews() {
         captureGeneration += 1
         for task in [sharpenTask, landing] { task?.cancel() }
         sharpenTask = nil

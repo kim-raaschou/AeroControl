@@ -25,22 +25,6 @@ final class OverlayWindowManager {
         state.onShotDone = { [weak self] in self?.hide(restoreFocus: $0) }
     }
 
-    private func makePanel(availableSize: NSSize) -> AeroControlPanel {
-        // What AeroSpace tiles into (no menu bar, no dock), in its coordinates: AppKit's y grows
-        // upward from the main screen's bottom, AeroSpace's downward from its top.
-        let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
-            let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
-            let visible = screen.visibleFrame
-            return (index + 1, CGRect(x: visible.minX, y: top - visible.maxY, width: visible.width, height: visible.height))
-        })
-        return AeroControlPanel(
-            state: state,
-            availableWidth: availableSize.width,
-            availableHeight: availableSize.height,
-            screenFrames: screenFrames
-        )
-    }
-
     /// Escape and the backdrop dismiss without choosing anything; then the keyboard goes
     /// back to the app that owns the focused window, since summoning leaves AeroControl
     /// as the frontmost app. AeroSpace cannot do this for us: the window is already its
@@ -48,10 +32,7 @@ final class OverlayWindowManager {
     private func hide(restoreFocus: Bool) {
         guard requestedVisible else { return }
         requestedVisible = false
-        state.stopFollowingAerospace()      // nothing to stay in sync with while hidden
-        state.clearPreviews()
-        state.filter = ""
-        state.dropStrip()
+        state.endVisit()
         window?.dismiss()
         guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
         app.activate()
@@ -78,15 +59,9 @@ final class OverlayWindowManager {
     /// an empty query still dismisses.
     private func handleKey(_ key: FilterKey) -> Bool {
         guard requestedVisible else { return false }
-        switch state.handle(key) {
-        case .none:
-            return false
-        case .focus(let windowId):
-            state.send(.action(.focusWindow(windowId)))     // the store ends the shot; it gets the keyboard
-        case .setQuery, .handled:
-            break
-        }
-        return true
+        let action = state.handle(key)
+        if case .focus(let windowId) = action { state.send(.action(.focusWindow(windowId))) }   // the store ends the shot; it gets the keyboard
+        return action != .none
     }
 
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
@@ -114,7 +89,7 @@ final class OverlayWindowManager {
                 // menu item / System Settings is the way in. The tiles stay plates meanwhile.
                 self.state.requestPreviewAccess()
             }
-            self.state.startFollowingAerospace()
+            self.state.following = true
             self.window?.orderOut(nil)
             let screen = self.targetScreen()
             let window = self.makeWindow(for: screen, hidden: true)
@@ -190,13 +165,22 @@ final class OverlayWindowManager {
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
-        window.applyAppearance(settings.theme.enforcedAppearance)
+        // A fixed palette also needs the parts macOS draws itself — the backdrop blur, any system
+        // material — in its own appearance; otherwise Tokyo Night sits on a light blur in light mode.
+        window.appearance = settings.theme.enforcedAppearance.map { NSAppearance(named: $0 == .dark ? .darkAqua : .aqua) } ?? nil
+        // What AeroSpace tiles into (no menu bar, no dock), in its coordinates: AppKit's y grows
+        // upward from the main screen's bottom, AeroSpace's downward from its top.
+        let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
+            let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
+            let visible = screen.visibleFrame
+            return (index + 1, CGRect(x: visible.minX, y: top - visible.maxY, width: visible.width, height: visible.height))
+        })
         window.motion = settings.animationSpeed.scale
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
         let root = OverviewRoot(
-            panel: makePanel(availableSize: screen.frame.size),
+            panel: AeroControlPanel(state: state, available: screen.frame.size, screenFrames: screenFrames),
             theme: settings.theme,
             backdropOpacity: settings.backdropOpacity,
             motion: settings.animationSpeed.scale,
@@ -204,7 +188,7 @@ final class OverlayWindowManager {
         )
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []
-        window.installContent(hosting: hostingView)
+        window.contentView = hostingView
         if !hidden { window.reveal() }
         return window
     }

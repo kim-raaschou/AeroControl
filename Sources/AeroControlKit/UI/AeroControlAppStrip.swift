@@ -16,7 +16,6 @@ struct AeroControlAppStrip: View {
     let usable: CGSize
     let screens: [Int: CGRect]
     let fallbackScreen: CGRect
-    let namesMonitors: Bool
 
     /// How long the ring takes to turn a card along.
     private static let turn: Double = 0.4
@@ -24,21 +23,19 @@ struct AeroControlAppStrip: View {
     private static let edgeFade: CGFloat = 0.03
 
     var body: some View {
-        let windows = state.stripWindows
         let groups = state.stripWorkspaces
         let bundleId = state.strip?.bundleId ?? ""
         let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.previewSizes, screens: screens,
                                                    fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
-        let ids = windows.map(\.window.windowId)
-        let centre = state.strip?.centre ?? state.strip?.marked
+        let ids = state.stripWindows.map(\.window.windowId)
+        let centre = state.strip?.centre
         let turns = state.strip?.turns ?? 0
         let placements = AeroControlLayout.stripPlacements(layout, centre: centre, turns: turns, viewWidth: usable.width)
         let held = layout.cards.firstIndex { card in centre.map { card.frames[$0] != nil } ?? false }
         return ZStack(alignment: .topLeading) {
             ForEach(placements, id: \.self.identity) { placed in
                 let workspace = groups[placed.card], laid = layout.cards[placed.card]
-                AeroControlCardFace(workspace: workspace, monitorName: namesMonitors ? workspace.monitorShortName : nil,
-                                    size: CGSize(width: laid.span.width, height: layout.height)) {
+                AeroControlCardFace(workspace: workspace, size: CGSize(width: laid.span.width, height: layout.height)) {
                     windowsOf(workspace, laid, ids: ids)
                 }
                 .opacity(placed.shown ? 1 : 0)
@@ -63,33 +60,23 @@ struct AeroControlAppStrip: View {
                               startPoint: .leading, endPoint: .trailing)
     }
 
-    /// Every window of the workspace at its place, the other apps' faint and taking no input.
+    /// Every window of the workspace at its place, the other apps' faint and taking no input:
+    /// the rest of the workspace, so the card reads as the whole of it, framed with its app's
+    /// icon, and out of reach. The app's own carry their key, and pointing at one marks it.
     private func windowsOf(_ workspace: WorkspaceInfo, _ laid: AeroControlLayout.StripCard, ids: [Int]) -> some View {
         ZStack(alignment: .topLeading) {
             ForEach(workspace.windows.filter { laid.frames[$0.windowId] != nil }, id: \.windowId) { window in
                 let frame = laid.frames[window.windowId]!
-                if laid.others.contains(window.windowId) {
-                    // The rest of the workspace, so the card reads as the whole of it: faded and framed,
-                    // with its app's icon, and out of reach.
-                    tile(window, frame, mine: false).allowsHitTesting(false)
-                        .offset(x: frame.minX, y: frame.minY)
-                } else {
+                let mine = !laid.others.contains(window.windowId)
+                let label = ids.firstIndex(of: window.windowId).flatMap(AppStripModel.keyLabel)
+                AeroControlAppTile(window: window, size: frame.size, filtering: false,
+                                   key: label.map { ($0, window.windowId == state.strip?.marked) }, faded: !mine)
+                    .allowsHitTesting(mine)
                     // The hover belongs to the window's own frame, so it goes on before the window is moved there.
-                    let label = ids.firstIndex(of: window.windowId).flatMap(AppStripModel.keyLabel)
-                    tile(window, frame, mine: true, key: label.map { ($0, window.windowId == state.strip?.marked) })
-                        .onHover { if $0 { state.pointStrip(window.windowId, at: NSEvent.mouseLocation) } }
-                        .offset(x: frame.minX, y: frame.minY)
-                        .zIndex(1)
-                }
+                    .onHover { if mine, $0 { state.pointStrip(window.windowId, at: NSEvent.mouseLocation) } }
+                    .offset(x: frame.minX, y: frame.minY)
+                    .zIndex(mine ? 1 : 0)
             }
         }
-    }
-
-    /// Every window where the map draws it, untitled as on the map: the app's own with their key
-    /// where the map has the icon, the others with their icon.
-    private func tile(_ window: WindowInfo, _ frame: CGRect, mine: Bool, key: (label: String, marked: Bool)? = nil) -> some View {
-        AeroControlAppTile(window: window, metrics: AeroControlMetrics(tileSize: frame.size), filtering: false, showsIcon: !mine, key: key,
-                           faded: !mine)
-            .frame(width: frame.width, height: frame.height)
     }
 }

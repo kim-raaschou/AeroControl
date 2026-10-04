@@ -19,14 +19,14 @@ public enum AnimationSpeed: String, CaseIterable, Sendable {
 
 @MainActor @Observable
 public final class SettingsStore {
-    public private(set) var theme: AeroControlTheme
+    public var theme: AeroControlTheme { didSet { defaults.set(theme.id, forKey: themeKey) } }
     /// How much the backdrop dims what is behind the overview: 1 is the palette's own tint,
     /// less lets the desktop through.
-    public private(set) var backdropOpacity: Double
-    public private(set) var animationSpeed: AnimationSpeed
+    public var backdropOpacity: Double { didSet { defaults.set(backdropOpacity, forKey: backdropKey) } }
+    public var animationSpeed: AnimationSpeed { didSet { defaults.set(animationSpeed.rawValue, forKey: animationKey) } }
     /// Whether an app summon with windows to choose between shows the strip. Off, the key
-    /// goes straight to the next window and nothing appears.
-    public private(set) var appPicker: Bool
+    /// brings the app forward and macOS decides which of its windows is in front.
+    public var appPicker: Bool { didSet { defaults.set(appPicker, forKey: appPickerKey) } }
 
     /// Below ~70 % the desktop competes with the cards; the useful range is narrow, so the
     /// steps are small.
@@ -47,31 +47,10 @@ public final class SettingsStore {
         self.appPicker = defaults.object(forKey: appPickerKey) as? Bool ?? true
     }
 
-    public func setTheme(_ value: AeroControlTheme) {
-        guard theme != value else { return }
-        theme = value
-        defaults.set(value.id, forKey: themeKey)
-    }
-
-    public func setBackdropOpacity(_ value: Double) {
-        backdropOpacity = min(max(value, 0), 1)
-        defaults.set(backdropOpacity, forKey: backdropKey)
-    }
-
-    public func setAnimationSpeed(_ value: AnimationSpeed) {
-        animationSpeed = value
-        defaults.set(value.rawValue, forKey: animationKey)
-    }
-
-    public func setAppPicker(_ value: Bool) {
-        appPicker = value
-        defaults.set(value, forKey: appPickerKey)
-    }
-
     public func reset() {
-        setTheme(.system)
-        setBackdropOpacity(1)
-        setAnimationSpeed(.normal)
-        setAppPicker(true)
+        theme = .system
+        backdropOpacity = 1
+        animationSpeed = .normal
+        appPicker = true
     }
 }

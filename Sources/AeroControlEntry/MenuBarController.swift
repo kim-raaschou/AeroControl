@@ -7,22 +7,19 @@ import AeroControlKit
 final class MenuBarController: NSObject, NSMenuDelegate {
     /// Any setting changed: the host redraws the overview with it.
     private let onSettingsChanged: () -> Void
-    private let previewsAvailable: () -> Bool
-    private let onRequestPreviewAccess: () -> Void
+    private let state: OverviewStore
     private let settings: SettingsStore
 
-    init(onSettingsChanged: @escaping () -> Void, previewsAvailable: @escaping () -> Bool,
-         onRequestPreviewAccess: @escaping () -> Void, settings: SettingsStore) {
+    init(onSettingsChanged: @escaping () -> Void, state: OverviewStore, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
-        self.previewsAvailable = previewsAvailable
-        self.onRequestPreviewAccess = onRequestPreviewAccess
+        self.state = state
         self.settings = settings
     }
 
+    /// Empty until it opens: `menuNeedsUpdate` fills it every time, the first included.
     func settingsMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
-        populate(menu)
         return menu
     }
 
@@ -38,22 +35,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         // Submenus, not thirty items: each parent names the current choice, the theme with its swatch.
         let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
-            (t.name, swatch(for: t), settings.theme == t, { self.settings.setTheme(t) }) })
+            (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
         theme.image = swatch(for: settings.theme)
         menu.addItem(theme)
         menu.addItem(choice("Backdrop", current: "\(Int(settings.backdropOpacity * 100)) %", options: SettingsStore.backdropOpacities.map { o in
-            ("\(Int(o * 100)) %", nil, o == settings.backdropOpacity, { self.settings.setBackdropOpacity(o) }) }))
+            ("\(Int(o * 100)) %", nil, o == settings.backdropOpacity, { self.settings.backdropOpacity = o }) }))
         menu.addItem(choice("Animation", current: settings.animationSpeed.name, options: AnimationSpeed.allCases.map { a in
-            (a.name, nil, a == settings.animationSpeed, { self.settings.setAnimationSpeed(a) }) }))
+            (a.name, nil, a == settings.animationSpeed, { self.settings.animationSpeed = a }) }))
         menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off", options: [true, false].map { on in
-            (on ? "On" : "Off", nil, on == settings.appPicker, { self.settings.setAppPicker(on) }) }))
+            (on ? "On" : "Off", nil, on == settings.appPicker, { self.settings.appPicker = on }) }))
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
-        if previewsAvailable() {
+        if state.previewsAvailable {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
         } else {
-            let grant = item("Enable window previews (Screen Recording)…", onRequestPreviewAccess)
+            let grant = item("Enable window previews (Screen Recording)…") { self.state.requestPreviewAccess() }
             grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
             menu.addItem(grant)
         }
@@ -103,9 +100,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let version = (info?["ACReleaseVersion"] as? String)
             ?? (info?["CFBundleShortVersionString"] as? String).map { "v\($0)" }
             ?? "dev"
-        let item = NSMenuItem(title: "AeroControl \(version)", action: nil, keyEquivalent: "")
-        item.isEnabled = false
-        return item
+        return sectionHeader("AeroControl \(version)")
     }
 
     /// A dot in the theme's accent on its own background, so the list can be read at a glance

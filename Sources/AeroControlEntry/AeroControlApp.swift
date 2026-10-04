@@ -44,8 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menuBarController = MenuBarController(
             onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
-            previewsAvailable: { [weak self] in self?.state.previewsAvailable ?? false },
-            onRequestPreviewAccess: { [weak self] in self?.state.requestPreviewAccess() },
+            state: state,
             settings: settings
         )
 

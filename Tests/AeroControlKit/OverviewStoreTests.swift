@@ -111,10 +111,10 @@ struct OverviewStoreTests {
         try? await Task.sleep(for: .milliseconds(50))
         #expect(windowIds(store) == [1])                                                // hidden: nothing read again
 
-        store.startFollowingAerospace()
+        store.following = true
         runner.sendEvent(#"{"_event":"window-detected","windowId":4,"workspace":"1"}"#)
         await waitUntil { windowIds(store) == [1, 4] }
-        store.stopFollowingAerospace()
+        store.endVisit()
         #expect(runner.isSubscribed)                                                    // still listening
     }
 
@@ -124,7 +124,8 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
         let store = started(runner)
         await store.reload()
-        store.startFollowingAerospace()
+        store.startListening()
+        store.following = true
         await waitUntil { runner.isSubscribed }
 
         // The event says nothing; the reload says everything.
@@ -140,7 +141,8 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let store = started(runner)
         await store.reload()
-        store.startFollowingAerospace()
+        store.startListening()
+        store.following = true
         await waitUntil { runner.isSubscribed }
         let before = runner.commandsRun.count
 
@@ -240,7 +242,7 @@ struct OverviewStoreTests {
         _ = store.summonApp(.bundleId("com.app"), picker: true)
         #expect(store.missingApp == nil && store.strip != nil)
         store.missingApp = .name("Typo")
-        store.dropStrip()
+        store.endVisit()
         #expect(store.missingApp == nil)
     }
 
@@ -429,7 +431,7 @@ struct OverviewStoreTests {
         store.markStrip(3)
         await store.reload()
         #expect(store.strip?.marked == 2)
-        store.dropStrip()
+        store.endVisit()
         #expect(store.strip == nil)
     }
 
@@ -464,7 +466,7 @@ struct OverviewStoreTests {
             bridge.release()
             await capture.value
             #expect(store.previews.keys.sorted() == [1, 2, 3])
-            store.clearPreviews()
+            store.endVisit()
         }
     }
 
@@ -664,7 +666,7 @@ struct OverviewStoreTests {
         let runner = ScriptRunner(), bridge = FakeBridge()
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let store = await summoned(runner, bridge)
-        store.clearPreviews()
+        store.endVisit()
         runner.setState(windows: windowsJSON([(1, "1"), (4, "1")]), workspaces: workspacesJSON(["1"]))
         store.send(.event(.changed))
         await waitUntil { windowIds(store) == [1, 4] }
@@ -791,7 +793,7 @@ struct OverviewStorePreviewTests {
         #expect(bridge.captured == [[1, 2]])
         #expect(store.previews.count == 2)
 
-        store.clearPreviews()
+        store.endVisit()
         #expect(store.previews.isEmpty && store.previewSizes.isEmpty)
     }
 

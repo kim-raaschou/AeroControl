@@ -6,16 +6,15 @@ struct AeroControlAppTile: View {
     @Environment(\.aeroLook) private var look
 
     let window: WindowInfo
-    let metrics: AeroControlMetrics
+    /// The drawn tile: picture plus caption lane, when there is one, as `TilePacker` placed it.
+    let size: CGSize
     /// Whether the grid this tile sits in is a filtered result. The panel decides that once,
     /// from what it is drawing — a second answer derived from the query length disagreed with
     /// it on a miss, and captioned every window on a map that had not moved.
     let filtering: Bool
-    /// Whether the picture carries its app's icon. Not in the app strip: every tile there is
-    /// the same app, and the icon would say the one thing that is already known.
-    var showsIcon = true
     /// The strip's key on this window, and whether it is the marked one: drawn where the icon
-    /// would be, on the picture's corner.
+    /// is otherwise, on the picture's corner. A window that has a key does without its icon:
+    /// every window with one is the strip's app, and the icon would say what is already known.
     var key: (label: String, marked: Bool)?
     /// Another app's window in the strip: grey and half there, so it is plainly not what you
     /// are choosing, and framed at full strength, so where it stands still reads.
@@ -42,24 +41,12 @@ struct AeroControlAppTile: View {
     /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
     /// in the tooltip, which costs a second of holding the mouse still.
     private var showsCaption: Bool {
-        filtering && tileSize.height >= AeroControlLayout.captionLane + Self.minPictureHeight
+        filtering && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
     }
-
-    /// A window without a title is still a window; name it by its app rather than leave the
-    /// caption blank.
-    private var captionText: String { window.caption }
 
     /// A caption only earns its lane when the picture under it stays at least this tall;
     /// below that the label would be bigger than the thing it labels.
     private static let minPictureHeight: CGFloat = 92
-
-    private func onFocusWindow() {
-        state.send(.action(.focusWindow(window.windowId)))
-    }
-
-    private func onCloseWindow() {
-        state.send(.action(.closeWindow(window.windowId)))
-    }
 
     /// Pointing is the selection: Cmd-Q acts on whatever the mouse is over.
     private func hoverChanged(_ hovering: Bool) {
@@ -67,17 +54,15 @@ struct AeroControlAppTile: View {
         if hovering { state.hoveredWindowId = window.windowId }
         else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
     }
-    private var plateRadius: CGFloat { AeroControlMetrics.snapshotRadius }
-    /// The focus ring lies on the picture's edge, so it has the picture's corners.
-    private var ringRadius: CGFloat { plateRadius }
-    private var tileSize: CGSize { metrics.tileSize }
+    /// The plate, the picture and the ring on its edge share these corners.
+    private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
+    private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: size.width) }
 
     /// The room the picture has: the cell, less the caption's lane when there is one. Every
     /// other size here is derived from this one box, so the ring, the close button and the
     /// picture can never disagree about where the picture is.
     private var pictureBox: CGSize {
-        CGSize(width: tileSize.width,
-               height: tileSize.height - (showsCaption ? AeroControlLayout.captionLane : 0))
+        CGSize(width: size.width, height: size.height - (showsCaption ? AeroControlLayout.captionLane : 0))
     }
 
     /// What is actually drawn: the fitted snapshot — sized from the window's measured size
@@ -93,13 +78,13 @@ struct AeroControlAppTile: View {
             if showsCaption { caption }
             artwork
         }
-            .frame(width: tileSize.width, height: tileSize.height)
+            .frame(width: size.width, height: size.height)
             // Drawn larger than it was taken, the picture is asked for again at this size.
             .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
                 state.wantPicture(window.windowId, pixels: drawnPixels)
             }
             .contentShape(Rectangle())
-            .onTapGesture(perform: onFocusWindow)
+            .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }
             .onHover(perform: hoverChanged)
             .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
             .draggable(OverviewDragPayload.window(id: window.windowId)) {
@@ -122,7 +107,7 @@ struct AeroControlAppTile: View {
             .background(cap.fill(marked ? look.palette.accent : look.palette.cardFill ?? Color(nsColor: .controlBackgroundColor)))
             .overlay(cap.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 0, y: 1.5)
-            .padding(metrics.badgeSize * 0.2)
+            .padding(badgeSize * 0.2)
     }
 
     /// The pixels the picture fills on screen.
@@ -132,7 +117,7 @@ struct AeroControlAppTile: View {
     /// filter that has narrowed to a handful leaves each tile wide, and the part that tells
     /// two windows apart sits at the front of the title where an ellipsis would land.
     private var caption: some View {
-        Text(captionText)
+        Text(window.caption)
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(look.palette.badgeText)
             .lineLimit(2)
@@ -159,8 +144,7 @@ struct AeroControlAppTile: View {
     /// again fades over the one it replaces rather than swapping in. The key or the icon is on
     /// the plate from the start, so the keys can be read before the pictures are in.
     private var tile: some View {
-        let plate = RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
-        return ZStack {
+        ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
                 PixelImage(image: image, size: contentSize)
@@ -172,10 +156,10 @@ struct AeroControlAppTile: View {
         .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
             if let key {
                 keyCap(key.label, marked: key.marked)
-            } else if showsIcon {
-                PixelImage(image: state.icon(for: window.bundleId), size: CGSize(width: metrics.badgeSize, height: metrics.badgeSize))
+            } else {
+                PixelImage(image: state.icon(for: window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                    .padding(metrics.badgeSize * 0.2)
+                    .padding(badgeSize * 0.2)
             }
         }
     }
@@ -199,21 +183,17 @@ struct AeroControlAppTile: View {
     /// The one frame a picture wears short of the ring: on the window you came from, and —
     /// faded with its picture — on another app's window in the strip.
     private var outline: some View {
-        RoundedRectangle(cornerRadius: plateRadius, style: .continuous)
-            .strokeBorder(look.palette.badgeText.opacity(0.45), lineWidth: 1.5)
+        plate.strokeBorder(look.palette.badgeText.opacity(0.45), lineWidth: 1.5)
     }
 
     /// On the picture's edge, not round it: windows drawn at AeroSpace's gaps are 3 to 6 points
-    /// apart on a card, and a ring outside the picture ran into the neighbour.
+    /// apart on a card, and a ring outside the picture ran into the neighbour. Laid over the
+    /// picture, it has the picture's size.
     @ViewBuilder private var selectionPlate: some View {
-        let size = contentSize
-        let shape = RoundedRectangle(cornerRadius: ringRadius, style: .continuous)
         if isFocused {
-            shape
-                .strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
-                .frame(width: size.width, height: size.height)
+            plate.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
         } else if isOrigin {
-            outline.frame(width: size.width, height: size.height)
+            outline
         }
     }
 
@@ -233,7 +213,7 @@ struct AeroControlAppTile: View {
     @ViewBuilder private var closeButton: some View {
         if isHovering {
             let diameter: CGFloat = 18
-            Button(action: onCloseWindow) {
+            Button { state.send(.action(.closeWindow(window.windowId))) } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: diameter * 0.45, weight: .bold))
                     .foregroundStyle(.primary)
