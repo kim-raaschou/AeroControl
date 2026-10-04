@@ -47,16 +47,15 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   it only as a deliberate, explained exception — in the commit that earns it (a feature and
   its cost are one reviewable change), with the cost stated in the message.
 
-### Rule: the architecture is drawn from the code, at every commit
+### The flows are drawn in `docs/flow.html`
 
-- `scripts/architecture.py` reads the Swift sources and writes `docs/architecture.md` (Mermaid,
-  rendered by GitHub) and `docs/architecture.html` (the same, for a browser). Targets and
-  imports, who uses whom, the enums the parts speak in, the store's call graph, every command
-  sent to AeroSpace, the view tree, the entry layer's seam. Nothing in it is written by hand.
-- The pre-commit hook regenerates and stages both, so a change to the drawing in a diff is a
-  change to the architecture; CI fails when the committed drawing is stale.
-- What cannot be read off the code — why, and in what order a summon proceeds — belongs in
-  the README, not in a hand-drawn diagram that would drift.
+- `docs/flow.html` draws, by hand, what the code cannot say about itself: how a link is decided
+  (the map, start, focus, toggle, or the strip), what the map does from summon to pictures and
+  while it is up, how the strip lives and dies (its five transitions, the keys, AeroSpace moving
+  the focus), and the one way out. Each diagram names the file and function it was read from.
+- When one of those rules changes, the diagram changes in the same commit. A generated drawing
+  of targets, call graphs and view trees was tried on 2026-10-03 and removed the next day: true,
+  and not what anyone needed to know.
 
 ### Rule: `Sources/Common/` stays UI-framework-free — enforced
 
@@ -65,7 +64,7 @@ fails on any violation.
 
 ## Gates
 
-- **`.githooks/pre-commit`** — draws the architecture and runs the metrics guard, every commit.
+- **`.githooks/pre-commit`** — the metrics guard, every commit.
 - **`.githooks/pre-push`** — `make test` before every push.
 - **`.github/workflows/ci.yml`** — a `macos-26` runner (Xcode 26.2) builds, tests and runs the
   same metrics guard on push/PR to `main`. Green CI is what proves `main` holds.

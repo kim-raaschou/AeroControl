@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AeroControl: the map, the links and the strip</title>
+<style>
+  :root { --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --card: #f5f5f7; --accent: #2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111114; --fg: #e8e8ed; --muted: #9a9aa3; --line: #2a2a30; --card: #1a1a1f; --accent: #7aa2f7; }
+  }
+  body { font: 15px/1.55 -apple-system, system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 1180px; margin: 2.5rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 .25rem; }
+  h2 { font-size: 20px; font-weight: 600; margin: 2.5rem 0 .5rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+  h3 { font-size: 16px; font-weight: 600; margin: 1.5rem 0 .25rem; }
+  p.lead { color: var(--muted); margin: 0 0 1.5rem; }
+  p { margin: .5rem 0 1rem; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); padding: 1px 5px; border-radius: 4px; }
+  pre.mermaid { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0 1.25rem; }
+  td, th { text-align: left; vertical-align: top; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .two { grid-template-columns: 1fr; } }
+  .rule { background: var(--card); border-left: 3px solid var(--accent); padding: .6rem .9rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+</style>
+</head>
+<body>
+
+<h1>The map, the links and the strip</h1>
+<p class="lead">How a summon is decided, what the map does while it is up, and how the strip lives and dies. Drawn by hand from the code as of October 2026; the file and function under each diagram is where to check it.</p>
+
+<div class="rule"><b>Two surfaces, two rules.</b> The <b>map</b> follows AeroSpace: the ring is AeroSpace's focus and no key walks it. The <b>strip</b> is a picker: a marking is a choice in the making, and keys move it until Enter makes it AeroSpace's focus. One truth about focus runs through both: AeroSpace's <code>focus-changed</code> event, applied the moment it lands.</div>
+
+<h2>1. A link arrives</h2>
+<p>Every summon is a URL AeroSpace opens: <code>aerocontrol://workspaces</code> for the map, <code>aerocontrol://windows</code> for the app you are in, <code>aerocontrol://windows?app=&lt;bundle id&gt;</code> for one app's key. Three of the four cases are settled from AeroSpace's state alone, at once and without a word; only the fourth needs you, and that is the strip.</p>
+
+<div class="two">
+<div>
+<h3>Nothing is up</h3>
+<pre class="mermaid">
+flowchart TD
+  L["open aerocontrol://…"] --> H{"which link?"}
+  H -- "workspaces" --> MAP["the map: every workspace,<br/>ring on AeroSpace's focus"]
+  H -- "windows · windows?app=" --> APP["the app: the focused window's,<br/>or the one named"]
+  APP --> N{"windows of the app"}
+  N -- "none" --> LAUNCH["start the app<br/>nothing appears"]
+  N -- "one" --> ONE["focus that window<br/>nothing appears"]
+  N -- "two, you in one" --> TOGGLE["focus the other<br/>nothing appears"]
+  N -- "otherwise" --> PICK{"app picker on?"}
+  PICK -- "off" --> FWD["bring the app forward<br/>macOS picks the window"]
+  PICK -- "on" --> STRIP["the strip: the app's windows in a row,<br/>marked on the next after you,<br/>or the one you used last"]
+</pre>
+</div>
+<div>
+<h3>The overview is already up</h3>
+<pre class="mermaid">
+flowchart TD
+  L["the link again"] --> AGAIN{"which?"}
+  AGAIN -- "workspaces · windows<br/>with no strip up" --> CLOSE["close, back on the<br/>window you came from"]
+  AGAIN -- "windows while a strip is up ·<br/>the strip's own app's key" --> STEP["step the marking on,<br/>as ⌘` does"]
+  AGAIN -- "another app's key" --> HAS{"has it a window?"}
+  HAS -- "yes" --> FOC["focus its window used last,<br/>or the next · close"]
+  HAS -- "no" --> START["close · start it"]
+</pre>
+</div>
+</div>
+<p><code>Summon(url)</code> and <code>Summon.again</code> in <code>Sources/AeroControlKit/State/Summon.swift</code>; <code>OverviewStore.summonApp</code> and <code>focusApp</code>; <code>OverlayWindowManager.toggleVisibility</code>, <code>show</code> and <code>carryOut</code>. A link that starts the app is held until launch has finished (<code>AppDelegate.pendingSummon</code>).</p>
+
+<h2>2. The map, from summon to pictures</h2>
+<p>The overview is a one shot. It reads everything once, shows the layout at once, and lets the pictures land in it. While it is up it follows AeroSpace's events, and it is gone the moment you focus something.</p>
+
+<div class="two">
+<div>
+<h3>Opening</h3>
+<pre class="mermaid">
+flowchart TD
+  S["summon"] --> R["reload: list-windows with layout rects, list-workspaces, the focus"]
+  R --> D["summonApp decides (section 1)"]
+  D -- "the map, or a strip" --> M["measure every window's size from the window server"]
+  M --> F["follow AeroSpace's events"]
+  F --> W["build the window · reveal after 120 ms"]
+  W --> P["take the pictures · each card lands whole, 25 ms apart"]
+  D -- "focus, toggle, start" --> X["nothing appears · the shot is done"]
+</pre>
+</div>
+<div>
+<h3>While it is up</h3>
+<pre class="mermaid">
+flowchart TD
+  E["AeroSpace event on the socket"] --> SEND["send → reducer"]
+  SEND -- "focus-changed" --> RING["the ring moves at once · the strip follows (section 3)"]
+  SEND -- "every event" --> REF["refresh: wait 20 ms, read, let sizes settle up to 1 s, apply once"]
+  REF --> PIC["pictures retaken only for windows whose shape changed"]
+  A["an action: focus, move, close, merge"] --> CMD["one AeroSpace command"]
+  CMD --> E
+</pre>
+</div>
+</div>
+
+<h3>What you do on the map</h3>
+<table>
+<tr><th>You</th><th>It</th></tr>
+<tr><td>click a window, a card, or a badge</td><td>focus it, or that workspace · close</td></tr>
+<tr><td>type letters, digits, space</td><td>filter: the grid narrows from the second character, the first match wears the ring</td></tr>
+<tr><td>Enter</td><td>focus the window under the ring: the first match, or AeroSpace's focused window · close</td></tr>
+<tr><td>Escape</td><td>clear the query; on an empty query, close</td></tr>
+<tr><td>⌘W, click the backdrop</td><td>close</td></tr>
+<tr><td>⌘Q</td><td>quit the app under the pointer · the overview stays up</td></tr>
+<tr><td>drag a window onto another card</td><td>move it there · read again</td></tr>
+<tr><td>drag a card onto another card</td><td>merge the workspace into it · read again</td></tr>
+<tr><td>Tab, arrows</td><td>nothing: the map is read, not steered</td></tr>
+</table>
+<p><code>OverlayWindowManager.show</code> and <code>hide</code>; <code>OverviewStore.send</code>, <code>requestRefresh</code>, <code>settled</code>, <code>capturePreviews</code>; the reducer <code>updateOverview</code> in <code>Sources/Common/Domain/OverviewUpdate.swift</code>; keys in <code>filterKeyAction</code>, <code>Sources/Common/Domain/OverviewFilter.swift</code>.</p>
+
+<h2>3. The strip, from opening to closing</h2>
+<p>The strip is a value (<code>Strip</code>, in Common): whose windows, the marking, where the carousel centres, how many turns it has taken. Every change is a new value by one of five transitions. The store holds the current one and nothing else.</p>
+
+<div class="two">
+<div>
+<h3>You, at the strip</h3>
+<pre class="mermaid">
+flowchart LR
+  K1["Tab, → · Shift-Tab, ←<br/>the app's own key again"] --> STEP["stepped: marking and centre move;<br/>a step round the end turns the carousel"]
+  K2["Home · End"] --> SEL["selecting: the first · the last"]
+  K3["pointer moves onto a window"] --> MARK["marking: the marking moves,<br/>the centre stays"]
+  K4["⌘1 – ⌘9"] --> COMMIT["focus that window · close"]
+  K5["Enter · click a window"] --> COMMIT2["focus the marked, or clicked,<br/>window · close"]
+  K6["Escape · ⌘W · click the backdrop"] --> CANCEL["close, back on the window<br/>you came from"]
+  K7["a letter"] --> NOPE["nothing: no typing in the strip"]
+</pre>
+</div>
+<div>
+<h3>AeroSpace, behind the strip</h3>
+<pre class="mermaid">
+flowchart TD
+  OPEN["opened: marked on the next window after yours,<br/>or the one used last from outside the app"] --> UP(("up"))
+  UP -- "focus moved to a window of…" --> WHERE{"…"}
+  WHERE -- "this app, or none" --> UP
+  WHERE -- "another app with<br/>several windows" --> TURN["following: the strip turns to that app,<br/>marked on the focused window"]
+  WHERE -- "an app of one window" --> OVER["over: nothing to choose · close"]
+  UP -- "a read changed the windows" --> KEPT["kept: the marking stays on its window,<br/>or passes to the successor of a closed one"]
+  TURN --> UP
+  KEPT --> UP
+</pre>
+</div>
+</div>
+
+<p>Under the cards a legend lists the windows, one line each: key, title, workspace when the app spans several, the marked line in the accent. The cards are true to AeroSpace's geometry; the legend is readable whatever that geometry is.</p>
+<p><code>Sources/Common/Domain/Strip.swift</code> (the value and its transitions), <code>AppStripModel.action</code> and <code>start</code> (the keys and the opening rule), <code>OverviewStore.handleStrip</code>, <code>stepStrip</code>, <code>markStrip</code>, <code>pointStrip</code>; the following and the kept transitions are applied in <code>OverviewStore.send</code> and the model's <code>didSet</code>.</p>
+
+<h2>4. One way out</h2>
+<p>Whatever the surface, the shot ends in one place: the store sends a focus action and says <code>onShotDone</code>, or the strip is over and says it too. The host hides the window, and brings the focused app forward when the focus did not just move there.</p>
+<pre class="mermaid">
+flowchart LR
+  T["click a tile, Enter, ⌘-digit, a card, a badge, an app's key"] --> FA["send(.action(.focusWindow / .focusWorkspace))"]
+  FA --> CMD["aerospace focus / workspace"]
+  FA --> DONE["onShotDone(restoreFocus: false)"]
+  LEAVE["the strip is over: focus left to an app of one window, or its key in that app"] --> DONE2["onShotDone(restoreFocus: true)"]
+  ESC["Escape · ⌘W · backdrop · the link again"] --> HIDE["hide(restoreFocus: true)"]
+  DONE --> HIDE2["hide"]
+  DONE2 --> HIDE
+</pre>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
+<script>
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose',
+                       flowchart: { useMaxWidth: true, curve: 'basis' } });
+</script>
+</body>
+</html>

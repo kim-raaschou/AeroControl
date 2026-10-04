@@ -1,13 +1,11 @@
 #!/bin/sh
-# Every commit carries its own drawing of the architecture, and keeps the
-# "code metrics must not rise" rule. See AGENTS.md for both.
+# Enforce the "code metrics must not rise" rule on every commit.
+# Fails the commit if tracked Swift code lines or approximate complexity
+# grew above scripts/metrics-baseline.json. See AGENTS.md for the policy.
 #
 # Enable once per clone:  git config core.hooksPath .githooks
 #
 # Bypass in a true emergency with `git commit --no-verify` (discouraged).
-
-python3 scripts/architecture.py >/dev/null || exit 1
-git add docs/architecture.md docs/architecture.html
 
 python3 scripts/code_metrics.py --check
 status=$?
