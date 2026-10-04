@@ -3,15 +3,17 @@ import Foundation
 /// What the overview opens showing: the whole map, or one app, so one key on an app does the
 /// right thing whatever its state (`AppSummon.decide`).
 ///
-/// An `aerocontrol://` link names it: `windows?app=<bundle id>` the app, anything else the
-/// map. A link reaches the running instance the way a reopen does, without a second process —
-/// and unlike a reopen it can carry a word.
+/// An `aerocontrol://` link names it: `aerocontrol://<bundle id>` the app — the bundle id is the
+/// host, which keeps its case through Launch Services (measured 2026-10-04) — and
+/// `aerocontrol://workspaces`, or any host without a dot, the map. A link reaches the running instance the way a reopen does, without
+/// a second process — and unlike a reopen it can carry a word.
 public enum Summon: Equatable, Sendable {
     case map, app(bundleId: String)
 
     public init(_ url: URL) {
-        let app = url.host() == "windows" ? URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "app" }?.value : nil
-        self = app.map { .app(bundleId: $0) } ?? .map
+        // A bundle id has a dot in it; a word, `workspaces` or anything else, is the map.
+        let host = url.host() ?? ""
+        self = host.contains(".") ? .app(bundleId: host) : .map
     }
 
     /// What this summon does while the overview is already up, showing the strip of `stripApp`

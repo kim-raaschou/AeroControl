@@ -9,8 +9,9 @@ struct SummonTests {
 
     @Test func aLinkNamesWhatTheOverviewOpensShowing() {
         #expect(summon("aerocontrol://workspaces") == .map)
-        #expect(summon("aerocontrol://windows") == .map)                                  // no app named: nothing to pick for
-        #expect(summon("aerocontrol://windows?app=com.apple.finder") == .app(bundleId: "com.apple.finder"))
+        #expect(summon("aerocontrol://") == .map)
+        #expect(summon("aerocontrol://com.apple.finder") == .app(bundleId: "com.apple.finder"))
+        #expect(summon("aerocontrol://Company.TheBrowser.Browser") == .app(bundleId: "Company.TheBrowser.Browser"))   // the case is kept
     }
 
     @Test("while the overview is up the strip's own key steps it; any other app key is the app's whole flow again, the strip taking over; the map's key closes")

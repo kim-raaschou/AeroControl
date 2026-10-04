@@ -287,7 +287,7 @@ public class OverviewStore {
         PictureResampler.forget()
     }
 
-    /// One key on an app, `aerocontrol://windows?app=<bundle id>`. The count is free; the model
+    /// One key on an app, `aerocontrol://<bundle id>`. The count is free; the model
     /// was just read, so the key does the right thing whatever the app's state:
     ///
     /// - none: start it; one: focus it;

@@ -1636,5 +1636,14 @@
     "complexity": 929,
     "prodComplexity": 536,
     "files": 59
+  },
+  {
+    "timestamp": "2026-10-04T12:54:15+02:00",
+    "commit": "fb9cbe6",
+    "subject": "The link's tree says where its leaves continue",
+    "code": 5599,
+    "complexity": 933,
+    "prodComplexity": 534,
+    "files": 59
   }
 ]

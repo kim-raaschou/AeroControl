@@ -20,9 +20,10 @@
 <p>AeroSpace opens a URL; <code>Summon(url)</code> reads it. Which key you bind is yours; AeroControl only sees the URL.</p>
 <table><tr><th>URL</th><th>Summon</th></tr>
 <tr><td><code>aerocontrol://workspaces</code></td><td><code>map</code></td></tr>
-<tr><td><code>aerocontrol://windows</code></td><td><code>map</code></td></tr>
-<tr><td><code>aerocontrol://windows?app=com.c</code></td><td><code>app(bundleId: "com.c")</code></td></tr>
+<tr><td><code>aerocontrol://com.c</code></td><td><code>app(bundleId: "com.c")</code></td></tr>
+<tr><td><code>aerocontrol://Com.C</code></td><td><code>app(bundleId: "Com.C")</code></td></tr>
 <tr><td><code>aerocontrol://anything-else</code></td><td><code>map</code></td></tr>
+<tr><td><code>aerocontrol://</code></td><td><code>map</code></td></tr>
 </table>
 <p>For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture, with the picker on and off:</p>
 <table><tr><th>Case</th><th>Picker on</th><th>Picker off</th></tr>
@@ -36,9 +37,9 @@
 <pre class="mermaid">
 flowchart TD
   L["open aerocontrol://…"] --> H{"which link?"}
-  H -- "workspaces, or anything else" --> MAP["the map: every workspace,<br/>ring on AeroSpace's focus<br/>→ section 4"]
+  H -- "workspaces, or any word without a dot" --> MAP["the map: every workspace,<br/>ring on AeroSpace's focus<br/>→ section 4"]
   click MAP "#map"
-  H -- "windows?app=" --> APP["the app named"]
+  H -- "a bundle id" --> APP["that app"]
   APP --> N{"windows of the app"}
   N -- "none" --> A0["start com.e, or bring it forward"]
   N -- "one" --> A1["focus window 3"]
@@ -60,8 +61,8 @@ flowchart TD
 <p><code>Summon.again</code>, given which app's strip is up, if any:</p>
 <table><tr><th>Link</th><th>the map is up</th><th>A's strip is up</th></tr>
 <tr><td><code>workspaces</code></td><td>close, back on the window you came from</td><td>close, back on the window you came from</td></tr>
-<tr><td><code>windows?app=com.a</code></td><td>that app's flow again (<a href="#link">section 1</a>): com.a</td><td>step the strip's marking on</td></tr>
-<tr><td><code>windows?app=com.c</code></td><td>that app's flow again (<a href="#link">section 1</a>): com.c</td><td>that app's flow again (<a href="#link">section 1</a>): com.c</td></tr>
+<tr><td><code>com.a</code></td><td>that app's flow again (<a href="#link">section 1</a>): com.a</td><td>step the strip's marking on</td></tr>
+<tr><td><code>com.c</code></td><td>that app's flow again (<a href="#link">section 1</a>): com.c</td><td>that app's flow again (<a href="#link">section 1</a>): com.c</td></tr>
 </table>
 <p>The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step calls <code>stepStrip</code>; a summon runs section 1 again in place, so the strip takes over from whatever was showing.</p>
 <h2 id="strip">3. The strip</h2>

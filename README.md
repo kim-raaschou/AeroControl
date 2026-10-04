@@ -18,7 +18,7 @@ Five things you do all day, each one summon and one key:
   every window as a live picture, so you see it rather than remember it. Click it, or type
   until it is first and press Enter. Mission Control, but for AeroSpace's workspaces and
   with the windows AeroSpace has parked off-screen.
-- **"Which of my Arc windows?"** One key per app (`aerocontrol://windows?app=<bundle id>`).
+- **"Which of my Arc windows?"** One key per app (`aerocontrol://<bundle id>`).
   With three Arc windows, only they appear, with their titles, and the ring is already on
   the next one — Enter switches. Cmd-` with pictures. With one window the key just focuses
   it, and with none it starts the app.
@@ -51,7 +51,7 @@ between summons, and it asks for no permission except Screen Recording for the p
   name has a word starting with what you typed — `te` finds Teams, `toml` finds
   `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
-- **One key per app**: `open "aerocontrol://windows?app=<bundle id>"` opens the overview
+- **One key per app**: `open aerocontrol://<bundle id>` opens the overview
   already filtered to that app — three Arc windows, nothing else — with the ring on the next
   one, so Enter alone switches instance and Tab walks the rest. Under the cards a legend lists
   the windows, key and title each, so a window is read there when its picture is a sliver on
@@ -119,8 +119,8 @@ them to whatever keys you like in your AeroSpace config (`~/.aerospace.toml` or
 `~/.config/aerospace/aerospace.toml`):
 
 ```toml
-<your key>      = ['exec-and-forget open aerocontrol://workspaces']                      # the map
-<a key per app> = ['exec-and-forget open "aerocontrol://windows?app=<bundle id>"']       # that app
+<your key>      = ['exec-and-forget open aerocontrol://workspaces']      # the map
+<a key per app> = ['exec-and-forget open aerocontrol://<bundle id>']     # that app, e.g. aerocontrol://com.apple.Safari
 ```
 
 `workspaces` closes the overview when it is already up; an app's key while it is up is that app's flow again, its strip
