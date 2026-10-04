@@ -152,3 +152,16 @@ private final class Subscription: @unchecked Sendable {
 
     deinit { process.terminate() }
 }
+
+extension AerospaceLiveTests {
+    /// The whole read path against the running AeroSpace: both lists and both `--focused`
+    /// reads, decoded into the model the overview draws. This is the one place that proves
+    /// AeroSpace answers `--focused` the way we parse it.
+    @Test("the whole read, focus included, as the running AeroSpace answers it")
+    func loadOverviewReadsFocus() async throws {
+        let result = try await loadOverview(using: AerospaceSocketRunner())
+        #expect(!result.workspaces.isEmpty)
+        let focus = try #require(result.focus)
+        #expect(result.workspaces.contains { $0.name == focus.workspace })
+    }
+}

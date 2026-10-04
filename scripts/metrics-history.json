@@ -1672,5 +1672,14 @@
     "complexity": 950,
     "prodComplexity": 545,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:33:05+02:00",
+    "commit": "99d169f",
+    "subject": "A \u2318 key that types two characters is no key, not a crash",
+    "code": 5582,
+    "complexity": 935,
+    "prodComplexity": 545,
+    "files": 60
   }
 ]

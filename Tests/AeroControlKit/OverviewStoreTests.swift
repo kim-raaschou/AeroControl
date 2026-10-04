@@ -14,8 +14,7 @@ struct OverviewStoreTests {
     private func picks(_ summon: AppSummon) -> Bool { if case .pick = summon { return true } else { return false } }
 
     private func started(_ runner: ScriptRunner, _ bridge: FakeBridge = FakeBridge()) -> OverviewStore {
-        let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        return store
+        OverviewStore(runner: runner, nativeSystem: bridge)
     }
 
     @Test("a reload mirrors AeroSpace verbatim, focus included")
@@ -35,7 +34,6 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(2, "1")]), workspaces: workspacesJSON(["1", "2"]))
         await store.reload()
         #expect(windowIds(store) == [2])
-        store.stop()
     }
 
     @Test("a focused workspace with no windows still focuses the workspace")
@@ -48,7 +46,6 @@ struct OverviewStoreTests {
         await store.reload()
         #expect(store.model.focusedWorkspace == "4")
         #expect(store.model.focusedWindowId == 0)
-        store.stop()
     }
 
     @Test("a load asks AeroSpace for the lists and for what is focused")
@@ -61,7 +58,6 @@ struct OverviewStoreTests {
         #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--all") })
         #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--focused") })
         #expect(runner.commandsRun.contains { $0.first == "list-workspaces" && $0.contains("--focused") })
-        store.stop()
     }
 
     @Test("a load AeroSpace refuses leaves a readable error, and the next one clears it")
@@ -78,7 +74,6 @@ struct OverviewStoreTests {
         await store.reload()
         #expect(store.error == nil)
         #expect(windowIds(store) == [1])
-        store.stop()
     }
 
     @Test("a load whose focus reads fail leaves the focus it already had")
@@ -97,7 +92,6 @@ struct OverviewStoreTests {
         #expect(windowIds(store) == [1, 2])
         #expect(store.model.focusedWindowId == 1)
         #expect(store.model.focusedWorkspace == "1")
-        store.stop()
     }
 
     // MARK: Following AeroSpace, only while on screen
@@ -188,7 +182,6 @@ struct OverviewStoreTests {
         store.filter = "Teams"
         #expect(store.filterMatches.count == 3)
         #expect(runner.commandsRun.count == commands)
-        store.stop()
     }
 
     @Test("keys go through the store: text narrows, the ring is on the first match, Enter hands back whatever wears the ring")
@@ -208,7 +201,6 @@ struct OverviewStoreTests {
         #expect(store.handle(.enter) == .focus(windowId: first))
         #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == 2)
         #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
-        store.stop()
     }
 
     @Test("an app summon decides what one key does: start it, focus a window, or open the picker")
@@ -236,7 +228,6 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
         await store.reload()
         #expect(store.summonApp(.bundleId("com.app"), picker: true) == .focus(windowId: 7) && store.filter == "")
-        store.stop()
     }
 
     @Test("an app that would not start is told on the strip's lane: Escape is the window's, every other key does nothing, the next summon or the end of the visit forgets it")
@@ -254,7 +245,6 @@ struct OverviewStoreTests {
         store.missingApp = .name("Typo")
         store.dropStrip()
         #expect(store.missingApp == nil)
-        store.stop()
     }
 
     @Test("two windows toggle when you are in one of them; from anywhere else the picker or the first")
@@ -280,7 +270,6 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 1, workspace: "1")
         await store.reload()
         #expect(store.summonApp(.bundleId("com.app"), picker: false) == .launch(.bundleId("com.app")))
-        store.stop()
     }
 
     // MARK: The strip
@@ -307,7 +296,6 @@ struct OverviewStoreTests {
         #expect(store.stripWorkspaces.map(\.name) == ["1", "2", "3"])
         #expect(store.stripWorkspaces[1].windows.map(\.windowId) == [2, 9])
         #expect(store.strip?.marked == 3)
-        store.stop()
     }
 
     @Test("in the strip Tab steps round, ⌘ and a window's key picks, and typing is no query")
@@ -320,7 +308,6 @@ struct OverviewStoreTests {
         #expect(store.handle(.commandKey(2)) == .focus(windowId: 2))
         #expect(store.handle(.enter) == .focus(windowId: 3))
         #expect(store.handle(.escape) == .none)                                        // the window closes the strip
-        store.stop()
     }
 
     @Test("from another app the strip opens on the app's window that had the focus last")
@@ -336,7 +323,6 @@ struct OverviewStoreTests {
         store.noteFocus(9)
         _ = store.summonApp(.bundleId("com.app"), picker: true)
         #expect(store.strip?.marked == 2)
-        store.stop()
     }
 
     @Test("AeroSpace moving the focus to another app's window while the strip is up turns the strip to that app, marked there, with the pictures it lacks; to an app of one window it leaves")
@@ -367,7 +353,6 @@ struct OverviewStoreTests {
         store.send(.event(.changed))
         await waitUntil { left == 1 }
         #expect(left == 1)
-        store.stop()
     }
 
     @Test("stepping past the last workspace turns the ring once more the same way; back past the first turns it back")
@@ -380,7 +365,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.turns == 1)
         store.stepStrip(-1); store.stepStrip(-1)                                         // 2 → 1 → 3: back round
         #expect(store.strip?.marked == 3 && store.strip?.turns == 0)
-        store.stop()
     }
 
     @Test("the strip turns on AeroSpace's focus event itself, before any read, and leaves on it too")
@@ -400,7 +384,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.bundleId == "com.slack" && store.strip?.marked == 9 && left == 0)
         store.send(.event(.focusChanged(windowId: 7, workspace: "5")))                 // Claude has one window
         #expect(store.strip == nil && left == 1)
-        store.stop()
     }
 
     @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")
@@ -412,7 +395,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 2)
         store.markStrip(9)                                                              // not the app's: ignored
         #expect(store.strip?.marked == 2)
-        store.stop()
     }
 
     @Test("only a pointer that moved marks: cards sliding under a still mouse do not take the marking")
@@ -426,7 +408,6 @@ struct OverviewStoreTests {
         _ = store.handle(.next)
         store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the row turned under a still hand
         #expect(store.strip?.marked == 2)
-        store.stop()
     }
 
     @Test("keys move the carousel's centre with the marking; the pointer marks but leaves the centre, or the row would slide under a still hand")
@@ -441,7 +422,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.centre == 1)
         store.stepStrip()
         #expect(store.strip?.centre == 2)
-        store.stop()
     }
 
     @Test("a closed marked window hands the marking to the one that took its place; the map drops the strip")
@@ -454,7 +434,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 2)
         store.dropStrip()
         #expect(store.strip == nil)
-        store.stop()
     }
 
     @Test("the strip takes its pictures once: every window of its workspaces, at the strip's size, and nothing else")
@@ -471,7 +450,6 @@ struct OverviewStoreTests {
         await store.capturePreviews(maxSize: CGSize(width: 400, height: 300))
         #expect(bridge.captured == [[1, 9, 2, 3]])                  // Slack on 1 is drawn grey in the card; Slack on 3 is in no card
         #expect(store.previews[9]?.size.width == 400 && store.previews[7] == nil)
-        store.stop()
     }
 
     @Test("a workspace's pictures land together once all of its windows are taken, without waiting for the other workspaces")
@@ -491,7 +469,6 @@ struct OverviewStoreTests {
             #expect(store.previews.keys.sorted() == [1, 2, 3])
             store.clearPreviews()
         }
-        store.stop()
     }
 
     @Test("the cards land in reading order: a workspace that is in waits for the ones before it")
@@ -509,7 +486,6 @@ struct OverviewStoreTests {
         bridge.release()
         await capture.value                                                      // the capture is in: the rest land
         #expect(store.previews.keys.sorted() == [2, 3])
-        store.stop()
     }
 
     @Test("cards that are in together still land one after the other, so the wave can be seen")
@@ -523,7 +499,6 @@ struct OverviewStoreTests {
         #expect(store.previews[2] == nil)
         await capture.value
         #expect(store.previews.keys.sorted() == [1, 2])
-        store.stop()
     }
 
     @Test("apps macOS has hidden are known after a load, so their tiles can be dimmed")
@@ -537,7 +512,6 @@ struct OverviewStoreTests {
         bridge.hidden = []
         await store.reload()
         #expect(store.hiddenBundleIds.isEmpty)
-        store.stop()
     }
 
     @Test("a tile that draws a picture larger than it was taken asks for it again at its size, once; a smaller one asks nothing")
@@ -557,7 +531,6 @@ struct OverviewStoreTests {
         store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // has it now
         try? await Task.sleep(for: .milliseconds(300))
         #expect(bridge.captured.count == 2)
-        store.stop()
     }
 
     @Test("a picture that cannot be had larger — the window is no bigger — is not asked for again")
@@ -575,7 +548,6 @@ struct OverviewStoreTests {
         store.wantPicture(1, pixels: CGSize(width: 300, height: 300))           // still smaller than drawn: asked already
         try? await Task.sleep(for: .milliseconds(300))
         #expect(bridge.captured.count == 2 && store.previews[1]!.size.width == 150)
-        store.stop()
     }
 
     // MARK: Pictures after a move
@@ -606,7 +578,6 @@ struct OverviewStoreTests {
         #expect(bridge.measured > measuredAtSummon)
         #expect(bridge.captured.last == [2])
         #expect(store.previewSizes[2] == CGSize(width: 600, height: 200))           // the fresh size, not the summon's
-        store.stop()
     }
 
     @Test("a window that resizes in steps is taken once, when it stands still, in its last shape; the cards follow it on the way")
@@ -622,7 +593,6 @@ struct OverviewStoreTests {
         await waitUntil { bridge.captured.count >= 2 }
         try? await Task.sleep(for: .milliseconds(300))
         #expect(bridge.captured == [[1, 2], [2]] && (store.previews[2]?.size.height ?? 0) < 40)   // once, 100 × 33
-        store.stop()
     }
 
     @Test("a refresh cut off by the next while it takes pictures loses nothing: the next takes them, nothing having been stored")
@@ -640,7 +610,6 @@ struct OverviewStoreTests {
         bridge.release()
         await waitUntil { (store.previews[2]?.size.height ?? 0) < 40 }
         #expect((store.previews[2]?.size.height ?? 0) < 40)                            // taken in the new shape, 100 × 33, not the old 100 × 67
-        store.stop()
     }
 
     @Test("focus moves at once: after a workspace switch the ring is on the window AeroSpace's event named, before any read, while the layout waits for the windows to settle")
@@ -658,7 +627,6 @@ struct OverviewStoreTests {
         #expect(store.model.focusedWorkspace == "4")
         #expect(windowIds(store) == [1, 2])                                            // the layout not yet: still settling
         await waitUntil { windowIds(store) == [1, 2, 3] }
-        store.stop()
     }
 
     @Test("the card changes once, read a moment after the key's binding-triggered, which comes before its commands run: the new layout, the settled sizes and the new pictures together")
@@ -674,7 +642,6 @@ struct OverviewStoreTests {
         #expect(workspaceOf(store, 1) == "1")
         await waitUntil { workspaceOf(store, 1) == "2" }
         #expect(store.previewSizes[2]?.width == 600 && (store.previews[2]?.size.height ?? 0) < 40)  // with it, not after
-        store.stop()
     }
 
     @Test("a window that appears while the overview is open gets a picture; nothing changed, nothing is taken")
@@ -693,7 +660,6 @@ struct OverviewStoreTests {
         await waitUntil { bridge.measured > measured }
         try? await Task.sleep(for: .milliseconds(50))
         #expect(bridge.captured.count == 2)
-        store.stop()
     }
 
     @Test("a hidden overview takes no pictures on a refresh")
@@ -707,7 +673,6 @@ struct OverviewStoreTests {
         await waitUntil { windowIds(store) == [1, 4] }
         try? await Task.sleep(for: .milliseconds(50))
         #expect(bridge.captured.count == 1)
-        store.stop()
     }
 
     // MARK: Actions
@@ -729,7 +694,6 @@ struct OverviewStoreTests {
         await waitUntil { windowIds(store).isEmpty }
         #expect(runner.didRun(["close", "--window-id", "1"]))
         #expect(windowIds(store).isEmpty)
-        store.stop()
     }
 
     @Test("focus actions run their command and leave the model alone", arguments: [
@@ -749,7 +713,6 @@ struct OverviewStoreTests {
         // The overview dismisses on a focus action; there is nothing left to reconcile.
         try? await Task.sleep(for: .milliseconds(50))
         #expect(windowIds(store) == before)
-        store.stop()
     }
 
     @Test("moveWindow runs its command and reconciles the tile to its new workspace")
@@ -765,7 +728,6 @@ struct OverviewStoreTests {
         await waitUntil { runner.didRun(["move-node-to-workspace", "--window-id", "1", "--focus-follows-window", "2"]) }
         await waitUntil { workspaceOf(store, 1) == "2" }
         #expect(workspaceOf(store, 1) == "2")
-        store.stop()
     }
 
     @Test("a burst of actions collapses to the latest reality")
@@ -784,7 +746,6 @@ struct OverviewStoreTests {
 
         await waitUntil { windowIds(store) == [1] }
         #expect(windowIds(store) == [1])
-        store.stop()
     }
 
     @Test("a content change invalidates the observable model; a no-op reload does not")
@@ -811,7 +772,6 @@ struct OverviewStoreTests {
         await store.reload()
         try? await Task.sleep(for: .milliseconds(150))
         #expect(invalidations.count == afterChange)
-        store.stop()
     }
 }
 
@@ -836,7 +796,6 @@ struct OverviewStorePreviewTests {
 
         store.clearPreviews()
         #expect(store.previews.isEmpty && store.previewSizes.isEmpty)
-        store.stop()
     }
 
     @Test("without Screen Recording the store reports previews unavailable and asks on request")
@@ -850,6 +809,5 @@ struct OverviewStorePreviewTests {
         #expect(bridge.accessRequests == 1)
         await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
         #expect(store.previews.isEmpty)
-        store.stop()
     }
 }

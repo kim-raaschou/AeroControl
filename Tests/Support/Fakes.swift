@@ -25,6 +25,8 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     /// Whether this AeroSpace knows `%{window-layout-rect}` (the owner's branch). Off by
     /// default, like every AeroSpace release so far.
     var acceptsLayoutRects = false
+    /// The next rects read fails for a reason of its own, not because the variable is unknown.
+    var failNextRects = false
 
     init(windows: String = "[]", workspaces: String = "[]") {
         windowsJSON = windows
@@ -65,7 +67,9 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
         if failing { throw AerospaceSocketError.io("no aerospace") }
         let focused = args.contains("--focused")
         if focused, refuseFocusReads { throw AerospaceSocketError.io("no focus") }
-        if args.contains(where: { $0.contains("window-layout-rect") }), !acceptsLayoutRects {
+        let asksForRects = args.contains { $0.contains("window-layout-rect") }
+        if asksForRects, failNextRects { failNextRects = false; throw AerospaceSocketError.io("socket closed") }
+        if asksForRects, !acceptsLayoutRects {
             throw AerospaceSocketError.commandFailed(arguments: args, exitCode: 1,
                                                      stderr: "ERROR: Failed to parse <output-format>. Can't parse 'window-layout-rect'.", serverVersion: nil)
         }

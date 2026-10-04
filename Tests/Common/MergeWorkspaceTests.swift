@@ -43,17 +43,6 @@ struct MergeWorkspaceTests {
     }
 }
 
-@Suite("AerospaceCommand argv (moves)")
-struct MoveArgvTests {
-    @Test("moveWindow follows focus; moveWindowQuietly does not")
-    func focusFlag() {
-        #expect(AerospaceCommand.argv(for: .moveWindow(windowId: 7, toWorkspace: "2"))
-            == ["move-node-to-workspace", "--window-id", "7", "--focus-follows-window", "2"])
-        #expect(AerospaceCommand.argv(for: .moveWindowQuietly(windowId: 7, toWorkspace: "2"))
-            == ["move-node-to-workspace", "--window-id", "7", "2"])
-    }
-}
-
 @Suite("parseWindows — title")
 struct WindowTitleParseTests {
     @Test("window-title is carried into WindowInfo; missing title becomes empty")

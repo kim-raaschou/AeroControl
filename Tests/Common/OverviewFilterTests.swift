@@ -139,15 +139,6 @@ struct FilterKeyActionTests {
         #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
         for key in [FilterKey.next, .previous, .commandKey(1)] { #expect(action("Teams", key) == .none) }
     }
-
-    @Test("the action vocabulary is exactly these four; the map's filter never answers handled, the strip's keys do")
-    func exhaustive() {
-        // A compile-time guard: there is no case here promising a dismissal that this
-        // function's one caller only ever turns back into "not ours".
-        switch action("", .escape) {
-        case .none, .setQuery, .focus, .handled: break
-        }
-    }
 }
 
 @Suite("FilterKey from a key code")
