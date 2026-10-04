@@ -33,7 +33,7 @@ public struct AeroControlPanel: View {
         return VStack(spacing: Self.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
-            } else if workspaces.isEmpty {
+            } else if workspaces.isEmpty || state.missingApp != nil {
                 EmptyView()
             } else if state.strip != nil, !state.stripWindows.isEmpty {
                 AeroControlAppStrip(usable: usable, screens: screenFrames,
@@ -61,6 +61,7 @@ public struct AeroControlPanel: View {
 
     /// The app the strip shows and its legend, for the lane under the cards; nil on the map.
     private var stripApp: AeroControlFilterPill.StripApp? {
+        if let missing = state.missingApp?.notFound { return .init(name: missing.name, icon: nil, summary: missing.reason, rows: []) }
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
         return .init(name: first.appName, icon: state.icon(for: strip.bundleId),
                      summary: AppStripModel.summary(windows: state.stripWindows.count, workspaces: state.stripWorkspaces.count),

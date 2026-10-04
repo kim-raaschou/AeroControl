@@ -19,4 +19,18 @@ public enum AppRef: Equatable, Sendable {
     public func identifies(bundleId: String, among windows: [WindowInfo]) -> Bool {
         windows.contains { $0.bundleId == bundleId && matches($0) }
     }
+
+    /// What the strip's lane says when `open` found no such app: the name as the link gave it,
+    /// in the app's place, and why nothing came, in its count's.
+    public struct NotFound: Equatable, Sendable {
+        public let name: String
+        public let reason: String
+    }
+
+    public var notFound: NotFound {
+        switch self {
+        case .bundleId(let id): NotFound(name: id, reason: "no app has this id")
+        case .name(let name): NotFound(name: name, reason: "no app has this name")
+        }
+    }
 }

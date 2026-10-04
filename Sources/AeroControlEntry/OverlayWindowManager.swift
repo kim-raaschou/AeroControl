@@ -157,13 +157,23 @@ final class OverlayWindowManager {
     }
 
     /// Starts an app that has no window, with `open`: `-b` by bundle id, `-a` by name, the one
-    /// lookup by name macOS offers. A name or id nothing answers to is `open`'s to complain about.
+    /// lookup by name macOS offers. A name or id nothing answers to, `open` exits 1 on, and the
+    /// overview comes back to say so, unless something else was summoned meanwhile.
     private func launch(_ ref: AppRef) {
         let open = Process()
         open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         switch ref {
         case .bundleId(let id): open.arguments = ["-b", id]
         case .name(let name): open.arguments = ["-a", name]
+        }
+        open.terminationHandler = { process in
+            guard process.terminationStatus != 0 else { return }
+            Task { @MainActor [weak self] in
+                guard let self, !self.requestedVisible else { return }
+                self.requestedVisible = true
+                self.state.missingApp = ref
+                self.rebuild()
+            }
         }
         try? open.run()
     }

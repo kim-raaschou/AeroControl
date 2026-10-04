@@ -131,7 +131,7 @@ settled without you (see *The map and the strip*). The rule:
 
 | Windows of the app | What happens |
 |---|---|
-| none | the app starts |
+| none | the app starts; an id or name no app has is said on the strip's lane, and Escape closes it |
 | one | that window is focused |
 | two, and you are in one | the other one is focused — a toggle |
 | two from elsewhere, or more | the strip opens with just them, ring on the next — pick |

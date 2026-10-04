@@ -1654,5 +1654,14 @@
     "complexity": 943,
     "prodComplexity": 540,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T13:12:39+02:00",
+    "commit": "020373c",
+    "subject": "An app is named as AeroSpace names it: app-id= or app-name=",
+    "code": 5682,
+    "complexity": 950,
+    "prodComplexity": 545,
+    "files": 60
   }
 ]

@@ -239,6 +239,24 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("an app that would not start is told on the strip's lane: Escape is the window's, every other key does nothing, the next summon or the end of the visit forgets it")
+    func missingApp() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
+        let store = started(runner)
+        await store.reload()
+        store.missingApp = .bundleId("com.typo")
+        #expect(store.handle(.escape) == .none)                                        // the window closes it
+        #expect(store.handle(.character("x")) == .handled && store.filter == "")
+        #expect(store.handle(.enter) == .handled && store.handle(.commandKey(1)) == .handled)
+        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        #expect(store.missingApp == nil && store.strip != nil)
+        store.missingApp = .name("Typo")
+        store.dropStrip()
+        #expect(store.missingApp == nil)
+        store.stop()
+    }
+
     @Test("two windows toggle when you are in one of them; from anywhere else the picker or the first")
     func twoWindowsToggle() async {
         let runner = ScriptRunner()

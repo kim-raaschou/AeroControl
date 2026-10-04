@@ -36,6 +36,13 @@ struct SummonTests {
         #expect(AppRef.bundleId("com.mail").identifies(bundleId: "com.mail", among: windows))
     }
 
+    @Test("an app nothing answers to is told by the name the link gave, and why nothing came")
+    func notFound() {
+        let id = AppRef.bundleId("com.typo").notFound, name = AppRef.name("Two Words").notFound
+        #expect(id.name == "com.typo" && id.reason == "no app has this id")
+        #expect(name.name == "Two Words" && name.reason == "no app has this name")
+    }
+
     @Test("while the overview is up the strip's own key steps it, by either name; any other app key is the app's whole flow again; the map's key closes")
     func againWhileUp() {
         let windows = [w(1, "Arc", "com.arc"), w(2, "Claude", "com.claude")]

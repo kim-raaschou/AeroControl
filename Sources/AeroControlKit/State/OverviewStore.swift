@@ -43,8 +43,11 @@ public class OverviewStore {
 
 
     public private(set) var strip: Strip?
+    /// An app `open` could not start, told on the strip's lane until the visit ends: a typo in a
+    /// key's link is otherwise a key that does nothing.
+    public var missingApp: AppRef?
     /// The visit is over: the next summon decides afresh whether there is a strip.
-    public func dropStrip() { strip = nil }
+    public func dropStrip() { strip = nil; missingApp = nil }
     /// The one shot is over and the host closes the overview: after a focus action (the window
     /// or workspace asked for takes the keyboard), or when AeroSpace took the focus out of the
     /// overview for good (`restoreFocus`: the app that has it is brought forward).
@@ -299,6 +302,7 @@ public class OverviewStore {
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
     /// decides which window is in front, which for the app you are in changes nothing.
     public func summonApp(_ app: AppRef, picker: Bool) -> AppSummon {
+        missingApp = nil
         let decision = AppSummon.decide(app: app, model: model, recent: recentWindows, picker: picker)
         if case .pick(let opened) = decision { strip = opened }
         return decision
@@ -310,7 +314,7 @@ public class OverviewStore {
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
-        if let strip { return handleStrip(key, strip) }
+        if strip != nil || missingApp != nil { return handleStrip(key) }   // a notice is a strip of no windows
         let action = filterKeyAction(query: filter, ring: ringWindowId, key: key)
         if case .setQuery(let query) = action { filter = query }
         return action
@@ -319,9 +323,9 @@ public class OverviewStore {
     /// A key in the strip, by its own rules (`AppStripModel.action`): steps move the marking,
     /// a key or Enter picks, Escape is the window's to close with; anything else is
     /// swallowed, since there is no typing in the strip.
-    private func handleStrip(_ key: FilterKey, _ strip: Strip) -> FilterKeyAction {
+    private func handleStrip(_ key: FilterKey) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
-        switch AppStripModel.action(for: key, ids: ids, marked: strip.marked) {
+        switch AppStripModel.action(for: key, ids: ids, marked: strip?.marked) {
         case .step(let direction): stepStrip(direction)
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
