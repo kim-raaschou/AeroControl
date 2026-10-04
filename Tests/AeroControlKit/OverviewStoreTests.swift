@@ -417,6 +417,26 @@ struct OverviewStoreTests {
         store.stop()
     }
 
+    @Test("the strip turns on AeroSpace's focus event itself, before any read, and leaves on it too")
+    func stripTurnsOnTheEvent() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
+                                        oneWindow(8, "4", app: "Slack", bundleId: "com.slack"), oneWindow(9, "4", app: "Slack", bundleId: "com.slack"),
+                                        oneWindow(7, "5", app: "Claude", bundleId: "com.claude")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2", "4", "5"]))
+        runner.setFocus(windowId: 7, workspace: "5")
+        let store = started(runner)
+        var left = 0
+        store.onShotDone = { _ in left += 1 }
+        await store.reload()
+        _ = store.summonApp(bundleId: "com.app", picker: true)
+        store.send(.event(.focusChanged(windowId: 9, workspace: "4")))                 // Slack's key: the event, not yet the read
+        #expect(store.strip?.bundleId == "com.slack" && store.strip?.marked == 9 && left == 0)
+        store.send(.event(.focusChanged(windowId: 7, workspace: "5")))                 // Claude has one window
+        #expect(store.strip == nil && left == 1)
+        store.stop()
+    }
+
     @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")
     func stripStepsOnResummon() async {
         let (_, store) = await stripOnTeams()

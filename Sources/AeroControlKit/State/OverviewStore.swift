@@ -397,12 +397,16 @@ public class OverviewStore {
     /// and let an event land behind a later read, and bought no ordering the main actor did
     /// not already give.
     public func send(_ input: OverviewInput) {
-        var input = input
-        // The strip still takes its focus from the read, for now: only the overview moves on the event.
-        if strip != nil, case .event(.focusChanged) = input { input = .event(.changed) }
         let (newState, effects) = Common.updateOverview(model, input)
+        let focusMoved = newState.focusedWindowId != model.focusedWindowId
         if newState != model { model = newState }
         if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
+        // The strip follows AeroSpace's focus, from the event or the read: to another app of
+        // several windows it turns, to one of a single window it is over and the host closes.
+        if focusMoved, let strip {
+            self.strip = strip.following(model.focusedWindow, among: model.workspaces.flatMap(\.windows))
+            if self.strip == nil { onShotDone?(true) }
+        }
         switch input {
         case .action(.focusWindow), .action(.focusWorkspace): onShotDone?(false)
         default: break
@@ -458,7 +462,6 @@ public class OverviewStore {
             // are taken, then all of it at once. Drawn as it came, the card showed the new layout
             // with the old sizes and pictures, then every size the windows passed through, then the
             // pictures. Focus does not wait: it came with AeroSpace's event, before this read.
-            let focused = self.model.focusedWindowId
             let pictureGeneration = self.captureGeneration
             let (sizes, pictures) = await self.settled(result)
             guard !Task.isCancelled, generation == self.refreshGeneration else { return }
@@ -468,7 +471,6 @@ public class OverviewStore {
                 self.previewSizes = sizes
                 self.previews.merge(pictures) { $1 }
             }
-            self.stripFollowsFocus(from: focused)
         }
     }
 
@@ -512,20 +514,5 @@ public class OverviewStore {
         return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
-    /// While the strip is up, AeroSpace moving the focus to another app's window — that app's
-    /// key, or any command — turns the strip to that app, marked there: the strip mirrors
-    /// AeroSpace, as the map does. Only a move: a strip summoned from another app was turned to
-    /// it by the next event of any kind, a mode key. The pictures its cards lack are taken with
-    /// the rest (`settled`). An app of one window leaves nothing to choose: the
-    /// strip goes (`onShotDone`) to the app.
-    private func stripFollowsFocus(from before: Int) {
-        guard let strip, model.focusedWindowId != before, let focused = model.focusedWindow,
-              focused.bundleId != strip.bundleId else { return }
-        guard model.workspaces.flatMap(\.windows).count(where: { $0.bundleId == focused.bundleId }) > 1 else {
-            onShotDone?(true)
-            return
-        }
-        self.strip = Strip(bundleId: focused.bundleId, marked: focused.windowId, centre: focused.windowId, turns: 0)
-    }
 
 }

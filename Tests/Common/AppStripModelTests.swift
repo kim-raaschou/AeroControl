@@ -75,6 +75,17 @@ struct StripValueTests {
         #expect(s.stepped(1, ids: [], card: cards).marked == 5)               // nothing to step onto: unchanged
     }
 
+    @Test("AeroSpace moved the focus: within the app nothing changes; to another app of several windows the strip turns to it, marked there; to an app of one window it is over")
+    func following() {
+        func w(_ id: Int, _ app: String) -> WindowInfo { WindowInfo(windowId: id, appName: app, bundleId: app) }
+        let windows = [w(1, "a"), w(2, "b"), w(3, "b"), w(4, "c")]
+        let s = Strip(bundleId: "a", marked: 1, centre: 1, turns: 2)
+        #expect(s.following(w(1, "a"), among: windows) == s)
+        #expect(s.following(nil, among: windows) == s)                                   // an empty workspace
+        #expect(s.following(w(3, "b"), among: windows) == Strip(bundleId: "b", marked: 3, centre: 3, turns: 0))
+        #expect(s.following(w(4, "c"), among: windows) == nil)                          // nothing to choose there
+    }
+
     @Test("after the windows changed the marking stays on its window, or passes to the one that took a closed one's place")
     func kept() {
         let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)

@@ -44,6 +44,16 @@ public struct Strip: Equatable, Sendable {
         return Strip(bundleId: bundleId, marked: ids[at], centre: ids[at], turns: turns)
     }
 
+    /// AeroSpace moved the focus: to this app's window, or to none, nothing changes. To another
+    /// app's window among several of that app, the strip turns to that app, marked there, as
+    /// the app's key would open it. To an app of one window there is nothing to choose: nil, the
+    /// strip is over.
+    public func following(_ focused: WindowInfo?, among windows: [WindowInfo]) -> Strip? {
+        guard let focused, focused.bundleId != bundleId else { return self }
+        guard windows.count(where: { $0.bundleId == focused.bundleId }) > 1 else { return nil }
+        return Strip(bundleId: focused.bundleId, marked: focused.windowId, centre: focused.windowId, turns: 0)
+    }
+
     /// After the windows changed: the marking stays on its window, or passes to the one that
     /// took a closed one's place (`AppStripModel.keepSelection`), the centre with it.
     public func kept(before: [Int], after: [Int]) -> Strip {

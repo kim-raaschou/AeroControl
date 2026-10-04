@@ -122,7 +122,7 @@ flowchart LR
 | `Common/Domain/Models.swift` | — |
 | `Common/Domain/OverviewFilter.swift` | `AerospaceCliParser`, `Models`, `OverviewUpdate` |
 | `Common/Domain/OverviewUpdate.swift` | `AeroControlAction`, `AerospaceEvent`, `Models` |
-| `Common/Domain/Strip.swift` | `AppStripModel` |
+| `Common/Domain/Strip.swift` | `AppStripModel`, `Models` |
 | `Common/Domain/TilePacker.swift` | — |
 | `Common/Domain/WorkspaceTree.swift` | — |
 
@@ -232,7 +232,6 @@ flowchart TD
     s_startFollowingAerospace["startFollowingAerospace"]
     s_startListening["startListening"]
     s_stepStrip["stepStrip"]
-    s_stripFollowsFocus["stripFollowsFocus"]
     s_take["take"]
     s_wantPicture["wantPicture"]
     c_loadOverview(["Common · loadOverview"])
@@ -247,7 +246,6 @@ flowchart TD
     s_reload --> c_loadOverview
     s_requestRefresh --> s_send
     s_requestRefresh --> s_settled
-    s_requestRefresh --> s_stripFollowsFocus
     s_requestRefresh --> c_loadOverview
     s_runAction --> s_requestRefresh
     s_runSequence --> s_requestRefresh
