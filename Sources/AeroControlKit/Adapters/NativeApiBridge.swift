@@ -1,5 +1,6 @@
 import AppKit
 
+/// What AeroControl asks of macOS itself. A bridge that cannot capture leaves every tile a plate.
 @MainActor
 public protocol NativeApiBridge: Sendable {
     /// The app's icon, for the badge in a picture's corner.
@@ -21,15 +22,4 @@ public protocol NativeApiBridge: Sendable {
     /// One preview per window, scaled to fit `maxSize` (pixels), handed over one by one as
     /// each lands. Windows that cannot be captured are simply never delivered.
     func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async
-}
-
-/// Previews are optional: a bridge without capture support leaves every tile a plate
-/// (this is also what the test fakes get).
-public extension NativeApiBridge {
-    var canCapturePreviews: Bool { false }
-    func requestPreviewAccess() {}
-    func hiddenBundleIds() -> Set<String> { [] }
-    func prepareCapture() {}
-    func previewSizes(windowIds: [Int]) async -> [Int: CGSize] { [:] }
-    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {}
 }

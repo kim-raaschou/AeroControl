@@ -76,14 +76,7 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
         defer { Darwin.close(fd) }
         try AerospaceSocket.writeFrame(fd, AerospaceSocket.encodeRequest(args))
         let answer = try AerospaceSocket.decodeAnswer(AerospaceSocket.readFrame(fd))
-        if answer.exitCode != 0 {
-            throw AerospaceSocketError.commandFailed(
-                arguments: args,
-                exitCode: answer.exitCode,
-                stderr: answer.stderr.trimmingCharacters(in: .whitespacesAndNewlines),
-                serverVersion: answer.serverVersionAndHash
-            )
-        }
+        if answer.exitCode != 0 { throw answer.failure(args) }
         return answer.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -103,6 +96,11 @@ enum AerospaceSocket {
         /// "0.21.3-Beta d56e1637c3a1…". It is the only way to learn which AeroSpace we are
         /// actually talking to, so it goes into the error a user would send us.
         let serverVersionAndHash: String?
+
+        func failure(_ args: [String]) -> AerospaceSocketError {
+            .commandFailed(arguments: args, exitCode: exitCode, stderr: stderr.trimmingCharacters(in: .whitespacesAndNewlines),
+                           serverVersion: serverVersionAndHash)
+        }
     }
 
     static func defaultSocketPath() -> String {
@@ -160,14 +158,7 @@ enum AerospaceSocket {
                             // connection. Without this the read loop blocks forever, nothing
                             // throws, and the overview silently stops following AeroSpace for
                             // the life of the process. Events never decode as a ServerAnswer.
-                            if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) {
-                                throw AerospaceSocketError.commandFailed(
-                                    arguments: args,
-                                    exitCode: answer.exitCode,
-                                    stderr: answer.stderr.trimmingCharacters(in: .whitespacesAndNewlines),
-                                    serverVersion: answer.serverVersionAndHash
-                                )
-                            }
+                            if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
                             first = false
                             if let line = String(data: body, encoding: .utf8) {
                                 continuation.yield(line)

@@ -77,7 +77,6 @@ public enum AppStripModel {
     public struct Span: Equatable, Sendable {
         public let x: CGFloat
         public let width: CGFloat
-        public init(x: CGFloat, width: CGFloat) { self.x = x; self.width = width }
     }
 
     public enum Action: Equatable, Sendable {

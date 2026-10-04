@@ -17,19 +17,10 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     public func appIcon(bundleId: String) -> NSImage {
         if let cached = iconCache[bundleId] { return cached }
-        let icon = Self.loadIcon(bundleId: bundleId)
+        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
+        let icon = Self.largeRepresentation(of: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle))
         iconCache[bundleId] = icon
         return icon
-    }
-
-    private static func loadIcon(bundleId: String) -> NSImage {
-        let original: NSImage
-        if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
-            original = NSWorkspace.shared.icon(forFile: appURL.path)
-        } else {
-            original = NSWorkspace.shared.icon(for: .applicationBundle)
-        }
-        return largeRepresentation(of: original)
     }
 
     /// Keeps only the 256-point representation of a macOS icon (512 pixels on a 2x screen).

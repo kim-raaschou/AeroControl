@@ -6,9 +6,7 @@ public struct TolerantInt: Decodable, Equatable {
     public init(wrappedValue: Int) { self.wrappedValue = wrappedValue }
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
-        if let value = try? c.decode(Int.self) { wrappedValue = value }
-        else if let string = try? c.decode(String.self), let value = Int(string) { wrappedValue = value }
-        else { wrappedValue = 0 }
+        wrappedValue = (try? c.decode(Int.self)) ?? (try? c.decode(String.self)).flatMap { Int($0) } ?? 0
     }
 }
 
@@ -46,10 +44,8 @@ public struct DecodedWindow: Decodable, Equatable {
 
 /// `x,y,width,height` in points to a rect; nil for anything else, an empty string included.
 public func parseLayoutRect(_ text: String?) -> CGRect? {
-    guard let text, !text.isEmpty else { return nil }
-    let parts = text.split(separator: ",").compactMap { Double($0) }
-    guard parts.count == 4 else { return nil }
-    return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
+    let parts = (text ?? "").split(separator: ",").compactMap { Double($0) }
+    return parts.count == 4 ? CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]) : nil
 }
 
 public struct WorkspaceMonitor: Decodable, Equatable {
@@ -178,10 +174,10 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
         windowsJson = try await runner.run(AerospaceCommand.listWindows())
     }
     let windows = try parseWindows(json: windowsJson)
-    let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces()))
+    let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces))
     // Tolerant: the lists are the load, focus is a refinement of it.
-    let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow())
-    let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace())
+    let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow)
+    let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace)
     let focus = parseFocus(windowJson: focusedWindow, workspaceJson: focusedWorkspace)
     return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus)
 }

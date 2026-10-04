@@ -27,7 +27,7 @@ struct AerospaceCommandArgvTests {
 
     @Test("list-workspaces argv is pinned")
     func listWorkspaces() {
-        #expect(AerospaceCommand.listWorkspaces() == [
+        #expect(AerospaceCommand.listWorkspaces == [
             "list-workspaces", "--monitor", "all", "--json", "--format",
             "%{workspace} %{monitor-id} %{monitor-name} %{monitor-appkit-nsscreen-screens-id} %{workspace-root-container-layout}",
         ])
@@ -35,7 +35,7 @@ struct AerospaceCommandArgvTests {
 
     @Test("subscribe argv is pinned")
     func subscribe() {
-        #expect(AerospaceCommand.subscribe() == ["subscribe", "--all", "--no-send-initial"])
+        #expect(AerospaceCommand.subscribe == ["subscribe", "--all", "--no-send-initial"])
     }
 }
 

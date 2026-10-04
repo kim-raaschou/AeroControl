@@ -13,6 +13,12 @@ private func pack(_ ratios: [CGFloat], height: CGFloat, width: CGFloat) -> TileP
     TilePacker.packRows(ratios: ratios, tileHeight: height, width: width, gap: gap, caption: caption)
 }
 
+/// Tile indices by row, in reading order, read off the tiles' y and x.
+private func rows(_ packed: TilePacker.Packed) -> [[Int]] {
+    Dictionary(grouping: packed.tiles.indices) { packed.tiles[$0].y }.sorted { $0.key < $1.key }
+        .map { $0.value.sorted { packed.tiles[$0].x < packed.tiles[$1].x } }
+}
+
 private func overlap(_ tiles: [TilePacker.Tile]) -> (Int, Int)? {
     for i in tiles.indices {
         for j in tiles.indices where j > i {
@@ -29,7 +35,7 @@ struct PackRowsTests {
     func shorterRowIsCentred() {
         // Five 150-wide tiles with 8 between them, in a 500-wide card, fall as 3 + 2: 466 wide over 308 wide.
         let r = pack(Array(repeating: 1.5, count: 5), height: 100, width: 500)
-        #expect(r.rows == [[0, 1, 2], [3, 4]] && r.width == 466)
+        #expect(rows(r) == [[0, 1, 2], [3, 4]] && r.width == 466)
         #expect(r.tiles[0].x == 0 && r.tiles[1].x == 158 && r.tiles[2].x == 316)
         #expect(r.tiles[3].x == 79 && r.tiles[4].x == 237)              // (466 - 308) / 2 = 79
         #expect(r.tiles.allSatisfy { $0.x >= 0 && $0.x + $0.width <= r.width })
@@ -44,7 +50,7 @@ struct PackRowsTests {
         #expect(r.tiles.allSatisfy { $0.x >= 0 && $0.x + $0.width <= 901 })
         #expect(r.width == r.tiles.map { $0.x + $0.width }.max())
         #expect(r.tiles.allSatisfy { $0.height > caption })
-        #expect(r.rows.flatMap { $0 } == Array(ratios.indices))               // reading order, every index once
+        #expect(rows(r).flatMap { $0 } == Array(ratios.indices))               // reading order, every index once
     }
 
     @Test("a tile too wide for the card is clamped to it and still gets a place")
@@ -57,13 +63,13 @@ struct PackRowsTests {
     @Test("rows are spread evenly once their number is known: six alike are 3 + 3, not 4 + 2")
     func spreadsEvenly() {
         let r = pack(Array(repeating: 1.6, count: 6), height: 100, width: 4 * 160 + 3 * gap)
-        #expect(r.rows.map(\.count) == [3, 3])
+        #expect(rows(r).map(\.count) == [3, 3])
     }
 
     @Test("a tile wider than the card is clamped to it and loses height alone, in a row of its own")
     func clampedAlone() {
         let r = pack([1.0, 4.0], height: 100, width: 300)
-        #expect(r.rows == [[0], [1]])
+        #expect(rows(r) == [[0], [1]])
         #expect(r.tiles[1].width == 300 && r.tiles[1].height == 75 + caption)
     }
 }

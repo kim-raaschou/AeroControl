@@ -22,15 +22,10 @@ public enum AppRef: Equatable, Sendable {
 
     /// What the strip's lane says when `open` found no such app: the name as the link gave it,
     /// in the app's place, and why nothing came, in its count's.
-    public struct NotFound: Equatable, Sendable {
-        public let name: String
-        public let reason: String
-    }
-
-    public var notFound: NotFound {
+    public var notFound: (name: String, reason: String) {
         switch self {
-        case .bundleId(let id): NotFound(name: id, reason: "no app has this id")
-        case .name(let name): NotFound(name: name, reason: "no app has this name")
+        case .bundleId(let id): (id, "no app has this id")
+        case .name(let name): (name, "no app has this name")
         }
     }
 }

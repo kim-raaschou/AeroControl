@@ -1681,5 +1681,14 @@
     "complexity": 935,
     "prodComplexity": 545,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:34:25+02:00",
+    "commit": "8fa5c0d",
+    "subject": "Tests without dead weight: no idle stop(), one runner, one argv table",
+    "code": 5471,
+    "complexity": 902,
+    "prodComplexity": 510,
+    "files": 60
   }
 ]

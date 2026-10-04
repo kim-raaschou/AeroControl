@@ -15,10 +15,6 @@ public struct Strip: Equatable, Sendable {
     /// back past its first: what keeps the carousel turning one way instead of jumping back.
     public let turns: Int
 
-    public init(bundleId: String, marked: Int?, centre: Int?, turns: Int) {
-        self.bundleId = bundleId; self.marked = marked; self.centre = centre; self.turns = turns
-    }
-
     /// Opened on the window after the one you are in (`AppStripModel.start`), the centre on it.
     public static func opened(_ bundleId: String, origin: Int?, ids: [Int], recent: [Int]) -> Strip {
         let first = AppStripModel.start(origin: origin, ids: ids, recent: recent)

@@ -96,9 +96,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let overlayManager else { pendingSummon = Summon(url); return }
         overlayManager.toggleVisibility(Summon(url))
     }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        state?.stop()
-    }
-
 }

@@ -17,8 +17,6 @@ public enum TilePacker {
     }
 
     public struct Packed: Equatable, Sendable {
-        /// Tile indices by row, in reading order.
-        public let rows: [[Int]]
         public let height: CGFloat
         public let width: CGFloat
         public let tiles: [Tile]
@@ -29,55 +27,37 @@ public enum TilePacker {
     /// capping the shared height for every tile beside it. Each tile has `caption` under it.
     public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
                                 gap: CGFloat, caption: CGFloat) -> Packed {
-        let n = ratios.count
-        var widths: [CGFloat] = [], heights: [CGFloat] = []
-        for j in 0..<n {
-            var h = tileHeight.rounded(.down)
-            var w = (ratios[j] * h).rounded(.down)
-            if w > width { w = width; h = (width / max(0.01, ratios[j])).rounded(.down) }
-            widths.append(max(1, w))
-            heights.append(max(1, h))
+        guard !ratios.isEmpty else { return Packed(height: 0, width: 0, tiles: []) }
+        let sizes = ratios.map { ratio in
+            let h = tileHeight.rounded(.down), w = (ratio * h).rounded(.down)
+            let clamped = w > width ? CGSize(width: width, height: (width / max(0.01, ratio)).rounded(.down)) : CGSize(width: w, height: h)
+            return CGSize(width: max(1, clamped.width), height: max(1, clamped.height))
         }
+        func rowWidth(_ row: [Int]) -> CGFloat { row.reduce(-gap) { $0 + sizes[$1].width + gap } }
 
-        // How many rows a greedy fill needs, then the same count filled evenly if that fits.
-        var rowCount = 1
-        var x: CGFloat = 0
-        for j in 0..<n {
-            if x > 0 && x + widths[j] > width { rowCount += 1; x = 0 }
-            x += widths[j] + gap
+        // Rows filled greedily, then the same number filled evenly if that fits.
+        var greedy: [[Int]] = [[]]
+        for j in sizes.indices {
+            if !greedy[greedy.count - 1].isEmpty, rowWidth(greedy[greedy.count - 1] + [j]) > width { greedy.append([]) }
+            greedy[greedy.count - 1].append(j)
         }
-        let perRow = Int((Double(n) / Double(rowCount)).rounded(.up))
-        var even = true
-        for r in 0..<rowCount where even {
-            let used = (r * perRow..<min(n, (r + 1) * perRow)).reduce(CGFloat(0)) { $0 + widths[$1] + gap }
-            if used - gap > width { even = false }
-        }
+        let perRow = Int((Double(sizes.count) / Double(greedy.count)).rounded(.up))
+        let even = stride(from: 0, to: sizes.count, by: perRow).map { Array($0..<min(sizes.count, $0 + perRow)) }
+        let rows = even.allSatisfy { rowWidth($0) <= width } ? even : greedy
 
-        var rows: [[Int]] = [[]]
-        var rowHeights: [CGFloat] = [0]
-        x = 0
-        for j in 0..<n {
-            let breaks = even ? (j > 0 && j % perRow == 0) : (x > 0 && x + widths[j] > width)
-            if breaks { rows.append([]); rowHeights.append(0); x = 0 }
-            rows[rows.count - 1].append(j)
-            rowHeights[rows.count - 1] = max(rowHeights[rows.count - 1], heights[j])
-            x += widths[j] + gap
-        }
-
-        // A row's width, so a shorter one can be centred under the widest rather than hung from the left.
-        let rowWidths = rows.map { row in row.reduce(CGFloat(0)) { $0 + widths[$1] + gap } - gap }
-        let widest = max(0, rowWidths.max() ?? 0)
-        var tiles: [Tile] = Array(repeating: Tile(x: 0, y: 0, width: 0, height: 0), count: n)
+        // A shorter row is centred under the widest rather than hung from the left.
+        let widest = rows.map(rowWidth).max() ?? 0
+        var tiles = [Tile](repeating: Tile(x: 0, y: 0, width: 0, height: 0), count: sizes.count)
         var y: CGFloat = 0
-        for (r, row) in rows.enumerated() {
-            x = ((widest - rowWidths[r]) / 2).rounded(.down)
+        for row in rows {
+            var x = ((widest - rowWidth(row)) / 2).rounded(.down)
             for j in row {
-                tiles[j] = Tile(x: x, y: y, width: widths[j], height: heights[j] + caption)
-                x += widths[j] + gap
+                tiles[j] = Tile(x: x, y: y, width: sizes[j].width, height: sizes[j].height + caption)
+                x += sizes[j].width + gap
             }
-            y += rowHeights[r] + caption + gap
+            y += (row.map { sizes[$0].height }.max() ?? 0) + caption + gap
         }
-        return Packed(rows: n == 0 ? [] : rows, height: max(0, y - gap), width: widest, tiles: tiles)
+        return Packed(height: y - gap, width: widest, tiles: tiles)
     }
 
     /// The largest shared picture height whose rows fit in `width` × `height`: fitting is
@@ -94,7 +74,6 @@ public enum TilePacker {
             let mid = ((lo + hi) / 2).rounded(.up)
             if fits(mid) { lo = mid } else { hi = mid - 1 }
         }
-        while lo > 1 && !fits(lo) { lo -= 1 }
         return lo
     }
 }

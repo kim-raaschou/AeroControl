@@ -85,20 +85,20 @@ public struct AeroControlPanel: View {
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : workspaces
         let namesMonitors = self.namesMonitors
-        let layout = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
+        let frames = CardGrid.lattice(count: all.count, in: usable, cellRatio: cellRatio, gap: AeroControlLayout.cardGap,
                                       chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
         return ZStack(alignment: .topLeading) {
-            ForEach(layout.cells, id: \.index) { cell in
-                let workspace = all[cell.index]
+            ForEach(frames.indices, id: \.self) { i in
+                let workspace = all[i]
                 AeroControlWorkspaceCard(
                     workspace: workspace,
                     monitorName: namesMonitors ? workspace.monitorShortName : nil,
                     fallbackRatio: ratio(of: workspace),
                     screen: screenFrames[workspace.screenIndex],
-                    size: cell.frame.size,
+                    size: frames[i].size,
                     filtering: filtering
                 )
-                .offset(x: cell.frame.minX, y: cell.frame.minY)
+                .offset(x: frames[i].minX, y: frames[i].minY)
                 .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
             }
         }

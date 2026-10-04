@@ -346,7 +346,7 @@ public class OverviewStore {
                 // after a reconnect so a dropped stream costs latency, never correctness.
                 if reconnecting, await self.following { await self.reload() }
                 do {
-                    let stream = self.runner.subscribe(AerospaceCommand.subscribe())
+                    let stream = self.runner.subscribe(AerospaceCommand.subscribe)
                     for try await line in stream {
                         guard let event = AerospaceEvent.parse(line) else { continue }
                         if case .focusChanged(let id?, _) = event { await self.noteFocus(id) }

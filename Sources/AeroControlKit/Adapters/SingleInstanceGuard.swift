@@ -8,13 +8,7 @@ public final class SingleInstanceGuard {
     public func tryAcquire(name: String) -> Bool {
         let path = (NSTemporaryDirectory() as NSString).appendingPathComponent(name)
         let fd = unsafe open(path, O_CREAT | O_RDWR, 0o600)
-        guard fd != -1 else { return false }
-
-        if flock(fd, LOCK_EX | LOCK_NB) != 0 {
-            close(fd)
-            return false
-        }
-
+        guard fd != -1, flock(fd, LOCK_EX | LOCK_NB) == 0 else { close(fd); return false }   // close(-1) is a harmless EBADF
         fileDescriptor = fd
         return true
     }

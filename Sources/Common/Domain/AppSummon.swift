@@ -16,12 +16,8 @@ public enum AppSummon: Equatable, Sendable {
     public static func decide(app ref: AppRef, model: OverviewModel, recent: [Int], picker: Bool) -> AppSummon {
         let windows = model.windowsInGridOrder.map(\.window).filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
-        switch windows.count {
-        case 0: return .launch(ref)
-        case 1: return .focus(windowId: windows[0].windowId)
-        default: break
-        }
-        guard picker else { return .launch(ref) }
+        if windows.count == 1 { return .focus(windowId: windows[0].windowId) }
+        guard windows.count > 1, picker else { return .launch(ref) }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
         return .pick(.opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent))
     }

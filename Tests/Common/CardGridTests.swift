@@ -13,7 +13,7 @@ private let gap: CGFloat = 24
 
 /// What a card spends on its header and padding: the inner box is the cell less this.
 private let chrome = CGSize(width: 36, height: 76)
-private func lattice(_ n: Int) -> CardGrid.Layout { CardGrid.lattice(count: n, in: box, cellRatio: screen, gap: gap, chrome: chrome) }
+private func lattice(_ n: Int) -> [CGRect] { CardGrid.lattice(count: n, in: box, cellRatio: screen, gap: gap, chrome: chrome) }
 
 private func overlap(_ frames: [CGRect]) -> (Int, Int)? {
     for i in frames.indices {
@@ -26,8 +26,9 @@ private func overlap(_ frames: [CGRect]) -> (Int, Int)? {
 }
 
 /// The rows as "1 2 3 | 4 5", reading the cells' y.
-private func shape(_ layout: CardGrid.Layout) -> String {
-    layout.rows.map { $0.map { String($0 + 1) }.joined(separator: " ") }.joined(separator: " | ")
+private func shape(_ frames: [CGRect]) -> String {
+    Dictionary(grouping: frames.indices) { frames[$0].minY }.sorted { $0.key < $1.key }
+        .map { $0.value.sorted().map { String($0 + 1) }.joined(separator: " ") }.joined(separator: " | ")
 }
 
 @Suite("CardGrid.lattice")
@@ -35,23 +36,21 @@ struct CardGridTests {
     @Test("every card placed, inside the box, none overlapping, in order, all the same size", arguments: [1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 16])
     func invariants(n: Int) {
         let g = lattice(n)
-        #expect(g.cells.count == n && g.cells.allSatisfy { $0.frame.width > 0 && $0.frame.height > 0 })
-        #expect(g.cells.allSatisfy { $0.frame.minX >= 0 && $0.frame.minY >= 0 && $0.frame.maxX <= box.width + 1 && $0.frame.maxY <= box.height + 1 })
-        #expect(overlap(g.cells.map(\.frame)) == nil)
-        #expect(g.cells.map(\.index) == Array(0..<n))
-        #expect(g.rows.flatMap { $0 } == Array(0..<n))
-        #expect(Set(g.cells.map { $0.frame.size }).count == 1)
+        #expect(g.count == n && g.allSatisfy { $0.width > 0 && $0.height > 0 })
+        #expect(g.allSatisfy { $0.minX >= 0 && $0.minY >= 0 && $0.maxX <= box.width + 1 && $0.maxY <= box.height + 1 })
+        #expect(overlap(g) == nil)
+        #expect(Set(g.map(\.size)).count == 1)
     }
 
     @Test("a cell's inner box, the cell less its chrome, has the screen's shape, so a drawn screen fills it", arguments: [1, 3, 7, 12])
     func innerBoxHasScreenShape(n: Int) {
-        let size = lattice(n).cells[0].frame.size
+        let size = lattice(n)[0].size
         #expect(abs((size.width - chrome.width) / (size.height - chrome.height) - screen) < 0.01)
     }
 
     @Test("without chrome the cell itself has the screen's shape")
     func cellShapeWithoutChrome() {
-        let size = CardGrid.lattice(count: 7, in: box, cellRatio: screen, gap: gap).cells[0].frame.size
+        let size = CardGrid.lattice(count: 7, in: box, cellRatio: screen, gap: gap)[0].size
         #expect(abs(size.width / size.height - screen) < 0.01)
     }
 
@@ -69,14 +68,13 @@ struct CardGridTests {
     @Test("rows start at the same x, so a short last row is left-aligned with holes at its end")
     func rowsAligned() {
         let g = lattice(7)
-        #expect(g.cells[0].frame.minX == g.cells[3].frame.minX && g.cells[3].frame.minX == g.cells[6].frame.minX)
-        #expect(g.cells[0].frame.minY == g.cells[1].frame.minY && g.cells[3].frame.minY > g.cells[0].frame.maxY)
+        #expect(g[0].minX == g[3].minX && g[3].minX == g[6].minX)
+        #expect(g[0].minY == g[1].minY && g[3].minY > g[0].maxY)
     }
 
     @Test("the whole lattice sits centred in the box")
     func centred() {
-        let g = lattice(7)
-        let frames = g.cells.map(\.frame)
+        let frames = lattice(7)
         let minX = frames.map(\.minX).min()!, maxX = frames.map(\.minX).max()! + frames[0].width
         let minY = frames.map(\.minY).min()!, maxY = frames.map(\.maxY).max()!
         #expect(abs(minX - (box.width - maxX)) <= 1)
@@ -86,8 +84,8 @@ struct CardGridTests {
     @Test("nothing to lay out survives, and so does a zero-sized box")
     func degenerate() {
         let none = CardGrid.lattice(count: 0, in: box, cellRatio: screen, gap: gap)
-        #expect(none.cells.isEmpty && none.rows.isEmpty)
+        #expect(none.isEmpty)
         let flat = CardGrid.lattice(count: 3, in: .zero, cellRatio: screen, gap: gap)
-        #expect(flat.cells.count == 3 && flat.rows == [[0, 1, 2]])
+        #expect(flat.count == 3 && shape(flat) == "1 2 3")
     }
 }
