@@ -1789,5 +1789,14 @@
     "complexity": 882,
     "prodComplexity": 487,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T21:59:21+02:00",
+    "commit": "c6d6726",
+    "subject": "A second key while the first summon reads AeroSpace is dropped",
+    "code": 5362,
+    "complexity": 882,
+    "prodComplexity": 487,
+    "files": 60
   }
 ]

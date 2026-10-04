@@ -71,10 +71,12 @@ class OverviewWindow: NSPanel {
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers == .command else { return super.performKeyEquivalent(with: event) }
         if let digit = FilterKey(command: key), onKey?(digit) == true { return true }
+        // Every other ⌘ key is nothing: passed on, the app's menu could act on AeroControl
+        // (⌘H, Hide) under an overview that still holds itself as shown.
         switch key {
         case "q": onQuitPointedApp?()
         case "w": onDismiss?()
-        default: return super.performKeyEquivalent(with: event)
+        default: break
         }
         return true
     }
