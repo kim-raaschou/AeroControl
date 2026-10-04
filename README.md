@@ -20,8 +20,8 @@ Five things you do all day, each one summon and one key:
   with the windows AeroSpace has parked off-screen.
 - **"Which of my Arc windows?"** One key per app (`aerocontrol://windows?app=<bundle id>`).
   With three Arc windows, only they appear, with their titles, and the ring is already on
-  the next one — Enter switches. Cmd-` with pictures. With one window nothing appears at
-  all: the key just focuses it, and with none it starts the app.
+  the next one — Enter switches. Cmd-` with pictures. With one window the key just focuses
+  it, and with none it starts the app.
 - **"The Teams window with the meeting in it."** Press the key and type `te`: the map
   collapses to the windows whose title or app name starts with that, titles shown. Type more
   to narrow, Enter when it is first. No mouse, no reading a number off a badge.
@@ -55,7 +55,7 @@ between summons, and it asks for no permission except Screen Recording for the p
   already filtered to that app — three Arc windows, nothing else — with the ring on the next
   one, so Enter alone switches instance and Tab walks the rest. Under the cards a legend lists
   the windows, key and title each, so a window is read there when its picture is a sliver on
-  a crowded workspace. With a single window nothing appears; it is focused.
+  a crowded workspace. With a single window the key focuses it.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
@@ -131,7 +131,7 @@ settled without you (see *The map and the strip*). The rule:
 |---|---|
 | none | the app starts |
 | one | that window is focused |
-| two, and you are in one | the other one is focused — a toggle, nothing appears |
+| two, and you are in one | the other one is focused — a toggle |
 | two from elsewhere, or more | the strip opens with just them, ring on the next — pick |
 
 Bundle ids of everything open: `aerospace list-windows --all --format '%{app-bundle-id} %{app-name}'`.

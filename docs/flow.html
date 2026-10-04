@@ -26,12 +26,12 @@
 </table>
 <p>For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture, with the picker on and off:</p>
 <table><tr><th>Case</th><th>Picker on</th><th>Picker off</th></tr>
-<tr><td>no window of the app (Finder)</td><td>start com.apple.finder, or bring it forward · nothing appears</td><td>start com.apple.finder, or bring it forward · nothing appears</td></tr>
-<tr><td>one window: Mail on workspace 1 only</td><td>focus window 3 · nothing appears</td><td>focus window 3 · nothing appears</td></tr>
-<tr><td>two windows, you are in one: Ghostty, focus on window 4</td><td>focus window 5 · nothing appears</td><td>start com.ghostty, or bring it forward · nothing appears</td></tr>
-<tr><td>two windows, from elsewhere: Ghostty, focus on Arc</td><td>the strip, marked on window 4</td><td>start com.ghostty, or bring it forward · nothing appears</td></tr>
-<tr><td>three windows, you are in one: Arc, focus on window 1</td><td>the strip, marked on window 2</td><td>start com.arc, or bring it forward · nothing appears</td></tr>
-<tr><td>three windows, from elsewhere: Arc, focus on Teams</td><td>the strip, marked on window 1</td><td>start com.arc, or bring it forward · nothing appears</td></tr>
+<tr><td>no window of the app (Finder)</td><td>start com.apple.finder, or bring it forward</td><td>start com.apple.finder, or bring it forward</td></tr>
+<tr><td>one window: Mail on workspace 1 only</td><td>focus window 3</td><td>focus window 3</td></tr>
+<tr><td>two windows, you are in one: Ghostty, focus on window 4</td><td>focus window 5</td><td>start com.ghostty, or bring it forward</td></tr>
+<tr><td>two windows, from elsewhere: Ghostty, focus on Arc</td><td>the strip, marked on window 4</td><td>start com.ghostty, or bring it forward</td></tr>
+<tr><td>three windows, you are in one: Arc, focus on window 1</td><td>the strip, marked on window 2</td><td>start com.arc, or bring it forward</td></tr>
+<tr><td>three windows, from elsewhere: Arc, focus on Teams</td><td>the strip, marked on window 1</td><td>start com.arc, or bring it forward</td></tr>
 </table>
 <pre class="mermaid">
 flowchart TD
@@ -39,11 +39,11 @@ flowchart TD
   H -- "workspaces, or anything else" --> MAP["the map: every workspace,<br/>ring on AeroSpace's focus"]
   H -- "windows?app=" --> APP["the app named"]
   APP --> N{"windows of the app"}
-  N -- "none" --> A0["start com.apple.finder, or bring it forward · nothing appears"]
-  N -- "one" --> A1["focus window 3 · nothing appears"]
-  N -- "two, you in one" --> A2["focus window 5 · nothing appears"]
+  N -- "none" --> A0["start com.apple.finder, or bring it forward"]
+  N -- "one" --> A1["focus window 3"]
+  N -- "two, you in one" --> A2["focus window 5"]
   N -- "otherwise" --> PICK{"app picker on?"}
-  PICK -- "off" --> A3["start com.arc, or bring it forward · nothing appears"]
+  PICK -- "off" --> A3["start com.arc, or bring it forward"]
   PICK -- "on" --> A4["the strip, marked on window 2"]
 </pre>
 <p>Where the strip opens: <code>AppStripModel.start</code>. From inside the app, on the window after yours; from outside, on the app's window you used last, or its first.</p>

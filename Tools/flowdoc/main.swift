@@ -35,8 +35,8 @@ func label(_ s: String) -> String { s.replacingOccurrences(of: "\"", with: "'") 
 
 func describe(_ s: AppSummon) -> String {
     switch s {
-    case .launch(let app): return "start \(app), or bring it forward · nothing appears"
-    case .focus(let id): return "focus window \(id) · nothing appears"
+    case .launch(let app): return "start \(app), or bring it forward"
+    case .focus(let id): return "focus window \(id)"
     case .pick(let strip): return "the strip, marked on window \(strip.marked.map(String.init) ?? "–")"
     }
 }
