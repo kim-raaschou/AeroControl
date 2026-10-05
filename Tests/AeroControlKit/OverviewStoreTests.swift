@@ -533,19 +533,6 @@ struct OverviewStoreTests {
         #expect(store.previews.keys.sorted() == [1, 2])
     }
 
-    @Test("apps macOS has hidden are known after a load, so their tiles can be dimmed")
-    func hiddenApps() async {
-        let runner = ScriptRunner(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let bridge = FakeBridge()
-        bridge.hidden = ["com.app"]
-        let store = OverviewStore(runner: runner, nativeSystem: bridge)
-        await store.reload()
-        #expect(store.hiddenBundleIds == ["com.app"])
-        bridge.hidden = []
-        await store.reload()
-        #expect(store.hiddenBundleIds.isEmpty)
-    }
-
     @Test("a tile that draws a picture larger than it was taken asks for it again at its size, once; a smaller one asks nothing")
     func picturesTakenAgainLarger() async {
         let runner = ScriptRunner()

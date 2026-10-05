@@ -9,10 +9,6 @@ private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "pr
 public final class NativeApiBridgeAdapter: NativeApiBridge {
     public init() {}
 
-    public func hiddenBundleIds() -> Set<String> {
-        Set(NSWorkspace.shared.runningApplications.filter(\.isHidden).compactMap(\.bundleIdentifier))
-    }
-
     private var iconCache: [String: NSImage] = [:]
 
     public func appIcon(bundleId: String) -> NSImage {

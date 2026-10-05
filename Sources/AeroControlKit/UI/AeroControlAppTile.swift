@@ -33,8 +33,6 @@ struct AeroControlAppTile: View {
     /// The window you came from, while the ring is elsewhere: framed in the text colour so
     /// "where I am" and "where I am going" are both on screen, and never at one place.
     private var isOrigin: Bool { !isFocused && window.windowId == state.model.focusedWindowId }
-    /// An app hidden with ⌘H has its windows on no screen; the tile says so by fading.
-    private var isHidden: Bool { state.hiddenBundleIds.contains(window.bundleId) }
 
     /// While a filter is up the title is the point: two windows of one app are told apart by
     /// their title and their picture, and the title is the one that is provably current —
@@ -142,7 +140,7 @@ struct AeroControlAppTile: View {
             .saturation(faded ? 0 : 1)
             .opacity(faded ? Self.fadedOpacity : 1)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
-            .opacity(isHidden ? 0.45 : 1)
+            .opacity(window.isHidden ? 0.45 : 1)            // minimized, or its app hidden: on no screen
             .overlay(selectionPlate.allowsHitTesting(false))     // on the picture's edge, under the buttons
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(alignment: .topLeading) { stateBadge }

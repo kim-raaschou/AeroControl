@@ -99,8 +99,6 @@ final class FakeBridge: NativeApiBridge {
     /// Every window-id list the store has asked to capture.
     var captured: [[Int]] = []
     /// Bundle ids of apps macOS reports hidden.
-    var hidden: Set<String> = []
-    func hiddenBundleIds() -> Set<String> { hidden }
 
     func appIcon(bundleId: String) -> NSImage { NSImage() }
     var canCapturePreviews: Bool { granted }

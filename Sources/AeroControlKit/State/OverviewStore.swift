@@ -14,8 +14,6 @@ public class OverviewStore {
         }
     }
 
-    /// Apps macOS has hidden, read with every load: their tiles are dimmed.
-    public private(set) var hiddenBundleIds: Set<String> = []
 
     /// An app's icon, for the badge in a picture's corner: the one thing a picture does not say
     /// about a window is which app it is. The bridge keeps them, once per app, for good.
@@ -361,7 +359,6 @@ public class OverviewStore {
         let focusMoved = newState.focusedWindowId != model.focusedWindowId
         let hadStrip = strip != nil
         if newState != model { model = newState }               // keeps the strip, or ends it with its app's last window
-        if case .loaded = input { hiddenBundleIds = nativeSystem.hiddenBundleIds() }
         // The strip follows AeroSpace's focus, from the event or the read: to another app of
         // several windows it turns, to one of a single window it is over.
         if focusMoved, let strip {

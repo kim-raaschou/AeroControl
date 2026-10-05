@@ -62,7 +62,7 @@ public enum AeroControlLayout {
     /// screen is unknown; the card then packs tiles.
     public static func treeLayout(windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
-        let ghosts = windows.filter { $0.isFloating || $0.isFullscreen }.map(\.windowId)
+        let ghosts = windows.filter { $0.isFloating || $0.isFullscreen || $0.isHidden }.map(\.windowId)
         let tiled = windows.filter { !ghosts.contains($0.windowId) }
         let rects = tiled.compactMap(\.layoutRect)
         guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,

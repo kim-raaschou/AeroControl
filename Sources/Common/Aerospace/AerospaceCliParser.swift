@@ -98,8 +98,10 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 windowId: dw.windowId,
                 appName: dw.appName,
                 bundleId: dw.appBundleId,
+                // What AeroSpace says of the window's place: floating, or one of macOS's own states.
                 isFloating: dw.parentLayout == "floating",
-                isFullscreen: dw.windowIsFullscreen ?? false,
+                isFullscreen: dw.windowIsFullscreen ?? false || dw.parentLayout == "macos_native_fullscreen",
+                isHidden: ["macos_native_minimized", "macos_native_window_of_hidden_app"].contains(dw.parentLayout),
                 title: dw.windowTitle ?? "",
                 layoutRect: parseLayoutRect(dw.windowLayoutRect)
             ),

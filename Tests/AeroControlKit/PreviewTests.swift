@@ -89,6 +89,13 @@ struct TreeLayoutTests {
         #expect(abs(ghost.midX - box.midX) < 1 && abs(ghost.midY - box.midY) < 1)
     }
 
+    @Test("a minimized window, or one of a hidden app, is out of the layout and has no rect: it lies over the map rather than unseat it")
+    func hiddenOverTheMap() throws {
+        let minimized = WindowInfo(windowId: 99, appName: "Finder", bundleId: "com.apple.finder", isHidden: true)
+        let laid = try #require(AeroControlLayout.treeLayout(windows: ws7Rected + [minimized], sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)))
+        #expect(laid.frames.count == 6 && laid.ghosts == [99])
+    }
+
     @Test("a ghost whose size is unknown (no Screen Recording) takes the screen box and leaves the map standing")
     func ghostWithoutSize() throws {
         let float = WindowInfo(windowId: 99, appName: "Finder", bundleId: "com.apple.finder", isFloating: true)

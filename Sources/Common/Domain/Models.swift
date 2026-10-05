@@ -6,6 +6,8 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let bundleId: String
     public let isFloating: Bool
     public let isFullscreen: Bool
+    /// Out of the layout and on no screen, by AeroSpace's word: minimized, or its app hidden (⌘H).
+    public let isHidden: Bool
     public let title: String
     /// Where AeroSpace's layout last put the window, in screen points with a top-left origin
     /// (`%{window-layout-rect}`, the owner's AeroSpace branch). Nil on a release AeroSpace,
@@ -13,12 +15,13 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let layoutRect: CGRect?
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
-                isFullscreen: Bool = false, title: String = "", layoutRect: CGRect? = nil) {
+                isFullscreen: Bool = false, isHidden: Bool = false, title: String = "", layoutRect: CGRect? = nil) {
         self.windowId = windowId
         self.appName = appName
         self.bundleId = bundleId
         self.isFloating = isFloating
         self.isFullscreen = isFullscreen
+        self.isHidden = isHidden
         self.layoutRect = layoutRect
         self.title = title
     }

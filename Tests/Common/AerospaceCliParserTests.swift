@@ -61,6 +61,18 @@ struct ParseWindowStateTests {
         let windows = try parseWindows(json: json).map(\.window)
         #expect(windows.map(\.isFullscreen) == [true, false])
     }
+
+    @Test("what AeroSpace says of a window's place is its state: floating, macOS fullscreen, minimized or its app hidden")
+    func nativeStates() throws {
+        let layouts = ["h_tiles", "floating", "macos_native_fullscreen", "macos_native_minimized", "macos_native_window_of_hidden_app"]
+        let json = "[" + layouts.enumerated().map { i, layout in
+            #"{"window-id": \#(i), "app-name": "A", "app-bundle-id": "a", "workspace": "1", "window-parent-container-layout": "\#(layout)"}"#
+        }.joined(separator: ",") + "]"
+        let windows = try parseWindows(json: json).map(\.window)
+        #expect(windows.map(\.isFloating) == [false, true, false, false, false])
+        #expect(windows.map(\.isFullscreen) == [false, false, true, false, false])
+        #expect(windows.map(\.isHidden) == [false, false, false, true, true])
+    }
 }
 
 @Suite("parseWorkspaces")

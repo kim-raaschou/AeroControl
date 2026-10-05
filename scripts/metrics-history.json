@@ -1816,5 +1816,14 @@
     "complexity": 881,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:24:01+02:00",
+    "commit": "6448509",
+    "subject": "A query reads title, app and workspace as one",
+    "code": 5367,
+    "complexity": 881,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]
