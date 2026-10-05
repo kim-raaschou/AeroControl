@@ -37,8 +37,10 @@ final class OverlayWindowManager {
         requestedVisible = false
         // The visit ends once the window is off the screen. Ended first, the strip turned into the
         // map, backdrop and all, for the length of the fade: a blink. A summon meanwhile ends it itself.
+        // The window goes with it: kept hidden, its views held every picture they last drew.
         let ended: @MainActor @Sendable () -> Void = { [weak self] in
             guard let self, !self.requestedVisible else { return }
+            self.window = nil                           // first, or it drew the ended visit once more
             self.state.endVisit()
         }
         if let window { window.dismiss(then: ended) } else { ended() }
@@ -142,9 +144,12 @@ final class OverlayWindowManager {
             ?? NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
     }
 
+    /// Settings changed, or a notice is to be shown: the window is built again. Hidden, there is
+    /// none to rebuild; the next summon builds its own.
     func rebuild() {
+        guard requestedVisible else { return }
         window?.orderOut(nil)
-        window = makeWindow(for: targetScreen(), hidden: !requestedVisible)
+        window = makeWindow(for: targetScreen(), hidden: false)
     }
 
     /// Starts an app that has no window, with `open`: `-b` by bundle id, `-a` by name, the one
