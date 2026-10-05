@@ -164,6 +164,11 @@ in, or else the one after it), and keys to move it and confirm. The marking is y
 in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
 screen: the ring is the marking, the thin outline is where AeroSpace's focus is now.
 
+A strip is opened only by its app's key. While it is up AeroSpace still decides: move the focus
+within the app and the strip stands; move it anywhere else with an AeroSpace key, another app or
+an empty workspace, and the choice was made there: the strip closes and you are where AeroSpace
+put you. For another app's strip, press that app's key.
+
 The cards are true to AeroSpace's geometry, and on a crowded workspace that is slivers: eighteen
 windows in `h_tiles` get 82 points each. One line under the cards, as high as the map's, names
 the app, how many windows, and the marked window's title, with its workspace when the app spans

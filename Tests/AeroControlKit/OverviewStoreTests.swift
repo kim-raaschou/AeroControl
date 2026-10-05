@@ -334,37 +334,27 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 2)
     }
 
-    @Test("AeroSpace moving the focus to another app's window while the strip is up turns the strip to that app, marked there, with the pictures it lacks; to an app of one window it leaves")
-    func stripFollowsFocus() async {
-        let runner = ScriptRunner(), bridge = FakeBridge()
-        bridge.granted = true
-        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"), oneWindow(3, "3", app: "Teams"),
+    @Test("AeroSpace's focus decides while the strip is up: an event that moves no focus, or moves it within the app, leaves it; focus anywhere else ends it, on the event itself")
+    func stripEndsWhenFocusLeaves() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
                                         oneWindow(8, "4", app: "Slack", bundleId: "com.slack"), oneWindow(9, "4", app: "Slack", bundleId: "com.slack"),
                                         oneWindow(7, "5", app: "Claude", bundleId: "com.claude")].joined(separator: ",") + "]",
-                        workspaces: workspacesJSON(["1", "2", "3", "4", "5"]))
+                        workspaces: workspacesJSON(["1", "2", "4", "5"]))
         runner.setFocus(windowId: 7, workspace: "5")                                    // summoned from Claude
-        let store = started(runner, bridge)
-        var left = 0
-        store.onShotDone = { _ in left += 1 }
+        let store = started(runner)
+        var done: [Bool] = []
+        store.onShotDone = { done.append($0) }
         await store.reload()
         _ = store.summonApp(.bundleId("com.app"), picker: true)
-        await store.measurePreviews()
-        await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        #expect(store.previews[9] == nil)
-        store.send(.event(.changed))                                                    // an event that moves no focus: a mode key
-        try? await Task.sleep(for: .milliseconds(50))
-        #expect(store.strip?.bundleId == "com.app" && left == 0)
-        runner.setFocus(windowId: 9, workspace: "4")                                    // Slack's key, or any command
-        store.send(.event(.changed))
-        await waitUntil { store.previews[9] != nil }
-        #expect(store.strip?.bundleId == "com.slack" && store.strip?.marked == 9 && store.previews[9] != nil)
-        runner.setFocus(windowId: 7, workspace: "5")                                    // Claude has one window: nothing to choose
-        store.send(.event(.changed))
-        await waitUntil { left == 1 }
-        #expect(left == 1)
+        store.send(.event(.changed))                                                    // a mode key
+        store.send(.event(.focusChanged(windowId: 2, workspace: "2")))                  // into the app
+        #expect(store.strip?.bundleId == "com.app" && done.isEmpty)
+        store.send(.event(.focusChanged(windowId: 9, workspace: "4")))                  // Slack, of several windows: over all the same
+        #expect(store.strip == nil && done == [true])
     }
 
-    @Test("another app's key while a strip is up turns the strip to that app with the pictures it lacks, as a focus event would")
+    @Test("another app's key while a strip is up turns the strip to that app, with the pictures it lacks")
     func stripTakeoverTakesItsPictures() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
         bridge.granted = true
@@ -395,25 +385,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.turns == 1)
         store.stepStrip(-1); store.stepStrip(-1)                                         // 2 → 1 → 3: back round
         #expect(store.strip?.marked == 3 && store.strip?.turns == 0)
-    }
-
-    @Test("the strip turns on AeroSpace's focus event itself, before any read, and leaves on it too")
-    func stripTurnsOnTheEvent() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams"),
-                                        oneWindow(8, "4", app: "Slack", bundleId: "com.slack"), oneWindow(9, "4", app: "Slack", bundleId: "com.slack"),
-                                        oneWindow(7, "5", app: "Claude", bundleId: "com.claude")].joined(separator: ",") + "]",
-                        workspaces: workspacesJSON(["1", "2", "4", "5"]))
-        runner.setFocus(windowId: 7, workspace: "5")
-        let store = started(runner)
-        var left = 0
-        store.onShotDone = { _ in left += 1 }
-        await store.reload()
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
-        store.send(.event(.focusChanged(windowId: 9, workspace: "4")))                 // Slack's key: the event, not yet the read
-        #expect(store.strip?.bundleId == "com.slack" && store.strip?.marked == 9 && left == 0)
-        store.send(.event(.focusChanged(windowId: 7, workspace: "5")))                 // Claude has one window
-        #expect(store.strip == nil && left == 1)
     }
 
     @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")

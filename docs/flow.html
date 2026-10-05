@@ -101,9 +101,8 @@ flowchart TD
 <tr><td>the pointer moves onto window 8</td><td>the marking goes to window 8; the carousel stays where it was</td></tr>
 <tr><td>window 2, the marked one, closes</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
 <tr><td>AeroSpace moves the focus to A's window 8</td><td>nothing changes</td></tr>
-<tr><td>AeroSpace moves the focus to C's window 4; C has two</td><td>the strip is com.c's now; the marking goes to window 4; the carousel centres on it</td></tr>
-<tr><td>AeroSpace moves the focus to B's window 3; B has two, on two workspaces</td><td>the strip is com.b's now; the marking goes to window 3; the carousel centres on it</td></tr>
-<tr><td>AeroSpace moves the focus to an app of one window</td><td>the strip is over: nothing to choose</td></tr>
+<tr><td>AeroSpace moves the focus to C's window 4; C has two</td><td>the strip is over: nothing to choose</td></tr>
+<tr><td>AeroSpace moves the focus to an empty workspace</td><td>the strip is over: nothing to choose</td></tr>
 </table>
 <pre class="mermaid">
 flowchart TD
@@ -113,13 +112,11 @@ flowchart TD
   UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
   UP -- "Escape · ⌘W · backdrop" --> CANCEL["close"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
-  WHERE -- "this app, or none" --> UP
-  WHERE -- "another app, several windows" --> TURN["following: the strip turns to it,<br/>marked on the focused window"]
-  WHERE -- "an app of one window" --> OVER["over: nothing to choose · close"]
+  WHERE -- "this app" --> UP
+  WHERE -- "anywhere else: another app, an empty workspace" --> OVER["over: chosen with AeroSpace · close"]
   UP -- "a read changed the windows" --> KEPT["kept: marking stays, or passes<br/>to a closed one's successor"]
   STEP --> UP
   MARK --> UP
-  TURN --> UP
   KEPT --> UP
 </pre>
 <p>The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: <code>3 windows on 2 workspaces · second · ws 1</code>. The marked window's key is on its card; pointing at a window marks it, so its title is read here.</p>

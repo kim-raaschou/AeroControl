@@ -367,11 +367,8 @@ public class OverviewStore {
         let focusMoved = newState.focusedWindowId != model.focusedWindowId
         let hadStrip = strip != nil
         if newState != model { model = newState }               // keeps the strip, or ends it with its app's last window
-        // The strip follows AeroSpace's focus, from the event or the read: to another app of
-        // several windows it turns, to one of a single window it is over.
-        if focusMoved, let strip {
-            self.strip = strip.following(model.focusedWindow, among: model.workspaces.flatMap(\.windows))
-        }
+        // AeroSpace's focus decides, from the event or the read: out of the strip's app, it is over.
+        if focusMoved, let strip { self.strip = strip.following(model.focusedWindow) }
         if hadStrip, strip == nil { onShotDone?(true) }        // over: the host closes and the focused app gets the keyboard
         if case .action(let action) = input, action.isFocus { onShotDone?(false) }
         for effect in effects {
@@ -433,7 +430,7 @@ public class OverviewStore {
 
     /// The windows' sizes once they stand still, and new pictures of those drawn whose picture no
     /// longer fits their shape, or that have none: the neighbours that widened into a hole, a window
-    /// that appeared, the cards of the app the strip turns to. Nothing is stored, so a refresh cut
+    /// that appeared, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
     /// off by the next loses nothing. Nil while the overview is hidden: `clearPreviews` has dropped
     /// the capture size.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
@@ -447,9 +444,7 @@ public class OverviewStore {
             if again == sizes { break }
             sizes = again
         }
-        let focusedApp = result.workspaces.flatMap(\.windows).first { $0.windowId == result.focus?.windowId }?.bundleId
-        let apps = strip.map { [$0.bundleId, focusedApp] }
-        let drawn = result.workspaces.filter { ws in apps.map { apps in ws.windows.contains { apps.contains($0.bundleId) } } ?? true }
+        let drawn = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.bundleId } } ?? true }
         let stale = drawn.flatMap(\.windows).map(\.windowId).filter { id in sizes[id].map { !Self.sameShape(previews[id]?.size, $0) } ?? false }
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await nativeSystem.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }

@@ -194,10 +194,9 @@ table(["What happened", "The strip"], [
     ["Shift-Tab", tell(round, round.stepped(-1, ids: [1, 2, 8], card: card))],
     ["the pointer moves onto window 8", tell(opened, opened.marking(8))],
     ["window 2, the marked one, closes", tell(opened, opened.kept(before: [1, 2, 8], after: [1, 8]))],
-    ["AeroSpace moves the focus to A's window 8", tell(opened, opened.following(w(8, "A"), among: all))],
-    ["AeroSpace moves the focus to C's window 4; C has two", tell(opened, opened.following(w(4, "C"), among: all))],
-    ["AeroSpace moves the focus to B's window 3; B has two, on two workspaces", tell(opened, opened.following(w(3, "B"), among: all))],
-    ["AeroSpace moves the focus to an app of one window", tell(opened, opened.following(w(99, "E"), among: all + [w(99, "E")]))],
+    ["AeroSpace moves the focus to A's window 8", tell(opened, opened.following(w(8, "A")))],
+    ["AeroSpace moves the focus to C's window 4; C has two", tell(opened, opened.following(w(4, "C")))],
+    ["AeroSpace moves the focus to an empty workspace", tell(opened, opened.following(nil))],
 ])
 mermaid("""
 flowchart TD
@@ -207,13 +206,11 @@ flowchart TD
   UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
   UP -- "Escape · ⌘W · backdrop" --> CANCEL["close"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
-  WHERE -- "this app, or none" --> UP
-  WHERE -- "another app, several windows" --> TURN["following: the strip turns to it,<br/>marked on the focused window"]
-  WHERE -- "an app of one window" --> OVER["over: nothing to choose · close"]
+  WHERE -- "this app" --> UP
+  WHERE -- "anywhere else: another app, an empty workspace" --> OVER["over: chosen with AeroSpace · close"]
   UP -- "a read changed the windows" --> KEPT["kept: marking stays, or passes<br/>to a closed one's successor"]
   STEP --> UP
   MARK --> UP
-  TURN --> UP
   KEPT --> UP
 """)
 p("The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: "
