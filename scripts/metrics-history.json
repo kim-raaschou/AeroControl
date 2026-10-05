@@ -1834,5 +1834,14 @@
     "complexity": 881,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:28:20+02:00",
+    "commit": "258f995",
+    "subject": "Without Screen Recording a tile names its window",
+    "code": 5319,
+    "complexity": 875,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]

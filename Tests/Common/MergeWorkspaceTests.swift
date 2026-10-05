@@ -42,19 +42,3 @@ struct MergeWorkspaceTests {
         #expect(effects == [.run([.moveWindowQuietly(windowId: 20, toWorkspace: "3"), .focusWorkspace("3")], thenRead: true)])
     }
 }
-
-@Suite("parseWindows — title")
-struct WindowTitleParseTests {
-    @Test("window-title is carried into WindowInfo; missing title becomes empty")
-    func title() throws {
-        let json = """
-        [
-          {"window-id": 1, "app-name": "Arc", "app-bundle-id": "b", "window-title": "Inbox", "workspace": "1", "window-parent-container-layout": "h_tiles", "monitor-id": 1},
-          {"window-id": 2, "app-name": "kitty", "app-bundle-id": "k", "workspace": "1", "window-parent-container-layout": "h_tiles", "monitor-id": 1}
-        ]
-        """
-        let parsed = try parseWindows(json: json)
-        #expect(parsed[0].window.title == "Inbox")
-        #expect(parsed[1].window.title == "")
-    }
-}

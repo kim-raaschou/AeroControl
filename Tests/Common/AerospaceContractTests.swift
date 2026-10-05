@@ -48,47 +48,24 @@ struct AerospaceCommandArgvTests {
 // with either: `list-windows` has no `--window-id` filter, and the ~2.2 ms per-command
 // floor means the narrowest available filter saves 0.5 ms out of 3.5.
 
-@Suite("AerospaceEvent focus")
-struct AerospaceFocusChangedTests {
-    @Test("a focus change carries the window and the workspace that took the focus", arguments: [
-        (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, AerospaceEvent.focusChanged(windowId: 42, workspace: "2")),
-        (#"{"_event":"focus-changed","workspace":"7"}"#, .focusChanged(windowId: nil, workspace: "7")),   // an empty workspace
-        (#"{"_event":"window-detected","windowId":511,"workspace":"2"}"#, .changed),
-    ] as [(String, AerospaceEvent)])
-    func focus(json: String, expected: AerospaceEvent) {
-        #expect(AerospaceEvent.parse(json) == expected)
-    }
-}
-
 @Suite("AerospaceEvent.parse")
 struct AerospaceEventParseTests {
-
-    @Test("every other name AeroSpace emits about windows means: read again", arguments: [
-        #"{"_event":"focused-workspace-changed","prevWorkspace":"1","workspace":"2"}"#,
-        #"{"_event":"focused-monitor-changed","monitorId":1,"workspace":"2"}"#,
-        #"{"_event":"window-detected","appBundleId":"com.apple.finder","appName":"Finder","windowId":511,"workspace":"2"}"#,
-        #"{"_event":"window-detected"}"#,                                     // no payload at all
-        #"{"_event":"binding-triggered","binding":"cmd-ctrl-alt-left","mode":"main"}"#,
-    ])
-    func knownNamesMeanChanged(json: String) {
-        #expect(AerospaceEvent.parse(json) == .changed)
-    }
-
-    @Test("names that move no window, and names we do not know, are not events", arguments: [
-        #"{"_event":"mode-changed","mode":"resize"}"#,
-        #"{"_event":"some-future-event","workspace":"1"}"#,
+    @Test("a focus change carries the window and the workspace; every other name about windows means: read again; anything else is no event", arguments: [
+        (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, AerospaceEvent?.some(.focusChanged(windowId: 42, workspace: "2"))),
+        (#"{"_event":"focus-changed","workspace":"7"}"#, .focusChanged(windowId: nil, workspace: "7")),   // an empty workspace
+        (#"{"_event":"focused-workspace-changed","prevWorkspace":"1","workspace":"2"}"#, .changed),
+        (#"{"_event":"focused-monitor-changed","monitorId":1,"workspace":"2"}"#, .changed),
+        (#"{"_event":"window-detected","appBundleId":"com.apple.finder","appName":"Finder","windowId":511,"workspace":"2"}"#, .changed),
+        (#"{"_event":"window-detected"}"#, .changed),                        // no payload at all
+        (#"{"_event":"binding-triggered","binding":"cmd-ctrl-alt-left","mode":"main"}"#, .changed),
+        (#"{"_event":"mode-changed","mode":"resize"}"#, nil),                 // moves no window
+        (#"{"_event":"some-future-event","workspace":"1"}"#, nil),
         // Stock AeroSpace emits no close event; the overview learns about closes from the
         // reload it does anyway. If upstream ever adds one, it lands here as a doorbell.
-        #"{"_event":"window-closed","windowId":7}"#,
-    ])
-    func otherNamesAreNotEvents(json: String) {
-        #expect(AerospaceEvent.parse(json) == nil)
-    }
-
-    @Test("a line that is not an event at all is not an event", arguments: [
-        "not json", "", #"{"windowId":42,"workspace":"1"}"#,
-    ])
-    func unparsableIsNil(json: String) {
-        #expect(AerospaceEvent.parse(json) == nil)
+        (#"{"_event":"window-closed","windowId":7}"#, nil),
+        ("not json", nil), ("", nil), (#"{"windowId":42,"workspace":"1"}"#, nil),
+    ] as [(String, AerospaceEvent?)])
+    func parse(json: String, expected: AerospaceEvent?) {
+        #expect(AerospaceEvent.parse(json) == expected)
     }
 }

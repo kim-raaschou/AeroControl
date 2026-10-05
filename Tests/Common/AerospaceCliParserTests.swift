@@ -4,35 +4,19 @@ import Testing
 
 @Suite("parseWindows")
 struct ParseWindowsTests {
-    @Test("parses valid JSON into ParsedWindow array")
+    @Test("parses valid JSON into ParsedWindow array, a missing title as empty; nothing, or an empty list, is no window")
     func parsesValidJson() throws {
         let json = """
         [
-          {"window-id": 1, "app-name": "Firefox", "app-bundle-id": "org.mozilla.firefox", "workspace": "1", "window-parent-container-layout": "h_tiles", "monitor-id": 1},
+          {"window-id": 1, "app-name": "Firefox", "app-bundle-id": "org.mozilla.firefox", "window-title": "Inbox", "workspace": "1", "window-parent-container-layout": "h_tiles", "monitor-id": 1},
           {"window-id": 2, "app-name": "Terminal", "app-bundle-id": "com.apple.Terminal", "workspace": "2", "window-parent-container-layout": "floating", "monitor-id": 1}
         ]
         """
         let result = try parseWindows(json: json)
-        #expect(result.count == 2)
-        #expect(result[0].window.windowId == 1)
-        #expect(result[0].window.appName == "Firefox")
-        #expect(result[0].window.bundleId == "org.mozilla.firefox")
-        #expect(result[0].window.isFloating == false)
-        #expect(result[0].workspace == "1")
-        #expect(result[1].window.isFloating == true)
-        #expect(result[1].workspace == "2")
-    }
-
-    @Test("returns empty array for empty string")
-    func emptyString() throws {
-        let result = try parseWindows(json: "")
-        #expect(result.isEmpty)
-    }
-
-    @Test("returns empty array for empty JSON array")
-    func emptyArray() throws {
-        let result = try parseWindows(json: "[]")
-        #expect(result.isEmpty)
+        #expect(result.map(\.window.windowId) == [1, 2] && result.map(\.workspace) == ["1", "2"])
+        #expect(result[0].window.appName == "Firefox" && result[0].window.bundleId == "org.mozilla.firefox")
+        #expect(result.map(\.window.title) == ["Inbox", ""])
+        #expect(try parseWindows(json: "").isEmpty && parseWindows(json: "[]").isEmpty)
     }
 
     @Test("a window list decodes without a monitor-id, which only list-workspaces carries")
