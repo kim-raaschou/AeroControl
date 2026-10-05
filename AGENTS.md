@@ -132,7 +132,7 @@ pins argv and event names; if you add or rename a field or event, update both si
 ### Permissions
 
 Only **Screen Recording**, and only for window previews (`CGRequestScreenCaptureAccess` in
-`NativeApiBridgeAdapter`; the menu offers it). Without it the tiles are plates with their app's icon. No
+`NativeApiBridgeAdapter`; the menu offers it). Without it the tiles are plates with their app's icon and the window's title. No
 Accessibility, Input Monitoring or Automation: window actions go through AeroSpace, the summon
 keybind lives in AeroSpace's config, and the overlay is a `.nonactivatingPanel`. macOS ties the
 grant to the **signing identity** — `script/sign-identity.sh` creates the stable one that

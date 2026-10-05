@@ -1825,5 +1825,14 @@
     "complexity": 881,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:26:00+02:00",
+    "commit": "c78f5dd",
+    "subject": "A window's state is AeroSpace's word: minimized and hidden from its layout",
+    "code": 5367,
+    "complexity": 881,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]

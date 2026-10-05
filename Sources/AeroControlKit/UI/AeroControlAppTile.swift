@@ -37,9 +37,11 @@ struct AeroControlAppTile: View {
     /// While a filter is up the title is the point: two windows of one app are told apart by
     /// their title and their picture, and the title is the one that is provably current —
     /// AeroSpace re-reads it from Accessibility on every load. It is drawn rather than left
-    /// in the tooltip, which costs a second of holding the mouse still.
+    /// in the tooltip, which costs a second of holding the mouse still. A window whose size is
+    /// not known has no picture coming — without Screen Recording none has — so its title is all
+    /// there is to tell it by, filter or not.
     private var showsCaption: Bool {
-        filtering && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
+        (filtering || state.previewSizes[window.windowId] == nil) && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
     }
 
     /// A caption only earns its lane when the picture under it stays at least this tall;
