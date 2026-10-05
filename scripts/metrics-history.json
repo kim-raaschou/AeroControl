@@ -1987,5 +1987,14 @@
     "complexity": 868,
     "prodComplexity": 484,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T15:58:53+02:00",
+    "commit": "d8cca01",
+    "subject": "The overview's window goes when it is hidden, and its pictures with it",
+    "code": 5203,
+    "complexity": 871,
+    "prodComplexity": 486,
+    "files": 58
   }
 ]

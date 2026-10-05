@@ -14,21 +14,36 @@ import SwiftUI
         cache.countLimit = 128          // every tile's picture and icon, each at its size
         return cache
     }()
+    /// The cache's keys by the picture they were scaled from, so a picture taken again takes its
+    /// copies with it: they were kept for nothing, and the key is the picture's address, which a
+    /// new picture can be given once the old one is gone.
+    private static var keysBySource: [ObjectIdentifier: [NSString]] = [:]
 
     /// `image` at `pixels`; the image itself when it already is that size, nil for no pixels.
     static func picture(_ image: CGImage, pixels: CGSize) -> CGImage? {
         let width = Int(pixels.width.rounded()), height = Int(pixels.height.rounded())
         guard width > 0, height > 0 else { return nil }
         if image.width == width, image.height == height { return image }
-        let key = "\(ObjectIdentifier(image).hashValue) \(width)x\(height)" as NSString
+        let source = ObjectIdentifier(image)
+        let key = "\(source.hashValue) \(width)x\(height)" as NSString
         if let kept = cache.object(forKey: key) { return kept }
         guard let scaled = resample(image, width: width, height: height) else { return nil }
         cache.setObject(scaled, forKey: key)
+        keysBySource[source, default: []].append(key)
         return scaled
     }
 
+    /// A picture about to be replaced: its scaled copies go before it does.
+    static func forget(_ picture: NSImage?) {
+        let image = picture?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        (image.flatMap { keysBySource.removeValue(forKey: ObjectIdentifier($0)) } ?? []).forEach(cache.removeObject(forKey:))
+    }
+
     /// Everything kept: the captures it was made from are gone, and the next summon takes new ones.
-    static func forget() { cache.removeAllObjects() }
+    static func forget() {
+        cache.removeAllObjects()
+        keysBySource = [:]
+    }
 
     private static func resample(_ image: CGImage, width: Int, height: Int) -> CGImage? {
         guard var format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32,

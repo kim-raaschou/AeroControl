@@ -142,6 +142,12 @@ public class OverviewStore {
     private var cards: [[Int]] = []
     private var landing: Task<Void, Never>?
 
+    /// New pictures over old: an old one's scaled copies go before it does (`PictureResampler.forget`).
+    private func replacePictures(_ pictures: [Int: NSImage]) {
+        pictures.keys.forEach { PictureResampler.forget(previews[$0]) }
+        previews.merge(pictures) { $1 }
+    }
+
     private func land(_ card: [Int]) {
         cards.append(card)
         guard landing == nil else { return }
@@ -152,7 +158,7 @@ public class OverviewStore {
                 let card = Set(self.cards.removeFirst())
                 let landed = self.arrivingPictures.filter { card.contains($0.key) }
                 guard !landed.isEmpty else { continue }
-                self.previews.merge(landed) { $1 }
+                self.replacePictures(landed)
                 for id in landed.keys { self.arrivingPictures[id] = nil }
                 try? await Task.sleep(for: Self.cardEvery)
             }
@@ -413,7 +419,7 @@ public class OverviewStore {
             self.send(.loaded(result))
             if let sizes, pictureGeneration == self.captureGeneration {
                 self.previewSizes = sizes
-                self.previews.merge(pictures) { $1 }
+                self.replacePictures(pictures)
             }
         }
     }

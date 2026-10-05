@@ -352,6 +352,16 @@ private let oneWorkspace = workspacesJSON(["1"])
         #expect(PictureResampler.picture(source, pixels: .zero) == nil)
     }
 
+    @Test("a picture taken again takes its scaled copies with it: they are not kept, nor handed to a new picture at its address")
+    func forgottenWhenReplaced() throws {
+        let source = image(1100, 690), other = image(1100, 690)
+        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
+        let kept = try #require(PictureResampler.picture(other, pixels: CGSize(width: 340, height: 213)))
+        PictureResampler.forget(NSImage(cgImage: source, size: .zero))
+        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
+        #expect(PictureResampler.picture(other, pixels: CGSize(width: 340, height: 213)) === kept)       // only its own
+    }
+
     @Test("closing the overview forgets them with the captures: the next summon takes new ones, and these would never be drawn again")
     func forgottenOnClose() throws {
         let source = image(1100, 690)
