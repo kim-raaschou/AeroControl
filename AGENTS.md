@@ -145,6 +145,11 @@ AeroControl versions independently of AeroSpace (currently **v0.3.0**;
 `ACReleaseVersion`; `script/release.sh` stamps both). The compatibility range is shown as a
 separate menu line. Bump AeroControl's version for AeroControl changes only.
 
+The scheme is AeroSpace's: `0.MINOR.PATCH-Beta`, a pre-release on GitHub (`release.sh` marks
+any suffixed version so). Fixes and smaller features are a patch, `0.3.1-Beta`; the minor
+moves rarely, for a large shift. Versions up to v0.3.0 had no suffix and stay as they are:
+going below a released version would stop Homebrew upgrading.
+
 ## Workflow conventions
 
 - Smallest targeted test for the change; full `make test` before declaring done.

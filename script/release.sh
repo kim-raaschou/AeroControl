@@ -116,7 +116,10 @@ if [ "$PUBLISH" -eq 1 ]; then
         git tag "$TAG"
         git push origin "$TAG"
     fi
-    gh release create "$TAG" "$ZIP_PATH" \
+    # A -Beta (or any suffixed) version is a pre-release on GitHub, as AeroSpace's are.
+    PRERELEASE=""
+    [ "$VERSION" != "$SHORT_VERSION" ] && PRERELEASE="--prerelease"
+    gh release create "$TAG" "$ZIP_PATH" $PRERELEASE \
         --repo "$REPO" --title "$TAG" --notes "AeroControl ${VERSION}"
 else
     echo "==> Dry run (no --publish): artifact + cask are in .release/"
