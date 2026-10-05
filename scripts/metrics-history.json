@@ -1798,5 +1798,14 @@
     "complexity": 882,
     "prodComplexity": 487,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-04T22:00:36+02:00",
+    "commit": "ec45b09",
+    "subject": "Docs say what the code does: the layout rect, icons on plates",
+    "code": 5368,
+    "complexity": 882,
+    "prodComplexity": 487,
+    "files": 60
   }
 ]

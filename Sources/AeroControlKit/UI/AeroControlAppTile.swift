@@ -73,7 +73,21 @@ struct AeroControlAppTile: View {
         return AeroControlMetrics.pixelSnapped(AeroControlMetrics.fit(size, into: pictureBox), scale: displayScale)
     }
 
+    /// On the map a tile is dragged onto another card to move its window; the strip has no card to
+    /// drop on, so there it is not dragged at all.
     var body: some View {
+        if state.strip == nil {
+            face.draggable(OverviewDragPayload.window(id: window.windowId)) {
+                tile
+                    .frame(width: contentSize.width, height: contentSize.height)
+                    .onAppear { hoverChanged(false) }
+            }
+        } else {
+            face
+        }
+    }
+
+    private var face: some View {
         VStack(spacing: AeroControlLayout.captionGap) {
             if showsCaption { caption }
             artwork
@@ -87,11 +101,6 @@ struct AeroControlAppTile: View {
             .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }
             .onHover(perform: hoverChanged)
             .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
-            .draggable(OverviewDragPayload.window(id: window.windowId)) {
-                tile
-                    .frame(width: contentSize.width, height: contentSize.height)
-                    .onAppear { hoverChanged(false) }
-            }
     }
 
     /// The window's key, drawn as a key: ⌘ and its digit in the system's type on a keycap — a
