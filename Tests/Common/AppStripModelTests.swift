@@ -89,12 +89,11 @@ struct StripValueTests {
 
 @Suite("AppStripModel: geometry")
 struct AppStripGeometryTests {
-    @Test("cards are as tall as the width allows, up to half the panel and never below a fifth")
+    @Test("cards are as tall as the width allows, up to most of the panel and never below a fifth: one card all but fills it, more share its width")
     func cardHeight() {
         // A 1728 x 1085 screen, a view 1900 wide, cards the screen's shape (1.6).
         func h(_ cards: Int) -> CGFloat { M.cardHeight(width: 1900, gaps: 8 * CGFloat(cards - 1), sumAspect: 1.6 * CGFloat(cards), panelHeight: 1085) }
-        #expect(h(5) == ((1900 - 32) / 8).rounded(.down))
-        #expect(h(2) == (1085 * 0.5).rounded())
+        #expect(h(1) == (1085 * M.tallest).rounded() && h(2) == ((1900 - 8) / 3.2).rounded(.down) && h(5) == ((1900 - 32) / 8).rounded(.down))
         #expect(M.cardHeight(width: 400, gaps: 80, sumAspect: 16, panelHeight: 1085) == (1085 * 0.2).rounded())
     }
 

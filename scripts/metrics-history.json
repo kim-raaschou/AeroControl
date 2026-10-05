@@ -2059,5 +2059,14 @@
     "complexity": 872,
     "prodComplexity": 487,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T19:36:46+02:00",
+    "commit": "d97a54e",
+    "subject": "WORKAROUND for AeroSpace issue 101: a missed focus is asked for again",
+    "code": 5208,
+    "complexity": 873,
+    "prodComplexity": 487,
+    "files": 58
   }
 ]
