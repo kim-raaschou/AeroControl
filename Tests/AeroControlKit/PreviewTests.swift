@@ -285,28 +285,22 @@ struct StripLayoutTests {
         #expect(Set(start.map { "\($0.card)@\(Int($0.x))" }) == Set(onFirstAgain.filter(\.shown).map { "\($0.card)@\(Int($0.x))" }))
     }
 
-    @Test("three workspaces that would fit run round all the same, the marked card in the middle and each card once; two stand still")
-    func carouselFromThree() throws {
-        let three = layout(groups(3), view: 20000, panel: 1000)
-        #expect(three.width < 20000 && three.runsRound(in: 20000))
-        for centre in 1...3 {
-            let placed = AeroControlLayout.stripPlacements(three, centre: centre, turns: 0, viewWidth: 20000).filter(\.shown)
-            #expect(placed.count == 3)                                                 // a card seen whole is not drawn twice
-            #expect(abs(middle(three, try #require(placed.first { $0.card == centre - 1 })) - 10000) <= 1)
+    @Test("a row that fits stands still and centred, however many cards, and stepping moves only the marking; only a row that does not fit runs round")
+    func stillWhenItFits() throws {
+        for n in [2, 3, 5] {
+            let row = layout(groups(n), view: 20000, panel: 1000)
+            #expect(row.width < 20000 && !row.runsRound(in: 20000))
+            let still = AeroControlLayout.stripPlacements(row, centre: 1, turns: 0, viewWidth: 20000)
+            #expect(still == AeroControlLayout.stripPlacements(row, centre: n, turns: 1, viewWidth: 20000))      // the keys turn nothing
+            let left = still[0].x, right = still[n - 1].x + row.cards[n - 1].span.width
+            #expect(still.count == n && abs((left + right) / 2 - 10000) <= 1)                                     // centred as a whole
         }
-        let s1 = AeroControlLayout.stripPlacements(three, centre: 1, turns: 0, viewWidth: 20000).filter(\.shown)
-        #expect(s1.first { $0.card == 2 }!.x < s1.first { $0.card == 0 }!.x)           // workspace 3 comes round before 1
         // Two windows in one card: stepping between them moves the marking, not the row.
         let pair = WorkspaceInfo(name: "9", windows: [rected(91, "Ghostty", 16, 49, 842, 1052), rected(92, "Ghostty", 870, 49, 842, 1052)],
                                  screenIndex: 1, rootLayout: "h_tiles")
         let withPair = layout(groups(2) + [pair], view: 20000, panel: 1000)
         #expect(AeroControlLayout.stripPlacements(withPair, centre: 91, turns: 0, viewWidth: 20000)
                 == AeroControlLayout.stripPlacements(withPair, centre: 92, turns: 0, viewWidth: 20000))
-        let two = layout(groups(2), view: 20000, panel: 1000)
-        #expect(!two.runsRound(in: 20000))
-        let still = AeroControlLayout.stripPlacements(two, centre: 1, turns: 0, viewWidth: 20000)
-        #expect(still == AeroControlLayout.stripPlacements(two, centre: 2, turns: 0, viewWidth: 20000))
-        #expect(still.count == 2 && abs((still[0].x + still[1].x + two.cards[1].span.width) / 2 - 10000) <= 1)   // centred as a whole
     }
 
     @Test("a card whose layout cannot be read lays only the app's windows side by side in it")

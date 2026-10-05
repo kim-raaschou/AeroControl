@@ -1888,5 +1888,14 @@
     "complexity": 866,
     "prodComplexity": 480,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T08:24:09+02:00",
+    "commit": "1fbeecd",
+    "subject": "SingleInstanceGuard goes: Launch Services already keeps one AeroControl",
+    "code": 5245,
+    "complexity": 865,
+    "prodComplexity": 479,
+    "files": 58
   }
 ]

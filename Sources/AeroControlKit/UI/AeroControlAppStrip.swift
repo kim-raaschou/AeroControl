@@ -5,9 +5,9 @@ import Common
 /// draws it: one row of the map's own cards, one per workspace holding the app, each in its
 /// screen's shape at one height — the app's windows where AeroSpace put them, the other
 /// apps' grey, half there, framed and out of reach. The app's name and the marked window's title
-/// stand in the map's pill under the row. From three cards, or when they do not fit, the row is a
+/// stand in the map's pill under the row. A row that fits stands still; one that does not is a
 /// ring with the marked card in the middle, whole to both edges, turning a card at a time.
-/// The marking only chooses: Enter, a window's key (⌘1–⌘9, on its corner) or a click
+/// The marking only chooses: Enter, a window's key (⌘1–⌘f, on its corner) or a click
 /// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
 struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state

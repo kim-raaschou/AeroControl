@@ -103,10 +103,9 @@ public enum AeroControlLayout {
         public let width: CGFloat
         public let cards: [StripCard]
 
-        /// Whether the row is a ring in a view this wide: from `carouselFrom` cards, or when it does not fit.
-        public func runsRound(in viewWidth: CGFloat) -> Bool {
-            cards.count >= carouselFrom || width > viewWidth
-        }
+        /// Whether the row is a ring in a view this wide: only when it does not fit. A row that fits
+        /// stands still, so the keys on its cards stay where they are read (krn.overview's rule).
+        public func runsRound(in viewWidth: CGFloat) -> Bool { width > viewWidth }
     }
 
     /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
@@ -153,11 +152,6 @@ public enum AeroControlLayout {
         return StripLayout(height: height + cardChrome, width: x, cards: cards)
     }
 
-    /// From this many workspaces the strip is always a carousel: the marked card in the middle,
-    /// the row running round, every step turning the wheel. With fewer, a ring only centres one
-    /// card and leaves the view half empty, so the row stands still when it fits.
-    public static let carouselFrom = 3
-
     /// One card where the strip draws it: which card, which time round the ring (`copy`), its
     /// left edge in the view, and whether it is seen or only stands by just out of sight.
     public struct StripPlacement: Hashable, Sendable {
@@ -169,8 +163,7 @@ public enum AeroControlLayout {
         public var identity: String { "\(card)#\(copy)" }
     }
 
-    /// Where the strip's cards stand. A row that fits, under `carouselFrom` cards, stands still
-    /// and centred. Otherwise it is a ring turned so the card holding `centre` — the window the
+    /// Where the strip's cards stand. A row that fits stands still and centred. Otherwise it is a ring turned so the card holding `centre` — the window the
     /// keys put the marking on — is in the middle, `turns` times round: the cards repeat every
     /// ring's width, and each is shown where it shows — once when it shows whole, else every
     /// piece the edges leave, so the card across the ring is cut by both and the row is whole
