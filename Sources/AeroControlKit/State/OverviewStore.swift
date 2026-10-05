@@ -375,7 +375,9 @@ public class OverviewStore {
         // AeroSpace's focus decides, from the event or the read: out of the strip's app, it is over.
         if focusMoved, let strip { self.strip = strip.following(model.focusedWindow) }
         if hadStrip, strip == nil { onShotDone?(true) }        // over: the host closes and the focused app gets the keyboard
-        if case .action(let action) = input, action.isFocus { onShotDone?(false) }
+        // A focus ends the shot and AeroSpace hands the window the keyboard; on the window it has
+        // focused already its `focus` does nothing, and the host gives the app the keyboard itself.
+        if case .action(let action) = input, action.isFocus { onShotDone?(action == .focusWindow(model.focusedWindowId)) }
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()

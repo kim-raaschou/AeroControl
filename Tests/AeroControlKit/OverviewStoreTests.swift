@@ -362,17 +362,6 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 3 && store.strip?.turns == 0)
     }
 
-    @Test("the summon key again moves the marking on, as Cmd-` does; pointing marks too")
-    func stripStepsOnResummon() async {
-        let (_, store) = await stripOnTeams()
-        store.stepStrip()
-        #expect(store.strip?.marked == 1)
-        store.markStrip(2)
-        #expect(store.strip?.marked == 2)
-        store.markStrip(9)                                                              // not the app's: ignored
-        #expect(store.strip?.marked == 2)
-    }
-
     @Test("only a pointer that moved marks: cards sliding under a still mouse do not take the marking")
     func stillPointerDoesNotMark() async {
         let (_, store) = await stripOnTeams()
@@ -391,6 +380,7 @@ struct OverviewStoreTests {
         let (_, store) = await stripOnTeams()
         #expect(store.strip?.centre == 3)                                              // opens centred on the marking
         store.markStrip(1)
+        store.markStrip(9)                                                              // not the app's: ignored
         #expect(store.strip?.marked == 1 && store.strip?.centre == 3)
         _ = store.handle(.next)
         #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
@@ -686,6 +676,20 @@ struct OverviewStoreTests {
         // The overview dismisses on a focus action; there is nothing left to reconcile.
         try? await Task.sleep(for: .milliseconds(50))
         #expect(windowIds(store) == before)
+    }
+
+    @Test("focusing the window AeroSpace already has focused moves nothing there, so the host gives its app the keyboard itself; any other, AeroSpace does")
+    func focusOnTheFocusedWindow() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+        var done: [Bool] = []
+        store.onShotDone = { done.append($0) }
+        store.send(.action(.focusWindow(2)))
+        store.send(.action(.focusWindow(1)))
+        #expect(done == [true, false])
     }
 
     @Test("moveWindow runs its command and reconciles the tile to its new workspace")

@@ -2032,5 +2032,14 @@
     "complexity": 870,
     "prodComplexity": 484,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T18:37:47+02:00",
+    "commit": "c27352b",
+    "subject": "Pictures are scaled by Core Graphics, straight into the tile's bitmap",
+    "code": 5207,
+    "complexity": 870,
+    "prodComplexity": 484,
+    "files": 58
   }
 ]
