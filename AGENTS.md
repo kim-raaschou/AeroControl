@@ -160,6 +160,18 @@ Release strategy: AeroControl runs its own release cycle, fine-grained, in AeroS
 - **Released versions are never renumbered or undercut**: versions up to v0.3.0 had no suffix
   and stay so; a lower version than one released would stop Homebrew upgrading.
 
+### Workarounds for AeroSpace bugs
+
+Each is marked `WORKAROUND` in the code with the AeroSpace issue it works around; remove it
+when AeroSpace fixes the issue.
+
+- **AeroSpace issue 101** (https://github.com/nikitabobko/AeroSpace/issues/101):
+  `focus --window-id` on a window of an app with windows on more than one monitor often lands
+  on the app's other window, because macOS hands the keyboard to the app's last key window as
+  the activation completes. `OverviewStore.focusAgainIfMissed` asks once more if AeroSpace's
+  focus is elsewhere 300 ms later. Measured with Ghostty across two screens: 3 of 5 right
+  without it, 5 of 5 with it.
+
 ## Workflow conventions
 
 - Smallest targeted test for the change; full `make test` before declaring done.

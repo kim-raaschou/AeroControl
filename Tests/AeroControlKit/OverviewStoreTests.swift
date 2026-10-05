@@ -692,6 +692,17 @@ struct OverviewStoreTests {
         #expect(done == [true, false])
     }
 
+    // WORKAROUND for AeroSpace issue 101: https://github.com/nikitabobko/AeroSpace/issues/101
+    @Test("a focus AeroSpace did not carry out, its focus elsewhere a moment later, is asked for once more; one it did, not again", arguments: [(1, 2), (5, 1)])
+    func focusAgainIfMissed(focusedAfter: Int, focusCommands: Int) async {
+        let runner = ScriptRunner(windows: windowsJSON([(1, "1"), (5, "2")]), workspaces: workspacesJSON(["1", "2"]))
+        runner.setFocus(windowId: focusedAfter, workspace: "1")                          // what AeroSpace says once it is done
+        let store = started(runner)
+        store.send(.action(.focusWindow(5)))
+        try? await Task.sleep(for: .milliseconds(600))
+        #expect(runner.commandsRun.filter { $0 == ["focus", "--window-id", "5"] }.count == focusCommands)
+    }
+
     @Test("moveWindow runs its command and reconciles the tile to its new workspace")
     func moveWindowReconciles() async {
         let runner = ScriptRunner()

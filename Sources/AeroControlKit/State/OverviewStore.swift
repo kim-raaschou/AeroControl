@@ -395,8 +395,21 @@ public class OverviewStore {
             for action in actions {
                 _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
             }
+            if case .focusWindow(let id) = actions.last { await self.focusAgainIfMissed(id) }
             if thenRead { self.requestRefresh() }
         }
+    }
+
+    /// WORKAROUND for AeroSpace issue 101, https://github.com/nikitabobko/AeroSpace/issues/101 —
+    /// remove once AeroSpace fixes it. Asked to focus a window of an app that has windows on more
+    /// than one monitor, AeroSpace activates the app, and macOS, as the activation completes, gives
+    /// the keyboard back to the app's last key window, often on the other monitor; AeroSpace
+    /// follows. Asked again once the app is active, the focus holds. So a moment after a focus,
+    /// if AeroSpace's focus is elsewhere, it is asked for once more.
+    private func focusAgainIfMissed(_ windowId: Int) async {
+        try? await Task.sleep(for: .milliseconds(300))
+        let focused = try? parseWindows(json: await runner.run(AerospaceCommand.listFocusedWindow)).first?.window.windowId
+        if focused != windowId { _ = try? await runner.run(AerospaceCommand.argv(for: .focusWindow(windowId))) }
     }
 
     private var refreshGeneration = 0

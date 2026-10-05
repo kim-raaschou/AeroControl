@@ -2050,5 +2050,14 @@
     "complexity": 868,
     "prodComplexity": 484,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T19:32:12+02:00",
+    "commit": "b4b5254",
+    "subject": "Tests: the layout symbol is one table; a repeated float test goes",
+    "code": 5208,
+    "complexity": 872,
+    "prodComplexity": 487,
+    "files": 58
   }
 ]
