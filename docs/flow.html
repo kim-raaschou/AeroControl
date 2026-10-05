@@ -122,13 +122,7 @@ flowchart TD
   TURN --> UP
   KEPT --> UP
 </pre>
-<p>The legend under the cards (<code>AppStripModel.legend</code>) for A's three windows, marked on 2:</p>
-<table><tr><th>Key</th><th>Title</th><th>Workspace</th><th>Marked</th></tr>
-<tr><td>⌘1</td><td>first</td><td>1</td><td></td></tr>
-<tr><td>⌘2</td><td>second</td><td>1</td><td>yes</td></tr>
-<tr><td>⌘3</td><td>third</td><td>3</td><td></td></tr>
-</table>
-<p>Summary line: <code>3 windows on 2 workspaces</code> · <code>2 windows</code></p>
+<p>The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: <code>3 windows on 2 workspaces · second · ws 1</code>. The marked window's key is on its card; pointing at a window marks it, so its title is read here.</p>
 <h2 id="map">4. The map</h2>
 <p>Hand-written, from <code>OverlayWindowManager.show</code>: read everything once (<code>reload</code>: list-windows with layout rects, list-workspaces, the focus), decide the summon (<a href="#link">section 1</a>), measure every window's size, follow AeroSpace's events, build the window and reveal it after 120 ms, then take the pictures, which land card by card. While it is up, every AeroSpace event goes through <code>OverviewStore.send</code> into the reducer:</p>
 <table><tr><th>Input</th><th>Model after</th><th>Effects</th></tr>

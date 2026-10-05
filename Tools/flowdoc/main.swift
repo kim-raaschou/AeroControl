@@ -216,10 +216,9 @@ flowchart TD
   TURN --> UP
   KEPT --> UP
 """)
-p("The legend under the cards (<code>AppStripModel.legend</code>) for A's three windows, marked on 2:")
-let legend = AppStripModel.legend(model.windowsInGridOrder.filter { $0.window.bundleId == "com.a" }, marked: 2)
-table(["Key", "Title", "Workspace", "Marked"], legend.map { [$0.key ?? "—", esc($0.title), $0.workspace ?? "— (one workspace)", $0.marked ? "yes" : ""] })
-p("Summary line: " + code(AppStripModel.summary(windows: 3, workspaces: 2)) + " · " + code(AppStripModel.summary(windows: 2, workspaces: 1)))
+p("The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: "
+  + code(esc(AppStripModel.summary(model.windowsInGridOrder.filter { $0.window.bundleId == "com.a" }, marked: 2)))
+  + ". The marked window's key is on its card; pointing at a window marks it, so its title is read here.")
 
 // MARK: - 4. The map
 

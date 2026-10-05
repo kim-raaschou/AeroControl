@@ -57,9 +57,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
 - **One key per app**: `open aerocontrol://app-id=<bundle id>` (or `app-name=<name>`) opens the overview
   already filtered to that app — three Arc windows, nothing else — with the ring on the one
-  you used before, so Enter alone goes back to it and Tab walks the rest. Under the cards a legend lists
-  the windows, key and title each, so a window is read there when its picture is a sliver on
-  a crowded workspace. With a single window the key focuses it.
+  you used before, so Enter alone goes back to it and Tab walks the rest. One line under the
+  cards names the app and the marked window's title; point at a window to read its title
+  there. With a single window the key focuses it.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
@@ -164,15 +164,15 @@ in, or else the one after it), and keys to move it and confirm. The marking is y
 in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
 screen: the ring is the marking, the thin outline is where AeroSpace's focus is now.
 
-The cards are true to AeroSpace's geometry, and on a crowded workspace that is slivers under
-slivers: eighteen windows in `h_tiles` get 82 points each, and no picture of that is readable.
-So the strip carries a legend under the cards, one line per window — its key, its title, its
-workspace when the app spans more than one — with the marked line in the accent. The cards say
-where a window is; the legend says which it is, and the key on its line picks it.
+The cards are true to AeroSpace's geometry, and on a crowded workspace that is slivers: eighteen
+windows in `h_tiles` get 82 points each. One line under the cards, as high as the map's, names
+the app, how many windows, and the marked window's title, with its workspace when the app spans
+more than one. Every window's key is on its card; pointing at a window marks it, so a sliver is
+read by pointing at it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 Tab is the exception. It handles more — the row turns into a carousel when it does not fit,
-⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, Tab the rest, and the legend stays readable throughout.
+⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, Tab the rest.
 
 ## Keyboard
 

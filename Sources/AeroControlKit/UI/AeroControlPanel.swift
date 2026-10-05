@@ -46,7 +46,7 @@ public struct AeroControlPanel: View {
     private var usable: CGSize {
         CGSize(width: available.width * AeroControlLayout.usableScreenFraction,
                height: available.height * AeroControlLayout.usableScreenFraction
-                   - AeroControlFilterPill.laneHeight(rows: state.strip == nil ? 0 : state.stripWindows.count) - Self.pillGap)
+                   - AeroControlFilterPill.laneHeight - Self.pillGap)
     }
 
     private static let pillGap: CGFloat = 18

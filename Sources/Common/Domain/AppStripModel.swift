@@ -15,29 +15,15 @@ public enum AppStripModel {
         keys.indices.contains(index) ? "⌘\(keys[index])" : nil
     }
 
-    /// One line of the legend under the strip: the window's key, its caption, the workspace it
-    /// is on when the app spans more than one, and whether it is the marked one.
-    public struct LegendRow: Equatable, Sendable {
-        public let key: String?
-        public let title: String
-        public let workspace: String?
-        public let marked: Bool
-    }
-
-    /// The legend: where a window is told apart when its picture cannot be. The cards stay true
-    /// to AeroSpace's geometry, which on a crowded workspace is slivers under slivers; the legend
-    /// is readable whatever AeroSpace did, and the key on each line is the pick.
-    public static func legend(_ windows: [ParsedWindow], marked: Int?) -> [LegendRow] {
-        let several = Set(windows.map(\.workspace)).count > 1
-        return windows.enumerated().map { i, w in
-            LegendRow(key: keyLabel(i), title: w.window.caption, workspace: several ? w.workspace : nil,
-                      marked: w.window.windowId == marked)
-        }
-    }
-
-    /// What the strip says after the app's name: how many windows, and on how many workspaces when more than one.
-    public static func summary(windows: Int, workspaces: Int) -> String {
-        "\(windows) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
+    /// What the strip's one line says after the app's name: how many windows, on how many
+    /// workspaces when more than one, and the marked window's title — what Enter picks, with its
+    /// workspace when there are several. Its key is on its card. Pointing marks, so a picture too
+    /// small to read is read here by pointing at it.
+    public static func summary(_ windows: [ParsedWindow], marked: Int?) -> String {
+        let workspaces = Set(windows.map(\.workspace)).count
+        let count = "\(windows.count) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
+        guard let window = windows.first(where: { $0.window.windowId == marked }) else { return count }
+        return count + " · " + window.window.caption + (workspaces > 1 ? " · ws \(window.workspace)" : "")
     }
 
     /// One step from `index` among `count`, wrapping; with no marking (-1) from the near end;

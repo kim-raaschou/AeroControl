@@ -51,7 +51,7 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,
-  `AppStripModel.action`/`start`/`legend`, the `Strip` transitions) against a fixture and
+  `AppStripModel.action`/`start`/`summary`, the `Strip` transitions) against a fixture and
   writes what they answered as tables and decision trees. Nothing in a table is written by
   hand; the prose says only what cannot be run there (the host's order of operations) and
   where to look for it.

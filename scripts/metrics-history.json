@@ -1861,5 +1861,14 @@
     "complexity": 882,
     "prodComplexity": 491,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:50:43+02:00",
+    "commit": "859e5a8",
+    "subject": "The strip opens on the window you used before, as \u2318` goes back",
+    "code": 5307,
+    "complexity": 876,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]
