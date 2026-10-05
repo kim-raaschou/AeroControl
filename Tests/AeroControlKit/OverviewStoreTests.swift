@@ -202,7 +202,7 @@ struct OverviewStoreTests {
         #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
     }
 
-    @Test("an app summon decides what one key does: start it, focus a window, or open the picker")
+    @Test("an app summon decides what one key does: start it, focus a window, or open the strip")
     func appSummon() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
@@ -210,23 +210,18 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        // Three windows and the picker on: the picker, the ring on the one after the focused.
-        #expect(picks(store.summonApp(.bundleId("com.app"), picker: true)))     // every fixture window is com.app
+        // Three windows: the strip, the ring on the one after the focused.
+        #expect(picks(store.summonApp(.bundleId("com.app"))))     // every fixture window is com.app
         #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")   // the strip has its own state, no query
         store.filter = ""
 
-        // The strip off: its rules are off — no picker, no choosing. The app is brought
-        // forward and macOS decides which of its windows is in front.
-        #expect(store.summonApp(.bundleId("com.app"), picker: false) == .launch(.bundleId("com.app")))
-        #expect(store.filter == "")
-
         // Not running: start it.
-        #expect(store.summonApp(.bundleId("com.nothing"), picker: true) == .launch(.bundleId("com.nothing")) && store.filter == "")
+        #expect(store.summonApp(.bundleId("com.nothing")) == .launch(.bundleId("com.nothing")) && store.filter == "")
 
         // One window: focus it.
         runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
         await store.reload()
-        #expect(store.summonApp(.bundleId("com.app"), picker: true) == .focus(windowId: 7) && store.filter == "")
+        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 7) && store.filter == "")
     }
 
     @Test("an app that would not start is told on the strip's lane: Escape is the window's, every other key does nothing, the next summon or the end of the visit forgets it")
@@ -239,7 +234,7 @@ struct OverviewStoreTests {
         #expect(store.handle(.escape) == .none)                                        // the window closes it
         #expect(store.handle(.character("x")) == .handled && store.filter == "")
         #expect(store.handle(.enter) == .handled && store.handle(.commandKey(1)) == .handled)
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         #expect(store.missingApp == nil && store.strip != nil)
         store.missingApp = .name("Typo")
         store.endVisit()
@@ -256,7 +251,7 @@ struct OverviewStoreTests {
         #expect(await store.focusedAppBinding() == nil)
     }
 
-    @Test("two windows toggle when you are in one of them; from anywhere else the picker or the first")
+    @Test("two windows toggle when you are in one of them; from anywhere else the strip")
     func twoWindowsToggle() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
@@ -264,21 +259,16 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
 
-        #expect(store.summonApp(.bundleId("com.app"), picker: true) == .focus(windowId: 2))   // nothing to pick between
+        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 2))   // nothing to pick between
         #expect(store.filter == "")
         runner.setFocus(windowId: 2, workspace: "1")
         await store.reload()
-        #expect(store.summonApp(.bundleId("com.app"), picker: true) == .focus(windowId: 1))   // and back
+        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 1))   // and back
 
         runner.setFocus(windowId: nil, workspace: nil)                            // coming from another app
         await store.reload()
-        #expect(picks(store.summonApp(.bundleId("com.app"), picker: true)))
+        #expect(picks(store.summonApp(.bundleId("com.app"))))
         store.filter = ""
-
-        // The strip off switches the toggle off with it.
-        runner.setFocus(windowId: 1, workspace: "1")
-        await store.reload()
-        #expect(store.summonApp(.bundleId("com.app"), picker: false) == .launch(.bundleId("com.app")))
     }
 
     // MARK: The strip
@@ -293,7 +283,7 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 2, workspace: "2")
         let store = started(runner)
         await store.reload()
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         return (runner, store)
     }
 
@@ -330,7 +320,7 @@ struct OverviewStoreTests {
         await store.reload()
         store.noteFocus(2)
         store.noteFocus(9)
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         #expect(store.strip?.marked == 2)
     }
 
@@ -346,7 +336,7 @@ struct OverviewStoreTests {
         var done: [Bool] = []
         store.onShotDone = { done.append($0) }
         await store.reload()
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         store.send(.event(.changed))                                                    // a mode key
         store.send(.event(.focusChanged(windowId: 2, workspace: "2")))                  // into the app
         #expect(store.strip?.bundleId == "com.app" && done.isEmpty)
@@ -365,12 +355,12 @@ struct OverviewStoreTests {
         runner.setFocus(windowId: 7, workspace: "5")
         let store = started(runner, bridge)
         await store.reload()
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         await store.measurePreviews()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         store.following = true                                                          // the overview is up
         #expect(store.previews[9] == nil)
-        _ = store.summonApp(.bundleId("com.slack"), picker: true)
+        _ = store.summonApp(.bundleId("com.slack"))
         await waitUntil { store.previews[9] != nil }
         #expect(store.strip?.bundleId == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
     }
@@ -459,7 +449,7 @@ struct OverviewStoreTests {
                         workspaces: workspacesJSON(["1", "2", "3"]))
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
-        _ = store.summonApp(.bundleId("com.app"), picker: true)
+        _ = store.summonApp(.bundleId("com.app"))
         await store.capturePreviews(maxSize: CGSize(width: 400, height: 300))
         #expect(bridge.captured == [[1, 9, 2, 3]])                  // Slack on 1 is drawn grey in the card; Slack on 3 is in no card
         #expect(store.previews[9]?.size.width == 400 && store.previews[7] == nil)

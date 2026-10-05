@@ -24,14 +24,4 @@ struct SettingsStoreTests {
         #expect(store.theme == .system)
         #expect(SettingsStore(defaults: defaults).theme == .system)
     }
-
-    @Test func appPickerIsOnUntilSwitchedOff() {
-        let defaults = makeDefaults()
-        let store = SettingsStore(defaults: defaults)
-        #expect(store.appPicker)
-        store.appPicker = false
-        #expect(!SettingsStore(defaults: defaults).appPicker)
-        store.reset()
-        #expect(SettingsStore(defaults: defaults).appPicker)
-    }
 }

@@ -217,10 +217,6 @@ Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: wi
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
   looks the same whatever the system appearance is.
-- **App picker**: On shows the strip — one row of the app's windows, like macOS's own
-  switcher, and two windows toggle. Off, those rules are off and the key passes through: an
-  app key with more than one window just brings the app forward. No windows (start it) and
-  one window (focus it) work either way.
 - **Window Previews**: grant Screen Recording when it is missing.
 - **Copy AeroSpace key for the focused app**: puts the line that binds a key to the app in
   front on the clipboard, `<key> = ['exec-and-forget open "aerocontrol://app-id=…"']  # App`,

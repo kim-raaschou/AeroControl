@@ -28,16 +28,16 @@
 <tr><td><code>aerocontrol://anything-else</code></td><td><code>map</code></td></tr>
 <tr><td><code>aerocontrol://</code></td><td><code>map</code></td></tr>
 </table>
-<p>For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture, with the picker on and off:</p>
-<table><tr><th>Case</th><th>Picker on</th><th>Picker off</th></tr>
-<tr><td>no window of the app (E)</td><td>start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so</td><td>start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>one window: B on workspace 1 only</td><td>focus window 3</td><td>focus window 3</td></tr>
-<tr><td>two windows, you are in one: C, focus on window 4</td><td>focus window 5</td><td>start the app with bundle id com.c, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>two windows, from elsewhere: C, focus on A</td><td>the strip, marked on window 4</td><td>start the app with bundle id com.c, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>three windows, you are in one: A, focus on window 1</td><td>the strip, marked on window 2</td><td>start the app with bundle id com.a, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>three windows, from elsewhere: A, focus on D</td><td>the strip, marked on window 1</td><td>start the app with bundle id com.a, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>the same, by name: app-name=A</td><td>the strip, marked on window 1</td><td>start the app named A, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>by a name no window has: app-name=Z</td><td>start the app named Z, or bring it forward; no such app: the strip's lane says so</td><td>start the app named Z, or bring it forward; no such app: the strip's lane says so</td></tr>
+<p>For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture:</p>
+<table><tr><th>Case</th><th>What the key does</th></tr>
+<tr><td>no window of the app (E)</td><td>start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so</td></tr>
+<tr><td>one window: B on workspace 1 only</td><td>focus window 3</td></tr>
+<tr><td>two windows, you are in one: C, focus on window 4</td><td>focus window 5</td></tr>
+<tr><td>two windows, from elsewhere: C, focus on A</td><td>the strip, marked on window 4</td></tr>
+<tr><td>three windows, you are in one: A, focus on window 1</td><td>the strip, marked on window 2</td></tr>
+<tr><td>three windows, from elsewhere: A, focus on D</td><td>the strip, marked on window 1</td></tr>
+<tr><td>the same, by name: app-name=A</td><td>the strip, marked on window 1</td></tr>
+<tr><td>by a name no window has: app-name=Z</td><td>start the app named Z, or bring it forward; no such app: the strip's lane says so</td></tr>
 </table>
 <pre class="mermaid">
 flowchart TD
@@ -49,9 +49,7 @@ flowchart TD
   N -- "none" --> A0["start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so"]
   N -- "one" --> A1["focus window 3"]
   N -- "two, you in one" --> A2["focus window 5"]
-  N -- "otherwise" --> PICK{"app picker on?"}
-  PICK -- "off" --> A3["start the app with bundle id com.a, or bring it forward; no such app: the strip's lane says so"]
-  PICK -- "on" --> A4["the strip, marked on window 2<br/>→ section 3, the strip"]
+  N -- "otherwise" --> A4["the strip, marked on window 2<br/>→ section 3, the strip"]
   click A4 "#strip"
 </pre>
 <p>Two leaves continue: the map in <a href="#map">section 4</a>, and the strip, the one case that needs you, in <a href="#strip">section 3</a>. Everything else is settled and done here.</p>

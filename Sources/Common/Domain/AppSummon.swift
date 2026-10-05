@@ -11,13 +11,12 @@ public enum AppSummon: Equatable, Sendable {
     /// Windows to choose between: show the strip, opened like this.
     case pick(Strip)
 
-    /// The rule: none, start; one, focus it; two and you are in one, the other; otherwise the
-    /// strip, when the picker is on, or the app brought forward when it is off.
-    public static func decide(app ref: AppRef, model: OverviewModel, recent: [Int], picker: Bool) -> AppSummon {
+    /// The rule: none, start; one, focus it; two and you are in one, the other; otherwise the strip.
+    public static func decide(app ref: AppRef, model: OverviewModel, recent: [Int]) -> AppSummon {
         let windows = model.windowsInGridOrder.map(\.window).filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
         if windows.count == 1 { return .focus(windowId: windows[0].windowId) }
-        guard windows.count > 1, picker else { return .launch(ref) }
+        guard windows.count > 1 else { return .launch(ref) }
         if windows.count == 2, let focusedAt { return .focus(windowId: windows[1 - focusedAt].windowId) }
         return .pick(.opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent))
     }

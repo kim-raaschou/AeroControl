@@ -287,16 +287,12 @@ public class OverviewStore {
     /// was just read, so the key does the right thing whatever the app's state:
     ///
     /// - none: start it; one: focus it;
-    /// - two, and you are in one of them: the other — a toggle needs no picker;
+    /// - two, and you are in one of them: the other — a toggle needs no strip;
     /// - more, or coming from elsewhere: the strip, the marking on the app's window used last
     ///   before the focused one, so Enter alone is Cmd-` with pictures.
-    ///
-    /// The first two lines are the link's own and hold with the strip off. The rest are the
-    /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS
-    /// decides which window is in front, which for the app you are in changes nothing.
-    public func summonApp(_ app: AppRef, picker: Bool) -> AppSummon {
+    public func summonApp(_ app: AppRef) -> AppSummon {
         missingApp = nil
-        let decision = AppSummon.decide(app: app, model: model, recent: recentWindows, picker: picker)
+        let decision = AppSummon.decide(app: app, model: model, recent: recentWindows)
         guard case .pick(let opened) = decision else { return decision }
         strip = opened
         // Up already, the strip takes over another's: its pictures come as a focus event's would.

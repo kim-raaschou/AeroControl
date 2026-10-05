@@ -82,7 +82,7 @@ final class OverlayWindowManager {
             guard self.requestedVisible else { return }   // toggled away while loading
             switch summon {
             case .map: break
-            case .app(let ref): guard self.carryOut(self.state.summonApp(ref, picker: self.settings.appPicker)) else { return }
+            case .app(let ref): guard self.carryOut(self.state.summonApp(ref)) else { return }
             }
             if self.state.previewsAvailable {
                 await self.state.measurePreviews()
@@ -110,7 +110,7 @@ final class OverlayWindowManager {
         }
     }
 
-    /// Does what an app summon came to; true when it is the picker, which goes on to show.
+    /// Does what an app summon came to; true when it is the strip, which goes on to show.
     private func carryOut(_ action: AppSummon) -> Bool {
         switch action {
         case .pick:
@@ -164,7 +164,7 @@ final class OverlayWindowManager {
         switch summon.again(stripApp: state.strip?.bundleId, among: state.model.workspaces.flatMap(\.windows)) {
         case .close: hide(restoreFocus: true)
         case .step: state.stepStrip()
-        case .summon(let ref): _ = carryOut(state.summonApp(ref, picker: settings.appPicker))
+        case .summon(let ref): _ = carryOut(state.summonApp(ref))
         }
     }
 

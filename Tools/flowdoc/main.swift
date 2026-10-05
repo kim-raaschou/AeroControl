@@ -103,7 +103,7 @@ table(["URL", "Summon"], [
     "aerocontrol://workspaces", "aerocontrol://app-id=com.c", "aerocontrol://app-id=Com.C", "aerocontrol://app-name=C", "aerocontrol://app-name=Two%20Words", "aerocontrol://com.c", "aerocontrol://anything-else", "aerocontrol://",
 ].map { [code($0), code("\(Summon(URL(string: $0)!))")] })
 
-p("For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture, with the picker on and off:")
+p("For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture:")
 struct Case { let title: String; let app: AppRef; let model: OverviewModel }
 @MainActor func focused(_ id: Int) -> OverviewModel { OverviewModel(workspaces: model.workspaces, focusedWindowId: id, focusedWorkspace: "1") }
 let cases = [
@@ -116,11 +116,8 @@ let cases = [
     Case(title: "the same, by name: app-name=A", app: .name("A"), model: focused(6)),
     Case(title: "by a name no window has: app-name=Z", app: .name("Z"), model: focused(6)),
 ]
-table(["Case", "Picker on", "Picker off"], cases.map { c in
-    [c.title, describe(AppSummon.decide(app: c.app, model: c.model, recent: [], picker: true)),
-              describe(AppSummon.decide(app: c.app, model: c.model, recent: [], picker: false))]
-})
-let on = cases.map { AppSummon.decide(app: $0.app, model: $0.model, recent: [], picker: true) }
+let on = cases.map { AppSummon.decide(app: $0.app, model: $0.model, recent: []) }
+table(["Case", "What the key does"], zip(cases, on).map { [$0.title, describe($1)] })
 mermaid("""
 flowchart TD
   L["open aerocontrol://…"] --> H{"which link?"}
@@ -131,9 +128,7 @@ flowchart TD
   N -- "none" --> A0["\(label(describe(on[0])))"]
   N -- "one" --> A1["\(label(describe(on[1])))"]
   N -- "two, you in one" --> A2["\(label(describe(on[2])))"]
-  N -- "otherwise" --> PICK{"app picker on?"}
-  PICK -- "off" --> A3["\(label(describe(AppSummon.decide(app: .bundleId("com.a"), model: focused(6), recent: [], picker: false))))"]
-  PICK -- "on" --> A4["\(label(describe(on[4])))<br/>→ section 3, the strip"]
+  N -- "otherwise" --> A4["\(label(describe(on[4])))<br/>→ section 3, the strip"]
   click A4 "#strip"
 """)
 p("Two leaves continue: the map in <a href=\"#map\">section 4</a>, and the strip, the one case that needs you, in <a href=\"#strip\">section 3</a>. Everything else is settled and done here.")

@@ -38,8 +38,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
         theme.image = swatch(for: settings.theme)
         menu.addItem(theme)
-        menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off", options: [true, false].map { on in
-            (on ? "On" : "Off", nil, on == settings.appPicker, { self.settings.appPicker = on }) }))
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
