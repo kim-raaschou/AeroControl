@@ -34,7 +34,7 @@ private func ids(_ query: String, in model: OverviewModel = model) -> [Int] {
 @Suite("matching")
 struct OverviewMatchingTests {
 
-    @Test("a query picks the windows whose title or app name has a word starting with it", arguments: [
+    @Test("a query picks the windows whose title, app name or workspace name has a word starting with each of its words", arguments: [
         ("Teams", [1, 2]),          // app name, in AeroSpace's order
         ("saf", [4]),               // app name, not the title
         ("standup", [1]),           // title: the point — two windows of one app told apart
@@ -47,6 +47,8 @@ struct OverviewMatchingTests {
         ("", []),                   // the filter is off, not "everything"
         ("   ", []),
         ("zzz", []),                // a real miss
+        ("code main", [3]),         // the words may come from different fields: app and title
+        ("2 saf", [4]),             // and the workspace's name: Safari on workspace 2
     ])
     func matches(query: String, expected: [Int]) {
         #expect(ids(query) == expected)

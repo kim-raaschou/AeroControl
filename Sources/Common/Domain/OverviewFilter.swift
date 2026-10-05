@@ -34,7 +34,8 @@ public extension OverviewModel {
     /// keystroke is violent for no gain.
     static var minQueryLength: Int { 2 }
 
-    /// Windows with a word starting with `query` in their title or app name, each with the
+    /// Windows with a word starting with each word of `query` in their title, app name or
+    /// workspace name together, each with the
     /// workspace it lives on, in the order the grid draws them: workspace by workspace,
     /// AeroSpace's own order inside each; the first is what Enter picks. A query shorter than
     /// `minQueryLength` matches nothing: the filter is not on yet, which is not the same as
@@ -42,9 +43,8 @@ public extension OverviewModel {
     func matching(_ query: String) -> [ParsedWindow] {
         let needles = query.words
         guard query.trimmingCharacters(in: .whitespaces).count >= Self.minQueryLength, !needles.isEmpty else { return [] }
-        return windowsInGridOrder.filter {
-            $0.window.title.hasWordsStarting(with: needles) || $0.window.appName.hasWordsStarting(with: needles)
-        }
+        // Title, app and workspace read as one: "code main" is Code's window "main", "2 saf" Safari on 2.
+        return windowsInGridOrder.filter { "\($0.window.title) \($0.window.appName) \($0.workspace)".hasWordsStarting(with: needles) }
     }
 
     /// Every window with its workspace, in the order the grid draws them.

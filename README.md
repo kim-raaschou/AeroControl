@@ -50,9 +50,10 @@ between summons, and it asks for no permission except Screen Recording for the p
   The layout engine is shared with
   [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview
   for Omarchy/Hyprland.
-- **Type to filter**: start typing and the grid collapses to the windows whose title or app
-  name has a word starting with what you typed — `te` finds Teams, `toml` finds
-  `aerospace.toml`, `lars teams` finds a chat. Each match shows its full title, the focus ring
+- **Type to filter**: start typing and the grid collapses to the windows whose title, app
+  name or workspace name has a word starting with what you typed — `te` finds Teams, `toml`
+  finds `aerospace.toml`, `lars teams` finds a chat, `code main` Code's window "main", `2 saf`
+  Safari on workspace 2. Each match shows its full title, the focus ring
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
 - **One key per app**: `open aerocontrol://app-id=<bundle id>` (or `app-name=<name>`) opens the overview
   already filtered to that app — three Arc windows, nothing else — with the ring on the next
@@ -186,7 +187,7 @@ On the map:
 | ⌘Q | quit the app under the pointer — the overview stays up, Mission-Control style |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
-word in the window's title or app name. A query that matches nothing leaves the full map
+word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
 standing and says so. Without a query the ring is on AeroSpace's focused window: the map is
 read, not steered.
 
