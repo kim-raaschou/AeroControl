@@ -2023,5 +2023,14 @@
     "complexity": 872,
     "prodComplexity": 486,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T17:57:06+02:00",
+    "commit": "7e26c30",
+    "subject": "A closed overview's last frame no longer refills the picture cache",
+    "code": 5203,
+    "complexity": 870,
+    "prodComplexity": 484,
+    "files": 58
   }
 ]

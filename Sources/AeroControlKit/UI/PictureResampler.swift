@@ -1,10 +1,9 @@
-import Accelerate
 import Common
 import CoreGraphics
 import Foundation
 import SwiftUI
 
-/// A capture scaled once, with vImage's high-quality (Lanczos) resampling, to exactly the
+/// A capture scaled once, with Core Graphics' high-quality interpolation, to exactly the
 /// pixels a tile draws it in. Drawn one to one and unfiltered, it is as sharp as the screen
 /// allows; left to the renderer, every frame shrank it with a bilinear filter, and a terminal
 /// shrunk threefold came out grainy.
@@ -45,15 +44,14 @@ import SwiftUI
         keysBySource = [:]
     }
 
+    /// Drawn straight into a bitmap of the tile's size: no copy of the capture unpacked first,
+    /// which on a Retina screen was 2 MB a picture, freed but kept by the allocator.
     private static func resample(_ image: CGImage, width: Int, height: Int) -> CGImage? {
-        guard var format = vImage_CGImageFormat(bitsPerComponent: 8, bitsPerPixel: 32,
-                                                colorSpace: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-                                                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)),
-              var source = try? vImage_Buffer(cgImage: image, format: format),
-              var target = try? vImage_Buffer(width: width, height: height, bitsPerPixel: 32) else { return nil }
-        defer { source.free(); target.free() }
-        guard vImageScale_ARGB8888(&source, &target, nil, vImage_Flags(kvImageHighQualityResampling)) == kvImageNoError else { return nil }
-        return try? target.createCGImage(format: format)
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)
+        context?.interpolationQuality = .high
+        context?.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context?.makeImage()
     }
 }
 
