@@ -180,15 +180,16 @@ final class OverlayWindowManager {
             let visible = screen.visibleFrame
             return (index + 1, CGRect(x: visible.minX, y: top - visible.maxY, width: visible.width, height: visible.height))
         })
-        window.motion = settings.animationSpeed.scale
+        // Motion is macOS's to set: with Reduce motion on, everything moves in one frame.
+        let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
+        window.motion = motion
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
         window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
         let root = OverviewRoot(
             panel: AeroControlPanel(state: state, available: screen.frame.size, screenFrames: screenFrames),
             theme: settings.theme,
-            backdropOpacity: settings.backdropOpacity,
-            motion: settings.animationSpeed.scale,
+            motion: motion,
             onDismiss: { [weak self] in self?.hide(restoreFocus: true) }
         )
         let hostingView = InteractiveHostingView(rootView: root)

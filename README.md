@@ -205,16 +205,13 @@ There is no typing in the strip; the app is already chosen. Pointing marks a win
 
 ## Configure it from the menu bar
 
-Use the menu-bar icon for all in-app configuration:
+Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
+**Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
   looks the same whatever the system appearance is.
-- **Backdrop**: how much of the desktop shows through behind the cards, 100 % down to 70 %
-  in steps of 5. Below that the desktop competes with the cards.
-- **Animation**: Off, Fast, Normal or Slow. One scale on every motion — the reveal, the grid
-  reflowing under a query, a picture landing.
 - **App picker**: On shows the strip — one row of the app's windows, like macOS's own
   switcher, and two windows toggle. Off, those rules are off and the key passes through: an
   app key with more than one window just brings the app forward. No windows (start it) and

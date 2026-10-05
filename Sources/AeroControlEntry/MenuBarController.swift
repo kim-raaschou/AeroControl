@@ -38,10 +38,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
         theme.image = swatch(for: settings.theme)
         menu.addItem(theme)
-        menu.addItem(choice("Backdrop", current: "\(Int(settings.backdropOpacity * 100)) %", options: SettingsStore.backdropOpacities.map { o in
-            ("\(Int(o * 100)) %", nil, o == settings.backdropOpacity, { self.settings.backdropOpacity = o }) }))
-        menu.addItem(choice("Animation", current: settings.animationSpeed.name, options: AnimationSpeed.allCases.map { a in
-            (a.name, nil, a == settings.animationSpeed, { self.settings.animationSpeed = a }) }))
         menu.addItem(choice("App picker", current: settings.appPicker ? "On" : "Off", options: [true, false].map { on in
             (on ? "On" : "Off", nil, on == settings.appPicker, { self.settings.appPicker = on }) }))
 

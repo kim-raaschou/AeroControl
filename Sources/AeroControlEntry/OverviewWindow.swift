@@ -138,7 +138,6 @@ private extension FilterKey {
 struct OverviewRoot: View {
     let panel: AeroControlPanel
     let theme: AeroControlTheme
-    let backdropOpacity: Double
     let motion: Double
     let onDismiss: () -> Void
 
@@ -152,14 +151,10 @@ struct OverviewRoot: View {
     var body: some View {
         let palette = theme.palette(for: colorScheme)
         ZStack {
-            // The whole backdrop — blur and tint — takes the opacity, so turning it down lets
-            // the desktop through while the cards stay crisp. Tint alone made no visible
-            // difference: the blur frosts everything regardless.
             ZStack {
                 BackdropBlur()
                 palette.backdrop
             }
-            .opacity(backdropOpacity)
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)
