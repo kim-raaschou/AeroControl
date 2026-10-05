@@ -117,10 +117,10 @@ final class OverlayWindowManager {
                 guard let self, self.requestedVisible, self.window === window else { return }
                 window.reveal()
             }
-            if self.state.previewsAvailable {
-                // As large as a strip card draws a window on this screen, in its pixels; a tile drawn larger asks again.
-                await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor))
-            }
+            // As large as the strip, or a map card, draws a window on this screen, in its pixels; a tile
+            // drawn larger asks again. Without Screen Recording the capture is the bridge's to refuse.
+            await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor,
+                                                                                     workspaces: self.state.model.workspaces.count, strip: self.state.strip != nil))
         }
     }
 

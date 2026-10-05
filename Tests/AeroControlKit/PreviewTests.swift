@@ -14,10 +14,24 @@ struct LayoutTests {
     @Test("pictures are taken first as large as a strip card can be: half the panel high, the screen's shape, in pixels")
     func captureSize() {
         let wide = CGSize(width: 3440, height: 1440)
-        let size = AeroControlLayout.captureSize(available: wide, backingScale: 1)
+        let size = AeroControlLayout.captureSize(available: wide, backingScale: 1, workspaces: 5, strip: true)
         let half = (1440 * AeroControlLayout.usableScreenFraction * 0.5).rounded(.up)
         #expect(size.height == half && abs(size.width - (half * 3440 / 1440).rounded(.up)) <= 1)
-        #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2).width - 2 * size.width) <= 2)
+        #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2, workspaces: 5, strip: true).width - 2 * size.width) <= 2)
+    }
+
+    @Test("the map's pictures are taken as large as a card's inner box, the most a tile there draws, never larger than the strip's")
+    func mapCaptureSize() {
+        let laptop = CGSize(width: 1728, height: 1117)
+        let strip = AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 5, strip: true)
+        let map = AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 5, strip: false)
+        let usable = CGSize(width: laptop.width * AeroControlLayout.usableScreenFraction, height: laptop.height * AeroControlLayout.usableScreenFraction)
+        let cell = CardGrid.lattice(count: 5, in: usable, cellRatio: AeroControlLayout.screenRatio(for: laptop), gap: AeroControlLayout.cardGap,
+                                    chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))[0].size
+        let inner = AeroControlLayout.inner(of: cell)
+        #expect(abs(map.width - 2 * inner.width) <= 2 && abs(map.height - 2 * inner.height) <= 2)
+        #expect(map.width * map.height < strip.width * strip.height / 2)                // five cards: under half the pixels
+        #expect(AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 1, strip: false) == strip)   // one card: no larger
     }
 
     @Test("packed tiles stand one constant apart in the screen's points, scaled to the card, so a packed card reads like one drawn from rects")

@@ -196,12 +196,18 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The box pictures are first taken to fit, in pixels: a strip card at its largest — half the
-    /// panel high, in the screen's shape — which holds every window the map draws as well. A tile
-    /// that draws one larger asks for it again at its size (`OverviewStore.wantPicture`).
-    public static func captureSize(available: CGSize, backingScale: CGFloat) -> CGSize {
+    /// The box pictures are first taken to fit, in pixels. In the strip: a strip card at its largest,
+    /// half the panel high in the screen's shape. On the map: a card's inner box, the most a tile
+    /// there draws (a window alone on its card), never more than the strip's. A tile drawn larger,
+    /// by a query or the strip taking over, asks for it again at its size (`OverviewStore.wantPicture`).
+    public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
         let height = (available.height * usableScreenFraction * 0.5).rounded(.up)
-        return CGSize(width: (height * screenRatio(for: available) * backingScale).rounded(.up), height: (height * backingScale).rounded(.up))
+        var box = CGSize(width: height * screenRatio(for: available), height: height)
+        let usable = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
+        let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
+                                    chrome: CGSize(width: 2 * cardPadding, height: cardChrome)).first?.size ?? usable
+        if !strip { box = CGSize(width: min(box.width, inner(of: cell).width), height: min(box.height, inner(of: cell).height)) }
+        return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
     }
 
     /// What lies over what when frames overlap: a ghost (a float, a fullscreen window) over
