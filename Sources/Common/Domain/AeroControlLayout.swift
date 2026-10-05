@@ -128,13 +128,9 @@ public enum AeroControlLayout {
         let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
         let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
         let mirrors = groups.indices.map { treeLayout(windows: groups[$0].windows, sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
-        // Every window at once: the view's width, less the cards' chrome and the mirrored cards,
-        // shared by all the packed windows; the cards then hug their share.
-        let packed = groups.indices.filter { mirrors[$0] == nil }
-        let room = viewWidth - CGFloat(groups.count) * 2 * cardPadding - cardGap * CGFloat(max(0, groups.count - 1))
-            - groups.indices.filter { mirrors[$0] != nil }.map { widths[$0] }.reduce(0, +)
-            - packed.map { gaps[$0] * CGFloat(max(0, ours[$0].count - 1)) }.reduce(0, +)
-        let row = min(full, (room / max(0.01, packed.flatMap { shapes[$0] }.reduce(0, +))).rounded(.down))
+        let row = groups.indices.filter { mirrors[$0] == nil }.map { g in
+            min(full, ((widths[g] - gaps[g] * CGFloat(max(0, ours[g].count - 1))) / max(0.01, shapes[g].reduce(0, +))).rounded(.down))
+        }.min() ?? full
         let height = mirrors.contains { $0 != nil } ? full : max(1, row)
         var x: CGFloat = 0, cards: [StripCard] = []
         for g in groups.indices {
@@ -144,7 +140,7 @@ public enum AeroControlLayout {
                 frames = mirror.frames
                 others = Set(groups[g].windows.map(\.windowId)).subtracting(ours[g].map(\.windowId))
             } else {
-                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: .greatestFiniteMagnitude, gap: gaps[g], caption: 0)   // one row
+                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: widths[g], gap: gaps[g], caption: 0)
                 let top = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: CGSize(width: packed.width, height: height)).y
                 frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
                     CGRect(x: $0.x, y: top + $0.y, width: $0.width, height: $0.height) }))
@@ -201,11 +197,11 @@ public enum AeroControlLayout {
     }
 
     /// The box pictures are first taken to fit, in pixels. In the strip: a strip card at its largest,
-    /// `AppStripModel.tallest` of the panel high in the screen's shape. On the map: a card's inner box, the most a tile
+    /// half the panel high in the screen's shape. On the map: a card's inner box, the most a tile
     /// there draws (a window alone on its card), never more than the strip's. A tile drawn larger,
     /// by a query or the strip taking over, asks for it again at its size (`OverviewStore.wantPicture`).
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
-        let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
+        let height = (available.height * usableScreenFraction * 0.5).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
         let usable = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
         let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,

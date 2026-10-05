@@ -44,15 +44,10 @@ public enum AppStripModel {
         return ids[stepIndex(at, count: ids.count, direction: 1)]
     }
 
-    /// The most of the panel's height a strip card takes: one card, an app all on one workspace,
-    /// all but fills it; more cards share the width and are as tall as it allows. Half, while a
-    /// legend line per window took the rest; with a one-line lane the strip can be the picture.
-    public static let tallest: CGFloat = 0.85
-
     /// How tall the strip's cards are: as tall as `width` allows for cards whose shapes add up
-    /// to `sumAspect`, never more than `tallest` of the panel and never less than a fifth.
+    /// to `sumAspect`, never more than half the panel and never less than a fifth.
     public static func cardHeight(width: CGFloat, gaps: CGFloat, sumAspect: CGFloat, panelHeight: CGFloat) -> CGFloat {
-        let most = (panelHeight * tallest).rounded(), least = (panelHeight * 0.2).rounded()
+        let most = (panelHeight * 0.5).rounded(), least = (panelHeight * 0.2).rounded()
         return max(least, min(most, ((width - gaps) / max(0.01, sumAspect)).rounded(.down)))
     }
 
