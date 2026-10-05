@@ -187,6 +187,7 @@ final class OverlayWindowManager {
         window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
         let root = OverviewRoot(
+            state: state,
             panel: AeroControlPanel(state: state, available: screen.frame.size, screenFrames: screenFrames),
             theme: settings.theme,
             motion: motion,

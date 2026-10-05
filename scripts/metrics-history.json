@@ -1933,5 +1933,14 @@
     "complexity": 861,
     "prodComplexity": 478,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T09:54:52+02:00",
+    "commit": "d4204ee",
+    "subject": "No close button in the strip",
+    "code": 5149,
+    "complexity": 863,
+    "prodComplexity": 480,
+    "files": 58
   }
 ]

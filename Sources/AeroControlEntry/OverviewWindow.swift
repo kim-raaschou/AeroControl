@@ -136,6 +136,7 @@ private extension FilterKey {
 
 /// The full-screen root: blurred backdrop (click to dismiss) with the panel centered.
 struct OverviewRoot: View {
+    let state: OverviewStore
     let panel: AeroControlPanel
     let theme: AeroControlTheme
     let motion: Double
@@ -155,6 +156,9 @@ struct OverviewRoot: View {
                 BackdropBlur()
                 palette.backdrop
             }
+            // The strip floats over the desktop as ⌘Tab's switcher does; the map dims it, as Mission
+            // Control does. Not quite gone: a window's clear pixels let a click through to the app below.
+            .opacity(state.strip != nil || state.missingApp != nil ? 0.002 : 1)
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)
