@@ -13,8 +13,9 @@ endif
 
 .PHONY: build bundle install run clean test live-test release flow flow-check
 
+# One AeroControl at a time: the installed one is quit first.
 run:
-	swift build --product AeroControl && swift run AeroControl $(ARGS)
+	swift build --product AeroControl && { pkill -x "$(APP_NAME)"; swift run AeroControl $(ARGS); }
 
 build:
 	swift build -c release --product AeroControl

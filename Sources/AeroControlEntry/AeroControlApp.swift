@@ -22,17 +22,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayManager: OverlayWindowManager!
     private var menuBarController: MenuBarController!
     private var settings: SettingsStore!
-    private let instanceGuard = SingleInstanceGuard()
     private var statusItem: NSStatusItem?
     /// The link that started the app: AppKit delivers it before `applicationDidFinishLaunching`,
     /// when nothing is built yet, so it waits here until the end of that.
     private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // A second instance (a `make run` beside the installed app) leaves at once. Launch
-        // Services never starts one from a link or a reopen; those reach the running instance.
-        guard instanceGuard.tryAcquire(name: "com.aerocontrol.single-instance.lock") else { exit(0) }
-
+        // One instance: Launch Services never starts a second from a link or a reopen, both reach
+        // the running one, and `make run` quits the installed app before it starts.
         NSApp.setActivationPolicy(.accessory)
 
         let runner = AerospaceSocketRunner()
