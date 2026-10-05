@@ -107,8 +107,9 @@ class OverviewWindow: NSPanel {
         log.notice("overview: revealed, isKeyWindow=\(self.isKeyWindow), appActive=\(NSApp.isActive)")
     }
 
-    func dismiss() {
-        guard isVisible else { return }
+    /// Fades out, then `gone`: what is drawn stays as it was until it is off the screen.
+    func dismiss(then gone: @escaping @MainActor @Sendable () -> Void) {
+        guard isVisible else { return gone() }
         isDismissing = true
         NSAnimationContext.runAnimationGroup { context in
             context.duration = fade
@@ -116,9 +117,10 @@ class OverviewWindow: NSPanel {
             animator().alphaValue = 0
         } completionHandler: { [weak self] in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self else { return gone() }
                 self.orderOut(nil)
                 self.alphaValue = 1
+                gone()
             }
         }
     }

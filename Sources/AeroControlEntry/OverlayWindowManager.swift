@@ -35,8 +35,13 @@ final class OverlayWindowManager {
     private func hide(restoreFocus: Bool) {
         guard requestedVisible else { return }
         requestedVisible = false
-        state.endVisit()
-        window?.dismiss()
+        // The visit ends once the window is off the screen. Ended first, the strip turned into the
+        // map, backdrop and all, for the length of the fade: a blink. A summon meanwhile ends it itself.
+        let ended: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self, !self.requestedVisible else { return }
+            self.state.endVisit()
+        }
+        if let window { window.dismiss(then: ended) } else { ended() }
         guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
         app.activate()
     }
@@ -69,6 +74,7 @@ final class OverlayWindowManager {
     /// The window is rebuilt per summon; a SwiftUI hosting view is cheap and this keeps
     /// display changes and settings changes free of special cases.
     private func show(_ summon: Summon) {
+        state.endVisit()                                        // the last one, if it was still fading
         requestedVisible = true
         loading = true
         // Read AeroSpace's whole state and every window's size, start taking the pictures and
