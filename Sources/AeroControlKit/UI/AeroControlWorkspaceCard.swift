@@ -142,8 +142,12 @@ struct AeroControlCardFace<Content: View>: View {
     }
 
     /// A solid themed fill, or the platform's frosted glass when the theme is System.
-    @ViewBuilder private func cardFill(_ shape: RoundedRectangle) -> some View {
-        if let fill = look.palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
+    /// Over the bare desktop, in the strip, it lies on a thick frost as ⌘Tab's panel does, so nothing behind reads through.
+    private func cardFill(_ shape: RoundedRectangle) -> some View {
+        ZStack {
+            if state.strip != nil { shape.fill(.ultraThickMaterial) }
+            if let fill = look.palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
+        }
     }
 
     /// The badge, and with more than one display the name of this workspace's. The tiles
