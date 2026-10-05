@@ -152,9 +152,9 @@ flowchart TD
 <tr><td>space</td><td>character <code> </code></td><td>nothing</td><td>query becomes <code>d </code></td></tr>
 </table>
 <p>Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.</p>
-<p>Two ⌘ keys are the window's, on the map and in the strip alike, taken before the filter sees them (<code>OverviewWindow.performKeyEquivalent</code>, hand-written here): ⌘W closes, ⌘Q quits the app under the pointer and the overview stays up. Every other ⌘ key does nothing on the map.</p>
+<p>Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): on the map ⌘W closes it, as its × does, and ⌘Q quits its app, and the overview stays up; in the strip ⌘W closes the strip and ⌘Q does nothing. Every other ⌘ key does nothing.</p>
 <h2 id="out">5. One way out</h2>
-<p>Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape, ⌘W and a click on the backdrop hide it directly.</p>
+<p>Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape, ⌘W in the strip and a click on the backdrop hide it directly.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', flowchart: { useMaxWidth: true } });</script>

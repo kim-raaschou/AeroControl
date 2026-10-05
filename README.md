@@ -28,8 +28,8 @@ Five things you do all day, each one summon and one key:
   to narrow, Enter when it is first. No mouse, no reading a number off a badge.
 - **"This belongs on workspace 3."** Drag the window's picture onto the other card. Or drag
   a whole card onto another to merge two workspaces into one.
-- **"Close the strays."** Hover a picture for its close button, or point at a window and press
-  ⌘Q to quit that app — the overview stays up for the next one.
+- **"Close the strays."** Hover a picture for its close button, or type until it wears the
+  ring and press ⌘W to close it, ⌘Q to quit its app — the overview stays up for the next one.
 
 What it is not: a window manager, a dock, or a permanent panel. It has no state of its own
 between summons, and it asks for no permission except Screen Recording for the pictures.
@@ -188,8 +188,8 @@ On the map:
 | letters, digits, space | filter; the grid narrows from the second character |
 | Enter | focus the window under the ring: the first match, or the focused window |
 | Escape | clear the query; on an empty query, dismiss |
-| ⌘W | dismiss |
-| ⌘Q | quit the app under the pointer — the overview stays up, Mission-Control style |
+| ⌘W | close the window under the ring, as its × does — the overview stays up |
+| ⌘Q | quit the app under the ring — the overview stays up |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map

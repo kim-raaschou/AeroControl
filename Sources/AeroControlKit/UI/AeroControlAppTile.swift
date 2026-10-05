@@ -48,12 +48,7 @@ struct AeroControlAppTile: View {
     /// below that the label would be bigger than the thing it labels.
     private static let minPictureHeight: CGFloat = 92
 
-    /// Pointing is the selection: Cmd-Q acts on whatever the mouse is over.
-    private func hoverChanged(_ hovering: Bool) {
-        isHovering = hovering
-        if hovering { state.hoveredWindowId = window.windowId }
-        else if state.hoveredWindowId == window.windowId { state.hoveredWindowId = nil }
-    }
+    private func hoverChanged(_ hovering: Bool) { isHovering = hovering }
     /// The plate, the picture and the ring on its edge share these corners.
     private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
     private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: size.width) }

@@ -28,12 +28,8 @@ public class OverviewStore {
     /// shape from these, so pictures landing later change nothing but the pictures.
     public private(set) var previewSizes: [Int: CGSize] = [:]
     public private(set) var error: String?
-    /// The window the mouse is over, if any. Cmd-Q acts on it, the way Mission Control's
-    /// does: the overview is a place you point at windows, so pointing is the selection.
-    public var hoveredWindowId: Int?
-
     /// What the user has typed into the overview. UI state that drives no AeroSpace work, so
-    /// it lives here beside `hoveredWindowId` rather than in the model: the reducer's contract
+    /// it lives here rather than in the model: the reducer's contract
     /// is AeroSpace state in, AeroSpace work out.
     public var filter: String = "" {
         didSet { filterMatches = model.matching(filter) }
@@ -124,6 +120,13 @@ public class OverviewStore {
     /// did. Nothing walks it: the overview follows AeroSpace, it does not steer it.
     public var ringWindowId: Int? {
         strip?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId
+    }
+
+    /// The window ⌘W closes and whose app ⌘Q quits, as its × and the app's own ⌘Q would: the one
+    /// under the ring, which says on screen what goes. On the map only; the strip is for choosing.
+    public var commandTarget: WindowInfo? {
+        guard strip == nil, missingApp == nil else { return nil }
+        return model.workspaces.flatMap(\.windows).first { $0.windowId == ringWindowId }
     }
 
     private var subscribeTask: Task<Void, Never>?

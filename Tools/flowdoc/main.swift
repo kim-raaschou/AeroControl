@@ -259,10 +259,10 @@ let mapRows: [[String]] = keys.compactMap { name, kc, shift, chars in
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
 p("Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.")
-p("Two ⌘ keys are the window's, on the map and in the strip alike, taken before the filter sees them (<code>OverviewWindow.performKeyEquivalent</code>, hand-written here): ⌘W closes, ⌘Q quits the app under the pointer and the overview stays up. Every other ⌘ key does nothing on the map.")
+p("Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): on the map ⌘W closes it, as its × does, and ⌘Q quits its app, and the overview stays up; in the strip ⌘W closes the strip and ⌘Q does nothing. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")
-p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape, ⌘W and a click on the backdrop hide it directly.")
+p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape, ⌘W in the strip and a click on the backdrop hide it directly.")
 
 // MARK: - write
 

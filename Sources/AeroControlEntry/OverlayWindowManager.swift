@@ -52,13 +52,19 @@ final class OverlayWindowManager {
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
     }
 
-    /// Quits the app whose window the mouse is over and leaves the overview up so several can go
-    /// in one visit; with nothing under the mouse, nothing, as in Mission Control — a reflexive ⌘Q
-    /// once quit the app you came from. `terminate()` is the polite quit macOS sends for Cmd-Q,
-    /// so an app with unsaved work still gets to ask.
-    func quitPointedApp() {
-        guard requestedVisible, let target = state.hoveredWindowId, let app = owner(ofWindow: target) else { return }
+    /// ⌘Q on the map quits the app under the ring and leaves the overview up, so several can go in
+    /// one visit and you see each go. `terminate()` is the polite quit macOS sends for Cmd-Q, so an
+    /// app with unsaved work still gets to ask.
+    private func quitRingedApp() {
+        guard requestedVisible, let target = state.commandTarget, let app = owner(ofWindow: target.windowId) else { return }
         app.terminate()
+    }
+
+    /// ⌘W on the map closes the window under the ring, as its × does, and the overview stays; in
+    /// the strip, or with no window under the ring, it closes the overview.
+    private func closeRingedWindow() {
+        guard let target = state.commandTarget else { return hide(restoreFocus: true) }
+        state.send(.action(.closeWindow(target.windowId)))
     }
 
     /// Type-to-filter: the store takes the keys it has a use for; the one it cannot finish —
@@ -190,7 +196,8 @@ final class OverlayWindowManager {
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
         window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
-        window.onQuitPointedApp = { [weak self] in self?.quitPointedApp() }
+        window.onQuitApp = { [weak self] in self?.quitRingedApp() }
+        window.onCloseWindow = { [weak self] in self?.closeRingedWindow() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
         let root = OverviewRoot(
             state: state,

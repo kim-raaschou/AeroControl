@@ -202,6 +202,23 @@ struct OverviewStoreTests {
         #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
     }
 
+    @Test("⌘W and ⌘Q act on the window under the ring, on the map: the focused one, or the first match; in the strip on nothing, it is for choosing")
+    func commandTarget() async {
+        let runner = ScriptRunner()
+        runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "1", app: "Teams"), oneWindow(3, "1", app: "Teams"),
+                                        oneWindow(9, "2", app: "Slack", title: "standup", bundleId: "com.slack")].joined(separator: ",") + "]",
+                        workspaces: workspacesJSON(["1", "2"]))
+        runner.setFocus(windowId: 2, workspace: "1")
+        let store = started(runner)
+        await store.reload()
+        #expect(store.commandTarget?.windowId == 2)                                     // the ring: AeroSpace's focus
+        store.filter = "standup"
+        #expect(store.commandTarget?.windowId == 9)                                     // the ring: the first match
+        store.filter = ""
+        _ = store.summonApp(.bundleId("com.app"))
+        #expect(store.strip != nil && store.commandTarget == nil)
+    }
+
     @Test("an app summon decides what one key does: start it, focus a window, or open the strip")
     func appSummon() async {
         let runner = ScriptRunner()

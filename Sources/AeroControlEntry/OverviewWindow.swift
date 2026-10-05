@@ -22,8 +22,9 @@ class OverviewWindow: NSPanel {
     private var fade: TimeInterval { Self.fadeDuration * motion }
     private let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
-    /// Cmd-Q: quit the app whose window the mouse is over, Mission-Control style.
-    var onQuitPointedApp: (() -> Void)?
+    /// ⌘Q and ⌘W: quit the app, close the window, under the ring (`OverlayWindowManager`).
+    var onQuitApp: (() -> Void)?
+    var onCloseWindow: (() -> Void)?
     /// Offers a keystroke to the type-to-filter host; true when it took it.
     var onKey: ((FilterKey) -> Bool)?
     private var isDismissing = false
@@ -56,8 +57,8 @@ class OverviewWindow: NSPanel {
         onDismiss?()
     }
 
-    /// Cmd-Q quits the app the mouse is over and leaves the overview up, so several can
-    /// go in one visit — Mission Control's behaviour. Cmd-W just leaves.
+    /// On the map ⌘W closes the window under the ring and ⌘Q quits its app, as they would without
+    /// the overview, which stays up so you see each go; in the strip ⌘W leaves and ⌘Q is nothing.
     ///
     /// Both have to be intercepted here because summoning activates AeroControl, so while
     /// the overview is up it owns the menu bar, including the Quit item SwiftUI installs by
@@ -74,8 +75,8 @@ class OverviewWindow: NSPanel {
         // Every other ⌘ key is nothing: passed on, the app's menu could act on AeroControl
         // (⌘H, Hide) under an overview that still holds itself as shown.
         switch key {
-        case "q": onQuitPointedApp?()
-        case "w": onDismiss?()
+        case "q": onQuitApp?()
+        case "w": onCloseWindow?()
         default: break
         }
         return true
