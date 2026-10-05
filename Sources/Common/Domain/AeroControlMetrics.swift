@@ -20,10 +20,11 @@ public enum AeroControlMetrics {
         CGSize(width: max(1, (size.width * scale).rounded()) / scale, height: max(1, (size.height * scale).rounded()) / scale)
     }
 
-    /// Stroke of the focus ring, laid on the picture's edge: the same at every size, and 2.5 pt
-    /// in whole pixels — five on a Retina screen, three at 1x, where two and a half blurred. At
-    /// 1.5 pt it went unseen on a card of five windows.
-    public static func focusRingWidth(scale: CGFloat) -> CGFloat { (2.5 * scale).rounded() / scale }
+    /// Stroke of the focus ring, laid on the picture's edge: about 0.6 mm on any screen, in whole
+    /// pixels — one point and one more per pixel the point holds, so 2 px at 1x (~100 ppi) and 6 px
+    /// on Retina (~250 ppi). A constant 2.5 pt came to 0.8 mm at 1x, heavy, and 0.5 mm on Retina,
+    /// where a bright window all but swallowed it.
+    public static func focusRingWidth(scale: CGFloat) -> CGFloat { 1 + scale }
     /// Corner radius of a snapshot; small, like a real window's corners.
     public static let snapshotRadius: CGFloat = 6
 }

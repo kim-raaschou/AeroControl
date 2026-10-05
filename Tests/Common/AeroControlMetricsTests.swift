@@ -20,10 +20,10 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 0.2, height: 0.2), scale: 1) == CGSize(width: 1, height: 1))   // never nothing
     }
 
-    @Test("the focus ring is 2.5 pt in whole pixels: five on a Retina screen, three at 1x, where two and a half blurred")
+    @Test("the focus ring is about 0.6 mm on any screen, in whole pixels: two at 1x (~100 ppi), six on Retina (~250 ppi)")
     func focusRingWholePixels() {
-        #expect(AeroControlMetrics.focusRingWidth(scale: 2) == 2.5)
-        #expect(AeroControlMetrics.focusRingWidth(scale: 1) == 3)
+        #expect(AeroControlMetrics.focusRingWidth(scale: 1) * 1 == 2)
+        #expect(AeroControlMetrics.focusRingWidth(scale: 2) * 2 == 6)
     }
 }
 

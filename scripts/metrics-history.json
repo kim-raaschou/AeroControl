@@ -2005,5 +2005,14 @@
     "complexity": 872,
     "prodComplexity": 486,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T17:04:52+02:00",
+    "commit": "abfe438",
+    "subject": "The map's pictures are taken at a map card's size, not the strip's",
+    "code": 5206,
+    "complexity": 872,
+    "prodComplexity": 486,
+    "files": 58
   }
 ]
