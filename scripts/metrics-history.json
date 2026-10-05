@@ -2041,5 +2041,14 @@
     "complexity": 870,
     "prodComplexity": 484,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T19:05:44+02:00",
+    "commit": "3f88627",
+    "subject": "Choosing the window AeroSpace already has focused gives it the keyboard",
+    "code": 5193,
+    "complexity": 868,
+    "prodComplexity": 484,
+    "files": 58
   }
 ]

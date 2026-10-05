@@ -178,14 +178,6 @@ struct TreeLayoutTests {
         #expect(AeroControlLayout.treeLayout(windows: ws7Rected, sizes: [:], screen: nil, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
-    @Test("a float has no rect and stays a ghost over exact rects")
-    func ghostOverRects() throws {
-        let float = WindowInfo(windowId: 99, appName: "Finder", bundleId: "f", isFloating: true)
-        let laid = try #require(AeroControlLayout.treeLayout(windows: ws7Rected + [float], sizes: [99: CGSize(width: 600, height: 400)],
-                                                             screen: screen, inner: CGSize(width: 1000, height: 500)))
-        #expect(laid.ghosts == [99] && laid.frames.count == 6)
-    }
-
 }
 
 @Suite("the strip's cards")

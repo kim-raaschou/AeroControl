@@ -40,12 +40,13 @@ struct TileOriginTests {
 
 @Suite("the layout symbol on a card")
 struct LayoutSymbolTests {
-    @Test("tiles are a row or a column, an accordion one window in front of another")
-    func symbols() {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles", windowCount: 2)?.name == "rectangle.split.2x1")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles", windowCount: 3)?.name == "rectangle.split.1x2")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion", windowCount: 2)?.name == "rectangle.on.rectangle")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_accordion", windowCount: 2)?.name == "rectangle.on.rectangle")
+    @Test("tiles are a row or a column, an accordion one window in front of another; one window says how the next will go; none, or no known layout, no symbol", arguments: [
+        ("h_tiles", 2, "rectangle.split.2x1"), ("v_tiles", 3, "rectangle.split.1x2"), ("h_accordion", 2, "rectangle.on.rectangle"),
+        ("v_accordion", 2, "rectangle.on.rectangle"), ("h_tiles", 1, "rectangle.split.2x1"), ("h_accordion", 1, "rectangle.on.rectangle"),
+        ("h_tiles", 0, nil), ("", 3, nil), ("floating", 3, nil),
+    ] as [(String, Int, String?)])
+    func symbols(layout: String, windows: Int, symbol: String?) {
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: layout, windowCount: windows)?.name == symbol)
     }
 
     @Test("each says in words what AeroSpace does with the windows")
@@ -53,15 +54,6 @@ struct LayoutSymbolTests {
         #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles", windowCount: 2)?.help == "Tiles: windows side by side")
         #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles", windowCount: 2)?.help == "Tiles: windows one above another")
         #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion", windowCount: 2)?.help == "Accordion: windows stacked, one in front")
-    }
-
-    @Test("one window still says how the next one will be arranged; an empty workspace and an unknown layout have no symbol")
-    func none() {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles", windowCount: 1)?.name == "rectangle.split.2x1")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion", windowCount: 1)?.name == "rectangle.on.rectangle")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles", windowCount: 0) == nil)
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "", windowCount: 3) == nil)
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "floating", windowCount: 3) == nil)
     }
 }
 
