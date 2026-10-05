@@ -40,7 +40,10 @@ final class OverlayWindowManager {
         // The window goes with it: kept hidden, its views held every picture they last drew.
         let ended: @MainActor @Sendable () -> Void = { [weak self] in
             guard let self, !self.requestedVisible else { return }
-            self.window = nil                           // first, or it drew the ended visit once more
+            // The views go first: left to draw the ended visit once more, a picture's fade scaled its
+            // last picture again into the cache the visit had just emptied, and it stayed there.
+            self.window?.contentView = nil
+            self.window = nil
             self.state.endVisit()
         }
         if let window { window.dismiss(then: ended) } else { ended() }
