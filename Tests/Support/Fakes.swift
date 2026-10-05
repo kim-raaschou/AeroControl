@@ -179,6 +179,7 @@ func waitUntil(_ cond: () -> Bool) async {
         if cond() { return }
         try? await Task.sleep(for: .milliseconds(5))
     }
+    Issue.record("waited 2 s and the condition never held")   // so the line after a wait need not repeat it
 }
 
 /// Counts how many times the store's `@Observable` `model` invalidates — i.e. how many

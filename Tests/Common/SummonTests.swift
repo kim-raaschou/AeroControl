@@ -1,5 +1,5 @@
 import Testing
-import Common
+@testable import Common
 import Foundation
 @testable import AeroControlKit
 
@@ -42,6 +42,20 @@ struct SummonTests {
         #expect(line == #"<key> = ['exec-and-forget open "aerocontrol://app-id=company.thebrowser.Browser"']  # Arc"#)
         let link = try #require(line.split(separator: "\"").first { $0.hasPrefix("aerocontrol://") })
         #expect(Summon(try #require(URL(string: String(link)))) == .app(.bundleId("company.thebrowser.Browser")))
+    }
+
+    @Test("one key per app: none, start; one, focus it; two and you are in one, the other; otherwise the strip, on the one after yours", arguments: [
+        ([Int](), 0, AppSummon.launch(.bundleId("a"))),
+        ([7], 0, .focus(windowId: 7)),
+        ([1, 2], 1, .focus(windowId: 2)),
+        ([1, 2], 2, .focus(windowId: 1)),                                              // and back
+        ([1, 2], 9, .pick(Strip(bundleId: "a", marked: 1, centre: 1, turns: 0))),      // from another app
+        ([1, 2, 3], 2, .pick(Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))),
+    ] as [([Int], Int, AppSummon)])
+    func decide(app: [Int], focused: Int, expected: AppSummon) {
+        let windows = app.map { WindowInfo(windowId: $0, appName: "A", bundleId: "a") } + [WindowInfo(windowId: 9, appName: "B", bundleId: "b")]
+        let model = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: windows)], focusedWindowId: focused, focusedWorkspace: "1")
+        #expect(AppSummon.decide(app: .bundleId("a"), model: model, recent: []) == expected)
     }
 
     @Test("an app nothing answers to is told by the name the link gave, and why nothing came")

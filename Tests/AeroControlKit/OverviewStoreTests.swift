@@ -132,7 +132,6 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         runner.sendEvent(#"{"_event":"focus-changed","windowId":1,"workspace":"1"}"#)
         await waitUntil { windowIds(store) == [1] }
-        #expect(windowIds(store) == [1])
     }
 
     @Test("an event that moves no window neither changes the model nor reloads")
@@ -219,26 +218,15 @@ struct OverviewStoreTests {
         #expect(store.strip != nil && store.commandTarget == nil)
     }
 
-    @Test("an app summon decides what one key does: start it, focus a window, or open the strip")
+    @Test("an app summon that opens the strip gives the store its strip, the ring on its marking, and no query (the rule itself: SummonTests)")
     func appSummon() async {
         let runner = ScriptRunner()
         runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
         runner.setFocus(windowId: 2, workspace: "1")
         let store = started(runner)
         await store.reload()
-
-        // Three windows: the strip, the ring on the one after the focused.
-        #expect(picks(store.summonApp(.bundleId("com.app"))))     // every fixture window is com.app
-        #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")   // the strip has its own state, no query
-        store.filter = ""
-
-        // Not running: start it.
-        #expect(store.summonApp(.bundleId("com.nothing")) == .launch(.bundleId("com.nothing")) && store.filter == "")
-
-        // One window: focus it.
-        runner.setState(windows: windowsJSON([(7, "1")]), workspaces: workspacesJSON(["1"]))
-        await store.reload()
-        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 7) && store.filter == "")
+        #expect(picks(store.summonApp(.bundleId("com.app"))))
+        #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")
     }
 
     @Test("an app that would not start is told on the strip's lane: Escape is the window's, every other key does nothing, the next summon or the end of the visit forgets it")
@@ -266,26 +254,6 @@ struct OverviewStoreTests {
         #expect(await store.focusedAppBinding() == aerospaceBinding(for: WindowInfo(windowId: 4, appName: "App", bundleId: "com.app")))
         runner.setFocus(windowId: nil, workspace: "1")
         #expect(await store.focusedAppBinding() == nil)
-    }
-
-    @Test("two windows toggle when you are in one of them; from anywhere else the strip")
-    func twoWindowsToggle() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 1, workspace: "1")
-        let store = started(runner)
-        await store.reload()
-
-        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 2))   // nothing to pick between
-        #expect(store.filter == "")
-        runner.setFocus(windowId: 2, workspace: "1")
-        await store.reload()
-        #expect(store.summonApp(.bundleId("com.app")) == .focus(windowId: 1))   // and back
-
-        runner.setFocus(windowId: nil, workspace: nil)                            // coming from another app
-        await store.reload()
-        #expect(picks(store.summonApp(.bundleId("com.app"))))
-        store.filter = ""
     }
 
     // MARK: The strip
@@ -692,7 +660,6 @@ struct OverviewStoreTests {
 
         store.send(.loaded(result([("1", [1, 2])])))
         await waitUntil { windowIds(store) == [1, 2] }
-        #expect(windowIds(store) == [1, 2])
 
         // An action shares the same ingress: it runs the CLI, then reconciles against
         // reality. AeroSpace now lists nothing, so the tile drops.
@@ -716,7 +683,6 @@ struct OverviewStoreTests {
 
         store.send(.action(action))
         await waitUntil { runner.didRun(argv) }
-        #expect(runner.didRun(argv))
         // The overview dismisses on a focus action; there is nothing left to reconcile.
         try? await Task.sleep(for: .milliseconds(50))
         #expect(windowIds(store) == before)
@@ -734,7 +700,6 @@ struct OverviewStoreTests {
         store.send(.action(.moveWindow(windowId: 1, toWorkspace: "2")))
         await waitUntil { runner.didRun(["move-node-to-workspace", "--window-id", "1", "--focus-follows-window", "2"]) }
         await waitUntil { workspaceOf(store, 1) == "2" }
-        #expect(workspaceOf(store, 1) == "2")
     }
 
     @Test("a burst of actions collapses to the latest reality")
@@ -752,7 +717,6 @@ struct OverviewStoreTests {
         store.send(.action(.closeWindow(3)))
 
         await waitUntil { windowIds(store) == [1] }
-        #expect(windowIds(store) == [1])
     }
 
     @Test("a content change invalidates the observable model; a no-op reload does not")
@@ -770,7 +734,6 @@ struct OverviewStoreTests {
         await store.reload()
         await waitUntil { workspaceOf(store, 1) == "2" }
         await waitUntil { invalidations.count > before }
-        #expect(invalidations.count > before)
 
         // A reload that returns identical state must not reassign `model`, so no-op
         // readings never re-render the panel (avoids flashing / mid-hover resets).
