@@ -1924,5 +1924,14 @@
     "complexity": 861,
     "prodComplexity": 478,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T09:54:03+02:00",
+    "commit": "28463a8",
+    "subject": "One rule per app key: the App picker setting goes",
+    "code": 5146,
+    "complexity": 861,
+    "prodComplexity": 478,
+    "files": 58
   }
 ]

@@ -219,8 +219,9 @@ struct AeroControlAppTile: View {
         }
     }
 
+    /// On the map only: the strip is for choosing, and a window closed there moved AeroSpace's focus.
     @ViewBuilder private var closeButton: some View {
-        if isHovering {
+        if isHovering, state.strip == nil {
             let diameter: CGFloat = 18
             Button { state.send(.action(.closeWindow(window.windowId))) } label: {
                 Image(systemName: "xmark")

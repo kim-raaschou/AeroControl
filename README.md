@@ -73,7 +73,7 @@ between summons, and it asks for no permission except Screen Recording for the p
 - **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to
   move all of its windows there, in on-screen order, then focus the target. No undo — drag
   them back.
-- Hover a tile to reveal the close action.
+- Hover a tile on the map to reveal the close action; the strip is for choosing and has none.
 - Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
   on, and the overlay itself always opens on the one screen under the mouse. With more
   than one display each card names its own; with a single display nothing is shown.
