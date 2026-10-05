@@ -145,10 +145,20 @@ AeroControl versions independently of AeroSpace (currently **v0.3.1-Beta**;
 `ACReleaseVersion`; `script/release.sh` stamps both). The compatibility range is shown as a
 separate menu line. Bump AeroControl's version for AeroControl changes only.
 
-The scheme is AeroSpace's: `0.MINOR.PATCH-Beta`, a pre-release on GitHub (`release.sh` marks
-any suffixed version so). Fixes and smaller features are a patch, `0.3.1-Beta`; the minor
-moves rarely, for a large shift. Versions up to v0.3.0 had no suffix and stay as they are:
-going below a released version would stop Homebrew upgrading.
+Release strategy: AeroControl runs its own release cycle, fine-grained, in AeroSpace's form.
+
+- **The form** is `0.MINOR.PATCH-Beta`, published as a GitHub pre-release (`release.sh` marks
+  any suffixed version so), e.g. `v0.3.1-Beta`.
+- **Every release is a patch**, however small or large: `0.3.1`, `0.3.2`, … as often as there is
+  something to ship. The patch is a plain counter with no ceiling (`0.3.10` follows `0.3.9`;
+  Homebrew, macOS and `git tag --sort=v:refname` compare it as a number).
+- **The minor moves rarely**, for something users must notice: requiring a new AeroSpace minor,
+  or a shift as large as `%{window-layout-rect}` reaching every user. It resets the patch.
+- **Compatibility with AeroSpace is said in words**, not in the number: the menu line
+  "Compatible with AeroSpace ≥ 0.21.0" (and the release title or notes). An AeroControl number
+  that mirrored AeroSpace's would read as "made for that AeroSpace" and look like its patch.
+- **Released versions are never renumbered or undercut**: versions up to v0.3.0 had no suffix
+  and stay so; a lower version than one released would stop Homebrew upgrading.
 
 ## Workflow conventions
 
