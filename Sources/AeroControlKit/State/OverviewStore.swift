@@ -275,6 +275,14 @@ public class OverviewStore {
         PictureResampler.forget()
     }
 
+    /// The key line for the app AeroSpace has focused, read from AeroSpace when asked: the menu
+    /// copies it. Nil with nothing focused.
+    public func focusedAppBinding() async -> String? {
+        guard let json = try? await runner.run(AerospaceCommand.listFocusedWindow),
+              let window = try? parseWindows(json: json).first?.window else { return nil }
+        return aerospaceBinding(for: window)
+    }
+
     /// One key on an app, `aerocontrol://app-id=<bundle id>` or `app-name=<name>`. The count is free; the model
     /// was just read, so the key does the right thing whatever the app's state:
     ///

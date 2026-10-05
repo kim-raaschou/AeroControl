@@ -1843,5 +1843,14 @@
     "complexity": 875,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:29:53+02:00",
+    "commit": "4e949cc",
+    "subject": "Tests: the event contract is one table, a window's parse one test",
+    "code": 5347,
+    "complexity": 881,
+    "prodComplexity": 490,
+    "files": 60
   }
 ]

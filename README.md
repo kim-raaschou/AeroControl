@@ -220,6 +220,9 @@ Use the menu-bar icon for all in-app configuration:
   app key with more than one window just brings the app forward. No windows (start it) and
   one window (focus it) work either way.
 - **Window Previews**: grant Screen Recording when it is missing.
+- **Copy AeroSpace key for the focused app**: puts the line that binds a key to the app in
+  front on the clipboard, `<key> = ['exec-and-forget open "aerocontrol://app-id=…"']  # App`,
+  for you to paste into your AeroSpace config and give a key. AeroControl writes no config.
 - **Reset settings** and **Quit**.
 
 Selections persist automatically (`UserDefaults`).

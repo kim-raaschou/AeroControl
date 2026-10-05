@@ -32,3 +32,9 @@ public enum Summon: Equatable, Sendable {
         }
     }
 }
+
+/// The line that binds a key to `window`'s app in AeroSpace's config, by bundle id: what the menu
+/// copies for the user to paste into their own config, the key theirs to choose.
+public func aerospaceBinding(for window: WindowInfo) -> String {
+    #"<key> = ['exec-and-forget open "aerocontrol://app-id=\#(window.bundleId)"']  # \#(window.appName)"#
+}

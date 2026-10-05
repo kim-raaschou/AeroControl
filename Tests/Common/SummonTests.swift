@@ -36,6 +36,14 @@ struct SummonTests {
         #expect(AppRef.bundleId("com.mail").identifies(bundleId: "com.mail", among: windows))
     }
 
+    @Test("the line that binds a key to an app is AeroSpace's own syntax, its link the app-id one a summon reads back")
+    func binding() throws {
+        let line = aerospaceBinding(for: WindowInfo(windowId: 1, appName: "Arc", bundleId: "company.thebrowser.Browser"))
+        #expect(line == #"<key> = ['exec-and-forget open "aerocontrol://app-id=company.thebrowser.Browser"']  # Arc"#)
+        let link = try #require(line.split(separator: "\"").first { $0.hasPrefix("aerocontrol://") })
+        #expect(Summon(try #require(URL(string: String(link)))) == .app(.bundleId("company.thebrowser.Browser")))
+    }
+
     @Test("an app nothing answers to is told by the name the link gave, and why nothing came")
     func notFound() {
         let id = AppRef.bundleId("com.typo").notFound, name = AppRef.name("Two Words").notFound
