@@ -21,7 +21,7 @@ Five things you do all day, each one summon and one key:
 - **"Which of my Arc windows?"** One key per app (`aerocontrol://app-id=<bundle id>`, or
   `app-name=<name>`).
   With three Arc windows, only they appear, with their titles, and the ring is already on
-  the next one — Enter switches. Cmd-` with pictures. With one window the key just focuses
+  the one you used before — Enter goes back. Cmd-` with pictures. With one window the key just focuses
   it, and with none it starts the app.
 - **"The Teams window with the meeting in it."** Press the key and type `te`: the map
   collapses to the windows whose title or app name starts with that, titles shown. Type more
@@ -56,8 +56,8 @@ between summons, and it asks for no permission except Screen Recording for the p
   Safari on workspace 2. Each match shows its full title, the focus ring
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
 - **One key per app**: `open aerocontrol://app-id=<bundle id>` (or `app-name=<name>`) opens the overview
-  already filtered to that app — three Arc windows, nothing else — with the ring on the next
-  one, so Enter alone switches instance and Tab walks the rest. Under the cards a legend lists
+  already filtered to that app — three Arc windows, nothing else — with the ring on the one
+  you used before, so Enter alone goes back to it and Tab walks the rest. Under the cards a legend lists
   the windows, key and title each, so a window is read there when its picture is a sliver on
   a crowded workspace. With a single window the key focuses it.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
@@ -137,7 +137,7 @@ settled without you (see *The map and the strip*). The rule:
 | none | the app starts; an id or name no app has is said on the strip's lane, and Escape closes it |
 | one | that window is focused |
 | two, and you are in one | the other one is focused — a toggle |
-| two from elsewhere, or more | the strip opens with just them, ring on the next — pick |
+| two from elsewhere, or more | the strip opens with just them, ring on the one you used last — pick |
 
 Bundle ids of everything open: `aerospace list-windows --all --format '%{app-bundle-id} %{app-name}'`.
 
@@ -159,8 +159,8 @@ at it, or by typing until it is first.
 four cases from AeroSpace's state alone, at once and without a word (none: start; one: focus;
 two and you are in one: the other). The fourth case — two windows from another app, or three
 or more — has no answer without you, and that is the strip: the app's windows in a row, a
-marking on the most likely answer (the window after the one you are in, or the one you used
-last), and keys to move it and confirm. The marking is your choice in the making, so it lives
+marking on the most likely answer (the app's window you used last other than the one you are
+in, or else the one after it), and keys to move it and confirm. The marking is your choice in the making, so it lives
 in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
 screen: the ring is the marking, the thin outline is where AeroSpace's focus is now.
 

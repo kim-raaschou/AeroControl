@@ -137,10 +137,11 @@ flowchart TD
   click A4 "#strip"
 """)
 p("Two leaves continue: the map in <a href=\"#map\">section 4</a>, and the strip, the one case that needs you, in <a href=\"#strip\">section 3</a>. Everything else is settled and done here.")
-p("Where the strip opens: <code>AppStripModel.start</code>. From inside the app, on the window after yours; from outside, on the app's window you used last, or its first.")
+p("Where the strip opens: <code>AppStripModel.start</code>. On the app's window you used last other than the one you are in, as ⌘` goes back to it; knowing none, on the window after yours, or the first.")
 table(["You are in", "The app's windows", "Used last", "Opens on"], [
-    ["window 2", "[1, 2, 8]", "—", "\(AppStripModel.start(origin: 2, ids: [1, 2, 8]) ?? 0)"],
-    ["window 8 (the last)", "[1, 2, 8]", "—", "\(AppStripModel.start(origin: 8, ids: [1, 2, 8]) ?? 0)"],
+    ["window 2", "[1, 2, 8]", "2, then 1", "\(AppStripModel.start(origin: 2, ids: [1, 2, 8], recent: [2, 1]) ?? 0)"],
+    ["window 2", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 2, ids: [1, 2, 8]) ?? 0)"],
+    ["window 8 (the last)", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 8, ids: [1, 2, 8]) ?? 0)"],
     ["another app", "[1, 2, 8]", "8, then 2", "\(AppStripModel.start(origin: 6, ids: [1, 2, 8], recent: [8, 2]) ?? 0)"],
     ["another app", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 6, ids: [1, 2, 8]) ?? 0)"],
 ])

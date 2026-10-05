@@ -288,8 +288,8 @@ public class OverviewStore {
     ///
     /// - none: start it; one: focus it;
     /// - two, and you are in one of them: the other — a toggle needs no picker;
-    /// - more, or coming from elsewhere: the strip, the marking on the window after the
-    ///   focused one, so Enter alone is Cmd-` with pictures.
+    /// - more, or coming from elsewhere: the strip, the marking on the app's window used last
+    ///   before the focused one, so Enter alone is Cmd-` with pictures.
     ///
     /// The first two lines are the link's own and hold with the strip off. The rest are the
     /// strip's: with it off the key is a passthrough — it brings the app forward, and macOS

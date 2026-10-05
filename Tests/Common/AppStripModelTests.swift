@@ -19,7 +19,7 @@ struct AppStripStepTests {
         #expect(M.stepIndex(0, count: 0, direction: 1) == -1)
     }
 
-    @Test("the marking opens on the window after the one you are in; with two, on the other; from outside the app, on the first")
+    @Test("knowing nothing used before, the marking opens on the window after the one you are in; with two, on the other; from outside the app, on the first")
     func start() {
         #expect(M.start(origin: 2, ids: [1, 2, 3]) == 3)
         #expect(M.start(origin: 3, ids: [1, 2, 3]) == 1)
@@ -28,11 +28,13 @@ struct AppStripStepTests {
         #expect(M.start(origin: 1, ids: []) == nil)
     }
 
-    @Test("from outside the app the marking opens on the app's window you used last, as ⌘Tab goes back to it; known none, on the first")
+    @Test("the marking opens on the app's window you used last before the one you are in, as ⌘` and ⌘Tab go back to it; known none, as above")
     func startOnLastUsed() {
-        #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [9, 3, 1]) == 3)          // 9 is another app's
+        #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [9, 3, 1]) == 3)          // from outside; 9 is another app's
         #expect(M.start(origin: nil, ids: [1, 2, 3], recent: [8, 9]) == 1)
-        #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [1]) == 3)                  // inside the app: the next, as before
+        #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [1]) == 1)                  // inside the app: back to the one before
+        #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [2, 3, 1]) == 3)            // the one you are in is not the one before it
+        #expect(M.start(origin: 2, ids: [1, 2, 3], recent: [2]) == 3)                  // nothing before it: the next
     }
 }
 

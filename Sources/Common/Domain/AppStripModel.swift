@@ -48,12 +48,12 @@ public enum AppStripModel {
         return ((index + direction) % count + count) % count
     }
 
-    /// Where the marking opens: on the window after the one you are in, so two windows are the
-    /// key and Enter; from outside the app on its window used last (`recent`, most recent
-    /// first), as ⌘Tab goes back to it, or on the first when none is known.
+    /// Where the marking opens: on the app's window you used last other than the one you are in
+    /// (`recent`, most recent first), as ⌘` and ⌘Tab go back to it, so the key and Enter are
+    /// the way back; known none, on the window after the one you are in, or the first.
     public static func start(origin: Int?, ids: [Int], recent: [Int] = []) -> Int? {
         guard !ids.isEmpty else { return nil }
-        if origin.map({ !ids.contains($0) }) ?? true, let last = recent.first(where: ids.contains) { return last }
+        if let last = recent.first(where: { ids.contains($0) && $0 != origin }) { return last }
         let at = origin.flatMap { ids.firstIndex(of: $0) } ?? -1
         return ids[stepIndex(at, count: ids.count, direction: 1)]
     }

@@ -55,10 +55,11 @@ flowchart TD
   click A4 "#strip"
 </pre>
 <p>Two leaves continue: the map in <a href="#map">section 4</a>, and the strip, the one case that needs you, in <a href="#strip">section 3</a>. Everything else is settled and done here.</p>
-<p>Where the strip opens: <code>AppStripModel.start</code>. From inside the app, on the window after yours; from outside, on the app's window you used last, or its first.</p>
+<p>Where the strip opens: <code>AppStripModel.start</code>. On the app's window you used last other than the one you are in, as ⌘` goes back to it; knowing none, on the window after yours, or the first.</p>
 <table><tr><th>You are in</th><th>The app's windows</th><th>Used last</th><th>Opens on</th></tr>
-<tr><td>window 2</td><td>[1, 2, 8]</td><td>—</td><td>8</td></tr>
-<tr><td>window 8 (the last)</td><td>[1, 2, 8]</td><td>—</td><td>1</td></tr>
+<tr><td>window 2</td><td>[1, 2, 8]</td><td>2, then 1</td><td>1</td></tr>
+<tr><td>window 2</td><td>[1, 2, 8]</td><td>none known</td><td>8</td></tr>
+<tr><td>window 8 (the last)</td><td>[1, 2, 8]</td><td>none known</td><td>1</td></tr>
 <tr><td>another app</td><td>[1, 2, 8]</td><td>8, then 2</td><td>8</td></tr>
 <tr><td>another app</td><td>[1, 2, 8]</td><td>none known</td><td>1</td></tr>
 </table>

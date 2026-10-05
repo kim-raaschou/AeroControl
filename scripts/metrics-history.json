@@ -1852,5 +1852,14 @@
     "complexity": 881,
     "prodComplexity": 490,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T07:32:48+02:00",
+    "commit": "afc2666",
+    "subject": "The menu copies the AeroSpace key line for the focused app",
+    "code": 5349,
+    "complexity": 882,
+    "prodComplexity": 491,
+    "files": 60
   }
 ]
