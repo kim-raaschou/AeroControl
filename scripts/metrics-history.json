@@ -1870,5 +1870,14 @@
     "complexity": 876,
     "prodComplexity": 486,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-05T08:07:21+02:00",
+    "commit": "f0846a7",
+    "subject": "The strip's legend is one line: the app and the marked window's title",
+    "code": 5307,
+    "complexity": 876,
+    "prodComplexity": 486,
+    "files": 60
   }
 ]
