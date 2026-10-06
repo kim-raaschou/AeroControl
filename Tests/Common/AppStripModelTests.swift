@@ -16,7 +16,7 @@ struct AppStripStepTests {
         #expect(M.stepIndex(3, count: 4, direction: 1) == 0)
         #expect(M.stepIndex(0, count: 4, direction: -1) == 3)
         #expect(M.stepIndex(-1, count: 4, direction: 1) == 0 && M.stepIndex(-1, count: 4, direction: -1) == 3)
-        #expect(M.stepIndex(0, count: 0, direction: 1) == -1)
+        #expect(M.stepIndex(0, count: 0, direction: 1) == nil)
     }
 
     @Test("knowing nothing used before, the marking opens on the window after the one you are in; with two, on the other; from outside the app, on the first")
@@ -44,33 +44,32 @@ struct AppStripStepTests {
 struct StripValueTests {
     private let cards: (Int) -> Int? = { [1, 2, 3].contains($0) ? 0 : [4, 5].contains($0) ? 1 : nil }
 
-    @Test("opened on the window after the one you are in, the centre with it, no turns yet")
+    @Test("opened on the window after the one you are in, the centre with it")
     func opened() {
         let s = Strip.opened("com.app", origin: 2, ids: [1, 2, 3], recent: [])
-        #expect(s == Strip(bundleId: "com.app", marked: 3, centre: 3, turns: 0))
+        #expect(s == Strip(bundleId: "com.app", marked: 3, centre: 3))
         #expect(Strip.opened("com.app", origin: nil, ids: [1, 2], recent: [2]).marked == 2)
     }
 
     @Test("the pointer marks: the marking moves, the centre stays")
     func marking() {
-        let s = Strip(bundleId: "a", marked: 1, centre: 1, turns: 0)
-        #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1, turns: 0))
+        let s = Strip(bundleId: "a", marked: 1, centre: 1)
+        #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1))
     }
 
-    @Test("stepping wraps round the ids and counts a turn when it passes the last card forward, or the first backward")
-    func stepped() {
-        let s = Strip(bundleId: "a", marked: 5, centre: 5, turns: 0)
-        let on = s.stepped(1, ids: [1, 2, 3, 4, 5], card: cards)
-        #expect(on.marked == 1 && on.centre == 1 && on.turns == 1)            // 5 (card 1) → 1 (card 0): round the end
-        let back = on.stepped(-1, ids: [1, 2, 3, 4, 5], card: cards)
-        #expect(back.marked == 5 && back.turns == 0)                          // and back again
-        #expect(s.stepped(1, ids: [], card: cards).marked == 5)               // nothing to step onto: unchanged
+    @Test("a step wraps round the ids, the centre with the marking; ⌘→ and ⌘← go to the next or previous workspace's first window, wrapping")
+    func moved() {
+        let s = Strip(bundleId: "a", marked: 5, centre: 5), ids = [1, 2, 3, 4, 5]
+        #expect(s.moved(.window(1), ids: ids, card: cards) == Strip(bundleId: "a", marked: 1, centre: 1))   // round the end
+        #expect(s.moved(.window(1), ids: [], card: cards) == s)                                             // nothing to step onto
+        #expect(Strip(bundleId: "a", marked: 2, centre: 2).moved(.workspace(1), ids: ids, card: cards).marked == 4)
+        #expect(s.moved(.workspace(1), ids: ids, card: cards).marked == 1 && s.moved(.workspace(-1), ids: ids, card: cards).marked == 1)
     }
 
     @Test("AeroSpace moved the focus: within the app the strip stands; anywhere else, another app or an empty workspace, the choice was made with AeroSpace and it is over")
     func following() {
         func w(_ id: Int, _ app: String) -> WindowInfo { WindowInfo(windowId: id, appName: app, bundleId: app) }
-        let s = Strip(bundleId: "a", marked: 1, centre: 1, turns: 2)
+        let s = Strip(bundleId: "a", marked: 1, centre: 1)
         #expect(s.following(w(5, "a")) == s)
         #expect(s.following(w(3, "b")) == nil)                                           // several windows or one: over
         #expect(s.following(nil) == nil)                                                 // an empty workspace
@@ -78,24 +77,23 @@ struct StripValueTests {
 
     @Test("after the windows changed the marking stays on its window, the centre where it was; a closed one hands the marking, and the centre, to the one that took its place")
     func kept() {
-        let s = Strip(bundleId: "a", marked: 2, centre: 1, turns: 0)                  // pointed at 2, the keys left the centre on 1
+        let s = Strip(bundleId: "a", marked: 2, centre: 1)                  // pointed at 2, the keys left the centre on 1
         #expect(s.kept(before: [1, 2, 3], after: [1, 2, 3]) == s)                      // a title tick turns nothing under a still hand
         #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1])?.marked == 2)
-        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3, turns: 0))
-        #expect(Strip(bundleId: "a", marked: 3, centre: 3, turns: 0).kept(before: [1, 2, 3], after: [1, 2])?.marked == 2)   // the last closed: the one before
+        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3))
+        #expect(Strip(bundleId: "a", marked: 3, centre: 3).kept(before: [1, 2, 3], after: [1, 2])?.marked == 2)   // the last closed: the one before
         #expect(s.kept(before: [1, 2, 3], after: []) == nil)                              // none left: the strip is over
     }
 }
 
 @Suite("AppStripModel: geometry")
 struct AppStripGeometryTests {
-    @Test("cards are as tall as the width allows, up to half the panel and never below a fifth")
+    @Test("one card fills the view's width, up to most of the panel; more each take a 3.5th of it, up to a third of the panel")
     func cardHeight() {
-        // A 1728 x 1085 screen, a view 1900 wide, cards the screen's shape (1.6).
-        func h(_ cards: Int) -> CGFloat { M.cardHeight(width: 1900, gaps: 8 * CGFloat(cards - 1), sumAspect: 1.6 * CGFloat(cards), panelHeight: 1085) }
-        #expect(h(5) == ((1900 - 32) / 8).rounded(.down))
-        #expect(h(2) == (1085 * 0.5).rounded())
-        #expect(M.cardHeight(width: 400, gaps: 80, sumAspect: 16, panelHeight: 1085) == (1085 * 0.2).rounded())
+        // A 1728 x 1085 screen (1.6), 24 of chrome round each card.
+        func h(_ cards: Int, _ view: CGFloat = 1900) -> CGFloat { M.cardHeight(view: view, cards: cards, aspect: 1.6, chrome: 24, panelHeight: 1085) }
+        #expect(h(1) == (1085 * M.tallest).rounded() && h(2) == (1085 * M.tallestOfSeveral).rounded() && h(5) == ((1900 / M.seen - 24) / 1.6).rounded(.down))
+        #expect(h(5, 900) == ((900 / M.seen - 24) / 1.6).rounded(.down) && h(3, 900) == ((900 / 3 - 24) / 1.6).rounded(.down))   // three fit whole              // a narrow view: the neighbours cut by its edges
     }
 
 }
@@ -111,9 +109,26 @@ struct AppStripKeyTests {
         #expect(act(.escape) == .cancel)
     }
 
-    @Test("Tab and → step on, Shift-Tab and ← back")
+    @Test("Tab and → step on, Shift-Tab and ← back; ↑ and ↓ go up and down a card, ⌘→ and ⌘← to the next and previous workspace")
     func steps() {
-        #expect(act(.next) == .step(1) && act(.previous) == .step(-1))
+        for move in [StripMove.window(1), .window(-1), .row(-1), .row(1), .workspace(-1)] { #expect(act(.move(move)) == .move(move)) }
+    }
+
+    @Test("a workspace's name, the one on its card, goes to that workspace; 0 is 10; a name the strip has not, nothing")
+    func workspaceNames() {
+        func act(_ c: Character) -> M.Action { M.action(for: .character(c), ids: ids, marked: 10, workspaces: ["3", "4", "10"]) }
+        #expect(act("4") == .move(.card(1)) && act("0") == .move(.card(2)) && act("7") == .none && act("a") == .none)
+        let s = Strip(bundleId: "a", marked: 1, centre: 1)
+        #expect(s.moved(.card(1), ids: [1, 2, 3, 4, 5], card: { $0 < 4 ? 0 : 1 }) == Strip(bundleId: "a", marked: 4, centre: 4))   // card 1's first
+    }
+
+    @Test("↑ and ↓ go to the window in the row above or below on the card, the nearest across; past the top or the bottom, nothing")
+    func vertical() {
+        func r(_ x: CGFloat, _ y: CGFloat) -> CGRect { CGRect(x: x, y: y, width: 100, height: 60) }
+        let grid = [1: r(0, 0), 2: r(110, 0), 3: r(220, 0), 4: r(55, 70), 5: r(165, 70)]   // three over two, centred
+        #expect(M.vertical(from: 3, direction: 1, frames: grid) == 5 && M.vertical(from: 1, direction: 1, frames: grid) == 4)
+        #expect(M.vertical(from: 4, direction: -1, frames: grid) == 1 && M.vertical(from: 5, direction: -1, frames: grid) == 2)
+        #expect(M.vertical(from: 2, direction: -1, frames: grid) == nil && M.vertical(from: 4, direction: 1, frames: grid) == nil)
     }
 
     @Test("⌘ and a window's key goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")

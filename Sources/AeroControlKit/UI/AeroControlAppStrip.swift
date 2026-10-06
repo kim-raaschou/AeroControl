@@ -5,8 +5,8 @@ import Common
 /// draws it: one row of the map's own cards, one per workspace holding the app, each in its
 /// screen's shape at one height — the app's windows where AeroSpace put them, the other
 /// apps' grey, half there, framed and out of reach. The app's name and the marked window's title
-/// stand in the map's pill under the row. A row that fits stands still; one that does not is a
-/// ring with the marked card in the middle, whole to both edges, turning a card at a time.
+/// stand in the map's pill under the row. A row that fits stands still; one that does not slides
+/// to keep the marked card in the middle, up to its ends, the cards the edges cut dimmed.
 /// The marking only chooses: Enter, a window's key (⌘1–⌘f, on its corner) or a click
 /// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
 struct AeroControlAppStrip: View {
@@ -17,10 +17,11 @@ struct AeroControlAppStrip: View {
     let screens: [Int: CGRect]
     let fallbackScreen: CGRect
 
-    /// How long the ring takes to turn a card along.
+    /// How long the row takes to slide a card along.
     private static let turn: Double = 0.4
-    /// How far in from each edge of the view a card cut by it fades out, rather than ending in mid-air.
-    private static let edgeFade: CGFloat = 0.03
+    /// How much shows of a card the view's edge cuts: the whole card dimmed, its border with it,
+    /// so the row reads as going on to that side and the workspace in the middle stands out.
+    private static let cutCard: Double = 0.5
 
     var body: some View {
         let groups = state.stripWorkspaces
@@ -29,35 +30,25 @@ struct AeroControlAppStrip: View {
                                                    fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
         let ids = state.stripWindows.map(\.window.windowId)
         let centre = state.strip?.centre
-        let turns = state.strip?.turns ?? 0
-        let placements = AeroControlLayout.stripPlacements(layout, centre: centre, turns: turns, viewWidth: usable.width)
+        let placements = AeroControlLayout.stripPlacements(layout, centre: centre, viewWidth: usable.width)
         let held = layout.cards.firstIndex { card in centre.map { card.frames[$0] != nil } ?? false }
         return ZStack(alignment: .topLeading) {
-            ForEach(placements, id: \.self.identity) { placed in
+            ForEach(placements, id: \.card) { placed in
                 let workspace = groups[placed.card], laid = layout.cards[placed.card]
                 AeroControlCardFace(workspace: workspace, size: CGSize(width: laid.span.width, height: layout.height)) {
                     windowsOf(workspace, laid, ids: ids)
                 }
-                .opacity(placed.shown ? 1 : 0)
-                .allowsHitTesting(placed.shown)
+                .opacity(placed.x < 0 || placed.x + laid.span.width > usable.width ? Self.cutCard : 1)
                 .offset(x: placed.x)
             }
         }
         .frame(width: usable.width, height: layout.height, alignment: .topLeading)
-        .mask(edges(fading: layout.runsRound(in: usable.width)))
-        // The ring turns a card along when the keys take the marking to another workspace, the
-        // same way round past the last; stepping within a card, or pointing, leaves it.
-        .animation(.smooth(duration: Self.turn * look.motion), value: [held ?? -1, turns])
+        .clipped()
+        // The row slides a card along when the keys take the marking to another workspace;
+        // stepping within a card, or pointing, leaves it.
+        .animation(.smooth(duration: Self.turn * look.motion), value: held ?? -1)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-    }
-
-    /// A ring cuts cards at the view's edges, and they fade there rather than end in mid-air; a row
-    /// standing still is whole and keeps its edges.
-    private func edges(fading: Bool) -> LinearGradient {
-        let fade = fading ? Self.edgeFade : 0
-        return LinearGradient(stops: [.init(color: fading ? .clear : .black, location: 0), .init(color: .black, location: fade),
-                                      .init(color: .black, location: 1 - fade), .init(color: fading ? .clear : .black, location: 1)],
-                              startPoint: .leading, endPoint: .trailing)
+        .onChange(of: layout.cards, initial: true) { _, cards in state.stripFrames = cards.map(\.frames) }
     }
 
     /// Every window of the workspace at its place, the other apps' faint and taking no input:

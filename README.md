@@ -158,7 +158,7 @@ at it, or by typing until it is first.
 **The strip is a picker.** The per-app keys settle three of their
 four cases from AeroSpace's state alone, at once and without a word (none: start; one: focus;
 two and you are in one: the other). The fourth case — two windows from another app, or three
-or more — has no answer without you, and that is the strip: the app's windows in a row, a
+or more — has no answer without you, and that is the strip: a row of the app's workspaces, a
 marking on the most likely answer (the app's window you used last other than the one you are
 in, or else the one after it), and keys to move it and confirm. The marking is your choice in the making, so it lives
 in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
@@ -169,15 +169,19 @@ within the app and the strip stands; move it anywhere else with an AeroSpace key
 an empty workspace, and the choice was made there: the strip closes and you are where AeroSpace
 put you. For another app's strip, press that app's key.
 
-The cards are true to AeroSpace's geometry, and on a crowded workspace that is slivers: eighteen
-windows in `h_tiles` get 82 points each. One line under the cards, as high as the map's, names
+Each card is a workspace in its screen's shape, true to AeroSpace's geometry where AeroSpace says
+where the windows are, and on a crowded workspace that is slivers: eighteen windows in `h_tiles`
+get 82 points each. Where it does not (an accordion, a released AeroSpace) the app's windows are
+packed in the card as on the map. One workspace all but fills the screen; several are each at
+most a third of it high. One line under the cards, as high as the map's, names
 the app, how many windows, and the marked window's title, with its workspace when the app spans
 more than one. Every window's key is on its card; pointing at a window marks it, so a sliver is
 read by pointing at it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
-Tab is the exception. It handles more — the row turns into a carousel when it does not fit,
-⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, Tab the rest.
+Tab is the exception. It handles more — a row that does not fit slides to keep the marked
+workspace whole in the middle, up to its ends, the workspaces the edges cut dimmed; ⌘→ and ⌘← a
+workspace along, ⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, Tab the rest.
 
 ## Keyboard
 
@@ -201,12 +205,15 @@ In the strip:
 | Key | Does |
 |---|---|
 | Tab, → / Shift-Tab, ← | move the marking to the next / previous window, wrapping |
+| ↓ / ↑ | move the marking to the window below / above on its card |
+| ⌘→ / ⌘← | move the marking to the next / previous workspace, the row sliding with it |
+| a workspace's name | move the marking to that workspace: 3 for workspace 3, 0 for 10 |
 | ⌘1 – ⌘9, ⌘a – ⌘f | focus that window: the keys the windows carry, fifteen in all |
 | the app's own key again | move the marking on, as Cmd-` does |
 | Enter | focus the marked window |
 | Escape | dismiss, back on the window you came from |
 
-There is no typing in the strip; the app is already chosen. Pointing marks a window too.
+There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window too.
 
 ## Configure it from the menu bar
 

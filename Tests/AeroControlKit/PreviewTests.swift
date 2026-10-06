@@ -11,11 +11,11 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    @Test("pictures are taken first as large as a strip card can be: half the panel high, the screen's shape, in pixels")
+    @Test("pictures are taken first as large as a strip card can be: most of the panel high, the screen's shape, in pixels")
     func captureSize() {
         let wide = CGSize(width: 3440, height: 1440)
         let size = AeroControlLayout.captureSize(available: wide, backingScale: 1, workspaces: 5, strip: true)
-        let half = (1440 * AeroControlLayout.usableScreenFraction * 0.5).rounded(.up)
+        let half = (1440 * AeroControlLayout.usableScreenFraction * AppStripModel.tallest).rounded(.up)
         #expect(size.height == half && abs(size.width - (half * 3440 / 1440).rounded(.up)) <= 1)
         #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2, workspaces: 5, strip: true).width - 2 * size.width) <= 2)
     }
@@ -193,134 +193,63 @@ struct StripLayoutTests {
                                       viewWidth: view, panelHeight: panel)
     }
 
-    /// The strip is a row of choices, so a card that packs the app's windows packs them in one
-    /// row, side by side, even when two rows would give taller pictures: two wide windows on a
-    /// card their own shape stacked, and read as one window over another instead of two choices.
-    @Test("a packed strip card is one row: wide windows go side by side, not one under the other")
-    func packedCardIsOneRow() throws {
-        let ws = WorkspaceInfo(name: "1", windows: [WindowInfo(windowId: 1, appName: "Brave", bundleId: "com.Brave"),
-                                                    WindowInfo(windowId: 2, appName: "Brave", bundleId: "com.Brave")],
-                               screenIndex: 1, rootLayout: "h_accordion")
-        let wide = CGSize(width: 2400, height: 1000)
-        let l = layout([ws], bundleId: "com.Brave", sizes: [1: wide, 2: wide])
-        let card = try #require(l.cards.first)
-        let a = try #require(card.frames[1]), b = try #require(card.frames[2])
-        #expect(a.maxX <= b.minX && a.minY == b.minY)
-        #expect(abs(a.width / a.height - 2.4) < 0.02)
-        #expect(a.maxY <= inner(l, card).height + 0.5 && b.maxX <= inner(l, card).width + 0.5)
-        // No card mirrors a screen, so the strip is as tall as its row, not as a screen round it.
-        #expect((l.height - AeroControlLayout.cardChrome) == a.height && a.minY == 0)
+    @Test("a card that cannot be read is its workspace's screen all the same: the app's windows only, packed in it as the map packs them, as large as it allows")
+    func packedCardIsTheScreen() throws {
+        let l = layout([ghostty("3", 1...4, [WindowInfo(windowId: 9, appName: "Code", bundleId: "com.Code")]), ghostty("4", 5...5)])   // four and a Code, one alone
+        let four = try #require(l.cards.first), box = inner(l, four)
+        #expect(four.frames.count == 4 && four.others.isEmpty && l.cards[1].frames.count == 1)
+        #expect(Set(four.frames.values.map(\.minY)).count == 2 && four.frames.values.allSatisfy { $0.maxX <= box.width + 0.5 && $0.maxY <= box.height + 0.5 })   // two by two
+        #expect(l.cards[0].span.width == l.cards[1].span.width && (l.cards[1].frames[5]?.width ?? 0) > box.width * 0.9)   // each a screen, one window filling it
+        let wide = CGSize(width: 2400, height: 1000), two = try #require(layout([ghostty("3", 1...2)], sizes: [1: wide, 2: wide]).cards.first)
+        #expect(two.frames[1]?.minY == two.frames[2]?.minY)                               // two are side by side, even where stacked would be larger
+    }
+    private func ghostty(_ ws: String, _ ids: ClosedRange<Int>, _ other: [WindowInfo] = []) -> WorkspaceInfo {
+        WorkspaceInfo(name: ws, windows: ids.map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty") } + other, screenIndex: 1, rootLayout: "h_accordion")
     }
 
-    /// A choice is not bigger for being alone on its workspace: packed cards share the tightest
-    /// row's height, and each hugs its row, so one window is not a screen wide round a small picture.
-    @Test("packed strip cards share one picture height and hug their windows: a lone window is no bigger than a pair")
-    func packedCardsShareHeightAndHug() throws {
-        func w(_ id: Int) -> WindowInfo { WindowInfo(windowId: id, appName: "Ghostty", bundleId: "com.Ghostty") }
-        let pair = WorkspaceInfo(name: "1", windows: [w(1), w(2)], screenIndex: 1, rootLayout: "h_accordion")
-        let lone = WorkspaceInfo(name: "5", windows: [w(3)], screenIndex: 1, rootLayout: "h_accordion")
-        let l = layout([pair, lone])
-        let heights = Set(l.cards.flatMap { $0.frames.values.map(\.height) })
-        #expect(heights.count == 1 && (l.height - AeroControlLayout.cardChrome) == heights.first)
-        let alone = try #require(l.cards[1].frames[3])
-        #expect(l.cards[1].span.width == alone.width + 2 * AeroControlLayout.cardPadding && alone.minX == 0)
-        #expect(l.cards[0].span.width < l.cards[1].span.width * 2.2)                      // two windows and a gap, no screen round them
-    }
-
-    @Test("every card is the map's card: its pictures in its screen's shape at one height, as tall as the view allows between a fifth and half the panel, inside the map card's chrome")
+    @Test("every card is the map's card: its pictures in its screen's shape at one height, up to a third of the panel, inside the map card's chrome")
     func screenShapedCards() {
         let a = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let b = WorkspaceInfo(name: "4", windows: [rected(3, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let l = layout([a, b])
-        let ratio = screen.width / screen.height
-        let pad = AeroControlLayout.cardPadding
-        #expect((l.height - AeroControlLayout.cardChrome) == AppStripModel.cardHeight(width: 1600 - 4 * pad, gaps: AeroControlLayout.cardGap, sumAspect: 2 * ratio, panelHeight: 1000))
-        #expect(l.height == (l.height - AeroControlLayout.cardChrome) + AeroControlLayout.cardChrome)
+        let ratio = screen.width / screen.height, pad = AeroControlLayout.cardPadding
+        #expect((l.height - AeroControlLayout.cardChrome) == AppStripModel.cardHeight(view: 1600, cards: 2, aspect: ratio, chrome: 2 * pad + AeroControlLayout.cardGap, panelHeight: 1000))
         // The mirrored card is the screen's shape exactly; the lone window, packed at the full height, within the packer's rounding.
         #expect(l.cards.count == 2 && l.cards.allSatisfy { abs($0.span.width - ((l.height - AeroControlLayout.cardChrome) * ratio).rounded() - 2 * pad) <= 2 })
-        #expect(l.cards[1].span.x == l.cards[0].span.width + AeroControlLayout.cardGap)
-        #expect(l.width == l.cards[1].span.x + l.cards[1].span.width && l.width <= 1600)
+        #expect(l.cards[1].span.x == l.cards[0].span.width + AeroControlLayout.cardGap && l.width == l.cards[1].span.x + l.cards[1].span.width && !l.slides(in: 1600))
         #expect(CGSize(width: l.cards[0].span.width - 2 * pad, height: l.height - AeroControlLayout.cardChrome) == inner(l, l.cards[0]))
     }
 
     @Test("a card mirrors its workspace from AeroSpace's rects: the app's windows where they are, the other apps' marked to be drawn faint")
     func mirroredFromRects() throws {
         let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
-        let card = try #require(layout([ws]).cards.first)
-        #expect(card.others == [2] && card.frames.count == 2 && true)
+        let l = layout([ws]), card = try #require(l.cards.first)
         let left = try #require(card.frames[1]), right = try #require(card.frames[2])
-        #expect(left.maxX < right.minX && abs(left.width - right.width) < 0.5)
-        let l = layout([ws])
+        #expect(card.others == [2] && card.frames.count == 2 && left.maxX < right.minX && abs(left.width - right.width) < 0.5)
         #expect(card.frames.values.allSatisfy { CGRect(origin: .zero, size: inner(l, card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
     }
 
     private func groups(_ n: Int) -> [WorkspaceInfo] {
-        (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
-    }
-    private func middle(_ l: AeroControlLayout.StripLayout, _ p: AeroControlLayout.StripPlacement) -> CGFloat { p.x + l.cards[p.card].span.width / 2 }
-
-    @Test("four workspaces in a view that holds fewer: the marked card in the middle, one either side, and the one across cut by both edges")
-    func carouselIsWhole() throws {
-        let l = layout(groups(4), view: 1200, panel: 1000)
-        #expect(l.width > 1200 && l.runsRound(in: 1200))
-        let placed = AeroControlLayout.stripPlacements(l, centre: 1, turns: 0, viewWidth: 1200).filter(\.shown)
-        let centred = try #require(placed.first { $0.card == 0 })
-        #expect(abs(middle(l, centred) - 600) <= 1)                                    // workspace 1 in the middle
-        #expect(placed.filter { $0.card == 1 }.count == 1 && placed.filter { $0.card == 3 }.count == 1)
-        let across = placed.filter { $0.card == 2 }.map(\.x).sorted()
-        #expect(across.count == 2 && across[0] < 0 && across[1] + l.cards[2].span.width > 1200)   // cut on the left and on the right
-        #expect(placed.first { $0.card == 1 }!.x > centred.x && placed.first { $0.card == 3 }!.x < centred.x)
+        // Mirrored cards, two windows each: packed cards share the view and never turn.
+        (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 842, 1052), rected($0 + 100, "Ghostty", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
     }
 
-    @Test("past the last card the row turns on the same way: every card moves one card along, none jumps back across")
-    func carouselTurns() throws {
-        let l = layout(groups(4), view: 1200, panel: 1000)
-        let onLast = AeroControlLayout.stripPlacements(l, centre: 4, turns: 0, viewWidth: 1200)
-        let onFirstAgain = AeroControlLayout.stripPlacements(l, centre: 1, turns: 1, viewWidth: 1200)
-        // Nothing comes or goes at the edges as it turns: a card shown after is one drawn before, out of sight if not in it.
-        let before = Set(onLast.map(\.identity)), after = Set(onFirstAgain.map(\.identity))
-        #expect(Set(onFirstAgain.filter(\.shown).map(\.identity)).isSubset(of: before))
-        #expect(Set(onLast.filter(\.shown).map(\.identity)).isSubset(of: after))
-        let step = l.cards[0].span.width + AeroControlLayout.cardGap
-        for before in onLast {
-            guard let after = onFirstAgain.first(where: { $0.card == before.card && $0.copy == before.copy }) else { continue }
-            #expect(abs(after.x - (before.x - step)) <= 1)                              // one card to the left, all together
-        }
-        // Once round, the row looks as it did before it turned.
-        let start = AeroControlLayout.stripPlacements(l, centre: 1, turns: 0, viewWidth: 1200).filter(\.shown)
-        #expect(Set(start.map { "\($0.card)@\(Int($0.x))" }) == Set(onFirstAgain.filter(\.shown).map { "\($0.card)@\(Int($0.x))" }))
+    @Test("workspaces that do not fit slide: the marked one whole in the middle, the next cut by the edge, up to the row's ends")
+    func slidingRow() throws {
+        let l = layout(groups(5), view: 1600, panel: 1000), w = l.cards[0].span.width
+        func at(_ centre: Int) -> [CGFloat] { AeroControlLayout.stripPlacements(l, centre: centre, viewWidth: 1600).map(\.x) }
+        #expect(l.slides(in: 1600) && at(1)[0] == 0 && at(1).contains { $0 < 1600 && $0 + w > 1600 })   // the first at the left edge, the row cut on the right
+        #expect(abs(at(3)[2] + w / 2 - 800) <= 1 && at(3).contains { $0 < 0 && $0 + w > 0 })              // in the middle, cut on both sides
+        #expect(abs(at(5)[4] + w - 1600) <= 1)                                                            // the last at the right edge
     }
 
-    @Test("a row that fits stands still and centred, however many cards, and stepping moves only the marking; only a row that does not fit runs round")
+    @Test("a row that fits stands still and centred, and stepping between a card's windows moves only the marking")
     func stillWhenItFits() throws {
-        for n in [2, 3, 5] {
-            let row = layout(groups(n), view: 20000, panel: 1000)
-            #expect(row.width < 20000 && !row.runsRound(in: 20000))
-            let still = AeroControlLayout.stripPlacements(row, centre: 1, turns: 0, viewWidth: 20000)
-            #expect(still == AeroControlLayout.stripPlacements(row, centre: n, turns: 1, viewWidth: 20000))      // the keys turn nothing
-            let left = still[0].x, right = still[n - 1].x + row.cards[n - 1].span.width
-            #expect(still.count == n && abs((left + right) / 2 - 10000) <= 1)                                     // centred as a whole
-        }
-        // Two windows in one card: stepping between them moves the marking, not the row.
         let pair = WorkspaceInfo(name: "9", windows: [rected(91, "Ghostty", 16, 49, 842, 1052), rected(92, "Ghostty", 870, 49, 842, 1052)],
                                  screenIndex: 1, rootLayout: "h_tiles")
-        let withPair = layout(groups(2) + [pair], view: 20000, panel: 1000)
-        #expect(AeroControlLayout.stripPlacements(withPair, centre: 91, turns: 0, viewWidth: 20000)
-                == AeroControlLayout.stripPlacements(withPair, centre: 92, turns: 0, viewWidth: 20000))
-    }
-
-    @Test("a card whose layout cannot be read lays only the app's windows side by side in it")
-    func fallbackSideBySide() throws {
-        let ws = WorkspaceInfo(name: "3", windows: [WindowInfo(windowId: 1, appName: "Ghostty", bundleId: "com.Ghostty"),
-                                                    WindowInfo(windowId: 2, appName: "Ghostty", bundleId: "com.Ghostty"),
-                                                    WindowInfo(windowId: 5, appName: "Code", bundleId: "com.Code")],
-                               screenIndex: 1, rootLayout: "h_accordion")
-        let l = layout([ws])
-        let card = try #require(l.cards.first)
-        #expect(Set(card.frames.keys) == [1, 2] && card.others.isEmpty && true)
-        let a = try #require(card.frames[1]), b = try #require(card.frames[2])
-        #expect(a.maxX <= b.minX)
-        #expect([a, b].allSatisfy { CGRect(origin: .zero, size: inner(l, card)).insetBy(dx: -0.5, dy: -0.5).contains($0) })
+        let row = layout([pair], view: 1600, panel: 1000), still = AeroControlLayout.stripPlacements(row, centre: 91, viewWidth: 1600)
+        #expect(!row.slides(in: 1600) && still == AeroControlLayout.stripPlacements(row, centre: 92, viewWidth: 1600))
+        #expect(still.count == 1 && abs(still[0].x + row.cards[0].span.width / 2 - 800) <= 1)
     }
 }
 

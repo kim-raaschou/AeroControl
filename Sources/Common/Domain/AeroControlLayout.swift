@@ -103,105 +103,78 @@ public enum AeroControlLayout {
         public let width: CGFloat
         public let cards: [StripCard]
 
-        /// Whether the row is a ring in a view this wide: only when it does not fit. A row that fits
+        /// Whether the row slides in a view this wide: only when it does not fit. A row that fits
         /// stands still, so the keys on its cards stay where they are read (krn.overview's rule).
-        public func runsRound(in viewWidth: CGFloat) -> Bool { width > viewWidth }
+        public func slides(in viewWidth: CGFloat) -> Bool { width > viewWidth }
     }
 
     /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
     /// the app, its pictures in its screen's shape at one height (`AppStripModel.cardHeight`)
     /// inside the map card's padding and badge lane, mirroring the workspace as the map does — from
     /// AeroSpace's rects — with the other apps' windows marked to be drawn faint. A card whose
-    /// layout cannot be read packs only the app's windows, each at its own shape, in one row: the
-    /// strip is a row of choices, and two wide windows stacked read as one window over another.
-    /// The packed cards share one picture height, the tightest row's, and each hugs its row: a
-    /// choice is not bigger for being alone on its workspace, and no card is a screen's width
-    /// round a small picture. When no card mirrors a screen, the strip is only as tall as that row.
+    /// layout cannot be read packs only the app's windows, each at its own shape, as large as its
+    /// box allows, as the map does — two always side by side, never one over the other, which
+    /// reads as one window. Every card is its workspace's screen: the strip is a row of
+    /// workspaces, and one that does not fit slides workspace by workspace (`slides`).
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
                                    fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
-        let full = AppStripModel.cardHeight(width: viewWidth - 2 * cardPadding * CGFloat(groups.count), gaps: cardGap * CGFloat(max(0, groups.count - 1)),
-                                            sumAspect: aspects.reduce(0, +), panelHeight: panelHeight)
+        let full = AppStripModel.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
+                                            chrome: 2 * cardPadding + cardGap, panelHeight: panelHeight)
         let widths = aspects.map { (full * $0).rounded() }
         let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
         let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
         let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
         let mirrors = groups.indices.map { treeLayout(windows: groups[$0].windows, sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
-        let row = groups.indices.filter { mirrors[$0] == nil }.map { g in
-            min(full, ((widths[g] - gaps[g] * CGFloat(max(0, ours[g].count - 1))) / max(0.01, shapes[g].reduce(0, +))).rounded(.down))
-        }.min() ?? full
-        let height = mirrors.contains { $0 != nil } ? full : max(1, row)
         var x: CGFloat = 0, cards: [StripCard] = []
         for g in groups.indices {
             if g > 0 { x += cardGap }
-            var frames: [Int: CGRect] = [:], others: Set<Int> = [], width = widths[g]
+            var frames: [Int: CGRect] = [:], others: Set<Int> = []
             if let mirror = mirrors[g] {
                 frames = mirror.frames
                 others = Set(groups[g].windows.map(\.windowId)).subtracting(ours[g].map(\.windowId))
             } else {
-                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: max(1, row), width: widths[g], gap: gaps[g], caption: 0)
-                let top = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: CGSize(width: packed.width, height: height)).y
+                let inner = CGSize(width: widths[g], height: full)
+                let side = ((inner.width - gaps[g]) / max(0.01, shapes[g].reduce(0, +))).rounded(.down)
+                let th = shapes[g].count == 2 ? min(full, side) : TilePacker.packHeight(ratios: shapes[g], width: inner.width, height: inner.height, gap: gaps[g], caption: 0)
+                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: th, width: inner.width, gap: gaps[g], caption: 0)
+                let at = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
                 frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
-                    CGRect(x: $0.x, y: top + $0.y, width: $0.width, height: $0.height) }))
-                width = packed.width
+                    CGRect(x: at.x + $0.x, y: at.y + $0.y, width: $0.width, height: $0.height) }))
             }
-            cards.append(StripCard(workspace: groups[g].name, span: AppStripModel.Span(x: x, width: width + 2 * cardPadding), frames: frames, others: others))
-            x += width + 2 * cardPadding
+            cards.append(StripCard(workspace: groups[g].name, span: AppStripModel.Span(x: x, width: widths[g] + 2 * cardPadding), frames: frames, others: others))
+            x += widths[g] + 2 * cardPadding
         }
-        return StripLayout(height: height + cardChrome, width: x, cards: cards)
+        return StripLayout(height: full + cardChrome, width: x, cards: cards)
     }
 
-    /// One card where the strip draws it: which card, which time round the ring (`copy`), its
-    /// left edge in the view, and whether it is seen or only stands by just out of sight.
+    /// One card where the strip draws it: which card, and its left edge in the view.
     public struct StripPlacement: Hashable, Sendable {
         public let card: Int
-        public let copy: Int
         public let x: CGFloat
-        public var shown = true
-        /// The view's identity: the same card the same time round, wherever the ring has turned it.
-        public var identity: String { "\(card)#\(copy)" }
     }
 
-    /// Where the strip's cards stand. A row that fits stands still and centred. Otherwise it is a ring turned so the card holding `centre` — the window the
-    /// keys put the marking on — is in the middle, `turns` times round: the cards repeat every
-    /// ring's width, and each is shown where it shows — once when it shows whole, else every
-    /// piece the edges leave, so the card across the ring is cut by both and the row is whole
-    /// either side. Counting the turns keeps a copy's place continuous: past the last card the
-    /// ring moves on one card the same way, and nothing jumps back across. The copies a card
-    /// beyond either edge are placed too, unseen, so a turn slides them in rather than making
-    /// them appear: nothing comes or goes at the edges while the ring moves.
-    public static func stripPlacements(_ layout: StripLayout, centre: Int?, turns: Int, viewWidth: CGFloat) -> [StripPlacement] {
+    /// Where the strip's cards stand, in one row. A row that fits stands still and centred. One
+    /// that does not slides so the card holding `centre` — the window the keys put the marking
+    /// on — is in the middle, but no further than the row's ends: the first card stays at the
+    /// left edge and the last at the right, and from the last to the first the row slides back
+    /// the whole way. The card's middle, not the window's: stepping between windows of one
+    /// workspace moves the marking and leaves the row.
+    public static func stripPlacements(_ layout: StripLayout, centre: Int?, viewWidth: CGFloat) -> [StripPlacement] {
         guard let first = layout.cards.first else { return [] }
-        guard layout.runsRound(in: viewWidth) else {
-            let still = (viewWidth / 2 - layout.width / 2 - first.span.x).rounded()
-            return layout.cards.indices.map { StripPlacement(card: $0, copy: 0, x: layout.cards[$0].span.x + still) }
-        }
-        let ring = layout.width + cardGap
-        // The card's middle, not the window's: stepping between windows of one workspace moves the
-        // marking and leaves the row; the row turns a whole card at a time.
         let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false } ?? first
-        let offset = viewWidth / 2 - (held.span.x + held.span.width / 2 + CGFloat(turns) * ring)
-        let margin = (layout.cards.map(\.span.width).max() ?? 0) + cardGap     // one card beyond each edge
-        return layout.cards.indices.flatMap { g -> [StripPlacement] in
-            let span = layout.cards[g].span
-            let lowest = Int(((-margin - offset - span.x - span.width) / ring).rounded(.down))
-            let highest = Int(((viewWidth + margin - offset - span.x) / ring).rounded(.up))
-            let near = (lowest...highest).map { StripPlacement(card: g, copy: $0, x: (span.x + CGFloat($0) * ring + offset).rounded()) }
-                .filter { $0.x + span.width > -margin && $0.x < viewWidth + margin }
-            let seen = near.filter { $0.x + span.width > 0 && $0.x < viewWidth }
-            let whole = seen.filter { $0.x >= 0 && $0.x + span.width <= viewWidth }
-            let shown = whole.isEmpty ? seen : [whole.min { abs($0.x + span.width / 2 - viewWidth / 2) < abs($1.x + span.width / 2 - viewWidth / 2) }!]
-            return near.map { StripPlacement(card: $0.card, copy: $0.copy, x: $0.x, shown: shown.contains($0)) }
-        }
+        let wanted = viewWidth / 2 - held.span.x - held.span.width / 2
+        let offset = layout.slides(in: viewWidth) ? min(0, max(viewWidth - layout.width, wanted)) : (viewWidth - layout.width) / 2
+        return layout.cards.indices.map { StripPlacement(card: $0, x: (layout.cards[$0].span.x + offset).rounded()) }
     }
 
     /// The box pictures are first taken to fit, in pixels. In the strip: a strip card at its largest,
-    /// half the panel high in the screen's shape. On the map: a card's inner box, the most a tile
+    /// `AppStripModel.tallest` of the panel high in the screen's shape. On the map: a card's inner box, the most a tile
     /// there draws (a window alone on its card), never more than the strip's. A tile drawn larger,
     /// by a query or the strip taking over, asks for it again at its size (`OverviewStore.wantPicture`).
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
-        let height = (available.height * usableScreenFraction * 0.5).rounded(.up)
+        let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
         let usable = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
         let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,

@@ -73,8 +73,10 @@ flowchart TD
 <h2 id="strip">3. The strip</h2>
 <p>This is where the last leaf of <a href="#link">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
 <table><tr><th>Key</th><th>Does</th></tr>
-<tr><td>next</td><td>step the marking on</td></tr>
-<tr><td>previous</td><td>step the marking back</td></tr>
+<tr><td>move(Common.StripMove.window(1))</td><td>step the marking on</td></tr>
+<tr><td>move(Common.StripMove.window(-1))</td><td>step the marking back</td></tr>
+<tr><td>move(Common.StripMove.row(1))</td><td>mark the window below</td></tr>
+<tr><td>move(Common.StripMove.workspace(1))</td><td>mark the next workspace's first window</td></tr>
 <tr><td>enter</td><td>focus window 2 · close</td></tr>
 <tr><td>escape</td><td>close, back on the window you came from</td></tr>
 <tr><td>⌘1</td><td>focus window 1 · close</td></tr>
@@ -94,8 +96,8 @@ flowchart TD
 <table><tr><th>What happened</th><th>The strip</th></tr>
 <tr><td>opened from window 1</td><td>marked on window 2, the one after yours; the carousel centred on it</td></tr>
 <tr><td>Tab</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
-<tr><td>Tab again, past the last window</td><td>the marking goes to window 1; the carousel centres on it; and turns round past the last card</td></tr>
-<tr><td>Shift-Tab</td><td>the marking goes to window 8; the carousel centres on it; and turns back past the first</td></tr>
+<tr><td>Tab again, past the last window</td><td>the marking goes to window 1; the carousel centres on it</td></tr>
+<tr><td>Shift-Tab</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
 <tr><td>the pointer moves onto window 8</td><td>the marking goes to window 8; the carousel stays where it was</td></tr>
 <tr><td>window 2, the marked one, closes</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
 <tr><td>AeroSpace moves the focus to A's window 8</td><td>nothing changes</td></tr>
@@ -104,7 +106,7 @@ flowchart TD
 </table>
 <pre class="mermaid">
 flowchart TD
-  OPEN["opened: com.a · marked 2 · centre 2 · turns 0"] --> UP(("up"))
+  OPEN["opened: com.a · marked 2 · centre 2"] --> UP(("up"))
   UP -- "Tab · → · the app's key again" --> STEP["stepped: marking and centre move;<br/>past the last card: a turn"]
   UP -- "pointer onto a window" --> MARK["marking: marking moves, centre stays"]
   UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]

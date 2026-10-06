@@ -195,7 +195,7 @@ struct OverviewStoreTests {
         store.filter = "Teams"
         let first = store.filterMatches[0].window.windowId
         #expect(store.ringWindowId == first)
-        #expect(store.handle(.next) == .none)                                            // nothing walks the map
+        #expect(store.handle(.move(.window(1))) == .none)                                            // nothing walks the map
         #expect(store.handle(.enter) == .focus(windowId: first))
         #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == 2)
         #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
@@ -282,15 +282,14 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 3)
     }
 
-    @Test("in the strip Tab steps round, ⌘ and a window's key picks, and typing is no query")
+    @Test("in the strip Tab steps round, a workspace's name goes to it, ⌘ and a window's key picks, and typing is no query")
     func stripKeys() async {
         let (_, store) = await stripOnTeams()
-        #expect(store.handle(.next) == .handled && store.strip?.marked == 1)          // wraps round
-        #expect(store.handle(.previous) == .handled && store.strip?.marked == 3)
+        #expect(store.handle(.move(.window(1))) == .handled && store.strip?.marked == 1)          // wraps round
+        #expect(store.handle(.move(.window(-1))) == .handled && store.strip?.marked == 3)
         #expect(store.handle(.character("x")) == .handled && store.filter == "" && store.strip?.marked == 3)
-        #expect(store.handle(.character("2")) == .handled && store.strip?.marked == 3)     // a plain digit is not a key
-        #expect(store.handle(.commandKey(2)) == .focus(windowId: 2))
-        #expect(store.handle(.enter) == .focus(windowId: 3))
+        #expect(store.handle(.character("2")) == .handled && store.strip?.marked == 2)     // workspace 2's first window
+        #expect(store.handle(.commandKey(3)) == .focus(windowId: 3) && store.handle(.enter) == .focus(windowId: 2))
         #expect(store.handle(.escape) == .none)                                        // the window closes the strip
     }
 
@@ -350,16 +349,13 @@ struct OverviewStoreTests {
         #expect(store.strip?.bundleId == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
     }
 
-    @Test("stepping past the last workspace turns the ring once more the same way; back past the first turns it back")
-    func stripTurns() async {
+    @Test("stepping past the last workspace's window goes on to the first's; back past the first, to the last's")
+    func stripWraps() async {
         let (_, store) = await stripOnTeams()                                           // Teams on 1, 2 and 3, marked on 3
-        #expect(store.strip?.turns == 0)
         store.stepStrip()                                                                // 3 → 1: on round
-        #expect(store.strip?.marked == 1 && store.strip?.turns == 1)
-        store.stepStrip()                                                                // 1 → 2: no wrap
-        #expect(store.strip?.turns == 1)
-        store.stepStrip(-1); store.stepStrip(-1)                                         // 2 → 1 → 3: back round
-        #expect(store.strip?.marked == 3 && store.strip?.turns == 0)
+        #expect(store.strip?.marked == 1 && store.strip?.centre == 1)
+        store.stepStrip(-1)                                                              // 1 → 3: back round
+        #expect(store.strip?.marked == 3)
     }
 
     @Test("only a pointer that moved marks: cards sliding under a still mouse do not take the marking")
@@ -370,7 +366,7 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 3)
         store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the hand moved
         #expect(store.strip?.marked == 1)
-        _ = store.handle(.next)
+        _ = store.handle(.move(.window(1)))
         store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the row turned under a still hand
         #expect(store.strip?.marked == 2)
     }
@@ -382,9 +378,9 @@ struct OverviewStoreTests {
         store.markStrip(1)
         store.markStrip(9)                                                              // not the app's: ignored
         #expect(store.strip?.marked == 1 && store.strip?.centre == 3)
-        _ = store.handle(.next)
+        _ = store.handle(.move(.window(1)))
         #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
-        _ = store.handle(.previous)
+        _ = store.handle(.move(.window(-1)))
         #expect(store.strip?.centre == 1)
         store.stepStrip()
         #expect(store.strip?.centre == 2)

@@ -83,10 +83,17 @@ public class OverviewStore {
 
     /// The summon key again while the strip is up: the marking moves on, as Cmd-` does.
     public func stepStrip(_ direction: Int = 1) {
-        let workspaces = stripWorkspaces
-        strip = strip?.stepped(direction, ids: stripWindows.map(\.window.windowId),
-                               card: { id in workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } })
+        strip = strip?.moved(.window(direction), ids: stripWindows.map(\.window.windowId), card: stripCard)
     }
+
+    /// Which strip card, by workspace, a window is on.
+    private var stripCard: (Int) -> Int? {
+        let workspaces = stripWorkspaces
+        return { id in workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } }
+    }
+
+    /// Each strip card's windows where the view last drew them: ↑ and ↓ go by the rows on screen.
+    public var stripFrames: [[Int: CGRect]] = []
 
     /// Pointing marks, as in krn.overview's strip; a window that is not the app's is ignored.
     public func markStrip(_ windowId: Int) {
@@ -101,7 +108,7 @@ public class OverviewStore {
     public func notePointer(_ location: CGPoint) { stripPointer = location }
 
     /// The pointer entered a window: it marks only if the mouse moved. A hover also fires when
-    /// the carousel turns, or the strip opens, under a hand that is still, and that must not
+    /// the row slides, or the strip opens, under a hand that is still, and that must not
     /// take the marking away from the keys.
     public func pointStrip(_ windowId: Int, at location: CGPoint) {
         guard location != stripPointer else { return }
@@ -326,8 +333,8 @@ public class OverviewStore {
     /// swallowed, since there is no typing in the strip.
     private func handleStrip(_ key: FilterKey) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
-        switch AppStripModel.action(for: key, ids: ids, marked: strip?.marked) {
-        case .step(let direction): stepStrip(direction)
+        switch AppStripModel.action(for: key, ids: ids, marked: strip?.marked, workspaces: stripWorkspaces.map(\.name)) {
+        case .move(let move): strip = strip?.moved(move, ids: ids, card: stripCard, frames: stripFrames)
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
         case .none: break

@@ -142,7 +142,7 @@ struct FilterKeyActionTests {
         #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
         #expect(action("", .enter, ring: .some(7)) == .focus(windowId: 7))         // no query: AeroSpace's focused window
         #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
-        for key in [FilterKey.next, .previous, .commandKey(1)] { #expect(action("Teams", key) == .none) }
+        for key in [FilterKey.move(.window(1)), .move(.window(-1)), .commandKey(1), .move(.row(1)), .move(.workspace(1))] { #expect(action("Teams", key) == .none) }
     }
 }
 
@@ -154,13 +154,14 @@ struct FilterKeyCodeTests {
         (51, false, nil, .backspace),
         (36, false, "\r", .enter),
         (76, false, nil, .enter),                        // keypad Enter
-        (48, false, "\t", .next),
-        (48, true, "\t", .previous),                     // Shift-Tab
-        (124, false, nil, .next),                        // →
-        (123, false, nil, .previous),                    // ←
+        (48, false, "\t", .move(.window(1))),
+        (48, true, "\t", .move(.window(-1))),                     // Shift-Tab
+        (124, false, nil, .move(.window(1))),                 // →
+        (123, false, nil, .move(.window(-1))),                 // ←
         (0, false, "a", .character("a")),
         (0, true, "A", .character("A")),                 // Shift types capitals, it does not modify
-        (126, false, "\u{F700}", nil),                   // ↑ — a private-use scalar, never text, and nobody's
+        (126, false, "\u{F700}", .move(.row(-1))),       // ↑ — a private-use scalar, never text
+        (125, false, "\u{F701}", .move(.row(1))),        // ↓
         (122, false, "\u{F704}", nil),                   // F1 is nobody's
     ] as [(UInt16, Bool, String?, FilterKey?)])
     func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {
@@ -180,6 +181,8 @@ struct FilterKeyCommandTests {
         ("q", nil),
         ("", nil),
         ("ab", nil),                       // a key that types two characters is not one key, and no crash
+        ("\u{F703}", .move(.workspace(1))),       // ⌘→, the next workspace
+        ("\u{F702}", .move(.workspace(-1))),      // ⌘←
     ] as [(String, FilterKey?)])
     func command(characters: String, expected: FilterKey?) {
         #expect(FilterKey(command: characters) == expected)

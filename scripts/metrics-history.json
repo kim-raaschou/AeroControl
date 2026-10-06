@@ -2059,5 +2059,14 @@
     "complexity": 872,
     "prodComplexity": 487,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-05T21:08:52+02:00",
+    "commit": "0431283",
+    "subject": "Revert \"The strip's row shares the view's width among all the app's windows\"",
+    "code": 5149,
+    "complexity": 861,
+    "prodComplexity": 478,
+    "files": 58
   }
 ]

@@ -27,28 +27,45 @@ public enum AppStripModel {
     }
 
     /// One step from `index` among `count`, wrapping; with no marking (-1) from the near end;
-    /// -1 when there is nothing to step onto.
-    public static func stepIndex(_ index: Int, count: Int, direction: Int) -> Int {
-        guard count > 0 else { return -1 }
-        guard index >= 0 else { return direction < 0 ? count - 1 : 0 }
-        return ((index + direction) % count + count) % count
+    /// nil when there is nothing to step onto.
+    public static func stepIndex(_ index: Int, count: Int, direction: Int) -> Int? {
+        guard count > 0 else { return nil }
+        return ((max(index, direction < 0 ? 0 : -1) + direction) % count + count) % count
     }
 
     /// Where the marking opens: on the app's window you used last other than the one you are in
     /// (`recent`, most recent first), as ⌘` and ⌘Tab go back to it, so the key and Enter are
     /// the way back; known none, on the window after the one you are in, or the first.
     public static func start(origin: Int?, ids: [Int], recent: [Int] = []) -> Int? {
-        guard !ids.isEmpty else { return nil }
         if let last = recent.first(where: { ids.contains($0) && $0 != origin }) { return last }
-        let at = origin.flatMap { ids.firstIndex(of: $0) } ?? -1
-        return ids[stepIndex(at, count: ids.count, direction: 1)]
+        return stepIndex(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: 1).map { ids[$0] }
     }
 
-    /// How tall the strip's cards are: as tall as `width` allows for cards whose shapes add up
-    /// to `sumAspect`, never more than half the panel and never less than a fifth.
-    public static func cardHeight(width: CGFloat, gaps: CGFloat, sumAspect: CGFloat, panelHeight: CGFloat) -> CGFloat {
-        let most = (panelHeight * 0.5).rounded(), least = (panelHeight * 0.2).rounded()
-        return max(least, min(most, ((width - gaps) / max(0.01, sumAspect)).rounded(.down)))
+    /// The window a row above (`direction` -1) or below (1) `id` among one card's `frames`: the
+    /// nearest row, and in it the nearest across, the left one of two as near. Nil past the top or the bottom.
+    public static func vertical(from id: Int, direction: Int, frames: [Int: CGRect]) -> Int? {
+        guard let at = frames[id] else { return nil }
+        let side = frames.filter { ($0.value.midY - at.midY) * CGFloat(direction) > at.height / 2 }
+        let distance = { (r: CGRect) in (abs(r.midY - at.midY), abs(r.midX - at.midX), r.minX) }
+        return side.min { distance($0.value) < distance($1.value) }?.key
+    }
+
+    /// The most of the panel's height a strip card takes: one card, an app all on one workspace,
+    /// all but fills it.
+    public static let tallest: CGFloat = 0.85
+    /// The most when the app is on more than one workspace: the strip is a view over several.
+    public static let tallestOfSeveral: CGFloat = 0.33
+    /// How many cards the view holds when the app is on more than one workspace, if the ceiling
+    /// allows: three whole in the middle and, with more, a dimmed quarter of the next at each
+    /// edge, so the row shows that it goes on.
+    public static let seen: CGFloat = 3.5
+
+    /// How tall the strip's cards are: one card fills the view's width, more each take a
+    /// `seen`th of it, every card in its screen's shape (`aspect`) inside its `chrome`; never
+    /// more than `tallest` of the panel, or `tallestOfSeveral` for several.
+    public static func cardHeight(view: CGFloat, cards: Int, aspect: CGFloat, chrome: CGFloat, panelHeight: CGFloat) -> CGFloat {
+        let each = view / min(CGFloat(max(1, cards)), seen) - chrome
+        return min((panelHeight * (cards > 1 ? tallestOfSeveral : tallest)).rounded(), (each / max(0.01, aspect)).rounded(.down))
     }
 
     /// A card's place on the unrolled row.
@@ -59,8 +76,8 @@ public enum AppStripModel {
 
     public enum Action: Equatable, Sendable {
         case none
-        /// Move the marking this many windows, wrapping.
-        case step(Int)
+        /// Move the marking (`Strip.moved`).
+        case move(StripMove)
         /// Focus this window and close.
         case commit(Int)
         /// Close, back on the window you came from.
@@ -68,16 +85,17 @@ public enum AppStripModel {
     }
 
     /// What a key does in the strip. There is no typing here, search belongs to the map: ⌘ and
-    /// a window's key goes straight to that window.
-    public static func action(for key: FilterKey, ids: [Int], marked: Int?) -> Action {
+    /// a window's key goes straight to that window, and a workspace's name, of the `workspaces`
+    /// the strip shows, to that workspace — 0 to 10, the key in its place on the keyboard.
+    public static func action(for key: FilterKey, ids: [Int], marked: Int?, workspaces: [String] = []) -> Action {
         switch key {
         case .escape: return .cancel
         case .enter: return marked.map { .commit($0) } ?? .none
-        case .next: return .step(1)
-        case .previous: return .step(-1)
+        case .move(let move): return .move(move)
         case .commandKey(let n):
-            return n >= 1 && n <= min(keys.count, ids.count) ? .commit(ids[n - 1]) : .none
-        case .character, .backspace: return .none
+            return ids.prefix(keys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
+        case .character(let c): return workspaces.firstIndex(of: c == "0" ? "10" : String(c)).map { .move(.card($0)) } ?? .none
+        case .backspace: return .none
         }
     }
 }

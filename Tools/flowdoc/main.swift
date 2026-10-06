@@ -64,7 +64,10 @@ func describe(_ a: FilterKeyAction) -> String {
 func describe(_ a: AppStripModel.Action) -> String {
     switch a {
     case .none: return "nothing"
-    case .step(let d): return d > 0 ? "step the marking on" : "step the marking back"
+    case .move(.window(let d)): return d > 0 ? "step the marking on" : "step the marking back"
+    case .move(.row(let d)): return d > 0 ? "mark the window below" : "mark the window above"
+    case .move(.workspace(let d)): return d > 0 ? "mark the next workspace's first window" : "mark the previous workspace's first window"
+    case .move(.card(let c)): return "mark the first window of card \(c + 1)"
     case .commit(let id): return "focus window \(id) · close"
     case .cancel: return "close, back on the window you came from"
     }
@@ -87,7 +90,7 @@ func describe(_ e: OverviewEffect) -> String {
 }
 func describe(_ s: Strip?) -> String {
     guard let s else { return "no strip" }
-    return "\(s.bundleId) · marked \(s.marked.map(String.init) ?? "–") · centre \(s.centre.map(String.init) ?? "–") · turns \(s.turns)"
+    return "\(s.bundleId) · marked \(s.marked.map(String.init) ?? "–") · centre \(s.centre.map(String.init) ?? "–")"
 }
 
 let all = model.workspaces.flatMap(\.windows)
@@ -154,7 +157,7 @@ p("The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the ans
 h(2, "3. The strip", id: "strip")
 p("This is where the last leaf of <a href=\"#link\">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:")
 let stripIds = [1, 2, 8]
-let stripKeys: [FilterKey] = [.next, .previous, .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
+let stripKeys: [FilterKey] = [.move(.window(1)), .move(.window(-1)), .move(.row(1)), .move(.workspace(1)), .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
 table(["Key", "Does"], stripKeys.compactMap { k in
     let does = describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))
     return does == "nothing" ? nil : [describe(k), does]
@@ -168,8 +171,8 @@ p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17
 p("What happens to a strip of app A, opened from its window 1 (A's windows are 1, 2 and 8, on two workspaces), as each thing happens to it. Every line is the value the transition returned:")
 let opened = Strip.opened("com.a", origin: 1, ids: [1, 2, 8], recent: [])
 let card: (Int) -> Int? = { id in model.workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } }
-let stepped = opened.stepped(1, ids: [1, 2, 8], card: card)
-let round = stepped.stepped(1, ids: [1, 2, 8], card: card)
+let stepped = opened.moved(.window(1), ids: [1, 2, 8], card: card)
+let round = stepped.moved(.window(1), ids: [1, 2, 8], card: card)
 /// What a transition did, in the strip's own terms: where the marking went, whether the
 /// carousel followed it or turned, whose strip it is now, or that it is over.
 func tell(_ before: Strip, _ after: Strip?) -> String {
@@ -178,15 +181,13 @@ func tell(_ before: Strip, _ after: Strip?) -> String {
     if after.bundleId != before.bundleId { parts.append("the strip is \(after.bundleId)'s now") }
     if after.marked != before.marked { parts.append("the marking goes to window \(after.marked.map(String.init) ?? "none")") }
     if after.centre != before.centre { parts.append("the carousel centres on it") } else if after.marked != before.marked { parts.append("the carousel stays where it was") }
-    if after.turns > before.turns { parts.append("and turns round past the last card") }
-    if after.turns < before.turns { parts.append("and turns back past the first") }
     return parts.isEmpty ? "nothing changes" : parts.joined(separator: "; ")
 }
 table(["What happened", "The strip"], [
     ["opened from window 1", "marked on window \(opened.marked ?? 0), the one after yours; the carousel centred on it"],
     ["Tab", tell(opened, stepped)],
     ["Tab again, past the last window", tell(stepped, round)],
-    ["Shift-Tab", tell(round, round.stepped(-1, ids: [1, 2, 8], card: card))],
+    ["Shift-Tab", tell(round, round.moved(.window(-1), ids: [1, 2, 8], card: card))],
     ["the pointer moves onto window 8", tell(opened, opened.marking(8))],
     ["window 2, the marked one, closes", tell(opened, opened.kept(before: [1, 2, 8], after: [1, 8]))],
     ["AeroSpace moves the focus to A's window 8", tell(opened, opened.following(w(8, "A")))],

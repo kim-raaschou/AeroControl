@@ -79,9 +79,9 @@ public enum FilterKey: Equatable, Sendable {
     case backspace
     case enter
     case escape
-    /// Tab and →, Shift-Tab and ←: the strip's next or previous window; nothing on the map.
-    case next
-    case previous
+    /// The strip's marking moved: Tab and →, Shift-Tab and ← a window; ↑ and ↓ a row;
+    /// ⌘→ and ⌘← a workspace. Nothing on the map.
+    case move(StripMove)
     /// ⌘1–⌘9, ⌘a–⌘f: the strip's window with that key, 1 to 15; nothing on the map.
     case commandKey(Int)
 }
@@ -95,18 +95,21 @@ public extension FilterKey {
         case 53: self = .escape
         case 51: self = .backspace
         case 36, 76: self = .enter
-        case 48: self = shift ? .previous : .next
-        case 124: self = .next
-        case 123: self = .previous
+        case 48: self = .move(.window(shift ? -1 : 1))
+        case 124: self = .move(.window(1))
+        case 123: self = .move(.window(-1))
+        case 126: self = .move(.row(-1))
+        case 125: self = .move(.row(1))
         default:
             guard let key = characters?.first.flatMap(FilterKey.typed) else { return nil }
             self = key
         }
     }
 
-    /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order; ⌘ with anything else is
-    /// somebody else's (⌘Q, ⌘W).
+    /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order, ⌘ with → or ← a workspace
+    /// along; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
     init?(command characters: String) {
+        if let along = ["\u{F703}": 1, "\u{F702}": -1][characters] { self = .move(.workspace(along)); return }
         guard characters.count == 1, let n = AppStripModel.keys.firstIndex(of: Character(characters)) else { return nil }
         self = .commandKey(n + 1)
     }
@@ -141,7 +144,7 @@ public func filterKeyAction(query: String, ring: Int?, key: FilterKey) -> Filter
         return query.isEmpty ? .none : .setQuery("")
     case .enter:
         return ring.map { .focus(windowId: $0) } ?? .none
-    case .next, .previous, .commandKey:
+    case .move, .commandKey:
         return .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
