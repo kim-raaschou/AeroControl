@@ -148,24 +148,23 @@ struct FilterKeyActionTests {
 
 @Suite("FilterKey from a key code")
 struct FilterKeyCodeTests {
-    @Test("the keys the overview answers to, by macOS key code; Shift only matters to Tab", arguments: [
-        (53, false, nil, .escape),
-        (115, false, nil, nil),                          // Home and End are nobody's
-        (51, false, nil, .backspace),
-        (36, false, "\r", .enter),
-        (76, false, nil, .enter),                        // keypad Enter
-        (48, false, "\t", .move(.window(1))),
-        (48, true, "\t", .move(.window(-1))),                     // Shift-Tab
-        (124, false, nil, .move(.window(1))),                 // →
-        (123, false, nil, .move(.window(-1))),                 // ←
-        (0, false, "a", .character("a")),
-        (0, true, "A", .character("A")),                 // Shift types capitals, it does not modify
-        (126, false, "\u{F700}", .move(.row(-1))),       // ↑ — a private-use scalar, never text
-        (125, false, "\u{F701}", .move(.row(1))),        // ↓
-        (122, false, "\u{F704}", nil),                   // F1 is nobody's
-    ] as [(UInt16, Bool, String?, FilterKey?)])
-    func code(keyCode: UInt16, shift: Bool, characters: String?, expected: FilterKey?) {
-        #expect(FilterKey(keyCode: keyCode, shift: shift, characters: characters) == expected)
+    @Test("the keys the overview answers to, by macOS key code", arguments: [
+        (53, nil, .escape),
+        (115, nil, nil),                          // Home and End are nobody's
+        (51, nil, .backspace),
+        (36, "\r", .enter),
+        (76, nil, .enter),                        // keypad Enter
+        (48, "\t", nil),                          // Tab is nobody's
+        (124, nil, .move(.window(1))),                 // →
+        (123, nil, .move(.window(-1))),                 // ←
+        (0, "a", .character("a")),
+        (0, "A", .character("A")),                 // Shift types capitals, it does not modify
+        (126, "\u{F700}", .move(.row(-1))),       // ↑ — a private-use scalar, never text
+        (125, "\u{F701}", .move(.row(1))),        // ↓
+        (122, "\u{F704}", nil),                   // F1 is nobody's
+    ] as [(UInt16, String?, FilterKey?)])
+    func code(keyCode: UInt16, characters: String?, expected: FilterKey?) {
+        #expect(FilterKey(keyCode: keyCode, characters: characters) == expected)
     }
 }
 
@@ -183,6 +182,8 @@ struct FilterKeyCommandTests {
         ("ab", nil),                       // a key that types two characters is not one key, and no crash
         ("\u{F703}", .move(.workspace(1))),       // ⌘→, the next workspace
         ("\u{F702}", .move(.workspace(-1))),      // ⌘←
+        ("\u{F700}", .move(.workspaceRow(-1))),   // ⌘↑, the workspace above
+        ("\u{F701}", .move(.workspaceRow(1))),    // ⌘↓
     ] as [(String, FilterKey?)])
     func command(characters: String, expected: FilterKey?) {
         #expect(FilterKey(command: characters) == expected)

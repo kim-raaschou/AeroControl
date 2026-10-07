@@ -94,10 +94,9 @@ flowchart TD
 <p>The keys the windows carry (<code>AppStripModel.keyLabel</code>): ⌘1, ⌘2, ⌘3, ⌘4, ⌘5, ⌘6, ⌘7, ⌘8, ⌘9, ⌘a, ⌘b, ⌘c, ⌘d, ⌘e, ⌘f, none, none for the first seventeen windows.</p>
 <p>What happens to a strip of app A, opened from its window 1 (A's windows are 1, 2 and 8, on two workspaces), as each thing happens to it. Every line is the value the transition returned:</p>
 <table><tr><th>What happened</th><th>The strip</th></tr>
-<tr><td>opened from window 1</td><td>marked on window 2, the one after yours; the carousel centred on it</td></tr>
-<tr><td>Tab</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
-<tr><td>Tab again, past the last window</td><td>the marking goes to window 1; the carousel centres on it</td></tr>
-<tr><td>Shift-Tab</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
+<tr><td>opened from window 1</td><td>marked on window 2, the one after yours; the row centred on it</td></tr>
+<tr><td>the app key again</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
+<tr><td>the app key again, past the last window</td><td>the marking goes to window 1; the carousel centres on it</td></tr>
 <tr><td>the pointer moves onto window 8</td><td>the marking goes to window 8; the carousel stays where it was</td></tr>
 <tr><td>window 2, the marked one, closes</td><td>the marking goes to window 8; the carousel centres on it</td></tr>
 <tr><td>AeroSpace moves the focus to A's window 8</td><td>nothing changes</td></tr>

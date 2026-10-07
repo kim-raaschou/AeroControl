@@ -17,6 +17,16 @@ struct OverviewStoreTests {
         OverviewStore(runner: runner, nativeSystem: bridge)
     }
 
+    /// A store read from AeroSpace as the runner has it, the focus where given.
+    private func loaded(windows: String, workspaces: String, focus: (Int, String)? = nil) async -> (ScriptRunner, OverviewStore) {
+        let runner = ScriptRunner()
+        runner.setState(windows: windows, workspaces: workspaces)
+        if let focus { runner.setFocus(windowId: focus.0, workspace: focus.1) }
+        let store = started(runner)
+        await store.reload()
+        return (runner, store)
+    }
+
     @Test("a reload mirrors AeroSpace verbatim, focus included")
     func reloadMirrorsAerospace() async {
         let runner = ScriptRunner()
@@ -50,10 +60,7 @@ struct OverviewStoreTests {
 
     @Test("a load asks AeroSpace for the lists and for what is focused")
     func loadReadsFocus() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
 
         #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--all") })
         #expect(runner.commandsRun.contains { $0.first == "list-windows" && $0.contains("--focused") })
@@ -78,11 +85,7 @@ struct OverviewStoreTests {
 
     @Test("a load whose focus reads fail leaves the focus it already had")
     func failedFocusReadKeepsFocus() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 1, workspace: "1")
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]), focus: (1, "1"))
         #expect(store.model.focusedWorkspace == "1")
 
         // AeroSpace answers the lists but not the focus reads: focus must not be wiped.
@@ -98,10 +101,7 @@ struct OverviewStoreTests {
 
     @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, it only keeps the order of focus; shown, it reads every change")
     func listeningOutlivesVisibility() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         store.startListening()
         await waitUntil { runner.isSubscribed }
 
@@ -120,10 +120,7 @@ struct OverviewStoreTests {
 
     @Test("while following, an event reconciles against AeroSpace")
     func eventReconciles() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
         store.startListening()
         store.following = true
         await waitUntil { runner.isSubscribed }
@@ -136,10 +133,7 @@ struct OverviewStoreTests {
 
     @Test("an event that moves no window neither changes the model nor reloads")
     func inertEventIsInert() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         store.startListening()
         store.following = true
         await waitUntil { runner.isSubscribed }
@@ -162,10 +156,7 @@ struct OverviewStoreTests {
 
     @Test("the filter is the user's alone: no reload touches it, and it asks AeroSpace nothing")
     func filterIsIndependentOfTheReducer() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: teams(2), workspaces: workspacesJSON(["1"]))
 
         store.filter = "standup"
 
@@ -184,24 +175,19 @@ struct OverviewStoreTests {
 
     @Test("keys go through the store: text narrows, the ring is on the first match, Enter hands back whatever wears the ring")
     func keysGoThroughTheStore() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(2), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 2, workspace: "1")
-        let store = started(runner)
-        await store.reload()
+        let (_, store) = await loaded(windows: teams(2), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
 
         #expect(store.ringWindowId == 2)
         #expect(store.handle(.character("T")) == .setQuery("T"))
         store.filter = "Teams"
         let first = store.filterMatches[0].window.windowId
         #expect(store.ringWindowId == first)
-        #expect(store.handle(.move(.window(1))) == .none)                                            // nothing walks the map
         #expect(store.handle(.enter) == .focus(windowId: first))
         #expect(store.handle(.escape) == .setQuery("") && store.ringWindowId == 2)
         #expect(store.handle(.enter) == .focus(windowId: 2))                          // Enter picks the focused window
     }
 
-    @Test("⌘W and ⌘Q act on the window under the ring, on the map: the focused one, or the first match; in the strip on nothing, it is for choosing")
+    @Test("⌘W and ⌘Q act on the window under the ring: on the map the focused one, or the first match; in the strip the marked one")
     func commandTarget() async {
         let runner = ScriptRunner()
         runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "1", app: "Teams"), oneWindow(3, "1", app: "Teams"),
@@ -215,26 +201,45 @@ struct OverviewStoreTests {
         #expect(store.commandTarget?.windowId == 9)                                     // the ring: the first match
         store.filter = ""
         _ = store.summonApp(.bundleId("com.app"))
-        #expect(store.strip != nil && store.commandTarget == nil)
+        #expect(store.strip != nil && store.commandTarget?.windowId == store.strip?.marked)
+    }
+
+    @Test("on the map ← and → walk a marking from AeroSpace's focus through a workspace's windows as drawn and on to the next, an empty one a stop where Enter switches to it; AeroSpace moving its focus moves the outline, not the marking; a query starts again")
+    func arrowsWalkTheMap() async {
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (2, "1"))
+        store.mapCards = ["1": CGRect(x: 0, y: 0, width: 200, height: 100), "2": CGRect(x: 220, y: 0, width: 200, height: 100), "3": CGRect(x: 440, y: 0, width: 200, height: 100)]
+        store.mapFrames = [1: CGRect(x: 10, y: 10, width: 80, height: 60), 2: CGRect(x: 100, y: 10, width: 80, height: 60), 3: CGRect(x: 450, y: 10, width: 80, height: 60)]
+        #expect(store.handle(.move(.window(1))) == .handled && store.markedWorkspace == "2")    // the empty one
+        #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 3)
+        #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 1)  // round
+        runner.setFocus(windowId: 3, workspace: "3")
+        await store.reload()
+        #expect(store.model.focusedWindowId == 3 && store.ringWindowId == 1)
+        #expect(store.handle(.move(.workspace(1))) == .handled && store.markedWorkspace == "2" && store.handle(.enter) == .handled)
+        await waitUntil { runner.didRun(["workspace", "2"]) }
+        store.filter = ""; #expect(store.ringWindowId == 3)
+    }
+
+    @Test("pointing at a window on the map moves the ring there, as in the strip; a hover under a hand that has not moved does not")
+    func pointingMarksTheMap() async {
+        let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
+        store.mapFrames = [1: .zero, 2: .zero, 3: .zero]
+        store.notePointer(CGPoint(x: 5, y: 5)); store.point(3, at: CGPoint(x: 5, y: 5))
+        #expect(store.ringWindowId == 2)                                                // the map opened under a still hand
+        store.point(3, at: CGPoint(x: 9, y: 5))
+        #expect(store.ringWindowId == 3 && store.model.focusedWindowId == 2)
     }
 
     @Test("an app summon that opens the strip gives the store its strip, the ring on its marking, and no query (the rule itself: SummonTests)")
     func appSummon() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 2, workspace: "1")
-        let store = started(runner)
-        await store.reload()
+        let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
         #expect(picks(store.summonApp(.bundleId("com.app"))))
         #expect(store.strip?.marked == 3 && store.ringWindowId == 3 && store.filter == "")
     }
 
     @Test("an app that would not start is told on the strip's lane: Escape is the window's, every other key does nothing, the next summon or the end of the visit forgets it")
     func missingApp() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: teams(3), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]))
         store.missingApp = .bundleId("com.typo")
         #expect(store.handle(.escape) == .none)                                        // the window closes it
         #expect(store.handle(.character("x")) == .handled && store.filter == "")
@@ -362,12 +367,12 @@ struct OverviewStoreTests {
     func stillPointerDoesNotMark() async {
         let (_, store) = await stripOnTeams()
         store.notePointer(CGPoint(x: 500, y: 300))                                     // where the mouse rests as the strip opens
-        store.pointStrip(1, at: CGPoint(x: 500, y: 300))                               // a card slid under it
+        store.point(1, at: CGPoint(x: 500, y: 300))                               // a card slid under it
         #expect(store.strip?.marked == 3)
-        store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the hand moved
+        store.point(1, at: CGPoint(x: 520, y: 300))                               // the hand moved
         #expect(store.strip?.marked == 1)
         _ = store.handle(.move(.window(1)))
-        store.pointStrip(1, at: CGPoint(x: 520, y: 300))                               // the row turned under a still hand
+        store.point(1, at: CGPoint(x: 520, y: 300))                               // the row turned under a still hand
         #expect(store.strip?.marked == 2)
     }
 
@@ -661,10 +666,7 @@ struct OverviewStoreTests {
         (AeroControlAction.focusWindow(5), ["focus", "--window-id", "5"]),
     ])
     func focusActionsRunCommandOnly(action: AeroControlAction, argv: [String]) async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         let before = windowIds(store)
 
         store.send(.action(action))
@@ -676,11 +678,7 @@ struct OverviewStoreTests {
 
     @Test("focusing the window AeroSpace already has focused moves nothing there, so the host gives its app the keyboard itself; any other, AeroSpace does")
     func focusOnTheFocusedWindow() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
-        runner.setFocus(windowId: 2, workspace: "1")
-        let store = started(runner)
-        await store.reload()
+        let (_, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
         var done: [Bool] = []
         store.onShotDone = { done.append($0) }
         store.send(.action(.focusWindow(2)))
@@ -701,10 +699,7 @@ struct OverviewStoreTests {
 
     @Test("moveWindow runs its command and reconciles the tile to its new workspace")
     func moveWindowReconciles() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
         #expect(workspaceOf(store, 1) == "1")
 
         runner.setState(windows: windowsJSON([(1, "2")]), workspaces: workspacesJSON(["1", "2"]))
@@ -715,10 +710,7 @@ struct OverviewStoreTests {
 
     @Test("a burst of actions collapses to the latest reality")
     func burstReconcilesToLatest() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1"), (2, "1"), (3, "1")]), workspaces: workspacesJSON(["1"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "1")]), workspaces: workspacesJSON(["1"]))
         #expect(windowIds(store) == [1, 2, 3])
 
         // Every reconcile re-reads the SAME latest reality, so the newest-wins generation
@@ -732,10 +724,7 @@ struct OverviewStoreTests {
 
     @Test("a content change invalidates the observable model; a no-op reload does not")
     func contentChangeInvalidatesModel() async {
-        let runner = ScriptRunner()
-        runner.setState(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
-        let store = started(runner)
-        await store.reload()
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1", "2"]))
 
         let invalidations = ModelInvalidationCounter(store)
         try? await Task.sleep(for: .milliseconds(20))

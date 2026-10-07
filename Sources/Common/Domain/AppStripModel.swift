@@ -41,15 +41,6 @@ public enum AppStripModel {
         return stepIndex(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: 1).map { ids[$0] }
     }
 
-    /// The window a row above (`direction` -1) or below (1) `id` among one card's `frames`: the
-    /// nearest row, and in it the nearest across, the left one of two as near. Nil past the top or the bottom.
-    public static func vertical(from id: Int, direction: Int, frames: [Int: CGRect]) -> Int? {
-        guard let at = frames[id] else { return nil }
-        let side = frames.filter { ($0.value.midY - at.midY) * CGFloat(direction) > at.height / 2 }
-        let distance = { (r: CGRect) in (abs(r.midY - at.midY), abs(r.midX - at.midX), r.minX) }
-        return side.min { distance($0.value) < distance($1.value) }?.key
-    }
-
     /// The most of the panel's height a strip card takes: one card, an app all on one workspace,
     /// all but fills it.
     public static let tallest: CGFloat = 0.85
@@ -94,7 +85,7 @@ public enum AppStripModel {
         case .move(let move): return .move(move)
         case .commandKey(let n):
             return ids.prefix(keys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
-        case .character(let c): return workspaces.firstIndex(of: c == "0" ? "10" : String(c)).map { .move(.card($0)) } ?? .none
+        case .character(let c): return workspaces.firstIndex(of: ["0": "10"][String(c)] ?? String(c)).map { .move(.card($0)) } ?? .none
         case .backspace: return .none
         }
     }

@@ -48,7 +48,10 @@ struct AeroControlAppStrip: View {
         // stepping within a card, or pointing, leaves it.
         .animation(.smooth(duration: Self.turn * look.motion), value: held ?? -1)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        .onChange(of: layout.cards, initial: true) { _, cards in state.stripFrames = cards.map(\.frames) }
+        .onChange(of: layout.cards, initial: true) { _, cards in
+            state.stripCards = cards.map { c in (frame: CGRect(x: c.span.x, y: 0, width: c.span.width, height: layout.height),
+                                                 windows: c.frames.mapValues { $0.offsetBy(dx: c.span.x + AeroControlLayout.cardPadding, dy: 0) }) }
+        }
     }
 
     /// Every window of the workspace at its place, the other apps' faint and taking no input:
@@ -64,7 +67,7 @@ struct AeroControlAppStrip: View {
                                    key: label.map { ($0, window.windowId == state.strip?.marked) }, faded: !mine)
                     .allowsHitTesting(mine)
                     // The hover belongs to the window's own frame, so it goes on before the window is moved there.
-                    .onHover { if mine, $0 { state.pointStrip(window.windowId, at: NSEvent.mouseLocation) } }
+                    .onHover { if mine, $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: frame.minX, y: frame.minY)
                     .zIndex(mine ? 1 : 0)
             }

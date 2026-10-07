@@ -16,6 +16,7 @@ struct AeroControlWorkspaceCard: View {
     @State private var isDropTarget = false
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
@@ -24,6 +25,8 @@ struct AeroControlWorkspaceCard: View {
             grid(placement)
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
+        // An empty workspace the keys are on wears the ring itself: Enter switches to it.
+        .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(state.markedWorkspace == workspace.name ? 1 : 0))
         .contentShape(shape)
         .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
         // Grab the card anywhere outside a tile and drop it on another card to merge the
@@ -90,6 +93,11 @@ struct AeroControlWorkspaceCard: View {
                 let frame = placement.frames[window.windowId] ?? .zero
                 let ghost = placement.ghosts.contains(window.windowId)
                 AeroControlAppTile(window: window, size: frame.size, filtering: filtering)
+                    // Where it is drawn on the map, for the arrows (`OverviewStore.mapFrames`): measured
+                    // inside the offset, which moves it, as the card's offset moves the card.
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(AeroControlPanel.mapSpace)) } action: { state.mapFrames[window.windowId] = $0 }
+                    .onDisappear { state.mapFrames[window.windowId] = nil }
+                    .onHover { if $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: frame.minX, y: frame.minY)
                     .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
                     .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: placement.ghosts))

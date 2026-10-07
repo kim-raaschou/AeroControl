@@ -28,7 +28,7 @@ struct AeroControlAppTile: View {
     /// the tile is a plate in the snapshot's shape, and nothing else: an icon standing in for
     /// a picture flashed in whenever a picture went away.
     private var preview: NSImage? { state.previews[window.windowId] }
-    /// The ring: AeroSpace's focus on the map, the selected match while filtering.
+    /// The ring: AeroSpace's focus on the map until an arrow moves it, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
     /// The window you came from, while the ring is elsewhere: framed in the text colour so
     /// "where I am" and "where I am going" are both on screen, and never at one place.

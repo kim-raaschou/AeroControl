@@ -42,7 +42,10 @@ struct AppStripStepTests {
 /// change is one assignment. The store only holds the current one.
 @Suite("Strip: a value that steps")
 struct StripValueTests {
-    private let cards: (Int) -> Int? = { [1, 2, 3].contains($0) ? 0 : [4, 5].contains($0) ? 1 : nil }
+    // Two strip cards side by side: 1, 2, 3 in a row, and 4, 5.
+    private let card: (Int) -> Int? = { $0 < 4 ? 0 : 1 }
+    private let cards: [GridWalk.Card] = [(CGRect(x: 0, y: 0, width: 300, height: 60), [1: .init(x: 0, y: 0, width: 90, height: 60), 2: .init(x: 100, y: 0, width: 90, height: 60), 3: .init(x: 200, y: 0, width: 90, height: 60)]),
+                                          (CGRect(x: 320, y: 0, width: 200, height: 60), [4: .init(x: 320, y: 0, width: 90, height: 60), 5: .init(x: 420, y: 0, width: 90, height: 60)])]
 
     @Test("opened on the window after the one you are in, the centre with it")
     func opened() {
@@ -57,13 +60,13 @@ struct StripValueTests {
         #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1))
     }
 
-    @Test("a step wraps round the ids, the centre with the marking; ⌘→ and ⌘← go to the next or previous workspace's first window, wrapping")
+    @Test("← and → step round the ids, the centre with the marking; ⌘→ and ⌘← go to the next or previous workspace's first window, wrapping")
     func moved() {
         let s = Strip(bundleId: "a", marked: 5, centre: 5), ids = [1, 2, 3, 4, 5]
-        #expect(s.moved(.window(1), ids: ids, card: cards) == Strip(bundleId: "a", marked: 1, centre: 1))   // round the end
-        #expect(s.moved(.window(1), ids: [], card: cards) == s)                                             // nothing to step onto
-        #expect(Strip(bundleId: "a", marked: 2, centre: 2).moved(.workspace(1), ids: ids, card: cards).marked == 4)
-        #expect(s.moved(.workspace(1), ids: ids, card: cards).marked == 1 && s.moved(.workspace(-1), ids: ids, card: cards).marked == 1)
+        #expect(s.moved(.window(1), ids: ids, card: card, cards: cards) == Strip(bundleId: "a", marked: 1, centre: 1))   // round the end
+        #expect(s.moved(.window(1), ids: [], card: card, cards: cards) == s)                                             // nothing to step onto
+        #expect(Strip(bundleId: "a", marked: 2, centre: 2).moved(.workspace(1), ids: ids, card: card, cards: cards).marked == 4)
+        #expect(s.moved(.workspace(1), ids: ids, card: card, cards: cards).marked == 1 && s.moved(.workspace(-1), ids: ids, card: card, cards: cards).marked == 1)
     }
 
     @Test("AeroSpace moved the focus: within the app the strip stands; anywhere else, another app or an empty workspace, the choice was made with AeroSpace and it is over")
@@ -118,17 +121,8 @@ struct AppStripKeyTests {
     func workspaceNames() {
         func act(_ c: Character) -> M.Action { M.action(for: .character(c), ids: ids, marked: 10, workspaces: ["3", "4", "10"]) }
         #expect(act("4") == .move(.card(1)) && act("0") == .move(.card(2)) && act("7") == .none && act("a") == .none)
-        let s = Strip(bundleId: "a", marked: 1, centre: 1)
-        #expect(s.moved(.card(1), ids: [1, 2, 3, 4, 5], card: { $0 < 4 ? 0 : 1 }) == Strip(bundleId: "a", marked: 4, centre: 4))   // card 1's first
-    }
-
-    @Test("↑ and ↓ go to the window in the row above or below on the card, the nearest across; past the top or the bottom, nothing")
-    func vertical() {
-        func r(_ x: CGFloat, _ y: CGFloat) -> CGRect { CGRect(x: x, y: y, width: 100, height: 60) }
-        let grid = [1: r(0, 0), 2: r(110, 0), 3: r(220, 0), 4: r(55, 70), 5: r(165, 70)]   // three over two, centred
-        #expect(M.vertical(from: 3, direction: 1, frames: grid) == 5 && M.vertical(from: 1, direction: 1, frames: grid) == 4)
-        #expect(M.vertical(from: 4, direction: -1, frames: grid) == 1 && M.vertical(from: 5, direction: -1, frames: grid) == 2)
-        #expect(M.vertical(from: 2, direction: -1, frames: grid) == nil && M.vertical(from: 4, direction: 1, frames: grid) == nil)
+        #expect(Strip(bundleId: "a", marked: 1, centre: 1).moved(.card(1), ids: [1, 2, 4, 5], card: { $0 < 4 ? 0 : 1 }) == Strip(bundleId: "a", marked: 4, centre: 4))   // card 1's first
+        #expect(Strip(bundleId: "a", marked: 1, centre: 1).moved(.workspace(1), ids: [1, 9], card: { $0 < 4 ? 0 : 3 }).marked == 9)   // past the empty ones
     }
 
     @Test("⌘ and a window's key goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")

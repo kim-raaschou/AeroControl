@@ -57,16 +57,16 @@ final class OverlayWindowManager {
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
     }
 
-    /// ⌘Q on the map quits the app under the ring and leaves the overview up, so several can go in
-    /// one visit and you see each go. `terminate()` is the polite quit macOS sends for Cmd-Q, so an
+    /// ⌘Q quits the app under the ring and leaves the overview up, on the map so several can go
+    /// in one visit and you see each go; in the strip the app's going ends it. `terminate()` is the polite quit macOS sends for Cmd-Q, so an
     /// app with unsaved work still gets to ask.
     private func quitRingedApp() {
         guard requestedVisible, let target = state.commandTarget, let app = owner(ofWindow: target.windowId) else { return }
         app.terminate()
     }
 
-    /// ⌘W on the map closes the window under the ring, as its × does, and the overview stays; in
-    /// the strip, or with no window under the ring, it closes the overview.
+    /// ⌘W closes the window under the ring, as its × does, and the overview stays, the strip's
+    /// marking passing on to the next; with no window under the ring it closes the overview.
     private func closeRingedWindow() {
         guard let target = state.commandTarget else { return hide(restoreFocus: true) }
         state.send(.action(.closeWindow(target.windowId)))

@@ -79,8 +79,8 @@ public enum FilterKey: Equatable, Sendable {
     case backspace
     case enter
     case escape
-    /// The strip's marking moved: Tab and →, Shift-Tab and ← a window; ↑ and ↓ a row;
-    /// ⌘→ and ⌘← a workspace. Nothing on the map.
+    /// A marking moved, the strip's or the map's: ← and → a window, through a workspace's and
+    /// on to the next; ↑ and ↓ a row; ⌘ and an arrow a workspace along, above or below.
     case move(StripMove)
     /// ⌘1–⌘9, ⌘a–⌘f: the strip's window with that key, 1 to 15; nothing on the map.
     case commandKey(Int)
@@ -89,13 +89,12 @@ public enum FilterKey: Equatable, Sendable {
 public extension FilterKey {
     /// The key a keyboard event stands for, from the parts of it that matter; nil when it is
     /// not one of ours. The caller has already ruled out Cmd, Ctrl and Option. Shift is not
-    /// a modifier here: it is how capitals are typed, and how Tab is walked backwards.
-    init?(keyCode: UInt16, shift: Bool, characters: String?) {
+    /// a modifier here: it is how capitals are typed.
+    init?(keyCode: UInt16, characters: String?) {
         switch keyCode {
         case 53: self = .escape
         case 51: self = .backspace
         case 36, 76: self = .enter
-        case 48: self = .move(.window(shift ? -1 : 1))
         case 124: self = .move(.window(1))
         case 123: self = .move(.window(-1))
         case 126: self = .move(.row(-1))
@@ -106,12 +105,14 @@ public extension FilterKey {
         }
     }
 
-    /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order, ⌘ with → or ← a workspace
-    /// along; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
+    /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order, ⌘ with an arrow a
+    /// workspace along or the one above or below; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
+    private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: AppStripModel.keys.enumerated().map { (String($1), .commandKey($0 + 1)) })
+        .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1))]) { a, _ in a }
+
     init?(command characters: String) {
-        if let along = ["\u{F703}": 1, "\u{F702}": -1][characters] { self = .move(.workspace(along)); return }
-        guard characters.count == 1, let n = AppStripModel.keys.firstIndex(of: Character(characters)) else { return nil }
-        self = .commandKey(n + 1)
+        guard let key = Self.commandKeys[characters] else { return nil }
+        self = key
     }
 
     /// The key a typed character stands for, or nil when it is not text. Arrow and function

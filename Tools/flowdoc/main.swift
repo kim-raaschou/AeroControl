@@ -67,6 +67,7 @@ func describe(_ a: AppStripModel.Action) -> String {
     case .move(.window(let d)): return d > 0 ? "step the marking on" : "step the marking back"
     case .move(.row(let d)): return d > 0 ? "mark the window below" : "mark the window above"
     case .move(.workspace(let d)): return d > 0 ? "mark the next workspace's first window" : "mark the previous workspace's first window"
+    case .move(.workspaceRow(let d)): return d > 0 ? "mark the first window of the workspace below" : "mark the first window of the workspace above"
     case .move(.card(let c)): return "mark the first window of card \(c + 1)"
     case .commit(let id): return "focus window \(id) · close"
     case .cancel: return "close, back on the window you came from"
@@ -184,10 +185,9 @@ func tell(_ before: Strip, _ after: Strip?) -> String {
     return parts.isEmpty ? "nothing changes" : parts.joined(separator: "; ")
 }
 table(["What happened", "The strip"], [
-    ["opened from window 1", "marked on window \(opened.marked ?? 0), the one after yours; the carousel centred on it"],
-    ["Tab", tell(opened, stepped)],
-    ["Tab again, past the last window", tell(stepped, round)],
-    ["Shift-Tab", tell(round, round.moved(.window(-1), ids: [1, 2, 8], card: card))],
+    ["opened from window 1", "marked on window \(opened.marked ?? 0), the one after yours; the row centred on it"],
+    ["the app key again", tell(opened, stepped)],
+    ["the app key again, past the last window", tell(stepped, round)],
     ["the pointer moves onto window 8", tell(opened, opened.marking(8))],
     ["window 2, the marked one, closes", tell(opened, opened.kept(before: [1, 2, 8], after: [1, 8]))],
     ["AeroSpace moves the focus to A's window 8", tell(opened, opened.following(w(8, "A")))],
@@ -242,7 +242,7 @@ table(["Line", "Event"], [
 
 p("Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>filterKeyAction</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>d</code> the first match is app D, window 6:")
 let keys: [(String, UInt16, Bool, String?)] = [
-    ("Escape", 53, false, nil), ("Backspace", 51, false, nil), ("Enter", 36, false, "\r"), ("Tab", 48, false, "\t"), ("Shift-Tab", 48, true, "\t"),
+    ("Escape", 53, false, nil), ("Backspace", 51, false, nil), ("Enter", 36, false, "\r"), ("Tab", 48, false, "\t"),
     ("→", 124, false, nil), ("←", 123, false, nil), ("↑", 126, false, "\u{F700}"), ("↓", 125, false, "\u{F701}"), ("Home", 115, false, nil),
     ("a", 0, false, "a"), ("2", 19, false, "2"), ("space", 49, false, " "), ("F1", 122, false, "\u{F704}"),
 ]
@@ -253,8 +253,8 @@ func onMap(_ k: FilterKey, query: String, ring: Int?) -> String {
     let action = filterKeyAction(query: query, ring: ring, key: k)
     return action == .none && k == .escape ? "the window closes" : describe(action)
 }
-let mapRows: [[String]] = keys.compactMap { name, kc, shift, chars in
-    guard let k = FilterKey(keyCode: kc, shift: shift, characters: chars) else { return nil }
+let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
+    guard let k = FilterKey(keyCode: kc, characters: chars) else { return nil }
     let row = [name, describe(k), onMap(k, query: "", ring: ring1), onMap(k, query: "d", ring: ring6)]
     return row[2] == "nothing" && row[3] == "nothing" ? nil : row
 }

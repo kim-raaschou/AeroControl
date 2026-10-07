@@ -50,6 +50,8 @@ public struct AeroControlPanel: View {
     }
 
     private static let pillGap: CGFloat = 18
+    /// The map's own coordinate space, the one its tiles say where they are in.
+    static let mapSpace = "map"
 
     /// The result takes over the grid's geometry: a query that found something draws only the
     /// workspaces that hold a match, each with only its matching windows, in the same lattice
@@ -76,6 +78,9 @@ public struct AeroControlPanel: View {
             }
         }
         .frame(width: usable.width, height: usable.height, alignment: .topLeading)
+        .coordinateSpace(.named(Self.mapSpace))
+        .onAppear { state.notePointer(NSEvent.mouseLocation) }
+        .onChange(of: frames, initial: true) { _, frames in state.mapCards = Dictionary(zip(all.map(\.name), frames), uniquingKeysWith: { a, _ in a }) }
         // The map holds still through ordinary churn; the filtered result re-flows as the
         // query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * look.motion), value: all)

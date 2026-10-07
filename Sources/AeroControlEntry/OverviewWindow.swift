@@ -57,8 +57,8 @@ class OverviewWindow: NSPanel {
         onDismiss?()
     }
 
-    /// On the map ⌘W closes the window under the ring and ⌘Q quits its app, as they would without
-    /// the overview, which stays up so you see each go; in the strip ⌘W leaves and ⌘Q is nothing.
+    /// ⌘W closes the window under the ring and ⌘Q quits its app, on the map and in the strip, as
+    /// they would without the overview, which stays up so you see each go.
     ///
     /// Both have to be intercepted here because summoning activates AeroControl, so while
     /// the overview is up it owns the menu bar, including the Quit item SwiftUI installs by
@@ -133,7 +133,7 @@ private extension FilterKey {
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return nil }
-        self.init(keyCode: event.keyCode, shift: modifiers.contains(.shift), characters: event.characters)
+        self.init(keyCode: event.keyCode, characters: event.characters)
     }
 }
 
