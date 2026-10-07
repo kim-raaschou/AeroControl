@@ -31,8 +31,8 @@ public struct Strip: Equatable, Sendable {
 
     /// The keys move the marking, the centre with it — on the strip and, the same way, on the
     /// map: a window along `ids`, wrapping (← →, the app key again), `ids` running through one
-    /// workspace's windows and on to the next's; to the line above or below through the `cards`
-    /// as drawn, read as one grid (`GridWalk`: ↑ ↓); to
+    /// workspace's windows and on to the next's; straight up or down through the `cards` as
+    /// drawn (`GridWalk`: ↑ ↓); to
     /// the next or previous workspace's first window (⌘→ and ⌘←), wrapping past those with none,
     /// or the one above or below's as drawn (⌘↑ and ⌘↓; the strip has no row above or below),
     /// or a named one's (its name, the one on its card). `card` numbers a window's workspace from
@@ -42,7 +42,7 @@ public struct Strip: Equatable, Sendable {
         let to: Int?
         switch move {
         case .window(let d): to = AppStripModel.stepIndex(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: d).map { ids[$0] }
-        case .row(let d): to = marked.flatMap { GridWalk.step(from: $0, rows: d, lines: GridWalk.lines(cards), frames: frames) }
+        case .row(let d): to = marked.flatMap { GridWalk.step(from: $0, rows: d, frames: frames) }
         case .workspace(let d):
             let held = Array(Set(ids.compactMap(card))).sorted()
             to = AppStripModel.stepIndex(held.firstIndex { $0 == marked.flatMap(card) } ?? -1, count: held.count, direction: d).flatMap { at in ids.first { card($0) == held[at] } }

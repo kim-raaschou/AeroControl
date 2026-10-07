@@ -155,7 +155,7 @@ focus: it moves the moment AeroSpace reports a focus change — switch workspace
 AeroSpace key while the map is up and the ring is on the new window before the pictures have
 settled. The arrows take the ring over: ← and → through each workspace's windows as they are
 drawn, which AeroSpace's order within a workspace does not give, then on to the next; ↑ and ↓
-through the map read as one grid of windows; from then on AeroSpace's focus is the thin
+straight up and down as the windows are drawn; from then on AeroSpace's focus is the thin
 outline, as in the strip, and nothing goes to AeroSpace until Enter. Find a window by pointing
 at it, by typing until it is first, or by walking to it.
 
@@ -195,7 +195,7 @@ On the map:
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
 | ← → | move the ring through a workspace's windows in reading order, then on to the next workspace, round the map; an empty workspace is one stop, its card wearing the ring |
-| ↑ ↓ | move the ring to the line above / below, the window nearest across, into the card over or under |
+| ↑ ↓ | move the ring straight up / down as drawn, to the nearest window over / under it, into the card over or under |
 | ⌘→ / ⌘← | move the ring to the next / previous workspace's first window, or onto it when it is empty |
 | ⌘↓ / ⌘↑ | move the ring to the first window of the workspace below / above |
 | Enter | focus the window under the ring: where the keys put it, the first match, or the focused window; on an empty workspace, switch to it |
@@ -212,7 +212,7 @@ In the strip the keys move the marking as they move the ring on the map, the str
 
 | Key | Does |
 |---|---|
-| ← → ↑ ↓ | as on the map: through a workspace's windows and on to the next, or to the line above / below |
+| ← → ↑ ↓ | as on the map: through a workspace's windows and on to the next, or straight up / down |
 | ⌘→ / ⌘← | move the marking to the next / previous workspace, the row sliding with it |
 | a workspace's name | move the marking to that workspace: 3 for workspace 3, 0 for 10 |
 | ⌘1 – ⌘9, ⌘a – ⌘f | focus that window: the keys the windows carry, fifteen in all |
