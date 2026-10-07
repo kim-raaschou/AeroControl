@@ -156,6 +156,12 @@ struct AeroControlAppTile: View {
                     // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
+            if isFocused {                                   // the window under the ring, live
+                LivePicture(windowId: window.windowId, pixels: drawnPixels)
+                    .frame(width: contentSize.width, height: contentSize.height)
+                    .clipShape(plate)
+                    .allowsHitTesting(false)
+            }
         }
         .overlay(alignment: .bottomLeading) {       // the badge is not clipped with the picture
             if let key {
@@ -279,4 +285,14 @@ private struct FadingPicture<Content: View>: View {
             }
         }
     }
+}
+
+/// The window under the ring as it changes (`LiveWindowView`), over its picture.
+private struct LivePicture: NSViewRepresentable {
+    let windowId: Int
+    let pixels: CGSize
+
+    func makeNSView(context: Context) -> LiveWindowView { LiveWindowView() }
+    func updateNSView(_ view: LiveWindowView, context: Context) { view.watch(windowId, pixels: pixels) }
+    static func dismantleNSView(_ view: LiveWindowView, coordinator: ()) { view.stop() }
 }

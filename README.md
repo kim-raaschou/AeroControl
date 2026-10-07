@@ -41,7 +41,8 @@ between summons, and it asks for no permission except Screen Recording for the p
   as soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
   The ring starts on AeroSpace's focused window and follows every focus change AeroSpace
   reports, until you press an arrow: then it is yours, and a thin outline keeps showing where
-  AeroSpace's focus is. See *Keyboard*.
+  AeroSpace's focus is. The window under the ring is live, a stream of it rather than the
+  picture taken at the summon, on the map and in the strip. See *Keyboard*.
 - A grid that spends the screen on the windows: one card per workspace, in AeroSpace's
   order, every card the same size and the shape of its screen, as GNOME and KWin shape their
   workspace cells. Cards hold still through window churn. Inside a card every window is drawn
