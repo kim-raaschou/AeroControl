@@ -287,7 +287,7 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 3)
     }
 
-    @Test("in the strip Tab steps round, a workspace's name goes to it, ⌘ and a window's key picks, and typing is no query")
+    @Test("in the strip → steps round, a workspace's name goes to it, ⌘ and a window's key picks, and typing is no query")
     func stripKeys() async {
         let (_, store) = await stripOnTeams()
         #expect(store.handle(.move(.window(1))) == .handled && store.strip?.marked == 1)          // wraps round

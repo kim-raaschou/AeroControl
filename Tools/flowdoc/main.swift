@@ -175,13 +175,13 @@ let card: (Int) -> Int? = { id in model.workspaces.firstIndex { $0.windows.conta
 let stepped = opened.moved(.window(1), ids: [1, 2, 8], card: card)
 let round = stepped.moved(.window(1), ids: [1, 2, 8], card: card)
 /// What a transition did, in the strip's own terms: where the marking went, whether the
-/// carousel followed it or turned, whose strip it is now, or that it is over.
+/// row followed it, whose strip it is now, or that it is over.
 func tell(_ before: Strip, _ after: Strip?) -> String {
     guard let after else { return "the strip is over: nothing to choose" }
     var parts: [String] = []
     if after.bundleId != before.bundleId { parts.append("the strip is \(after.bundleId)'s now") }
     if after.marked != before.marked { parts.append("the marking goes to window \(after.marked.map(String.init) ?? "none")") }
-    if after.centre != before.centre { parts.append("the carousel centres on it") } else if after.marked != before.marked { parts.append("the carousel stays where it was") }
+    if after.centre != before.centre { parts.append("the row centres on it") } else if after.marked != before.marked { parts.append("the row stays where it was") }
     return parts.isEmpty ? "nothing changes" : parts.joined(separator: "; ")
 }
 table(["What happened", "The strip"], [
@@ -197,10 +197,11 @@ table(["What happened", "The strip"], [
 mermaid("""
 flowchart TD
   OPEN["opened: \(label(describe(opened)))"] --> UP(("up"))
-  UP -- "Tab · → · the app's key again" --> STEP["stepped: marking and centre move;<br/>past the last card: a turn"]
+  UP -- "← → ↑ ↓ · ⌘ and an arrow · a workspace's name · the app's key again" --> STEP["moved: marking and centre move;<br/>the row slides to keep the card in view"]
   UP -- "pointer onto a window" --> MARK["marking: marking moves, centre stays"]
   UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
-  UP -- "Escape · ⌘W · backdrop" --> CANCEL["close"]
+  UP -- "Escape · backdrop" --> CANCEL["close"]
+  UP -- "⌘W · ⌘Q" --> GONE["the marked window closes · its app quits;<br/>the marking passes on"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
   WHERE -- "this app" --> UP
   WHERE -- "anywhere else: another app, an empty workspace" --> OVER["over: chosen with AeroSpace · close"]
@@ -259,11 +260,11 @@ let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
     return row[2] == "nothing" && row[3] == "nothing" ? nil : row
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
-p("Every other key does nothing on the map: Tab, the arrows, Home, End, the function keys. The map is read, not steered.")
-p("Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): on the map ⌘W closes it, as its × does, and ⌘Q quits its app, and the overview stays up; in the strip ⌘W closes the strip and ⌘Q does nothing. Every other ⌘ key does nothing.")
+p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.")
+p("Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring ⌘W closes the overview. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")
-p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape, ⌘W in the strip and a click on the backdrop hide it directly.")
+p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape and a click on the backdrop hide it directly.")
 
 // MARK: - write
 

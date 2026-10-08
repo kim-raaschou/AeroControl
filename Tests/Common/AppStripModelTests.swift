@@ -112,8 +112,8 @@ struct AppStripKeyTests {
         #expect(act(.escape) == .cancel)
     }
 
-    @Test("Tab and → step on, Shift-Tab and ← back; ↑ and ↓ go up and down a card, ⌘→ and ⌘← to the next and previous workspace")
-    func steps() {
+    @Test("the arrows, ⌘ and an arrow, and the app's key again move the marking; the model passes the move on")
+    func moves() {
         for move in [StripMove.window(1), .window(-1), .row(-1), .row(1), .workspace(-1)] { #expect(act(.move(move)) == .move(move)) }
     }
 
