@@ -84,6 +84,8 @@ public enum FilterKey: Equatable, Sendable {
     case move(StripMove)
     /// ⌘1–⌘9, ⌘a–⌘f: the strip's window with that key, 1 to 15; nothing on the map.
     case commandKey(Int)
+    /// ⇧⌘ and a workspace's name: the window under the ring goes there, on the map and in the strip.
+    case moveToWorkspace(String)
 }
 
 public extension FilterKey {
@@ -110,8 +112,8 @@ public extension FilterKey {
     private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: AppStripModel.keys.enumerated().map { (String($1), .commandKey($0 + 1)) })
         .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1))]) { a, _ in a }
 
-    init?(command characters: String) {
-        guard let key = Self.commandKeys[characters] else { return nil }
+    init?(command characters: String, shift: Bool) {
+        guard let key = shift ? AppStripModel.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] else { return nil }
         self = key
     }
 
@@ -145,7 +147,7 @@ public func filterKeyAction(query: String, ring: Int?, key: FilterKey) -> Filter
         return query.isEmpty ? .none : .setQuery("")
     case .enter:
         return ring.map { .focus(windowId: $0) } ?? .none
-    case .move, .commandKey:
+    case .move, .commandKey, .moveToWorkspace:
         return .none
     case .backspace:
         return query.isEmpty ? .none : .setQuery(String(query.dropLast()))

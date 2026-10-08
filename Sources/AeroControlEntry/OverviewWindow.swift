@@ -23,6 +23,7 @@ class OverviewWindow: NSPanel {
     private let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
     /// ⌘Q and ⌘W: quit the app, close the window, under the ring (`OverlayWindowManager`).
+    /// ⇧⌘ and a workspace's name moves it there (`FilterKey.moveToWorkspace`).
     var onQuitApp: (() -> Void)?
     var onCloseWindow: (() -> Void)?
     /// Offers a keystroke to the type-to-filter host; true when it took it.
@@ -70,13 +71,13 @@ class OverviewWindow: NSPanel {
         // Only the modifiers that mean something here; the flag set also carries `.numericPad`,
         // `.function` and the like.
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
-        guard modifiers == .command else { return super.performKeyEquivalent(with: event) }
-        if let digit = FilterKey(command: key), onKey?(digit) == true { return true }
+        guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
+        if let key = FilterKey(command: key, shift: modifiers.contains(.shift)), onKey?(key) == true { return true }
         // Every other ⌘ key is nothing: passed on, the app's menu could act on AeroControl
-        // (⌘H, Hide) under an overview that still holds itself as shown.
-        switch key {
-        case "q": onQuitApp?()
-        case "w": onCloseWindow?()
+        // (⌘H, Hide) under an overview that still holds itself as shown. ⇧⌘Q names a workspace.
+        switch (key, modifiers.contains(.shift)) {
+        case ("q", false): onQuitApp?()
+        case ("w", false): onCloseWindow?()
         default: break
         }
         return true

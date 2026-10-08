@@ -204,6 +204,7 @@ On the map:
 | Escape | clear the query; on an empty query, dismiss |
 | ⌘W | close the window under the ring, as its × does — the overview stays up |
 | ⌘Q | quit the app under the ring — the overview stays up |
+| ⇧⌘ + a workspace's name | move the window under the ring to that workspace: ⇧⌘3 to 3, ⇧⌘0 to 10 — the overview stays up |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
@@ -219,6 +220,7 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | a workspace's name | move the marking to that workspace: 3 for workspace 3, 0 for 10 |
 | ⌘1 – ⌘9, ⌘a – ⌘f | focus that window: the keys the windows carry, fifteen in all |
 | ⌘W / ⌘Q | close the marked window / quit the app, as on the map; the marking goes on to the next |
+| ⇧⌘ + a workspace's name | move the marked window to that workspace, as on the map |
 | the app's own key again | move the marking on, as Cmd-` does |
 | Enter | focus the marked window |
 | Escape | dismiss, back on the window you came from |

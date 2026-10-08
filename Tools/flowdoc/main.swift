@@ -165,7 +165,7 @@ table(["Key", "Does"], stripKeys.compactMap { k in
 })
 p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>AppStripModel.action</code>), run against a strip of fifteen windows:")
 table(["⌘ + character", "In a strip of fifteen windows"], ["1", "9", "a", "f", "g", "0"].map { c in
-    ["⌘\(c)", FilterKey(command: c).map { describe(AppStripModel.action(for: $0, ids: Array(1...15), marked: 1)) } ?? "nothing: not a window's key"]
+    ["⌘\(c)", FilterKey(command: c, shift: false).map { describe(AppStripModel.action(for: $0, ids: Array(1...15), marked: 1)) } ?? "nothing: not a window's key"]
 })
 p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
@@ -261,7 +261,7 @@ let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
 p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.")
-p("Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring ⌘W closes the overview. Every other ⌘ key does nothing.")
+p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring ⌘W closes the overview. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")
 p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape and a click on the backdrop hide it directly.")

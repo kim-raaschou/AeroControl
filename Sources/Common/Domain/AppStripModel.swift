@@ -41,6 +41,13 @@ public enum AppStripModel {
         return stepIndex(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: 1).map { ids[$0] }
     }
 
+    /// The workspace a key names: its own character, 0 the tenth, as the keys count; nil for a key
+    /// that types no text (an arrow), or more than one character.
+    public static func workspaceNamed(_ key: String) -> String? {
+        guard key.count == 1, let c = key.first, FilterKey.typed(c) != nil else { return nil }
+        return ["0": "10"][key] ?? key
+    }
+
     /// The most of the panel's height a strip card takes: one card, an app all on one workspace,
     /// all but fills it.
     public static let tallest: CGFloat = 0.85
@@ -85,8 +92,8 @@ public enum AppStripModel {
         case .move(let move): return .move(move)
         case .commandKey(let n):
             return ids.prefix(keys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
-        case .character(let c): return workspaces.firstIndex(of: ["0": "10"][String(c)] ?? String(c)).map { .move(.card($0)) } ?? .none
-        case .backspace: return .none
+        case .character(let c): return workspaceNamed(String(c)).flatMap(workspaces.firstIndex).map { .move(.card($0)) } ?? .none
+        case .backspace, .moveToWorkspace: return .none
         }
     }
 }

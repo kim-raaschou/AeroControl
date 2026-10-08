@@ -228,6 +228,16 @@ struct OverviewStoreTests {
                 && store.handle(.move(.window(-1))) == .handled && store.strip?.marked == 2)   // on to 1, back past 3 round to 2
     }
 
+    @Test("⇧⌘ and a workspace's name moves the window under the ring there, on the map and in the strip, and the overview stays up")
+    func moveToWorkspace() async {
+        let (runner, store) = await loaded(windows: teams(2), workspaces: workspacesJSON(["1", "2"]), focus: (2, "1"))
+        #expect(store.handle(.moveToWorkspace("2")) == .handled)
+        await waitUntil { runner.didRun(["move-node-to-workspace", "--window-id", "2", "--focus-follows-window", "2"]) }
+        let (stripRunner, stripStore) = await stripOnTeams()                              // marked on 3
+        #expect(stripStore.handle(.moveToWorkspace("10")) == .handled && stripStore.strip != nil)
+        await waitUntil { stripRunner.didRun(["move-node-to-workspace", "--window-id", "3", "--focus-follows-window", "10"]) }
+    }
+
     @Test("pointing at a window on the map moves the ring there, as in the strip; a hover under a hand that has not moved does not")
     func pointingMarksTheMap() async {
         let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]), focus: (2, "1"))

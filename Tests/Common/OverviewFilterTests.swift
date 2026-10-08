@@ -142,7 +142,7 @@ struct FilterKeyActionTests {
         #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
         #expect(action("", .enter, ring: .some(7)) == .focus(windowId: 7))         // no query: AeroSpace's focused window
         #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
-        for key in [FilterKey.move(.window(1)), .move(.window(-1)), .commandKey(1), .move(.row(1)), .move(.workspace(1))] { #expect(action("Teams", key) == .none) }
+        for key in [FilterKey.move(.window(1)), .move(.window(-1)), .commandKey(1), .move(.row(1)), .move(.workspace(1)), .moveToWorkspace("2")] { #expect(action("Teams", key) == .none) }
     }
 }
 
@@ -170,23 +170,27 @@ struct FilterKeyCodeTests {
 
 @Suite("FilterKey(command:)")
 struct FilterKeyCommandTests {
-    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order; ⌘ with anything else is somebody else's", arguments: [
-        ("1", FilterKey?.some(.commandKey(1))),
-        ("9", .commandKey(9)),
-        ("a", .commandKey(10)),
-        ("f", .commandKey(15)),
-        ("0", nil),
-        ("g", nil),
-        ("q", nil),
-        ("", nil),
-        ("ab", nil),                       // a key that types two characters is not one key, and no crash
-        ("\u{F703}", .move(.workspace(1))),       // ⌘→, the next workspace
-        ("\u{F702}", .move(.workspace(-1))),      // ⌘←
-        ("\u{F700}", .move(.workspaceRow(-1))),   // ⌘↑, the workspace above
-        ("\u{F701}", .move(.workspaceRow(1))),    // ⌘↓
-    ] as [(String, FilterKey?)])
-    func command(characters: String, expected: FilterKey?) {
-        #expect(FilterKey(command: characters) == expected)
+    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order, ⌘ with an arrow a workspace along; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
+        ("1", false, FilterKey?.some(.commandKey(1))),
+        ("9", false, .commandKey(9)),
+        ("a", false, .commandKey(10)),
+        ("f", false, .commandKey(15)),
+        ("0", false, nil),
+        ("g", false, nil),
+        ("q", false, nil),
+        ("", false, nil),
+        ("ab", false, nil),                       // a key that types two characters is not one key, and no crash
+        ("\u{F703}", false, .move(.workspace(1))),       // ⌘→, the next workspace
+        ("\u{F702}", false, .move(.workspace(-1))),      // ⌘←
+        ("\u{F700}", false, .move(.workspaceRow(-1))),   // ⌘↑, the workspace above
+        ("\u{F701}", false, .move(.workspaceRow(1))),    // ⌘↓
+        ("3", true, .moveToWorkspace("3")),              // ⇧⌘3: the window under the ring to workspace 3
+        ("0", true, .moveToWorkspace("10")),
+        ("q", true, .moveToWorkspace("q")),              // a workspace can be named by a letter; ⇧⌘Q is not ⌘Q
+        ("\u{F703}", true, nil),
+    ] as [(String, Bool, FilterKey?)])
+    func command(characters: String, shift: Bool, expected: FilterKey?) {
+        #expect(FilterKey(command: characters, shift: shift) == expected)
     }
 }
 

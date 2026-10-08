@@ -136,8 +136,7 @@ public class OverviewStore {
     /// The window ⌘W closes and whose app ⌘Q quits, as its × and the app's own ⌘Q would: the one
     /// under the ring, the map's or the strip's, which says on screen what goes.
     public var commandTarget: WindowInfo? {
-        guard missingApp == nil else { return nil }
-        return model.workspaces.flatMap(\.windows).first { $0.windowId == ringWindowId }
+        (missingApp.map { _ in [] } ?? model.workspaces.flatMap(\.windows)).first { $0.windowId == ringWindowId }
     }
 
     private var subscribeTask: Task<Void, Never>?
@@ -327,6 +326,8 @@ public class OverviewStore {
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
         if case .move(let move) = key { self.move(move); return .handled }
+        // ⇧⌘ and a workspace's name: the window under the ring goes there, and the overview stays, as after ⌘W.
+        if case .moveToWorkspace(let name) = key, let target = commandTarget { send(.action(.moveWindow(windowId: target.windowId, toWorkspace: name))); return .handled }
         if strip != nil || missingApp != nil { return handleStrip(key) }   // a notice is a strip of no windows
         if key == .enter, let workspace = markedWorkspace { send(.action(.focusWorkspace(workspace))); return .handled }
         let action = filterKeyAction(query: filter, ring: ringWindowId, key: key)
