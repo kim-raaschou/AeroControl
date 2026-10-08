@@ -50,7 +50,7 @@ public struct AeroControlPanel: View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : state.model.workspaces
-        let cards = AeroControlLayout.mapLayout(workspaces: all, sizes: state.previewSizes, screens: screenFrames, available: available, usable: usable, filtering: filtering)
+        let cards = AeroControlLayout.mapLayout(workspaces: all, sizes: state.pictures.sizes, screens: screenFrames, available: available, usable: usable, filtering: filtering)
         return ZStack(alignment: .topLeading) {
             ForEach(zip(all, cards).map { $0 }, id: \.0.name) { workspace, card in
                 AeroControlWorkspaceCard(workspace: workspace, card: card, filtering: filtering)

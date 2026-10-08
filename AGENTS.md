@@ -79,8 +79,11 @@ fails on any violation.
   response decoding (`Aerospace/`), the `AerospaceProcessRunner` port.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
   socket protocol; `OverviewStore` (`@MainActor @Observable`) owns the model, runs the
-  reducer, interprets effects, and holds the UI-only filter state (`filter`,
-  `filterMatches`, `ringWindowId`); SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`.
+  reducer, interprets effects, and holds the marking (`marking`, one `Strip` for the map and
+  the strip, `filter`, `filterMatches`, `ringWindowId`); `PictureStore`, owned by it, keeps
+  the windows' pictures and sizes and talks to the bridge for them; SwiftUI views
+  `AeroControlPanel → WorkspaceCard → AppTile` draw from pure layouts (`mapLayout`,
+  `stripLayout`) and hand the store the cards as drawn (`drawn`) for the keys.
 - `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
   `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
 - Do **not** merge the reducer into the store. The store's size is the effects it owns.
@@ -100,7 +103,7 @@ sync while hidden — nothing reads it. Events carry **no data**; all state come
   **no optimistic local state**.
 - Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream
   loses whatever happened meanwhile.
-- `captureGeneration`: a preview capture that finishes after `clearPreviews()` is discarded.
+- `PictureStore.generation`: a capture that finishes after `clear()` is discarded.
 - `AerospaceSocketRunner`: protocol-version handshake, `SocketHandle` fd
   ownership; blocking syscalls on a private queue, never the cooperative pool.
 - `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.

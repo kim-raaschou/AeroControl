@@ -26,7 +26,7 @@ struct AeroControlAppStrip: View {
     var body: some View {
         let groups = state.stripWorkspaces
         let bundleId = state.strip?.app ?? ""
-        let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.previewSizes, screens: screens,
+        let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.pictures.sizes, screens: screens,
                                                    fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
         let ids = state.stripWindows.map(\.window.windowId)
         let centre = state.strip?.centre

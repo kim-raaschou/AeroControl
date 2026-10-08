@@ -21,12 +21,8 @@ public class OverviewStore {
 
     let runner: AerospaceProcessRunner
     let nativeSystem: NativeApiBridge
-    /// Window previews, captured when the overview is summoned and dropped when it hides.
-    /// They land a card at a time into a grid that is already on screen.
-    public private(set) var previews: [Int: NSImage] = [:]
-    /// Each window's on-screen size, known before any picture is: the grid takes its
-    /// shape from these, so pictures landing later change nothing but the pictures.
-    public private(set) var previewSizes: [Int: CGSize] = [:]
+    /// The windows' pictures this visit, kept and taken by their own store; this one says which windows.
+    public let pictures: PictureStore
     public private(set) var error: String?
     /// What the user has typed into the overview. UI state that drives no AeroSpace work, so
     /// it lives here rather than in the model: the reducer's contract
@@ -58,7 +54,7 @@ public class OverviewStore {
         marking = nil
         drawn = []
         missingApp = nil
-        clearPreviews()
+        pictures.clear()
     }
     /// The one shot is over and the host closes the overview: after a focus action (the window
     /// or workspace asked for takes the keyboard), or when AeroSpace took the focus out of the
@@ -141,46 +137,11 @@ public class OverviewStore {
 
     private var subscribeTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
-    /// Pictures taken but not yet in `previews`. A workspace's land together once all of them
-    /// are in, the cards in reading order and `cardEvery` apart: one by one, or each card as it
-    /// was in, they came in all over the screen. And every picture stored redraws the whole
-    /// overview — on the main thread that drew the map once per window and kept the captures
-    /// still in flight from landing.
-    private var arrivingPictures: [Int: NSImage] = [:]
-    static let cardEvery: Duration = .milliseconds(25)
-    /// Cards whose pictures are in, waiting their turn.
-    private var cards: [[Int]] = []
-    private var landing: Task<Void, Never>?
-
-    /// New pictures over old: an old one's scaled copies go before it does (`PictureResampler.forget`).
-    private func replacePictures(_ pictures: [Int: NSImage]) {
-        pictures.keys.forEach { PictureResampler.forget(previews[$0]) }
-        previews.merge(pictures) { $1 }
-    }
-
-    private func land(_ card: [Int]) {
-        cards.append(card)
-        guard landing == nil else { return }
-        let generation = captureGeneration
-        landing = Task { [weak self] in
-            while let self, generation == self.captureGeneration {
-                guard !self.cards.isEmpty else { self.landing = nil; return }
-                let card = Set(self.cards.removeFirst())
-                let landed = self.arrivingPictures.filter { card.contains($0.key) }
-                guard !landed.isEmpty else { continue }
-                self.replacePictures(landed)
-                for id in landed.keys { self.arrivingPictures[id] = nil }
-                try? await Task.sleep(for: Self.cardEvery)
-            }
-        }
-    }
-
-    /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
-    private var captureGeneration = 0
 
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
         self.nativeSystem = nativeSystem
+        self.pictures = PictureStore(bridge: nativeSystem)
     }
 
     /// Reads AeroSpace's whole state and applies it. The overview is a one shot: the host
@@ -201,97 +162,18 @@ public class OverviewStore {
     /// listener only keeps the order of focus. `endVisit` turns it off.
     public var following = false
 
-    // MARK: Window previews
-
-    /// True when macOS lets us capture windows; decides the tile layout up front so the
-    /// overview does not jump when the images arrive. Asked a few times a summon, by the host.
-    public var previewsAvailable: Bool { nativeSystem.canCapturePreviews }
-
-    /// Warms the capture path before `reload()`, so the system's window enumeration and
-    /// AeroSpace's answer arrive together rather than one after the other.
-    public func prepareCapture() { nativeSystem.prepareCapture() }
-
-    public func requestPreviewAccess() { nativeSystem.requestPreviewAccess() }
+    // MARK: Window previews — the store says which windows; `pictures` keeps them
 
     private var windowIds: [Int] { model.workspaces.flatMap(\.windows).map(\.windowId) }
 
-    /// Reads every window's size — cheap, the enumeration was started with `prepareCapture`
-    /// — so the overview can be revealed with its final shape before a picture is taken.
-    public func measurePreviews() async {
-        captureGeneration += 1
-        let generation = captureGeneration
-        let sizes = await nativeSystem.previewSizes(windowIds: windowIds)
-        guard generation == captureGeneration else { return }
-        previewSizes = sizes
-    }
-
-    /// The box the pictures were taken to fit, kept for re-taking a few of them.
-    private var captureSize: CGSize?
+    /// Reads every window's size before any picture is taken (`PictureStore.measure`).
+    public func measurePreviews() async { await pictures.measure(windowIds) }
 
     /// Captures a preview of every window drawn — the model's, or in the strip every window of
-    /// its workspaces — once, at `maxSize`, each landing a moment after it is taken. Returns
-    /// when all are in. A `clearPreviews()` in the meantime discards the rest.
+    /// its workspaces — once, at `maxSize`; returns when all are in (`PictureStore.take`).
     public func capturePreviews(maxSize: CGSize) async {
-        captureSize = maxSize
-        await take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) }, at: maxSize)
-    }
-
-    /// Takes these windows' pictures, landing a workspace's once all of them and the cards before
-    /// it are in; when the capture is, the rest — a workspace with a window that gave no picture.
-    private func take(_ ids: [Int], at size: CGSize) async {
-        let generation = captureGeneration
-        let wanted = Set(ids)
-        var waiting = model.workspaces.map { $0.windows.map(\.windowId).filter(wanted.contains) }.filter { !$0.isEmpty }
-        await nativeSystem.windowPreviews(windowIds: ids, maxSize: size) { [weak self] id, image in
-            guard let self, generation == self.captureGeneration else { return }
-            self.arrivingPictures[id] = image
-            while let card = waiting.first, card.allSatisfy({ self.arrivingPictures[$0] != nil }) {
-                self.land(waiting.removeFirst())
-            }
-        }
-        for card in waiting where generation == captureGeneration { land(card) }
-        await landing?.value
-    }
-
-    /// The pixels a tile draws a picture at, as the tiles report them; a picture taken smaller
-    /// is taken again at that size, the few that need it together once the reports settle
-    /// (150 ms) — a filter narrowing to one window, a workspace alone on a card. What was asked
-    /// is kept, so a window too small to give more is not asked again: no loop, no clock.
-    public func wantPicture(_ id: Int, pixels: CGSize) {
-        func covers(_ size: CGSize?) -> Bool { size.map { $0.width >= pixels.width * 0.95 && $0.height >= pixels.height * 0.95 } ?? false }
-        guard previews[id] != nil, !covers(previews[id]?.size), !covers(asked[id]) else { return }
-        wanted[id] = pixels
-        guard sharpenTask == nil else { return }
-        let generation = captureGeneration
-        sharpenTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(150))
-            guard !Task.isCancelled, let self, generation == self.captureGeneration else { return }
-            let wanted = self.wanted
-            self.wanted = [:]
-            self.sharpenTask = nil
-            self.asked.merge(wanted) { $1 }
-            let size = CGSize(width: wanted.values.map(\.width).max() ?? 0, height: wanted.values.map(\.height).max() ?? 0)
-            await self.take(Array(wanted.keys).sorted(), at: size)
-        }
-    }
-    private var wanted: [Int: CGSize] = [:]
-    private var asked: [Int: CGSize] = [:]
-    private var sharpenTask: Task<Void, Never>?
-
-    /// The overview closes: its pictures go, with whatever was still being taken.
-    private func clearPreviews() {
-        captureGeneration += 1
-        for task in [sharpenTask, landing] { task?.cancel() }
-        sharpenTask = nil
-        landing = nil
-        cards = []
-        wanted = [:]
-        asked = [:]
-        arrivingPictures = [:]
-        captureSize = nil
-        previews = [:]
-        previewSizes = [:]
-        PictureResampler.forget()
+        await pictures.take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) },
+                            cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
     }
 
     /// The key line for the app AeroSpace has focused, read from AeroSpace when asked: the menu
@@ -441,14 +323,14 @@ public class OverviewStore {
             // are taken, then all of it at once. Drawn as it came, the card showed the new layout
             // with the old sizes and pictures, then every size the windows passed through, then the
             // pictures. Focus does not wait: it came with AeroSpace's event, before this read.
-            let pictureGeneration = self.captureGeneration
-            let (sizes, pictures) = await self.settled(result)
+            let pictureGeneration = self.pictures.generation
+            let (sizes, fresh) = await self.settled(result)
             guard !Task.isCancelled, generation == self.refreshGeneration else { return }
             self.error = nil
             self.send(.loaded(result))
-            if let sizes, pictureGeneration == self.captureGeneration {
-                self.previewSizes = sizes
-                self.replacePictures(pictures)
+            if let sizes, pictureGeneration == self.pictures.generation {
+                self.pictures.sizes = sizes
+                self.pictures.replace(fresh)
             }
         }
     }
@@ -456,34 +338,10 @@ public class OverviewStore {
     /// A refresh reads AeroSpace this long after the event: a key's `binding-triggered` comes before
     /// its commands run, and nothing after them, so a read at once was of the state before them.
     static let readAfter: Duration = .milliseconds(20)
-    /// Then the windows' sizes are read from the window server every `settleEvery`, until two reads
-    /// agree or `settleWithin` has passed: apps resize after AeroSpace moves their windows, in their
-    /// own time, 70–280 ms measured. Taken at fixed times, a picture caught a window halfway.
-    static let settleEvery: Duration = .milliseconds(50)
-    static let settleWithin: Duration = .seconds(1)
-
-    /// The windows' sizes once they stand still, and new pictures of those drawn whose picture no
-    /// longer fits what they are drawn at (`AeroControlLayout.stale`), or that have none: the
-    /// neighbours that widened into a hole, a window that appeared, a hidden workspace's slot that
-    /// changed, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
-    /// off by the next loses nothing. Nil while the overview is hidden: `clearPreviews` has dropped
-    /// the capture size.
+    /// What `PictureStore.settled` says for the windows drawn: in a strip only its app's workspaces.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
-        guard let size = captureSize else { return (nil, [:]) }
-        let ids = result.workspaces.flatMap(\.windows).map(\.windowId)
-        let deadline = ContinuousClock.now + Self.settleWithin
-        var sizes = await nativeSystem.previewSizes(windowIds: ids)
-        while ContinuousClock.now < deadline, !Task.isCancelled {
-            try? await Task.sleep(for: Self.settleEvery)
-            let again = await nativeSystem.previewSizes(windowIds: ids)
-            if again == sizes { break }
-            sizes = again
-        }
         let shown = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.app } } ?? true }
-        let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes)
-        var pictures: [Int: NSImage] = [:]
-        if !stale.isEmpty { await nativeSystem.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
-        return (sizes, pictures)
+        return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)
     }
 
 

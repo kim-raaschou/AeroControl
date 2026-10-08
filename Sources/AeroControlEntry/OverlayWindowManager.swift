@@ -93,7 +93,7 @@ final class OverlayWindowManager {
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
-            self.state.prepareCapture()
+            self.state.pictures.prepare()
             await self.state.reload()
             self.loading = false
             guard self.requestedVisible else { return }   // toggled away while loading
@@ -101,14 +101,14 @@ final class OverlayWindowManager {
             case .map: break
             case .app(let ref): guard self.carryOut(self.state.summonApp(ref)) else { return }
             }
-            if self.state.previewsAvailable {
+            if self.state.pictures.available {
                 await self.state.measurePreviews()
                 guard self.requestedVisible else { return }
             } else {
                 // Ask macOS for Screen Recording on the first summon without it. The system
                 // shows its dialog once per app; afterwards this is a silent no-op and the
                 // menu item / System Settings is the way in. The tiles stay plates meanwhile.
-                self.state.requestPreviewAccess()
+                self.state.pictures.requestAccess()
             }
             self.state.following = true
             self.window?.orderOut(nil)
@@ -116,7 +116,7 @@ final class OverlayWindowManager {
             let window = self.makeWindow(for: screen, hidden: true)
             self.window = window
             Task { [weak self] in
-                if self?.state.previewsAvailable == true { try? await Task.sleep(for: Self.revealAfter) }
+                if self?.state.pictures.available == true { try? await Task.sleep(for: Self.revealAfter) }
                 guard let self, self.requestedVisible, self.window === window else { return }
                 window.reveal()
             }

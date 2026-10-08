@@ -368,10 +368,10 @@ struct OverviewStoreTests {
         await store.measurePreviews()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         store.following = true                                                          // the overview is up
-        #expect(store.previews[9] == nil)
+        #expect(store.pictures.previews[9] == nil)
         _ = store.summonApp(.bundleId("com.slack"))
-        await waitUntil { store.previews[9] != nil }
-        #expect(store.strip?.app == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
+        await waitUntil { store.pictures.previews[9] != nil }
+        #expect(store.strip?.app == "com.slack" && store.pictures.previews[8] != nil && store.pictures.previews[9] != nil)
     }
 
     @Test("stepping past the last workspace's window goes on to the first's; back past the first, to the last's")
@@ -448,7 +448,7 @@ struct OverviewStoreTests {
         _ = store.summonApp(.bundleId("com.app"))
         await store.capturePreviews(maxSize: CGSize(width: 400, height: 300))
         #expect(bridge.captured == [[1, 9, 2, 3]])                  // Slack on 1 is drawn grey in the card; Slack on 3 is in no card
-        #expect(store.previews[9]?.size.width == 400 && store.previews[7] == nil)
+        #expect(store.pictures.previews[9]?.size.width == 400 && store.pictures.previews[7] == nil)
     }
 
     @Test("a workspace's pictures land together once all of its windows are taken, without waiting for the other workspaces")
@@ -462,10 +462,10 @@ struct OverviewStoreTests {
             let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
             for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
             try await Task.sleep(for: .milliseconds(80))
-            #expect(bridge.isHolding && store.previews.keys.sorted() == landed)
+            #expect(bridge.isHolding && store.pictures.previews.keys.sorted() == landed)
             bridge.release()
             await capture.value
-            #expect(store.previews.keys.sorted() == [1, 2, 3])
+            #expect(store.pictures.previews.keys.sorted() == [1, 2, 3])
             store.endVisit()
         }
     }
@@ -481,10 +481,10 @@ struct OverviewStoreTests {
         let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
         for _ in 0..<100 where !bridge.isHolding { await Task.yield() }
         try await Task.sleep(for: .milliseconds(80))
-        #expect(bridge.isHolding && store.previews.isEmpty)                     // 2 is in, behind 1
+        #expect(bridge.isHolding && store.pictures.previews.isEmpty)                     // 2 is in, behind 1
         bridge.release()
         await capture.value                                                      // the capture is in: the rest land
-        #expect(store.previews.keys.sorted() == [2, 3])
+        #expect(store.pictures.previews.keys.sorted() == [2, 3])
     }
 
     @Test("cards that are in together still land one after the other, so the wave can be seen")
@@ -494,10 +494,10 @@ struct OverviewStoreTests {
         let store = OverviewStore(runner: ScriptRunner(windows: windowsJSON([(1, "1"), (2, "2")]), workspaces: workspacesJSON(["1", "2"])), nativeSystem: bridge)
         await store.reload()
         let capture = Task { await store.capturePreviews(maxSize: CGSize(width: 100, height: 100)) }
-        await waitUntil { store.previews[1] != nil }
-        #expect(store.previews[2] == nil)
+        await waitUntil { store.pictures.previews[1] != nil }
+        #expect(store.pictures.previews[2] == nil)
         await capture.value
-        #expect(store.previews.keys.sorted() == [1, 2])
+        #expect(store.pictures.previews.keys.sorted() == [1, 2])
     }
 
     @Test("a tile that draws a picture larger than it was taken asks for it again at its size, once; a smaller one asks nothing")
@@ -509,12 +509,12 @@ struct OverviewStoreTests {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // drawn three times larger
-        store.wantPicture(2, pixels: CGSize(width: 80, height: 50))             // drawn smaller: as taken
-        await waitUntil { (store.previews[1]?.size.width ?? 0) >= 300 }               // landed with its capture
+        store.pictures.want(1, pixels: CGSize(width: 300, height: 200))           // drawn three times larger
+        store.pictures.want(2, pixels: CGSize(width: 80, height: 50))             // drawn smaller: as taken
+        await waitUntil { (store.pictures.previews[1]?.size.width ?? 0) >= 300 }               // landed with its capture
         #expect(bridge.captured.last == [1])
-        #expect(store.previews[2]!.size.width == 100)
-        store.wantPicture(1, pixels: CGSize(width: 300, height: 200))           // has it now
+        #expect(store.pictures.previews[2]!.size.width == 100)
+        store.pictures.want(1, pixels: CGSize(width: 300, height: 200))           // has it now
         try? await Task.sleep(for: .milliseconds(300))
         #expect(bridge.captured.count == 2)
     }
@@ -529,11 +529,11 @@ struct OverviewStoreTests {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
-        store.wantPicture(1, pixels: CGSize(width: 300, height: 300))
+        store.pictures.want(1, pixels: CGSize(width: 300, height: 300))
         await waitUntil { bridge.captured.count >= 2 }
-        store.wantPicture(1, pixels: CGSize(width: 300, height: 300))           // still smaller than drawn: asked already
+        store.pictures.want(1, pixels: CGSize(width: 300, height: 300))           // still smaller than drawn: asked already
         try? await Task.sleep(for: .milliseconds(300))
-        #expect(bridge.captured.count == 2 && store.previews[1]!.size.width == 150)
+        #expect(bridge.captured.count == 2 && store.pictures.previews[1]!.size.width == 150)
     }
 
     // MARK: Pictures after a move
@@ -563,7 +563,7 @@ struct OverviewStoreTests {
         await waitUntil { bridge.captured.count >= 2 }
         #expect(bridge.measured > measuredAtSummon)
         #expect(bridge.captured.last == [2])
-        #expect(store.previewSizes[2] == CGSize(width: 600, height: 200))           // the fresh size, not the summon's
+        #expect(store.pictures.sizes[2] == CGSize(width: 600, height: 200))           // the fresh size, not the summon's
     }
 
     @Test("a window that resizes in steps is taken once, when it stands still, in its last shape; the cards follow it on the way")
@@ -578,7 +578,7 @@ struct OverviewStoreTests {
         }
         await waitUntil { bridge.captured.count >= 2 }
         try? await Task.sleep(for: .milliseconds(300))
-        #expect(bridge.captured == [[1, 2], [2]] && (store.previews[2]?.size.height ?? 0) < 40)   // once, 100 × 33
+        #expect(bridge.captured == [[1, 2], [2]] && (store.pictures.previews[2]?.size.height ?? 0) < 40)   // once, 100 × 33
     }
 
     @Test("a refresh cut off by the next while it takes pictures loses nothing: the next takes them, nothing having been stored")
@@ -594,8 +594,8 @@ struct OverviewStoreTests {
         store.send(.event(.changed))                                                    // AeroSpace's next event
         try? await Task.sleep(for: .milliseconds(50))
         bridge.release()
-        await waitUntil { (store.previews[2]?.size.height ?? 0) < 40 }
-        #expect((store.previews[2]?.size.height ?? 0) < 40)                            // taken in the new shape, 100 × 33, not the old 100 × 67
+        await waitUntil { (store.pictures.previews[2]?.size.height ?? 0) < 40 }
+        #expect((store.pictures.previews[2]?.size.height ?? 0) < 40)                            // taken in the new shape, 100 × 33, not the old 100 × 67
     }
 
     @Test("focus moves at once: after a workspace switch the ring is on the window AeroSpace's event named, before any read, while the layout waits for the windows to settle")
@@ -627,7 +627,7 @@ struct OverviewStoreTests {
         try? await Task.sleep(for: .milliseconds(40))                                    // read, still settling
         #expect(workspaceOf(store, 1) == "1")
         await waitUntil { workspaceOf(store, 1) == "2" }
-        #expect(store.previewSizes[2]?.width == 600 && (store.previews[2]?.size.height ?? 0) < 40)  // with it, not after
+        #expect(store.pictures.sizes[2]?.width == 600 && (store.pictures.previews[2]?.size.height ?? 0) < 40)  // with it, not after
     }
 
     @Test("a window that appears while the overview is open gets a picture; nothing changed, nothing is taken")
@@ -777,15 +777,15 @@ struct OverviewStorePreviewTests {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
 
-        #expect(store.previewsAvailable)
+        #expect(store.pictures.available)
         await store.measurePreviews()
-        #expect(store.previewSizes.count == 2)                 // the grid's shape, before any picture
+        #expect(store.pictures.sizes.count == 2)                 // the grid's shape, before any picture
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
         #expect(bridge.captured == [[1, 2]])
-        #expect(store.previews.count == 2)
+        #expect(store.pictures.previews.count == 2)
 
         store.endVisit()
-        #expect(store.previews.isEmpty && store.previewSizes.isEmpty)
+        #expect(store.pictures.previews.isEmpty && store.pictures.sizes.isEmpty)
     }
 
     @Test("without Screen Recording the store reports previews unavailable and asks on request")
@@ -794,10 +794,10 @@ struct OverviewStorePreviewTests {
         let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
 
-        #expect(!store.previewsAvailable)
-        store.requestPreviewAccess()
+        #expect(!store.pictures.available)
+        store.pictures.requestAccess()
         #expect(bridge.accessRequests == 1)
         await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
-        #expect(store.previews.isEmpty)
+        #expect(store.pictures.previews.isEmpty)
     }
 }

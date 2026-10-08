@@ -27,7 +27,7 @@ struct AeroControlAppTile: View {
     /// icon badged in its corner; until it lands — or for good, without Screen Recording —
     /// the tile is a plate in the snapshot's shape, and nothing else: an icon standing in for
     /// a picture flashed in whenever a picture went away.
-    private var preview: NSImage? { state.previews[window.windowId] }
+    private var preview: NSImage? { state.pictures.previews[window.windowId] }
     /// The ring: AeroSpace's focus on the map until an arrow moves it, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
     /// The window you came from, while the ring is elsewhere: framed in the text colour so
@@ -41,7 +41,7 @@ struct AeroControlAppTile: View {
     /// not known has no picture coming — without Screen Recording none has — so its title is all
     /// there is to tell it by, filter or not.
     private var showsCaption: Bool {
-        (filtering || state.previewSizes[window.windowId] == nil) && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
+        (filtering || state.pictures.sizes[window.windowId] == nil) && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
     }
 
     /// A caption only earns its lane when the picture under it stays at least this tall;
@@ -64,7 +64,7 @@ struct AeroControlAppTile: View {
     /// before the picture is in, so the place it lands in is already its shape — or the
     /// whole box when nothing is known about the window.
     private var contentSize: CGSize {
-        guard let size = preview?.size ?? state.previewSizes[window.windowId] else { return pictureBox }
+        guard let size = preview?.size ?? state.pictures.sizes[window.windowId] else { return pictureBox }
         return AeroControlMetrics.pixelSnapped(AeroControlMetrics.fit(size, into: pictureBox), scale: displayScale)
     }
 
@@ -90,7 +90,7 @@ struct AeroControlAppTile: View {
             .frame(width: size.width, height: size.height)
             // Drawn larger than it was taken, the picture is asked for again at this size.
             .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
-                state.wantPicture(window.windowId, pixels: drawnPixels)
+                state.pictures.want(window.windowId, pixels: drawnPixels)
             }
             .contentShape(Rectangle())
             .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }

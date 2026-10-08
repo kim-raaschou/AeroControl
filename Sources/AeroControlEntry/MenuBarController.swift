@@ -41,10 +41,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
-        if state.previewsAvailable {
+        if state.pictures.available {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
         } else {
-            let grant = item("Enable window previews (Screen Recording)…") { self.state.requestPreviewAccess() }
+            let grant = item("Enable window previews (Screen Recording)…") { self.state.pictures.requestAccess() }
             grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
             menu.addItem(grant)
         }
