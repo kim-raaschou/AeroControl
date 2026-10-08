@@ -157,7 +157,7 @@ struct AeroControlAppTile: View {
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
             if isFocused {                                   // the window under the ring, live
-                LivePicture(windowId: window.windowId, pixels: drawnPixels)
+                LivePicture(windowId: window.windowId, pixels: drawnPixels, bridge: state.nativeSystem as? NativeApiBridgeAdapter)
                     .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(plate)
                     .allowsHitTesting(false)
@@ -287,12 +287,18 @@ private struct FadingPicture<Content: View>: View {
     }
 }
 
-/// The window under the ring as it changes (`LiveWindowView`), over its picture.
+/// The window under the ring as it changes (`LiveWindowView`), over its picture: one view per
+/// window, started as it is made from the bridge's own enumeration, stopped as it goes.
 private struct LivePicture: NSViewRepresentable {
     let windowId: Int
     let pixels: CGSize
+    let bridge: NativeApiBridgeAdapter?
 
-    func makeNSView(context: Context) -> LiveWindowView { LiveWindowView() }
-    func updateNSView(_ view: LiveWindowView, context: Context) { view.watch(windowId, pixels: pixels) }
+    func makeNSView(context: Context) -> LiveWindowView {
+        let view = LiveWindowView()
+        Task { await bridge?.window(windowId).map { view.start($0, pixels: pixels) } }
+        return view
+    }
+    func updateNSView(_ view: LiveWindowView, context: Context) {}
     static func dismantleNSView(_ view: LiveWindowView, coordinator: ()) { view.stop() }
 }

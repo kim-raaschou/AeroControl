@@ -55,8 +55,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             Task { if let line = await self.state.focusedAppBinding() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(line, forType: .string) } }
         })
         menu.addItem(.separator())
-        menu.addItem(item("Reset settings") { self.settings.reset(); self.onSettingsChanged() })
-        menu.addItem(.separator())
         menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
     }
 

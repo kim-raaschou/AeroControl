@@ -7,35 +7,32 @@ import AppKit
 /// overview streams the window wearing the ring, one at a time, for as long as it wears it;
 /// until the first frame the picture taken at the summon shows through.
 final class LiveWindowView: NSView, SCStreamOutput {
-    private var stream: SCStream?
-    private var watched: Int?
+    private nonisolated(unsafe) var stream: SCStream?
     /// About as often as a window changes in a glance; the window server sends no more.
     private static let frameInterval = CMTime(value: 1, timescale: 20)
 
-    /// Streams `windowId` at `pixels`, the size it is drawn at, in place of what was streamed.
-    func watch(_ windowId: Int, pixels: CGSize) {
-        guard windowId != watched, CGPreflightScreenCaptureAccess() else { return }
-        (watched, wantsLayer) = (windowId, true)
+    /// Streams `window` at `pixels`, the size it is drawn at, into the layer until `stop`.
+    func start(_ window: SCWindow, pixels: CGSize) {
+        wantsLayer = true
         layer?.contentsGravity = .resizeAspect
-        stop()
-        Task { @MainActor in
-            let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-            guard let window = unsafe content?.windows.first(where: { unsafe Int($0.windowID) == windowId }), watched == windowId else { return }
-            let config = SCStreamConfiguration()
-            (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
-            config.minimumFrameInterval = Self.frameInterval
-            config.showsCursor = false
-            let stream = unsafe SCStream(filter: SCContentFilter(desktopIndependentWindow: window), configuration: config, delegate: nil)
-            try? stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .main)
-            self.stream = stream
-            try? await stream.startCapture()
-        }
+        let config = SCStreamConfiguration()
+        (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
+        config.minimumFrameInterval = Self.frameInterval
+        config.showsCursor = false
+        let stream = unsafe SCStream(filter: SCContentFilter(desktopIndependentWindow: window), configuration: config, delegate: nil)
+        try? stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .main)
+        self.stream = stream
+        Task { try? await stream.startCapture() }
     }
 
-    func stop() {
+    /// Stopped when the tile goes, and again when the view does: a stream left running is one the
+    /// window server keeps counting.
+    nonisolated func stop() {
         _ = stream.map { stream in Task { try? await stream.stopCapture() } }
         stream = nil
     }
+
+    deinit { stop() }
 
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
         // A frame with nothing new has no image; the one before stays.

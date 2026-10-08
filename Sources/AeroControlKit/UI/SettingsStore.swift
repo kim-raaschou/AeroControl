@@ -11,8 +11,4 @@ public final class SettingsStore {
         self.defaults = defaults
         self.theme = defaults.string(forKey: themeKey).flatMap(AeroControlTheme.named) ?? .system
     }
-
-    public func reset() {
-        theme = .system
-    }
 }

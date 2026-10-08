@@ -6,6 +6,16 @@ import CoreGraphics
 /// height inside the card, as large as its cell allows). All unit-tested.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
+    /// The lane under the cards for the query, or the strip's line, and the air above it.
+    public static let pillLane: CGFloat = 38
+    public static let pillGap: CGFloat = 18
+
+    /// The cards' box on a screen: most of it, less the pill's lane. The lane comes out of the
+    /// box rather than being added to it: added, the panel grew taller than the screen the moment
+    /// anything was typed, and the lane was clipped off the bottom.
+    public static func usable(_ available: CGSize) -> CGSize {
+        CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction - pillLane - pillGap)
+    }
     public static let cardGap: CGFloat = 24
     public static let tileSpacing: CGFloat = 14
     public static let cardPadding: CGFloat = 18
@@ -229,7 +239,7 @@ public enum AeroControlLayout {
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
         let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
-        let usable = CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction)
+        let usable = usable(available)
         let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
                                     chrome: CGSize(width: 2 * cardPadding, height: cardChrome)).first?.size ?? usable
         if !strip { box = CGSize(width: min(box.width, inner(of: cell).width), height: min(box.height, inner(of: cell).height)) }

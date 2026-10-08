@@ -20,8 +20,7 @@ struct SettingsStoreTests {
         let fixed = AeroControlTheme.named("tokyoNight")!
         store.theme = fixed
         #expect(SettingsStore(defaults: defaults).theme == fixed)
-        store.reset()
-        #expect(store.theme == .system)
+        store.theme = .system
         #expect(SettingsStore(defaults: defaults).theme == .system)
     }
 }

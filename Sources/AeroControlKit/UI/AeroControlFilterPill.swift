@@ -38,7 +38,7 @@ struct AeroControlFilterPill: View {
         Group {
             if let app { appPill(app) } else if query.isEmpty { hint } else { pill }
         }
-        .frame(height: Self.laneHeight)
+        .frame(height: AeroControlLayout.pillLane)
     }
 
     /// The lane's idle content: the two keys the overview answers to, faint enough to be
@@ -73,7 +73,6 @@ struct AeroControlFilterPill: View {
 
     /// Tall enough for the capsule and its shadow. The panel subtracts it from the grid's height,
     /// so the lane is reserved rather than added: typing never moves a card.
-    static let laneHeight: CGFloat = 38
     /// A caption is read, not studied: long paths and titles are cut in the middle past this.
     private static let titleWidth: CGFloat = 560
 

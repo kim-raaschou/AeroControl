@@ -24,7 +24,7 @@ public struct AeroControlPanel: View {
         // The pill sits under the result rather than over it: the cards are only as tall as
         // their pictures need now, so an overlay at the bottom would land on a card edge.
         // A missing app has the lane alone; a map without workspaces has nothing to draw.
-        return VStack(spacing: Self.pillGap) {
+        return VStack(spacing: AeroControlLayout.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if state.model.workspaces.isEmpty || state.missingApp != nil {
@@ -40,16 +40,7 @@ public struct AeroControlPanel: View {
         .environment(state)
     }
 
-    /// The grid's box. The query's lane comes out of it rather than being added to it: added,
-    /// the panel grew taller than the screen the moment anything was typed, and the lane was
-    /// clipped off the bottom.
-    private var usable: CGSize {
-        CGSize(width: available.width * AeroControlLayout.usableScreenFraction,
-               height: available.height * AeroControlLayout.usableScreenFraction
-                   - AeroControlFilterPill.laneHeight - Self.pillGap)
-    }
-
-    private static let pillGap: CGFloat = 18
+    private var usable: CGSize { AeroControlLayout.usable(available) }
 
     /// The result takes over the grid's geometry: a query that found something draws only the
     /// workspaces that hold a match, each with only its matching windows, in the same lattice

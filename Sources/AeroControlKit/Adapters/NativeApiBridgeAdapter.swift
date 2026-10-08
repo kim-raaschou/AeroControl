@@ -66,6 +66,10 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return content
     }
 
+    /// The window to stream for the live picture, from the visit's enumeration; nil without
+    /// Screen Recording, or for a window opened after the summon.
+    func window(_ id: Int) async -> SCWindow? { unsafe await resolvedContent()?.windows.first { unsafe Int($0.windowID) == id } }
+
     /// Read from the window server each time, not from the visit's enumeration: a window resized
     /// while the overview is up — laid out again by AeroSpace, its app getting round to it — kept
     /// its size from the summon there, and was never taken again.
