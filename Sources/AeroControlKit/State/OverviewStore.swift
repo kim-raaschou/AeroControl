@@ -6,9 +6,9 @@ import Common
 public class OverviewStore {
     public private(set) var model = OverviewModel() {
         didSet {
-            if let strip {
-                let before = oldValue.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }.map(\.window.windowId)
-                self.strip = strip.kept(before: before, after: stripWindows.map(\.window.windowId))
+            if let marking {    // the strip's windows, or the map's: all of them
+                let ours = { (w: ParsedWindow) in w.window.bundleId == (marking.app ?? w.window.bundleId) }
+                self.marking = marking.kept(before: oldValue.windowsInGridOrder.filter(ours).map(\.window.windowId), after: model.windowsInGridOrder.filter(ours).map(\.window.windowId))
             }
             filterMatches = model.matching(filter)
         }
@@ -32,18 +32,18 @@ public class OverviewStore {
     /// it lives here rather than in the model: the reducer's contract
     /// is AeroSpace state in, AeroSpace work out.
     public var filter: String = "" {
-        didSet { filterMatches = model.matching(filter); mapMarked = nil }
+        didSet { filterMatches = model.matching(filter); marking = nil }
     }
-    /// The map's own marking, once an arrow has moved it: until then the ring is AeroSpace's
-    /// focus, or the first match. AeroSpace moving its focus moves the outline, not this.
-    private var mapMarked: Int?
+    /// The marking: the strip's, or the map's once a key or the pointer has moved the ring — until
+    /// then the ring is AeroSpace's focus, or the first match. AeroSpace moving its focus moves
+    /// the outline, not this. One value and one set of rules for both (`Strip`).
+    public private(set) var marking: Strip?
+    /// The strip that is up, if the marking is one's.
+    public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
     /// The cards as the map or the strip last laid them out, every window where it is drawn: the
     /// keys and the pointer go by these. An empty workspace's card holds its stand-in.
     @ObservationIgnored public var drawn: [GridWalk.Card] = []
-    /// Which drawn card a window is on.
-    private var cardOf: (Int) -> Int? { { [drawn] id in drawn.firstIndex { $0.windows[id] != nil } } }
 
-    public private(set) var strip: Strip?
     /// An app `open` could not start, told on the strip's lane until the visit ends: a typo in a
     /// key's link is otherwise a key that does nothing.
     public var missingApp: AppRef?
@@ -55,7 +55,7 @@ public class OverviewStore {
         refreshTask?.cancel()
         refreshTask = nil
         filter = ""
-        strip = nil
+        marking = nil
         drawn = []
         missingApp = nil
         clearPreviews()
@@ -80,19 +80,23 @@ public class OverviewStore {
     /// The strip's windows, in the order the map draws them.
     public var stripWindows: [ParsedWindow] {
         guard let strip else { return [] }
-        return model.windowsInGridOrder.filter { $0.window.bundleId == strip.bundleId }
+        return model.windowsInGridOrder.filter { $0.window.bundleId == strip.app }
     }
 
     /// The workspaces that hold the strip's app, whole: a card mirrors all of a workspace, the
     /// other apps' windows drawn grey behind the app's, not only the app's windows.
     public var stripWorkspaces: [WorkspaceInfo] {
         guard let strip else { return [] }
-        return model.workspaces.filter { $0.windows.contains { $0.bundleId == strip.bundleId } }
+        return model.workspaces.filter { $0.windows.contains { $0.bundleId == strip.app } }
     }
 
-    /// The summon key again while the strip is up: the marking moves on, as Cmd-` does.
-    public func stepStrip() {
-        strip = strip?.moved(.window(1), ids: stripWindows.map(\.window.windowId), card: cardOf, cards: drawn)
+    /// A key moves the marking, the map's or the strip's, through the cards as drawn
+    /// (`Strip.moved`): ← and → through a card's windows in reading order and on to the next, an
+    /// empty workspace standing in as one window the size of its card; the map's marking starts
+    /// from the ring. While there is a query, the matches are all that is drawn.
+    private func move(_ move: StripMove) {
+        let order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { [drawn] (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
+        marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(move, ids: order, card: cardOf, cards: drawn)
     }
 
     /// Where the mouse was when the overview last heard from it, in screen points.
@@ -107,10 +111,9 @@ public class OverviewStore {
     /// also fires when the row slides, or the overview opens, under a hand that is still, and
     /// that must not take the marking away from the keys.
     public func point(_ windowId: Int, at location: CGPoint) {
-        guard location != pointer else { return }
+        guard location != pointer, marking?.app.map({ _ in stripWindows.contains { $0.window.windowId == windowId } }) ?? true else { return }
         pointer = location
-        mapMarked = windowId
-        if stripWindows.contains(where: { $0.window.windowId == windowId }) { strip = strip?.marking(windowId) }
+        marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
@@ -119,26 +122,16 @@ public class OverviewStore {
     /// computed property here was a scan of every title per tile per pass.
     public private(set) var filterMatches: [ParsedWindow] = []
 
-    /// The window wearing the ring: the strip's marking; on the map the arrows' marking while it
-    /// is drawn, else the first match while the filter has any, else AeroSpace's focused window.
-    /// Until an arrow is pressed the map follows AeroSpace; the thin outline always does.
-    public var ringWindowId: Int? {
-        strip?.marked ?? mapMarked.flatMap(cardOf).flatMap { _ in mapMarked } ?? filterMatches.first?.window.windowId ?? model.focusedWindowId
-    }
+    /// The window wearing the ring: the marking, else the first match while the filter has any,
+    /// else AeroSpace's focused window. Until a key or the pointer moves it the map follows
+    /// AeroSpace; the thin outline always does.
+    public var ringWindowId: Int? { marking?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId }
 
     /// The empty workspace the map's ring is on, a stop of its own for the keys: its card wears
     /// the ring, and Enter switches to it. Its marking is its stand-in, `-1 - its index`
     /// (`AeroControlLayout.MapCard`), which no window has.
-    public var markedWorkspace: String? { mapMarked.flatMap { Dictionary(model.workspaces.enumerated().map { (-1 - $0.offset, $0.element.name) }) { a, _ in a }[$0] } }
+    public var markedWorkspace: String? { marking?.marked.flatMap { Dictionary(model.workspaces.enumerated().map { (-1 - $0.offset, $0.element.name) }) { a, _ in a }[$0] } }
 
-    /// A key that moves the map's marking moves it as the strip's moves (`Strip.moved`), through
-    /// the cards as drawn — while there is a query, the matches are all that is drawn: ← and →
-    /// through a workspace's windows in reading order and on to the next, an empty one standing
-    /// in as one window the size of its card.
-    private func walkMap(_ move: StripMove) {
-        let order = drawn.flatMap { GridWalk.rows(of: $0).joined() }
-        mapMarked = Strip(bundleId: "", marked: ringWindowId, centre: nil).moved(move, ids: order, card: cardOf, cards: drawn).marked
-    }
 
     /// The window ⌘W closes and whose app ⌘Q quits, as its × and the app's own ⌘Q would: the one
     /// under the ring, the map's or the strip's, which says on screen what goes.
@@ -321,7 +314,7 @@ public class OverviewStore {
         missingApp = nil
         let decision = AppSummon.decide(app: app, model: model, recent: recentWindows)
         guard case .pick(let opened) = decision else { return decision }
-        strip = opened
+        marking = opened
         // Up already, the strip takes over another's: its pictures come as a focus event's would.
         if following { requestRefresh() }
         return decision
@@ -333,8 +326,8 @@ public class OverviewStore {
     /// ours, `.focus` is a pick the caller carries out, since focusing means hiding and the
     /// window is the caller's.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
+        if case .move(let move) = key { self.move(move); return .handled }
         if strip != nil || missingApp != nil { return handleStrip(key) }   // a notice is a strip of no windows
-        if case .move(let move) = key { walkMap(move); return .handled }
         if key == .enter, let workspace = markedWorkspace { send(.action(.focusWorkspace(workspace))); return .handled }
         let action = filterKeyAction(query: filter, ring: ringWindowId, key: key)
         if case .setQuery(let query) = action { filter = query }
@@ -347,7 +340,7 @@ public class OverviewStore {
     private func handleStrip(_ key: FilterKey) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
         switch AppStripModel.action(for: key, ids: ids, marked: strip?.marked, workspaces: stripWorkspaces.map(\.name)) {
-        case .move(let move): strip = strip?.moved(move, ids: ids, card: cardOf, cards: drawn)
+        case .move(let move): self.move(move)
         case .commit(let id): return .focus(windowId: id)
         case .cancel: return .none
         case .none: break
@@ -393,7 +386,7 @@ public class OverviewStore {
         let hadStrip = strip != nil
         if newState != model { model = newState }               // keeps the strip, or ends it with its app's last window
         // AeroSpace's focus decides, from the event or the read: out of the strip's app, it is over.
-        if focusMoved, let strip { self.strip = strip.following(model.focusedWindow) }
+        if focusMoved, let strip { marking = strip.following(model.focusedWindow) }
         if hadStrip, strip == nil { onShotDone?(true) }        // over: the host closes and the focused app gets the keyboard
         // A focus ends the shot and AeroSpace hands the window the keyboard; on the window it has
         // focused already its `focus` does nothing, and the host gives the app the keyboard itself.
@@ -485,7 +478,7 @@ public class OverviewStore {
             if again == sizes { break }
             sizes = again
         }
-        let shown = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.bundleId } } ?? true }
+        let shown = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.app } } ?? true }
         let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes)
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await nativeSystem.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }

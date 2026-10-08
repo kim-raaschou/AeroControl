@@ -49,8 +49,8 @@ struct SummonTests {
         ([7], 0, .focus(windowId: 7)),
         ([1, 2], 1, .focus(windowId: 2)),
         ([1, 2], 2, .focus(windowId: 1)),                                              // and back
-        ([1, 2], 9, .pick(Strip(bundleId: "a", marked: 1, centre: 1))),      // from another app
-        ([1, 2, 3], 2, .pick(Strip(bundleId: "a", marked: 3, centre: 3))),
+        ([1, 2], 9, .pick(Strip(app: "a", marked: 1, centre: 1))),      // from another app
+        ([1, 2, 3], 2, .pick(Strip(app: "a", marked: 3, centre: 3))),
     ] as [([Int], Int, AppSummon)])
     func decide(app: [Int], focused: Int, expected: AppSummon) {
         let windows = app.map { WindowInfo(windowId: $0, appName: "A", bundleId: "a") } + [WindowInfo(windowId: 9, appName: "B", bundleId: "b")]

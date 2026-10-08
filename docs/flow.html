@@ -69,7 +69,7 @@ flowchart TD
 <tr><td><code>app-name=A</code></td><td>that app's flow again (<a href="#link">section 1</a>): the app named A</td><td>step the strip's marking on</td></tr>
 <tr><td><code>app-id=com.c</code></td><td>that app's flow again (<a href="#link">section 1</a>): the app with bundle id com.c</td><td>that app's flow again (<a href="#link">section 1</a>): the app with bundle id com.c</td></tr>
 </table>
-<p>The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step calls <code>stepStrip</code>; a summon runs section 1 again in place, so the strip takes over from whatever was showing.</p>
+<p>The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step moves the marking on, as → does; a summon runs section 1 again in place, so the strip takes over from whatever was showing.</p>
 <h2 id="strip">3. The strip</h2>
 <p>This is where the last leaf of <a href="#link">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
 <table><tr><th>Key</th><th>Does</th></tr>

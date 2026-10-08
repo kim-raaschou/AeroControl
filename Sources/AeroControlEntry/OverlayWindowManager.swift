@@ -181,9 +181,9 @@ final class OverlayWindowManager {
     func toggleVisibility(_ summon: Summon = .map) {
         guard requestedVisible else { return show(summon) }
         guard !loading else { return }                          // tens of milliseconds; the first key decides
-        switch summon.again(stripApp: state.strip?.bundleId, among: state.model.workspaces.flatMap(\.windows)) {
+        switch summon.again(stripApp: state.strip?.app, among: state.model.workspaces.flatMap(\.windows)) {
         case .close: hide(restoreFocus: true)
-        case .step: state.stepStrip()
+        case .step: _ = state.handle(.move(.window(1)))        // the marking moves on, as Cmd-` does
         case .summon(let ref): _ = carryOut(state.summonApp(ref))
         }
     }

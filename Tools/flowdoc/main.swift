@@ -91,7 +91,7 @@ func describe(_ e: OverviewEffect) -> String {
 }
 func describe(_ s: Strip?) -> String {
     guard let s else { return "no strip" }
-    return "\(s.bundleId) · marked \(s.marked.map(String.init) ?? "–") · centre \(s.centre.map(String.init) ?? "–")"
+    return "\(s.app ?? "the map") · marked \(s.marked.map(String.init) ?? "–") · centre \(s.centre.map(String.init) ?? "–")"
 }
 
 let all = model.workspaces.flatMap(\.windows)
@@ -151,7 +151,7 @@ let strips: [(String, String?)] = [("the map is up", nil), ("A's strip is up", "
 table(["Link", "the map is up", "A's strip is up"], [
     ("workspaces", Summon.map), ("app-id=com.a", Summon.app(.bundleId("com.a"))), ("app-name=A", Summon.app(.name("A"))), ("app-id=com.c", Summon.app(.bundleId("com.c"))),
 ].map { name, s in [code(name)] + strips.map { describe(s.again(stripApp: $0.1, among: all)) } })
-p("The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step calls <code>stepStrip</code>; a summon runs section 1 again in place, so the strip takes over from whatever was showing.")
+p("The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step moves the marking on, as → does; a summon runs section 1 again in place, so the strip takes over from whatever was showing.")
 
 // MARK: - 3. The strip
 
@@ -179,7 +179,7 @@ let round = stepped.moved(.window(1), ids: [1, 2, 8], card: card)
 func tell(_ before: Strip, _ after: Strip?) -> String {
     guard let after else { return "the strip is over: nothing to choose" }
     var parts: [String] = []
-    if after.bundleId != before.bundleId { parts.append("the strip is \(after.bundleId)'s now") }
+    if after.app != before.app { parts.append("the strip is \(after.app ?? "the map")'s now") }
     if after.marked != before.marked { parts.append("the marking goes to window \(after.marked.map(String.init) ?? "none")") }
     if after.centre != before.centre { parts.append("the row centres on it") } else if after.marked != before.marked { parts.append("the row stays where it was") }
     return parts.isEmpty ? "nothing changes" : parts.joined(separator: "; ")

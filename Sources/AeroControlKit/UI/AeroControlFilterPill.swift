@@ -27,7 +27,7 @@ struct AeroControlFilterPill: View {
     private var app: StripApp? {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason) }
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
-        return StripApp(name: first.appName, icon: state.icon(for: strip.bundleId),
+        return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
                         summary: AppStripModel.summary(state.stripWindows, marked: strip.marked))
     }
 

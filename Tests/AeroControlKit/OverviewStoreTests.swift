@@ -220,6 +220,14 @@ struct OverviewStoreTests {
         store.filter = ""; #expect(store.ringWindowId == 3)
     }
 
+    @Test("in the strip ← and → go through the windows as drawn, in reading order, as on the map — not in AeroSpace's order")
+    func stripArrowsReadingOrder() async {
+        let (_, store) = await stripOnTeams()                                           // Teams 1, 2, 3 in AeroSpace's order, marked on 3
+        store.drawn = [(CGRect(x: 0, y: 0, width: 300, height: 100), Dictionary([3, 1, 2].enumerated().map { ($1, CGRect(x: CGFloat($0) * 100, y: 0, width: 90, height: 90)) }) { a, _ in a })]   // drawn 3, 1, 2
+        #expect(store.handle(.move(.window(1))) == .handled && store.strip?.marked == 1 && store.handle(.move(.window(-1))) == .handled
+                && store.handle(.move(.window(-1))) == .handled && store.strip?.marked == 2)   // on to 1, back past 3 round to 2
+    }
+
     @Test("pointing at a window on the map moves the ring there, as in the strip; a hover under a hand that has not moved does not")
     func pointingMarksTheMap() async {
         let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
@@ -274,8 +282,8 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
         _ = store.summonApp(.bundleId("com.app"))
-        store.drawn = store.stripWorkspaces.enumerated().map { i, ws in                    // as the strip lays it out: a card per workspace
-            (CGRect(x: CGFloat(i) * 100, y: 0, width: 100, height: 100), Dictionary(ws.windows.map { ($0.windowId, CGRect(x: CGFloat(i) * 100 + 5, y: 5, width: 90, height: 90)) }) { a, _ in a }) }
+        store.drawn = store.stripWorkspaces.enumerated().map { i, ws in                    // as the strip lays it out: a card per workspace, the app's windows
+            (CGRect(x: CGFloat(i) * 100, y: 0, width: 100, height: 100), Dictionary(ws.windows.filter { $0.bundleId == "com.app" }.map { ($0.windowId, CGRect(x: CGFloat(i) * 100 + 5, y: 5, width: 90, height: 90)) }) { a, _ in a }) }
         return (runner, store)
     }
 
@@ -330,7 +338,7 @@ struct OverviewStoreTests {
         _ = store.summonApp(.bundleId("com.app"))
         store.send(.event(.changed))                                                    // a mode key
         store.send(.event(.focusChanged(windowId: 2, workspace: "2")))                  // into the app
-        #expect(store.strip?.bundleId == "com.app" && done.isEmpty)
+        #expect(store.strip?.app == "com.app" && done.isEmpty)
         store.send(.event(.focusChanged(windowId: 9, workspace: "4")))                  // Slack, of several windows: over all the same
         #expect(store.strip == nil && done == [true])
     }
@@ -353,13 +361,13 @@ struct OverviewStoreTests {
         #expect(store.previews[9] == nil)
         _ = store.summonApp(.bundleId("com.slack"))
         await waitUntil { store.previews[9] != nil }
-        #expect(store.strip?.bundleId == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
+        #expect(store.strip?.app == "com.slack" && store.previews[8] != nil && store.previews[9] != nil)
     }
 
     @Test("stepping past the last workspace's window goes on to the first's; back past the first, to the last's")
     func stripWraps() async {
         let (_, store) = await stripOnTeams()                                           // Teams on 1, 2 and 3, marked on 3
-        store.stepStrip()                                                                // 3 → 1: on round
+        _ = store.handle(.move(.window(1)))                                                                // 3 → 1: on round
         #expect(store.strip?.marked == 1 && store.strip?.centre == 1)
         _ = store.handle(.move(.window(-1)))                                                            // 1 → 3: back round
         #expect(store.strip?.marked == 3)
@@ -389,7 +397,7 @@ struct OverviewStoreTests {
         #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
         _ = store.handle(.move(.window(-1)))
         #expect(store.strip?.centre == 1)
-        store.stepStrip()
+        _ = store.handle(.move(.window(1)))
         #expect(store.strip?.centre == 2)
     }
 

@@ -25,7 +25,7 @@ struct AeroControlAppStrip: View {
 
     var body: some View {
         let groups = state.stripWorkspaces
-        let bundleId = state.strip?.bundleId ?? ""
+        let bundleId = state.strip?.app ?? ""
         let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.previewSizes, screens: screens,
                                                    fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
         let ids = state.stripWindows.map(\.window.windowId)
@@ -50,7 +50,7 @@ struct AeroControlAppStrip: View {
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
         .onChange(of: layout.cards, initial: true) { _, cards in
             state.drawn = cards.map { c in (frame: CGRect(x: c.span.x, y: 0, width: c.span.width, height: layout.height),
-                                                 windows: c.frames.mapValues { $0.offsetBy(dx: c.span.x + AeroControlLayout.cardPadding, dy: 0) }) }
+                                                 windows: c.frames.filter { !c.others.contains($0.key) }.mapValues { $0.offsetBy(dx: c.span.x + AeroControlLayout.cardPadding, dy: 0) }) }   // the app's own: the others are not stops
         }
     }
 

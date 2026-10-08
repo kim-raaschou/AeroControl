@@ -50,29 +50,29 @@ struct StripValueTests {
     @Test("opened on the window after the one you are in, the centre with it")
     func opened() {
         let s = Strip.opened("com.app", origin: 2, ids: [1, 2, 3], recent: [])
-        #expect(s == Strip(bundleId: "com.app", marked: 3, centre: 3))
+        #expect(s == Strip(app: "com.app", marked: 3, centre: 3))
         #expect(Strip.opened("com.app", origin: nil, ids: [1, 2], recent: [2]).marked == 2)
     }
 
     @Test("the pointer marks: the marking moves, the centre stays")
     func marking() {
-        let s = Strip(bundleId: "a", marked: 1, centre: 1)
-        #expect(s.marking(4) == Strip(bundleId: "a", marked: 4, centre: 1))
+        let s = Strip(app: "a", marked: 1, centre: 1)
+        #expect(s.marking(4) == Strip(app: "a", marked: 4, centre: 1))
     }
 
     @Test("← and → step round the ids, the centre with the marking; ⌘→ and ⌘← go to the next or previous workspace's first window, wrapping")
     func moved() {
-        let s = Strip(bundleId: "a", marked: 5, centre: 5), ids = [1, 2, 3, 4, 5]
-        #expect(s.moved(.window(1), ids: ids, card: card, cards: cards) == Strip(bundleId: "a", marked: 1, centre: 1))   // round the end
+        let s = Strip(app: "a", marked: 5, centre: 5), ids = [1, 2, 3, 4, 5]
+        #expect(s.moved(.window(1), ids: ids, card: card, cards: cards) == Strip(app: "a", marked: 1, centre: 1))   // round the end
         #expect(s.moved(.window(1), ids: [], card: card, cards: cards) == s)                                             // nothing to step onto
-        #expect(Strip(bundleId: "a", marked: 2, centre: 2).moved(.workspace(1), ids: ids, card: card, cards: cards).marked == 4)
+        #expect(Strip(app: "a", marked: 2, centre: 2).moved(.workspace(1), ids: ids, card: card, cards: cards).marked == 4)
         #expect(s.moved(.workspace(1), ids: ids, card: card, cards: cards).marked == 1 && s.moved(.workspace(-1), ids: ids, card: card, cards: cards).marked == 1)
     }
 
     @Test("AeroSpace moved the focus: within the app the strip stands; anywhere else, another app or an empty workspace, the choice was made with AeroSpace and it is over")
     func following() {
         func w(_ id: Int, _ app: String) -> WindowInfo { WindowInfo(windowId: id, appName: app, bundleId: app) }
-        let s = Strip(bundleId: "a", marked: 1, centre: 1)
+        let s = Strip(app: "a", marked: 1, centre: 1)
         #expect(s.following(w(5, "a")) == s)
         #expect(s.following(w(3, "b")) == nil)                                           // several windows or one: over
         #expect(s.following(nil) == nil)                                                 // an empty workspace
@@ -80,11 +80,12 @@ struct StripValueTests {
 
     @Test("after the windows changed the marking stays on its window, the centre where it was; a closed one hands the marking, and the centre, to the one that took its place")
     func kept() {
-        let s = Strip(bundleId: "a", marked: 2, centre: 1)                  // pointed at 2, the keys left the centre on 1
+        let s = Strip(app: "a", marked: 2, centre: 1)                  // pointed at 2, the keys left the centre on 1
         #expect(s.kept(before: [1, 2, 3], after: [1, 2, 3]) == s)                      // a title tick turns nothing under a still hand
+        #expect(Strip(app: nil, marked: -2, centre: -2).kept(before: [1, 2], after: [1]) == Strip(app: nil, marked: -2, centre: -2))   // the map's, on an empty workspace: no window of its own to lose
         #expect(s.kept(before: [1, 2, 3], after: [3, 2, 1])?.marked == 2)
-        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(bundleId: "a", marked: 3, centre: 3))
-        #expect(Strip(bundleId: "a", marked: 3, centre: 3).kept(before: [1, 2, 3], after: [1, 2])?.marked == 2)   // the last closed: the one before
+        #expect(s.kept(before: [1, 2, 3], after: [1, 3]) == Strip(app: "a", marked: 3, centre: 3))
+        #expect(Strip(app: "a", marked: 3, centre: 3).kept(before: [1, 2, 3], after: [1, 2])?.marked == 2)   // the last closed: the one before
         #expect(s.kept(before: [1, 2, 3], after: []) == nil)                              // none left: the strip is over
     }
 }
@@ -121,8 +122,8 @@ struct AppStripKeyTests {
     func workspaceNames() {
         func act(_ c: Character) -> M.Action { M.action(for: .character(c), ids: ids, marked: 10, workspaces: ["3", "4", "10"]) }
         #expect(act("4") == .move(.card(1)) && act("0") == .move(.card(2)) && act("7") == .none && act("a") == .none)
-        #expect(Strip(bundleId: "a", marked: 1, centre: 1).moved(.card(1), ids: [1, 2, 4, 5], card: { $0 < 4 ? 0 : 1 }) == Strip(bundleId: "a", marked: 4, centre: 4))   // card 1's first
-        #expect(Strip(bundleId: "a", marked: 1, centre: 1).moved(.workspace(1), ids: [1, 9], card: { $0 < 4 ? 0 : 3 }).marked == 9)   // past the empty ones
+        #expect(Strip(app: "a", marked: 1, centre: 1).moved(.card(1), ids: [1, 2, 4, 5], card: { $0 < 4 ? 0 : 1 }) == Strip(app: "a", marked: 4, centre: 4))   // card 1's first
+        #expect(Strip(app: "a", marked: 1, centre: 1).moved(.workspace(1), ids: [1, 9], card: { $0 < 4 ? 0 : 3 }).marked == 9)   // past the empty ones
     }
 
     @Test("⌘ and a window's key goes straight to that window, as ⌘1–⌘9 pick a tab; beyond the strip it is nothing")
