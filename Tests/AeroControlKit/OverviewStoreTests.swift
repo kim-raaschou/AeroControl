@@ -207,8 +207,8 @@ struct OverviewStoreTests {
     @Test("on the map ← and → walk a marking from AeroSpace's focus through a workspace's windows as drawn and on to the next, an empty one a stop where Enter switches to it; AeroSpace moving its focus moves the outline, not the marking; a query starts again")
     func arrowsWalkTheMap() async {
         let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (2, "1"))
-        store.mapCards = ["1": CGRect(x: 0, y: 0, width: 200, height: 100), "2": CGRect(x: 220, y: 0, width: 200, height: 100), "3": CGRect(x: 440, y: 0, width: 200, height: 100)]
-        store.mapFrames = [1: CGRect(x: 10, y: 10, width: 80, height: 60), 2: CGRect(x: 100, y: 10, width: 80, height: 60), 3: CGRect(x: 450, y: 10, width: 80, height: 60)]
+        let cell = { (x: CGFloat) in CGRect(x: x, y: 0, width: 200, height: 100) }, tile = { (x: CGFloat) in CGRect(x: x, y: 10, width: 80, height: 60) }
+        store.drawn = [(cell(0), [1: tile(10), 2: tile(100)]), (cell(220), [-2: cell(220)]), (cell(440), [3: tile(450)])]   // as the map lays it out
         #expect(store.handle(.move(.window(1))) == .handled && store.markedWorkspace == "2")    // the empty one
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 3)
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 1)  // round
@@ -223,7 +223,7 @@ struct OverviewStoreTests {
     @Test("pointing at a window on the map moves the ring there, as in the strip; a hover under a hand that has not moved does not")
     func pointingMarksTheMap() async {
         let (_, store) = await loaded(windows: teams(3), workspaces: workspacesJSON(["1"]), focus: (2, "1"))
-        store.mapFrames = [1: .zero, 2: .zero, 3: .zero]
+        store.drawn = [(.zero, [1: .zero, 2: .zero, 3: .zero])]
         store.notePointer(CGPoint(x: 5, y: 5)); store.point(3, at: CGPoint(x: 5, y: 5))
         #expect(store.ringWindowId == 2)                                                // the map opened under a still hand
         store.point(3, at: CGPoint(x: 9, y: 5))
@@ -274,6 +274,8 @@ struct OverviewStoreTests {
         let store = started(runner)
         await store.reload()
         _ = store.summonApp(.bundleId("com.app"))
+        store.drawn = store.stripWorkspaces.enumerated().map { i, ws in                    // as the strip lays it out: a card per workspace
+            (CGRect(x: CGFloat(i) * 100, y: 0, width: 100, height: 100), Dictionary(ws.windows.map { ($0.windowId, CGRect(x: CGFloat(i) * 100 + 5, y: 5, width: 90, height: 90)) }) { a, _ in a }) }
         return (runner, store)
     }
 

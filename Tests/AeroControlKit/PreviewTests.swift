@@ -180,6 +180,38 @@ struct TreeLayoutTests {
 
 }
 
+@Suite("the map as drawn")
+struct MapLayoutTests {
+    private let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084)
+    private func layout(_ workspaces: [WorkspaceInfo], filtering: Bool = false) -> [AeroControlLayout.MapCard] {
+        AeroControlLayout.mapLayout(workspaces: workspaces, sizes: [:], screens: [1: screen], available: CGSize(width: 1800, height: 1100),
+                                    usable: CGSize(width: 1600, height: 900), filtering: filtering)
+    }
+
+    @Test("every card where the lattice put it, its windows where the card draws them, both in the map's space; an empty workspace's card holds one stand-in, keyed -1 - its index, the size of its inner box")
+    func cardsAsDrawn() throws {
+        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 16, 49, 842, 1052), rected(2, "B", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
+        let cards = layout([a, WorkspaceInfo(name: "2", windows: [], screenIndex: 1)])
+        #expect(cards.map(\.workspace) == ["1", "2"] && cards[0].frame.minX < cards[1].frame.minX && cards[0].frame.size == cards[1].frame.size)
+        let left = try #require(cards[0].grid.windows[1]), right = try #require(cards[0].grid.windows[2])
+        #expect(cards[0].frame.contains(left) && cards[0].frame.contains(right) && left.maxX <= right.minX && left.minY > cards[0].frame.minY + AeroControlLayout.badgeLane)
+        let inCard = try #require(cards[0].frames[1])                                          // the card draws from its inner box
+        #expect(abs(inCard.minX - (left.minX - cards[0].frame.minX - AeroControlLayout.cardPadding)) < 0.01
+                && abs(inCard.minY - (left.minY - cards[0].frame.minY - AeroControlLayout.badgeLane - AeroControlLayout.tileSpacing)) < 0.01)
+        let standIn = try #require(cards[1].grid.windows[-2])
+        #expect(cards[1].grid.windows.count == 1 && standIn.size == AeroControlLayout.inner(of: cards[1].frame.size) && cards[1].frame.contains(standIn))
+    }
+
+    @Test("a filtered map draws only the workspaces given, each packing what it holds, and a float lies over the layout as a ghost")
+    func filteredAndGhosts() throws {
+        let float = WindowInfo(windowId: 9, appName: "C", bundleId: "com.C", isFloating: true)
+        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 16, 49, 842, 1052), rected(2, "B", 870, 49, 842, 1052), float], screenIndex: 1, rootLayout: "h_tiles")
+        #expect(layout([a]).first?.ghosts == [9])
+        let packed = try #require(layout([a], filtering: true).first)
+        #expect(packed.ghosts.isEmpty && packed.frames.count == 3)
+    }
+}
+
 @Suite("the strip's cards")
 struct StripLayoutTests {
     private let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084)

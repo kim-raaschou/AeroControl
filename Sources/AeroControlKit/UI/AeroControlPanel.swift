@@ -50,8 +50,6 @@ public struct AeroControlPanel: View {
     }
 
     private static let pillGap: CGFloat = 18
-    /// The map's own coordinate space, the one its tiles say where they are in.
-    static let mapSpace = "map"
 
     /// The result takes over the grid's geometry: a query that found something draws only the
     /// workspaces that hold a match, each with only its matching windows, in the same lattice
@@ -61,26 +59,18 @@ public struct AeroControlPanel: View {
         let filtered = state.model.workspaces(holding: matches)
         let filtering = !filtered.isEmpty
         let all = filtering ? filtered : state.model.workspaces
-        // The shape of a card: this screen's, as GNOME and KWin shape their workspace cells.
-        let frames = CardGrid.lattice(count: all.count, in: usable, cellRatio: AeroControlLayout.screenRatio(for: available), gap: AeroControlLayout.cardGap,
-                                      chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))
+        let cards = AeroControlLayout.mapLayout(workspaces: all, sizes: state.previewSizes, screens: screenFrames, available: available, usable: usable, filtering: filtering)
         return ZStack(alignment: .topLeading) {
-            ForEach(frames.indices, id: \.self) { i in
-                let workspace = all[i]
-                AeroControlWorkspaceCard(
-                    workspace: workspace,
-                    screen: screenFrames[workspace.screenIndex],
-                    size: frames[i].size,
-                    filtering: filtering
-                )
-                .offset(x: frames[i].minX, y: frames[i].minY)
-                .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
+            ForEach(zip(all, cards).map { $0 }, id: \.0.name) { workspace, card in
+                AeroControlWorkspaceCard(workspace: workspace, card: card, filtering: filtering)
+                    .offset(x: card.frame.minX, y: card.frame.minY)
+                    .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
             }
         }
         .frame(width: usable.width, height: usable.height, alignment: .topLeading)
-        .coordinateSpace(.named(Self.mapSpace))
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        .onChange(of: frames, initial: true) { _, frames in state.mapCards = Dictionary(zip(all.map(\.name), frames), uniquingKeysWith: { a, _ in a }) }
+        // The cards as drawn, for the keys and the pointer (`OverviewStore.drawn`).
+        .onChange(of: cards, initial: true) { _, cards in state.drawn = cards.map(\.grid) }
         // The map holds still through ordinary churn; the filtered result re-flows as the
         // query narrows. Animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * look.motion), value: all)

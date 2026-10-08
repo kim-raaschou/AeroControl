@@ -6,12 +6,11 @@ import Common
 /// Drop target for window tiles (move) and workspace cards (merge).
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
-    /// The visible frame of the screen this workspace lives on, in AeroSpace's coordinates
-    /// (points, top-left origin); the area its layout fills.
-    let screen: CGRect?
-    let size: CGSize
+    /// The card as the map laid it out: its cell, and every window where it is drawn in it.
+    let card: AeroControlLayout.MapCard
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
+    private var size: CGSize { card.frame.size }
 
     @State private var isDropTarget = false
     @Environment(OverviewStore.self) private var state
@@ -20,9 +19,8 @@ struct AeroControlWorkspaceCard: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
-        let placement = self.placement
         AeroControlCardFace(workspace: workspace, size: size) {
-            grid(placement)
+            grid()
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
         // An empty workspace the keys are on wears the ring itself: Enter switches to it.
@@ -58,49 +56,18 @@ struct AeroControlWorkspaceCard: View {
             .padding(6)
     }
 
-    /// Where every window goes in the card's inner box, and which windows float over the
-    /// layout rather than sit in it.
-    private typealias Placement = (frames: [Int: CGRect], ghosts: Set<Int>)
-
-    /// The workspace as AeroSpace laid it out, when it said where (`AeroControlLayout.treeLayout`);
-    /// otherwise `TilePacker`'s tiles, each at its own shape at the largest shared picture height
-    /// that fits the inner box, centred in it. A filtered card shows a subset, so it packs. Each
-    /// card on its own: every cell is the same size, and a card fills its cell with what it has.
-    /// One height for the whole screen was tried on 2026-09-30 and dropped the same day: a
-    /// single six-window workspace shrank every picture on the map to a stamp.
-    private var placement: Placement {
-        let windows = workspace.windows
-        let inner = AeroControlLayout.inner(of: size)
-        if !filtering, let laid = AeroControlLayout.treeLayout(windows: windows, sizes: state.previewSizes, screen: screen, inner: inner) {
-            return laid
-        }
-        // A window whose size is not known yet takes its screen's shape.
-        let ratios = AeroControlLayout.ratios(of: windows, sizes: state.previewSizes, fallback: AeroControlLayout.screenRatio(for: screen?.size ?? inner))
-        let gap = AeroControlLayout.packedGap(screen: screen?.size, inner: inner), caption: CGFloat = filtering ? AeroControlLayout.captionLane : 0
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
-        let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
-        let origin = AeroControlLayout.tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
-        let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
-                                uniquingKeysWith: { _, b in b })
-        return (frames, ghosts: [])
-    }
-
-    private func grid(_ placement: Placement) -> some View {
+    private func grid() -> some View {
         let windows = workspace.windows
         let inner = AeroControlLayout.inner(of: size)
         return ZStack(alignment: .topLeading) {
             ForEach(windows, id: \.windowId) { window in
-                let frame = placement.frames[window.windowId] ?? .zero
-                let ghost = placement.ghosts.contains(window.windowId)
+                let frame = card.frames[window.windowId] ?? .zero
+                let ghost = card.ghosts.contains(window.windowId)
                 AeroControlAppTile(window: window, size: frame.size, filtering: filtering)
-                    // Where it is drawn on the map, for the arrows (`OverviewStore.mapFrames`): measured
-                    // inside the offset, which moves it, as the card's offset moves the card.
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(AeroControlPanel.mapSpace)) } action: { state.mapFrames[window.windowId] = $0 }
-                    .onDisappear { state.mapFrames[window.windowId] = nil }
                     .onHover { if $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: frame.minX, y: frame.minY)
                     .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
-                    .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: placement.ghosts))
+                    .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: card.ghosts))
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)

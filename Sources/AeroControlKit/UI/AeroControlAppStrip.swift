@@ -49,7 +49,7 @@ struct AeroControlAppStrip: View {
         .animation(.smooth(duration: Self.turn * look.motion), value: held ?? -1)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
         .onChange(of: layout.cards, initial: true) { _, cards in
-            state.stripCards = cards.map { c in (frame: CGRect(x: c.span.x, y: 0, width: c.span.width, height: layout.height),
+            state.drawn = cards.map { c in (frame: CGRect(x: c.span.x, y: 0, width: c.span.width, height: layout.height),
                                                  windows: c.frames.mapValues { $0.offsetBy(dx: c.span.x + AeroControlLayout.cardPadding, dy: 0) }) }
         }
     }

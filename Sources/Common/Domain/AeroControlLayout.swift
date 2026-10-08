@@ -87,6 +87,56 @@ public enum AeroControlLayout {
         return (frames, Set(ghosts))
     }
 
+    /// One card of the map as drawn: where the lattice put it, in the map's space, and in it every
+    /// window where the card draws it, in the card's inner box (`frames`), the floats and fullscreen
+    /// windows that lie over the layout among them (`ghosts`). An empty workspace's card holds one
+    /// stand-in the size of the inner box, keyed `-1 - the workspace's index`, which no window has,
+    /// so the keys can stop on it and the card draws nothing for it. `grid` is the same card for the
+    /// keys, its windows in the map's space.
+    public struct MapCard: Equatable, Sendable {
+        public let workspace: String
+        public let frame: CGRect
+        public let frames: [Int: CGRect]
+        public let ghosts: Set<Int>
+
+        public var grid: GridWalk.Card {
+            (frame, frames.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
+        }
+    }
+
+    /// The map as drawn: `workspaces` in the lattice, every cell this screen's shape, each card
+    /// holding its workspace as AeroSpace laid it out when it said where (`treeLayout`), otherwise
+    /// `TilePacker`'s tiles, each at its own shape at the largest shared picture height that fits
+    /// the inner box, centred in it. A filtered map shows a subset, so it packs. Each card on its
+    /// own: every cell is the same size, and a card fills its cell with what it has. One height for
+    /// the whole screen was tried on 2026-09-30 and dropped the same day: a single six-window
+    /// workspace shrank every picture on the map to a stamp.
+    public static func mapLayout(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect], available: CGSize, usable: CGSize,
+                                 filtering: Bool) -> [MapCard] {
+        let cells = CardGrid.lattice(count: workspaces.count, in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
+                                     chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
+        return zip(workspaces, cells).enumerated().map { i, pair in
+            let (ws, cell) = pair, screen = screens[ws.screenIndex], inner = inner(of: cell.size)
+            let laid = filtering ? nil : treeLayout(windows: ws.windows, sizes: sizes, screen: screen, inner: inner)
+            let placed = laid ?? packed(ws.windows, sizes: sizes, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
+            let standIn = [-1 - i: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }    // an empty workspace: one, the box
+            return MapCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
+        }
+    }
+
+    /// A card's windows packed, each at its own shape — one whose size is not known yet in its
+    /// screen's — at the largest shared picture height that fits the inner box, centred in it.
+    static func packed(_ windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize, caption: CGFloat) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
+        let ratios = ratios(of: windows, sizes: sizes, fallback: screenRatio(for: screen?.size ?? inner))
+        let gap = packedGap(screen: screen?.size, inner: inner)
+        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
+        let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
+        let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
+        let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
+                                uniquingKeysWith: { _, b in b })
+        return (frames, [])
+    }
+
     /// One workspace in the strip: its place on the unrolled row, where each window is drawn
     /// inside the card's picture area, and which of those belong to other apps.
     public struct StripCard: Equatable, Sendable {
