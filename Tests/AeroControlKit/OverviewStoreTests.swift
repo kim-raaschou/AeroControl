@@ -361,7 +361,7 @@ struct OverviewStoreTests {
         let (_, store) = await stripOnTeams()                                           // Teams on 1, 2 and 3, marked on 3
         store.stepStrip()                                                                // 3 → 1: on round
         #expect(store.strip?.marked == 1 && store.strip?.centre == 1)
-        store.stepStrip(-1)                                                              // 1 → 3: back round
+        _ = store.handle(.move(.window(-1)))                                                            // 1 → 3: back round
         #expect(store.strip?.marked == 3)
     }
 
@@ -382,8 +382,8 @@ struct OverviewStoreTests {
     func pointerLeavesTheCentre() async {
         let (_, store) = await stripOnTeams()
         #expect(store.strip?.centre == 3)                                              // opens centred on the marking
-        store.markStrip(1)
-        store.markStrip(9)                                                              // not the app's: ignored
+        store.point(1, at: CGPoint(x: 1, y: 0))
+        store.point(9, at: CGPoint(x: 2, y: 0))                                         // not the app's: ignored
         #expect(store.strip?.marked == 1 && store.strip?.centre == 3)
         _ = store.handle(.move(.window(1)))
         #expect(store.strip?.marked == 2 && store.strip?.centre == 2)
@@ -398,7 +398,7 @@ struct OverviewStoreTests {
         let (runner, store) = await stripOnTeams()
         runner.setState(windows: "[" + [oneWindow(1, "1", app: "Teams"), oneWindow(2, "2", app: "Teams")].joined(separator: ",") + "]",
                         workspaces: workspacesJSON(["1", "2", "3"]))
-        store.markStrip(3)
+        store.point(3, at: CGPoint(x: 3, y: 0))
         await store.reload()
         #expect(store.strip?.marked == 2)
         store.endVisit()

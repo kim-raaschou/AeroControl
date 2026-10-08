@@ -64,7 +64,7 @@ struct AerospaceLiveTests {
             try #require(try await loadOverview(using: runner).workspaces.first { $0.name == "1" })
         }
         func card(_ ws: WorkspaceInfo) -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
-            AeroControlLayout.treeLayout(windows: ws.windows, sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 600))
+            AeroControlLayout.treeLayout(ws, sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 600))
         }
 
         _ = try aerospace("layout", "--workspace", "1", "--root", "h_tiles")

@@ -60,8 +60,9 @@ public enum AeroControlLayout {
     /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
     /// shown), when the rects overlap (an accordion: only the front one would show), or when the
     /// screen is unknown; the card then packs tiles.
-    public static func treeLayout(windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
+    public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
+        let windows = workspace.windows
         let ghosts = windows.filter { $0.isFloating || $0.isFullscreen || $0.isHidden }.map(\.windowId)
         let tiled = windows.filter { !ghosts.contains($0.windowId) }
         let rects = tiled.compactMap(\.layoutRect)
@@ -74,8 +75,10 @@ public enum AeroControlLayout {
         let scale = fitted.width / screen.width
         var frames: [Int: CGRect] = [:]
         for window in tiled {
+            // A hidden workspace's window is parked at the size it last had, not the slot it will
+            // get, so there the slot is drawn: a window drawn small at its place left gaps.
             let r = window.layoutRect!
-            let size = sizes[window.windowId] ?? r.size
+            let size = (workspace.isVisible ? sizes[window.windowId] : nil) ?? r.size
             frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
                                              width: size.width * scale, height: size.height * scale)
         }
@@ -117,7 +120,7 @@ public enum AeroControlLayout {
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).enumerated().map { i, pair in
             let (ws, cell) = pair, screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let laid = filtering ? nil : treeLayout(windows: ws.windows, sizes: sizes, screen: screen, inner: inner)
+            let laid = filtering ? nil : treeLayout(ws, sizes: sizes, screen: screen, inner: inner)
             let placed = laid ?? packed(ws.windows, sizes: sizes, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [-1 - i: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }    // an empty workspace: one, the box
             return MapCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
@@ -176,7 +179,7 @@ public enum AeroControlLayout {
         let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
         let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
         let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
-        let mirrors = groups.indices.map { treeLayout(windows: groups[$0].windows, sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
+        let mirrors = groups.indices.map { treeLayout(groups[$0], sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
         var x: CGFloat = 0, cards: [StripCard] = []
         for g in groups.indices {
             if g > 0 { x += cardGap }
@@ -231,6 +234,19 @@ public enum AeroControlLayout {
                                     chrome: CGSize(width: 2 * cardPadding, height: cardChrome)).first?.size ?? usable
         if !strip { box = CGSize(width: min(box.width, inner(of: cell).width), height: min(box.height, inner(of: cell).height)) }
         return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
+    }
+
+    /// The windows whose picture no longer fits what they are drawn at — their size on a visible
+    /// workspace, their slot on one that is not — and so are taken again; one with neither is not.
+    public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
+        workspaces.flatMap { ws in ws.windows.filter { w in
+            ((ws.isVisible ? nil : w.layoutRect?.size) ?? sizes[w.windowId]).map { !sameShape(pictures[w.windowId], $0) } ?? false } }.map(\.windowId)
+    }
+
+    /// A picture fits its window while their shapes agree to 2 %; none fits nothing.
+    static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
+        guard let picture, picture.height > 0, window.height > 0 else { return false }
+        return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
     /// What lies over what when frames overlap: a ghost (a float, a fullscreen window) over

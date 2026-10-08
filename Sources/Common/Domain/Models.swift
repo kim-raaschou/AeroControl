@@ -58,6 +58,9 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion` or
     /// `v_accordion`. Empty when AeroSpace did not say.
     public let rootLayout: String
+    /// Whether it is the workspace shown on its monitor. Its windows are where AeroSpace put them
+    /// only then; hidden, they are parked in a corner at the size they last had.
+    public let isVisible: Bool
 
     /// The first word of the display's name: "Built-in Retina Display" -> "Built-in",
     /// "BenQ RD280U" -> "BenQ". Enough to tell two displays apart in a card header, and
@@ -67,13 +70,14 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     }
 
     public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0,
-                rootLayout: String = "") {
+                rootLayout: String = "", isVisible: Bool = true) {
         self.name = name
         self.windows = windows
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
         self.rootLayout = rootLayout
+        self.isVisible = isVisible
     }
 }
 

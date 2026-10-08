@@ -91,14 +91,8 @@ public class OverviewStore {
     }
 
     /// The summon key again while the strip is up: the marking moves on, as Cmd-` does.
-    public func stepStrip(_ direction: Int = 1) {
-        strip = strip?.moved(.window(direction), ids: stripWindows.map(\.window.windowId), card: cardOf, cards: drawn)
-    }
-
-    /// Pointing marks, as in krn.overview's strip; a window that is not the app's is ignored.
-    public func markStrip(_ windowId: Int) {
-        guard stripWindows.contains(where: { $0.window.windowId == windowId }) else { return }
-        strip = strip?.marking(windowId)
+    public func stepStrip() {
+        strip = strip?.moved(.window(1), ids: stripWindows.map(\.window.windowId), card: cardOf, cards: drawn)
     }
 
     /// Where the mouse was when the overview last heard from it, in screen points.
@@ -108,14 +102,15 @@ public class OverviewStore {
     /// it is not pointed at.
     public func notePointer(_ location: CGPoint) { pointer = location }
 
-    /// The pointer entered a window: it marks it, the strip's marking or the map's ring alike,
-    /// only if the mouse moved. A hover also fires when the row slides, or the overview opens,
-    /// under a hand that is still, and that must not take the marking away from the keys.
+    /// The pointer entered a window: it marks it, the map's ring or the strip's marking alike — in
+    /// the strip only the app's own, as in krn.overview's — and only if the mouse moved. A hover
+    /// also fires when the row slides, or the overview opens, under a hand that is still, and
+    /// that must not take the marking away from the keys.
     public func point(_ windowId: Int, at location: CGPoint) {
         guard location != pointer else { return }
         pointer = location
-        mapMarked = windowId                                                            // the map's, or the strip's below
-        markStrip(windowId)
+        mapMarked = windowId
+        if stripWindows.contains(where: { $0.window.windowId == windowId }) { strip = strip?.marking(windowId) }
     }
 
     /// Every window the query picks out, in the order the grid draws them. The grid, the ring
@@ -474,8 +469,9 @@ public class OverviewStore {
     static let settleWithin: Duration = .seconds(1)
 
     /// The windows' sizes once they stand still, and new pictures of those drawn whose picture no
-    /// longer fits their shape, or that have none: the neighbours that widened into a hole, a window
-    /// that appeared, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
+    /// longer fits what they are drawn at (`AeroControlLayout.stale`), or that have none: the
+    /// neighbours that widened into a hole, a window that appeared, a hidden workspace's slot that
+    /// changed, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
     /// off by the next loses nothing. Nil while the overview is hidden: `clearPreviews` has dropped
     /// the capture size.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
@@ -489,17 +485,11 @@ public class OverviewStore {
             if again == sizes { break }
             sizes = again
         }
-        let drawn = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.bundleId } } ?? true }
-        let stale = drawn.flatMap(\.windows).map(\.windowId).filter { id in sizes[id].map { !Self.sameShape(previews[id]?.size, $0) } ?? false }
+        let shown = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.bundleId } } ?? true }
+        let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes)
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await nativeSystem.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
         return (sizes, pictures)
-    }
-
-    /// A picture fits its window while their shapes agree to 2 %; none fits nothing.
-    private static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
-        guard let picture, picture.height > 0, window.height > 0 else { return false }
-        return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
 

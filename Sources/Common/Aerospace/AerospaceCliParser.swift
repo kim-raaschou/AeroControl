@@ -59,6 +59,8 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     /// How the workspace's root container is laid out: `h_tiles`, `v_tiles`, `h_accordion`,
     /// `v_accordion`. Optional for the same reason: an older AeroSpace leaves it out.
     public let rootLayout: String?
+    /// Whether the workspace is the one shown on its monitor; absent, it is taken to be.
+    public let isVisible: Bool?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
@@ -66,14 +68,16 @@ public struct WorkspaceMonitor: Decodable, Equatable {
         case monitorName = "monitor-name"
         case screenIndex = "monitor-appkit-nsscreen-screens-id"
         case rootLayout = "workspace-root-container-layout"
+        case isVisible = "workspace-is-visible"
     }
 
-    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil) {
+    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil, isVisible: Bool? = nil) {
         self.workspace = workspace
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
         self.rootLayout = rootLayout
+        self.isVisible = isVisible
     }
 }
 
@@ -126,7 +130,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
             monitorId: wm.monitorId,
             monitorName: wm.monitorName ?? "",
             screenIndex: wm.screenIndex,
-            rootLayout: wm.rootLayout ?? ""
+            rootLayout: wm.rootLayout ?? "",
+            isVisible: wm.isVisible ?? true
         )
     }
 
