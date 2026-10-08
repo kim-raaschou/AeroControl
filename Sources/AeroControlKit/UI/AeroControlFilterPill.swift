@@ -14,6 +14,8 @@ struct AeroControlFilterPill: View {
         let name: String
         let icon: NSImage?
         let summary: String
+        /// The keys that work here, after the line.
+        let keys: String
     }
 
     @Environment(OverviewStore.self) private var state
@@ -25,10 +27,10 @@ struct AeroControlFilterPill: View {
     /// The strip's app and its line; or an app `open` could not find, named as the link named
     /// it, with why nothing came; nil on the map.
     private var app: StripApp? {
-        if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason) }
+        if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
         guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
         return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
-                        summary: AppStripModel.summary(state.stripWindows, marked: strip.marked))
+                        summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "⌘1–⌘f pick  ·  arrows move  ·  ⏎ focus  ·  esc back")
     }
 
     /// The lane is there whether or not anything has been typed. The pill is the only thing
@@ -41,17 +43,19 @@ struct AeroControlFilterPill: View {
         .frame(height: AeroControlLayout.pillLane)
     }
 
-    /// The lane's idle content: the two keys the overview answers to, faint enough to be
-    /// furniture. Nothing else on screen says the keyboard works, and a filter nobody can
-    /// find is a filter nobody uses.
-    private var hint: some View {
-        Text("type to filter  ·  ⏎ focus")
+    /// The lane's idle content: the keys the overview answers to, faint enough to be furniture.
+    /// Nothing else on screen says the keyboard works, and a key nobody can find is a key
+    /// nobody uses.
+    private var hint: some View { keys("type to filter  ·  arrows move  ·  ⏎ focus  ·  ⌘W close  ·  ⌘Q quit") }
+
+    private func keys(_ text: String) -> some View {
+        Text(text)
             .font(.system(size: 12, weight: .medium, design: .rounded))
             .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }
 
-    /// The strip has no typing, so no hint: one line, as high as the map's, so the cards keep
-    /// their height and nothing moves as the marking does — the app, and its line.
+    /// The strip has no typing: one line, as high as the map's, so the cards keep their height
+    /// and nothing moves as the marking does — the app, its line, and its keys after them.
     private func appPill(_ app: StripApp) -> some View {
         HStack(spacing: 8) {
             if let icon = app.icon {
@@ -67,6 +71,7 @@ struct AeroControlFilterPill: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: Self.titleWidth, alignment: .leading)
                 .fixedSize()
+            keys(app.keys).padding(.leading, 12)
         }
         .capsule(look.palette)
     }
