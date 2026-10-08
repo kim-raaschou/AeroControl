@@ -38,3 +38,6 @@ public enum Summon: Equatable, Sendable {
 public func aerospaceBinding(for window: WindowInfo) -> String {
     #"<key> = ['exec-and-forget open "aerocontrol://app-id=\#(window.bundleId)"']  # \#(window.appName)"#
 }
+
+/// The line that binds a key to the map, the same way.
+public let aerospaceMapBinding = #"<key> = ['exec-and-forget open aerocontrol://workspaces']  # AeroControl"#

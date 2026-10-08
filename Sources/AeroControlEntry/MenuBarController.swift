@@ -1,5 +1,6 @@
 import AppKit
 import AeroControlKit
+import Common
 
 /// The menu under the status item. Every item carries what it does, so there is one handler;
 /// the menu is rebuilt each time it opens, so it always shows the current settings.
@@ -7,11 +8,14 @@ import AeroControlKit
 final class MenuBarController: NSObject, NSMenuDelegate {
     /// Any setting changed: the host redraws the overview with it.
     private let onSettingsChanged: () -> Void
+    /// Show overview: the host summons the map, as its key does.
+    private let onShowOverview: () -> Void
     private let state: OverviewStore
     private let settings: SettingsStore
 
-    init(onSettingsChanged: @escaping () -> Void, state: OverviewStore, settings: SettingsStore) {
+    init(onSettingsChanged: @escaping () -> Void, onShowOverview: @escaping () -> Void, state: OverviewStore, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
+        self.onShowOverview = onShowOverview
         self.state = state
         self.settings = settings
     }
@@ -33,6 +37,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
+        menu.addItem(item("Show overview") { self.onShowOverview() })
+        menu.addItem(.separator())
         // Submenus, not thirty items: each parent names the current choice, the theme with its swatch.
         let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
@@ -50,13 +56,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        // The key line for the app in front, to paste into your AeroSpace config: AeroControl writes no config.
+        // The key lines, to paste into your AeroSpace config: AeroControl writes no config.
+        menu.addItem(item("Copy AeroSpace key for the map") { self.copy(aerospaceMapBinding) })
         menu.addItem(item("Copy AeroSpace key for the focused app") {
-            Task { if let line = await self.state.focusedAppBinding() { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(line, forType: .string) } }
+            Task { if let line = await self.state.focusedAppBinding() { self.copy(line) } }
         })
         menu.addItem(.separator())
         menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
     }
+
+    private func copy(_ line: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(line, forType: .string) }
 
     /// An item that does `run` when chosen.
     private func item(_ title: String, _ run: @escaping () -> Void) -> NSMenuItem {

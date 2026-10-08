@@ -41,6 +41,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menuBarController = MenuBarController(
             onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
+            onShowOverview: { [weak self] in self?.overlayManager.toggleVisibility() },
             state: state,
             settings: settings
         )

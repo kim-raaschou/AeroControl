@@ -66,9 +66,10 @@ final class OverlayWindowManager {
     }
 
     /// ⌘W closes the window under the ring, as its × does, and the overview stays, the strip's
-    /// marking passing on to the next; with no window under the ring it closes the overview.
+    /// marking passing on to the next; with no window under the ring — an empty workspace's
+    /// card, a notice — it closes nothing, and Escape is the way out.
     private func closeRingedWindow() {
-        guard let target = state.commandTarget else { return hide(restoreFocus: true) }
+        guard let target = state.commandTarget else { return }
         state.send(.action(.closeWindow(target.windowId)))
     }
 

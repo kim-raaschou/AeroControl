@@ -25,13 +25,19 @@ struct AeroControlFilterPill: View {
     private var query: String { state.filter }
 
     /// The strip's app and its line; or an app `open` could not find, named as the link named
-    /// it, with why nothing came; nil on the map.
+    /// it, with why nothing came; or, on the map once a key or the pointer has moved the ring,
+    /// the window under it and its title, so a picture too small to read is read here; nil
+    /// otherwise.
     private var app: StripApp? {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
-        guard let strip = state.strip, let first = state.stripWindows.first?.window else { return nil }
-        return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
-                        summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "⌘1–⌘f pick  ·  arrows move  ·  ⏎ focus  ·  esc back")
+        if let strip = state.strip, let first = state.stripWindows.first?.window {
+            return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
+                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "⌘1–⌘f pick  ·  arrows move  ·  ⏎ focus  ·  esc back")
+        }
+        guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
+        return StripApp(name: ringed.window.appName, icon: state.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
+    private static let mapKeys = "type to filter  ·  arrows move  ·  ⏎ focus  ·  ⌘W close  ·  ⌘Q quit"
 
     /// The lane is there whether or not anything has been typed. The pill is the only thing
     /// on screen that appears mid-gesture, and a view that appears must not move the grid it
@@ -46,7 +52,7 @@ struct AeroControlFilterPill: View {
     /// The lane's idle content: the keys the overview answers to, faint enough to be furniture.
     /// Nothing else on screen says the keyboard works, and a key nobody can find is a key
     /// nobody uses.
-    private var hint: some View { keys("type to filter  ·  arrows move  ·  ⏎ focus  ·  ⌘W close  ·  ⌘Q quit") }
+    private var hint: some View { keys(Self.mapKeys) }
 
     private func keys(_ text: String) -> some View {
         Text(text)

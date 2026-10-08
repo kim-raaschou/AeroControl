@@ -38,6 +38,7 @@ struct SummonTests {
 
     @Test("the line that binds a key to an app is AeroSpace's own syntax, its link the app-id one a summon reads back")
     func binding() throws {
+        #expect(aerospaceMapBinding == #"<key> = ['exec-and-forget open aerocontrol://workspaces']  # AeroControl"#)
         let line = aerospaceBinding(for: WindowInfo(windowId: 1, appName: "Arc", bundleId: "company.thebrowser.Browser"))
         #expect(line == #"<key> = ['exec-and-forget open "aerocontrol://app-id=company.thebrowser.Browser"']  # Arc"#)
         let link = try #require(line.split(separator: "\"").first { $0.hasPrefix("aerocontrol://") })
