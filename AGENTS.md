@@ -48,6 +48,11 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   its cost are one reviewable change), with the cost stated in the message.
 
 ### Rule: `docs/flow.html` is written by running the rules — `make flow`
+- `make arch` draws the architecture from the code into `docs/arch.html` (`scripts/arch.py`): the
+  layers and what names what, every type as a box with its lines, complexity, stored state and
+  public members, the call flow in the host and the stores, and a table of where to look (the
+  biggest types, the widest fan-out, arrows pointing up a layer, pairs naming each other, functions
+  at complexity ≥ 8). Regenerate it with a review; `make arch-check` says when it is stale.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,

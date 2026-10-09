@@ -11,7 +11,7 @@ ifneq ($(wildcard $(SDK26)),)
 export SDKROOT ?= $(SDK26)
 endif
 
-.PHONY: build bundle install run clean test live-test release flow flow-check
+.PHONY: build bundle install run clean test live-test release flow flow-check arch arch-check
 
 # One AeroControl at a time: the installed one is quit first.
 run:
@@ -72,4 +72,12 @@ flow:
 
 flow-check:
 	swift run flowdoc docs/flow.html --check
+
+# The architecture, drawn from the code: types by layer with their size and surface, what
+# names what, the call flow in the host and the stores, and where to look.
+arch:
+	python3 scripts/arch.py
+
+arch-check:
+	python3 scripts/arch.py --check
 
