@@ -269,14 +269,14 @@ struct OverviewStoreTests {
         #expect(store.missingApp == nil)
     }
 
-    @Test("the key line for the app AeroSpace has focused is read from AeroSpace when asked, and there is none with nothing focused")
-    func focusedAppBinding() async {
+    @Test("the window AeroSpace has focused is read from AeroSpace when asked, for the menu; there is none with nothing focused")
+    func focusedWindow() async {
         let runner = ScriptRunner()
         runner.setFocus(windowId: 4, workspace: "1")
         let store = started(runner)
-        #expect(await store.focusedAppBinding() == aerospaceBinding(for: WindowInfo(windowId: 4, appName: "App", bundleId: "com.app")))
+        #expect(await store.focusedWindow() == WindowInfo(windowId: 4, appName: "App", bundleId: "com.app"))
         runner.setFocus(windowId: nil, workspace: "1")
-        #expect(await store.focusedAppBinding() == nil)
+        #expect(await store.focusedWindow() == nil)
     }
 
     // MARK: The strip

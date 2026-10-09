@@ -176,12 +176,10 @@ public class OverviewStore {
                             cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
     }
 
-    /// The key line for the app AeroSpace has focused, read from AeroSpace when asked: the menu
-    /// copies it. Nil with nothing focused.
-    public func focusedAppBinding() async -> String? {
-        guard let json = try? await runner.run(AerospaceCommand.listFocusedWindow),
-              let window = try? parseWindows(json: json).first?.window else { return nil }
-        return aerospaceBinding(for: window)
+    /// The window AeroSpace has focused, read from AeroSpace when asked: the menu copies its
+    /// app's key line, or shows its app's strip. Nil with nothing focused.
+    public func focusedWindow() async -> WindowInfo? {
+        (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
     }
 
     /// One key on an app, `aerocontrol://app-id=<bundle id>` or `app-name=<name>`. The count is free; the model
