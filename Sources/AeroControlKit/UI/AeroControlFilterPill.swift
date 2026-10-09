@@ -32,12 +32,14 @@ struct AeroControlFilterPill: View {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
         if let strip = state.strip, let first = state.stripWindows.first?.window {
             return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
-                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "⌘1–⌘f pick  ·  ← → ↑ ↓ move  ·  ⌘← ⌘→ workspace  ·  1–0 go to workspace  ·  ⇧⌘1–0 move window  ·  ⏎ focus  ·  ⌘W close  ·  esc back")
+                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "← → ↑ ↓ move  ·  ⌘← ⌘→ workspace  ·  ⏎ focus")
         }
         guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
         return StripApp(name: ringed.window.appName, icon: state.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
-    private static let mapKeys = "type to filter  ·  ← → ↑ ↓ move  ·  ⌘← ⌘→ ⌘↑ ⌘↓ workspace  ·  ⇧⌘1–0 move window  ·  ⏎ focus  ·  ⌘W close  ·  ⌘Q quit"
+    /// The arrows and Enter only: the keys the cards do not show themselves (⌘1–⌘f, the
+    /// workspaces' names) and the ones macOS makes standard (⌘W, ⌘Q, Escape) are left out.
+    private static let mapKeys = "type to filter  ·  ← → ↑ ↓ move  ·  ⌘← ⌘→ ⌘↑ ⌘↓ workspace  ·  ⏎ focus"
 
     /// The lane is there whether or not anything has been typed. The pill is the only thing
     /// on screen that appears mid-gesture, and a view that appears must not move the grid it
