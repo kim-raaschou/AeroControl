@@ -167,6 +167,29 @@ def attach_functions(types: list[Type], path: str) -> None:
                 break
 
 
+def fold_private(by_name: dict[str, Type]) -> dict[str, Type]:
+    """A type that lives inside another — private, or named by nothing outside its own file — is
+    drawn inside that type's box, its lines, complexity and functions counted there, and its
+    arrows become the host's. A public type, or one named from another file, is a box of its own."""
+    def elsewhere(name: str, path: str) -> bool:
+        return any(o.path != path and re.search(rf"\b{re.escape(name)}\b", o.body) for o in by_name.values())
+    hosts = {n: t for n, t in by_name.items() if t.access == "public" or elsewhere(n, t.path)}
+    for name, t in list(by_name.items()):
+        if name in hosts:
+            continue
+        in_file = [h for h in hosts.values() if h.path == t.path]
+        if not in_file:
+            continue
+        host = max(in_file, key=lambda h: len(re.findall(rf"\b{re.escape(name)}\b", h.body)))
+        host.nested.append(f"{name} · {t.nloc} loc")
+        host.nloc += t.nloc
+        host.cx += t.cx
+        host.functions += t.functions
+        host.body += "\n" + t.body
+        del by_name[name]
+    return by_name
+
+
 def dependencies(by_name: dict[str, Type]) -> dict[tuple[str, str], int]:
     edges: dict[tuple[str, str], int] = {}
     names = sorted(by_name, key=len, reverse=True)
@@ -229,8 +252,8 @@ def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -
                 out.append(f"      {sym}")
             if len(t.public) > 14:
                 out.append(f"      +… {len(t.public) - 14} more")
-            if t.nested:
-                out.append(f"      types: {', '.join(t.nested)}")
+            for nested in t.nested:
+                out.append(f"      ∘ {nested}")
             out.append("    }")
         out.append("  }")
     seen = set()
@@ -359,7 +382,7 @@ def main() -> int:
         types = parse_file(path, (ROOT / path).read_text())
         attach_functions(types, path)
         all_types += types
-    by_name = merge_extensions(all_types)
+    by_name = fold_private(merge_extensions(all_types))
     edges = dependencies(by_name)
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     html = render(by_name, edges, head)
