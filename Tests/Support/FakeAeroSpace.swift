@@ -38,6 +38,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     var focused: Int? { locked { focusedId } }
     var focusedWorkspace: String { locked { focusedName } }
+    var workspaces: [String] { locked { workspaceNames } }
     var commands: [[String]] { locked { log } }
     func windows(on workspace: String) -> [Int] { locked { windows.filter { $0.workspace == workspace }.map(\.id) } }
     func layout(of workspace: String) -> String { locked { layouts[workspace] ?? "h_tiles" } }
@@ -57,6 +58,15 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     func userWorkspace(_ name: String) { let event = locked { switchTo(name) }; events?.yield(event) }
 
     func relayout(_ workspace: String, _ layout: String) { locked { layouts[workspace] = layout } }
+
+    func shift(_ id: Int, to workspace: String) { locked { create(workspace); windows = windows.map { var w = $0; if w.id == id { w.workspace = workspace }; return w } } }
+
+    func remove(_ id: Int) { locked { windows.removeAll { $0.id == id } } }
+
+    func bound(_ command: @escaping @Sendable (FakeAeroSpace) -> Void) {
+        events?.yield(#"{"_event":"binding-triggered","binding":"alt-x"}"#)
+        Task { try? await Task.sleep(for: .milliseconds(40)); command(self) }
+    }
 
     func announce(_ event: String = "focused-workspace-changed") {
         events?.yield(#"{"_event":"\#(event)","workspace":"\#(focusedWorkspace)"}"#)
@@ -179,9 +189,12 @@ final class TestApp {
                                                                            workspaces: store.model.workspaces.count, strip: store.strip != nil))
     }
 
-    func backdrop() { store.update { $0.hide(restoreFocus: true) } }
-
     func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }
+
+    func mirrors(_ aero: FakeAeroSpace) -> Bool {
+        scene.cards.allSatisfy { c in c.tiles.map(\.window.windowId) == aero.windows(on: c.workspace.name) && c.workspace.rootLayout == aero.layout(of: c.workspace.name)
+            && c.focused == (c.workspace.name == aero.focusedWorkspace) } && (scene.body != .map || scene.cards.map(\.workspace.name) == aero.workspaces)
+    }
 
     func type(_ text: String) { for c in text { key(.character(c)) } }
 

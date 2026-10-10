@@ -29,16 +29,39 @@ struct FollowingScenarioTests {
         #expect(aero.commands.filter { $0.first == "subscribe" }.count == 1)
     }
 
-    @Test("a key bound in AeroSpace is announced before its command runs, and a new layout announces nothing: the map reads AeroSpace again a moment later and shows the layout the key set")
-    func lateLayout() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
+    @Test("the map is AeroSpace, live: whatever is done in AeroSpace while it is up, a bound key's command run after its event or a focus moved, the map shows as AeroSpace has it")
+    func mapIsAeroSpaceLive() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")], "3": []], focused: 1)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
-        let before = aero.commands.count
-        aero.announce("binding-triggered")
-        await app.until { aero.commands.count >= before + 5 }
-        aero.relayout("1", "h_accordion")
-        await app.until { app.scene.cards.first?.workspace.rootLayout == "h_accordion" }
+        #expect(app.mirrors(aero))
+        aero.userFocus(3)
+        await app.until { app.mirrors(aero) && aero.focusedWorkspace == "2" }
+        aero.userWorkspace("3")
+        await app.until { app.mirrors(aero) && aero.focusedWorkspace == "3" }
+        aero.add(win(4, "Mail"), to: "3")
+        await app.until { app.mirrors(aero) && aero.windows(on: "3") == [4] }
+        aero.bound { $0.relayout("1", "h_accordion") }
+        await app.until { app.mirrors(aero) && aero.layout(of: "1") == "h_accordion" }
+        aero.bound { $0.shift(2, to: "2") }
+        await app.until { app.mirrors(aero) && aero.windows(on: "2") == [2, 3] }
+        aero.bound { $0.remove(1) }
+        await app.until { app.mirrors(aero) && aero.windows(on: "1").isEmpty }
+    }
+
+    @Test("the strip is AeroSpace, live: every window on its workspaces, the other apps' faded; the app's windows moved, a stack made, a window closed by AeroSpace's keys while it is up, the strip shows as AeroSpace has it")
+    func stripIsAeroSpaceLive() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")], "3": [win(4, "Teams")], "4": [win(5, "Code")]], focused: 5)
+        let app = TestApp(aerospace: aero)
+        await app.open("aerocontrol://app-id=com.teams")
+        #expect(app.scene.cards.map(\.workspace.name) == ["1", "2", "3"] && app.scene.cards.first?.tiles.map(\.faded) == [false, true] && app.mirrors(aero))
+        aero.bound { $0.shift(4, to: "2") }
+        await app.until { app.mirrors(aero) && app.scene.cards.map(\.workspace.name) == ["1", "2"] }
+        aero.bound { $0.relayout("2", "h_accordion") }
+        await app.until { app.mirrors(aero) && aero.layout(of: "2") == "h_accordion" }
+        aero.bound { $0.remove(3) }
+        await app.until { app.mirrors(aero) && aero.windows(on: "2") == [4] }
+        #expect(app.store.visit.visible && app.scene.body == .strip)
     }
 
     @Test("a read that changes nothing redraws nothing; one that changes the windows does")

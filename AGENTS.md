@@ -123,8 +123,12 @@ its focused workspace. A change is read again even when AeroSpace announces noth
 key: `readAgainAfter`). A key that moves the ring onto another workspace takes AeroSpace there,
 so AeroSpace's own keys act on the workspace in view; the ring alone never focuses a window,
 and pointing moves only the ring. A feature that would show anything AeroSpace does not, or
-keep AeroSpace somewhere else than the overview shows, needs the user's decision first. The
-scenarios `lateLayout` and `ringTakesAeroSpaceAlong` guard it.
+keep AeroSpace somewhere else than the overview shows, needs the user's decision first.
+Tests hold it from the outside: `TestApp.mirrors` checks the cards against the fake AeroSpace
+(their windows, layouts and focused workspace), `mapIsAeroSpaceLive` and `stripIsAeroSpaceLive`
+change AeroSpace by bound keys while the overview is up and check the mirror after each, and
+`ringTakesAeroSpaceAlong` keeps AeroSpace with the ring. A scenario that changes AeroSpace ends
+on the mirror.
 
 ### Load-bearing defensive code (do not delete as "paranoia")
 

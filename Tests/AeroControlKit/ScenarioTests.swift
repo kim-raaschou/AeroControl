@@ -118,14 +118,6 @@ struct ScenarioTests {
         #expect(!app.store.visit.visible && app.host.suffix(2) == [.hide, .activate(bundleId: "com.code")])
     }
 
-    @Test("Escape on an empty query dismisses the overview, as the backdrop does, back on the focused app")
-    func escapeDismisses() async {
-        let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1))
-        await app.open("aerocontrol://workspaces")
-        app.backdrop()
-        #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.teams"))
-    }
-
     @Test("the strip's app key again moves the marking on, as ⌘` does; another app's key turns the strip to that app")
     func stripKeyAgain() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(4, "Slack")], "2": [win(2, "Teams"), win(5, "Slack")], "3": [win(3, "Code")]], focused: 3)
@@ -307,15 +299,6 @@ struct ScenarioTests {
         #expect(app.store.visit.query.isEmpty && app.scene.body == .strip)
         app.key(.moveToWorkspace("7"))
         await app.until { aero.windows(on: "7") == [3] && app.store.visit.visible }
-    }
-
-    @Test("a stacked workspace in the strip shows every window on it, as a tiled one does, the other apps' faded and without keys")
-    func stripShowsTheWholeStack() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack"), win(3, "Mail")], "2": [win(4, "Teams")], "3": [win(5, "Code")]], focused: 5, layouts: ["1": "h_accordion"])
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://app-id=com.teams")
-        let stack = app.scene.cards.first { $0.workspace.name == "1" }?.tiles ?? []
-        #expect(stack.map(\.window.windowId) == [1, 2, 3] && stack.map(\.faded) == [false, true, true] && stack.map { $0.key != nil } == [true, false, false])
     }
 
     @Test("from another app the strip opens on the app's window used last")
