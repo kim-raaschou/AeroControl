@@ -512,26 +512,32 @@ def check_layer_docs(by_name: dict[str, Type]) -> list[str]:
     return wrong
 
 
-DOC_LINES = 3
-
-
-def check_doc_comments() -> list[str]:
-    """`///` runs over `DOC_LINES` lines: a doc comment is one sentence saying what a thing is; the
-    why is the commit's and the layer doc's. A `WORKAROUND` block is the exception."""
+def check_comments() -> list[str]:
+    """Comments in the code: none. What a thing is, the architecture page and the layer docs say; why,
+    the commit that did it. The one exception is a `WORKAROUND` block, which names the issue it waits on."""
     wrong = []
     for path in tracked_sources():
         lines = (ROOT / path).read_text().split("\n")
         i = 0
         while i < len(lines):
-            if lines[i].strip().startswith("///"):
+            s = lines[i].strip()
+            if s.startswith("//"):
                 j = i
-                while j < len(lines) and lines[j].strip().startswith("///"):
+                while j < len(lines) and lines[j].strip().startswith("//"):
                     j += 1
-                if j - i > DOC_LINES and not any("WORKAROUND" in l for l in lines[i:j]):
-                    wrong.append(f"{path}:{i + 1} has a doc comment of {j - i} lines; one sentence, at most {DOC_LINES} lines")
+                if not any("WORKAROUND" in l for l in lines[i:j]):
+                    wrong.append(f"{path}:{i + 1} has a comment; the code carries none but WORKAROUND")
                 i = j
-            else:
-                i += 1
+                continue
+            # A `//` outside a string literal: a trailing comment.
+            quotes = 0
+            for k, c in enumerate(lines[i]):
+                if c == '"':
+                    quotes ^= 1
+                elif c == "/" and lines[i][k:k + 2] == "//" and not quotes and "WORKAROUND" not in lines[i]:
+                    wrong.append(f"{path}:{i + 1} has a comment after the code; the code carries none but WORKAROUND")
+                    break
+            i += 1
     return wrong
 
 
@@ -648,7 +654,7 @@ def main() -> int:
             print(f"Wrote {path}")
         return 0
     edges = dependencies(by_name)
-    for line in check_layer_docs(by_name) + check_doc_comments() + check_areas(by_name, edges):
+    for line in check_layer_docs(by_name) + check_comments() + check_areas(by_name, edges):
         print(f"arch: {line}", file=sys.stderr)
         if check:
             return 1

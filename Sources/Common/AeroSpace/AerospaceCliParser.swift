@@ -23,13 +23,9 @@ public struct DecodedWindow: Decodable, Equatable {
     public var windowTitle: String?
     public let workspace: String
     public let parentLayout: String
-    /// Optional so a list from an AeroSpace without the field still decodes.
     public let windowIsFullscreen: Bool?
-    /// `x,y,width,height`; only asked for from an AeroSpace that knows it, empty for a float.
     public let windowLayoutRect: String?
 
-    /// Also the requested `--format`: `AerospaceCommand` builds the token list from these keys, so
-    /// a field can never be asked for under one spelling and decoded under another.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case windowId = "window-id"
         case appName = "app-name"
@@ -42,7 +38,6 @@ public struct DecodedWindow: Decodable, Equatable {
     }
 }
 
-/// `x,y,width,height` in points to a rect; nil for anything else, an empty string included.
 public func parseLayoutRect(_ text: String?) -> CGRect? {
     let parts = (text ?? "").split(separator: ",").compactMap { Double($0) }
     return parts.count == 4 ? CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]) : nil
@@ -51,13 +46,8 @@ public func parseLayoutRect(_ text: String?) -> CGRect? {
 public struct WorkspaceMonitor: Decodable, Equatable {
     public let workspace: String
     @TolerantInt public var monitorId: Int
-    /// Optional so a missing field never fails the whole load: an AeroSpace that does not emit it
-    /// just leaves the display unnamed.
     public let monitorName: String?
-    /// 1-based into `NSScreen.screens`; 0 when absent.
     @TolerantInt public var screenIndex: Int
-    /// How the workspace's root container is laid out: `h_tiles`, `v_tiles`, `h_accordion`,
-    /// `v_accordion`.
     public let rootLayout: String?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
@@ -86,7 +76,6 @@ public func parseWindows(json: String) throws -> [ParsedWindow] {
                 windowId: dw.windowId,
                 appName: dw.appName,
                 bundleId: dw.appBundleId,
-                // What AeroSpace says of the window's place: floating, or one of macOS's own states.
                 isFloating: dw.parentLayout == "floating",
                 isFullscreen: dw.windowIsFullscreen ?? false || dw.parentLayout == "macos_native_fullscreen",
                 isHidden: ["macos_native_minimized", "macos_native_window_of_hidden_app"].contains(dw.parentLayout),
@@ -121,8 +110,6 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
     return OverviewResult(workspaces: workspaces, focus: focus)
 }
 
-/// A workspace's windows in the layout's order (`WorkspaceTree.order`) when AeroSpace said where
-/// each tiled one is; windows without a rect come after, in the listing's order.
 func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     let placed = windows.compactMap { w in w.layoutRect.map { (w.windowId, $0) } }
     guard placed.count > 1 else { return windows }
@@ -132,7 +119,6 @@ func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     }.map(\.element)
 }
 
-/// Focus from the two `--focused` reads.
 public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
     guard windowJson != nil || workspaceJson != nil else { return nil }
     let windowId = (try? parseWindows(json: windowJson ?? ""))?.first?.window.windowId ?? 0
@@ -140,13 +126,10 @@ public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
     return Focus(windowId: windowId, workspace: workspace)
 }
 
-/// The window AeroSpace has focused, read when asked: for the menu, and for the check that a focus
-/// took.
 public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
     (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
 }
 
-/// Reads AeroSpace's whole state.
 public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
     let windowsJson: String
     do {
@@ -157,7 +140,6 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
     }
     let windows = try parseWindows(json: windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces))
-    // Tolerant: the lists are the load, focus is a refinement of it.
     let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow)
     let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace)
     let focus = parseFocus(windowJson: focusedWindow, workspaceJson: focusedWorkspace)

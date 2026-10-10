@@ -1,22 +1,15 @@
 import AppKit
-// ScreenCaptureKit's types are not marked Sendable yet; they are only ever touched on the main actor here.
 @unsafe @preconcurrency import ScreenCaptureKit
 
-/// A window's picture as it changes: one window streamed by ScreenCaptureKit, each frame put in the
-/// layer as it comes, never through SwiftUI, so nothing else is drawn again for it.
 final class LiveWindowView: NSView, SCStreamOutput {
     private nonisolated(unsafe) var stream: SCStream?
-    /// Set by `stop`: a window resolved after the view has left its window must not start a stream,
-    /// which would hold the view as its output and never end.
     private nonisolated(unsafe) var stopped = false
-    /// About as often as a window changes in a glance; the window server sends no more.
     private static let frameInterval = CMTime(value: 1, timescale: 20)
 
-    /// Streams `window` at `pixels`, the size it is drawn at, into the layer until `stop`.
     func start(_ window: SCWindow, pixels: CGSize) {
         guard !stopped else { return }
         wantsLayer = true
-        layer?.contentsGravity = .resizeAspectFill            // the slot is the frame; the window's overhang is cut
+        layer?.contentsGravity = .resizeAspectFill
         let config = SCStreamConfiguration()
         (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
         config.minimumFrameInterval = Self.frameInterval
@@ -27,9 +20,6 @@ final class LiveWindowView: NSView, SCStreamOutput {
         Task { try? await stream.startCapture() }
     }
 
-    /// Stopped as the view leaves its window — the tile went, or the overview's window let its
-    /// views go — and again when the view does: a stream left running is one the window server
-    /// keeps counting, and one that holds this view as its output.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window == nil { stop() }
@@ -44,7 +34,6 @@ final class LiveWindowView: NSView, SCStreamOutput {
     deinit { stop() }
 
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        // A frame with nothing new has no image; the one before stays.
         guard let pixels = CMSampleBufferGetImageBuffer(buffer), let surface = CVPixelBufferGetIOSurface(pixels) else { return }
         nonisolated(unsafe) let frame = surface.takeUnretainedValue()
         MainActor.assumeIsolated { layer?.contents = frame }

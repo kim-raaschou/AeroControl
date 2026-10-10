@@ -1,8 +1,6 @@
 import Common
 import SwiftUI
 
-/// An image drawn at exactly the screen's pixels it covers, one to one and unfiltered — a window's
-/// picture or an app's icon.
 struct PixelImage: View {
     let image: NSImage
     let size: CGSize

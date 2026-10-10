@@ -1,12 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// The workspace cards on the screen: one identical, screen-shaped cell per workspace in a lattice,
-/// as GNOME Shell and KWin lay their overviews out.
 public enum CardGrid {
-    /// `count` cells in `box`, `gap` apart, each cell's inner box — the cell less `chrome`, what a
-    /// card spends on header and padding — of `cellRatio` (width / height), so a screen drawn into
-    /// it fills it.
     public static func lattice(count n: Int, in box: CGSize, cellRatio: CGFloat, gap: CGFloat, chrome: CGSize = .zero) -> [CGRect] {
         guard n > 0 else { return [] }
         var best: (area: CGFloat, rows: Int, columns: Int, cell: CGSize)?
@@ -17,7 +12,6 @@ public enum CardGrid {
             let w = min((box.width - gap * CGFloat(c - 1)) / CGFloat(c), wByHeight)
             guard w > chrome.width else { continue }
             let cell = CGSize(width: w, height: (w - chrome.width) / cellRatio + chrome.height)
-            // The largest cell; among equals, the fewest holes.
             let area = cell.width * cell.height - CGFloat(r * c - n) * 0.001
             if best == nil || area > best!.area { best = (area, r, c, cell) }
         }

@@ -23,12 +23,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController!
     private var settings: SettingsStore!
     private var statusItem: NSStatusItem?
-    /// The link that started the app: AppKit delivers it before `applicationDidFinishLaunching`,
-    /// when nothing is built yet, so it waits here until the end of that.
     private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // One instance: a link or a reopen reaches the running app.
         NSApp.setActivationPolicy(.accessory)
 
         let runner = AerospaceSocketRunner()
@@ -69,17 +66,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
     }
 
-    /// `open -a AeroControl` (or a Dock/Spotlight launch) while running: toggle the overview.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         overlayManager.toggleVisibility()
         return false
     }
 
-    /// `open aerocontrol://app-id=<bundle id>` or `app-name=<name>`: that app's key.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
-        // Started by the link, the app has no overlay yet: the summon is carried out when it has.
         guard let overlayManager else { pendingSummon = Summon(url); return }
         overlayManager.toggleVisibility(Summon(url))
     }

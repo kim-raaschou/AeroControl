@@ -2,7 +2,6 @@ import Common
 import Darwin
 import Foundation
 
-/// The AeroSpace socket wire-protocol version this runner speaks.
 public let aerospaceSocketProtocolVersion: UInt32 = 1
 
 public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError {
@@ -22,17 +21,12 @@ public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError
         }
     }
 
-    /// `localizedDescription` ignores `CustomStringConvertible`, and the overview shows exactly
-    /// that string when a load fails — without this the user gets NSError's "The operation couldn't
-    /// be completed" instead of what AeroSpace said.
     public var errorDescription: String? { description }
 }
 
-/// Sends AeroSpace commands over its Unix socket instead of spawning the `aerospace` CLI.
 public struct AerospaceSocketRunner: AerospaceProcessRunner {
     private let socketPath: String
 
-    /// Concurrent queue for blocking socket round-trips, keeping them off the cooperative pool.
     private static let ioQueue = DispatchQueue(
         label: "com.aerocontrol.aerospace-socket.run",
         attributes: .concurrent
@@ -67,15 +61,11 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
     }
 }
 
-/// Low-level socket framing shared by the command and subscribe paths, split out so tests can drive
-/// the runner against a mock AF_UNIX server.
 enum AerospaceSocket {
     struct ServerAnswer: Decodable {
         let exitCode: Int32
         let stdout: String
         let stderr: String
-        /// AeroSpace stamps every answer with its own version and commit, e.g. "0.21.3-Beta
-        /// d56e1637c3a1…".
         let serverVersionAndHash: String?
 
         func failure(_ args: [String]) -> AerospaceSocketError {
@@ -89,8 +79,6 @@ enum AerospaceSocket {
     }
 
     static func encodeRequest(_ args: [String]) throws -> [UInt8] {
-        // Mirror the CLI's ClientRequest, with explicit nulls for the window-id /
-        // workspace context fields AeroSpace forwards from the environment.
         let object: [String: Any] = [
             "args": args, "stdin": "", "windowId": NSNull(), "workspace": NSNull(),
         ]
@@ -105,7 +93,6 @@ enum AerospaceSocket {
         }
     }
 
-    /// Streams raw ServerEvent JSON lines over a dedicated subscribe connection.
     static func subscribeStream(socketPath: String, args: [String]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let handle = SocketHandle()
@@ -117,7 +104,6 @@ enum AerospaceSocket {
                     continuation.finish(throwing: handle.isCancelled ? nil : error)
                     return
                 }
-                // The worker is the sole closer of the fd; a cancel only shuts it down to interrupt the read.
                 defer { handle.closeOwned(fd) }
                 do {
                     if handle.register(fd) {
@@ -125,7 +111,6 @@ enum AerospaceSocket {
                         var first = true
                         while !handle.isCancelled {
                             let body = try readFrame(fd)
-                            // A rejected subscribe is one ServerAnswer and a connection left open: throw, or this loop blocks for good.
                             if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
                             first = false
                             if let line = String(data: body, encoding: .utf8) {
@@ -150,8 +135,6 @@ enum AerospaceSocket {
         var ok = false
         defer { if !ok { Darwin.close(fd) } }
 
-        // Turn a peer close/restart mid-write into an EPIPE error instead of a
-        // process-killing SIGPIPE; without it our error handling never runs.
         var noSigPipe: Int32 = 1
         if unsafe setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size)) != 0 {
             throw AerospaceSocketError.io("setsockopt(SO_NOSIGPIPE) errno=\(errno)")
@@ -168,12 +151,9 @@ enum AerospaceSocket {
         let rc = unsafe withUnsafePointer(to: &addr) { pointer in
             unsafe pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { unsafe connect(fd, $0, size) }
         }
-        // No socket, or one nobody listens on: what the user needs to hear is that AeroSpace is not running.
         if rc != 0 { throw AerospaceSocketError.io([ENOENT, ECONNREFUSED].contains(errno) ? "AeroSpace is not running" : "connect() errno=\(errno) path=\(socketPath)") }
 
         try writeUInt32(fd, aerospaceSocketProtocolVersion)
-        // The server always sends its version next; we must read it to stay
-        // frame-aligned, and a mismatch means we cannot trust the framing.
         let serverVersion = try readUInt32(fd)
         if serverVersion != aerospaceSocketProtocolVersion {
             throw AerospaceSocketError.protocolMismatch(serverVersion)
@@ -223,8 +203,6 @@ enum AerospaceSocket {
     }
 }
 
-/// Coordinates ownership of the subscribe connection's descriptor between the worker thread that
-/// performs the blocking reads and the stream's termination handler.
 private final class SocketHandle: @unchecked Sendable {
     private let lock = NSLock()
     private var fd: Int32 = -1
@@ -235,7 +213,6 @@ private final class SocketHandle: @unchecked Sendable {
         return cancelled
     }
 
-    /// Registers the worker-owned fd.
     func register(_ value: Int32) -> Bool {
         lock.lock(); defer { lock.unlock() }
         if cancelled { return false }
@@ -243,16 +220,12 @@ private final class SocketHandle: @unchecked Sendable {
         return true
     }
 
-    /// Called from the stream's termination handler on any thread: request stop and interrupt the
-    /// blocking read without freeing the descriptor.
     func cancel() {
         lock.lock(); defer { lock.unlock() }
         cancelled = true
         if fd >= 0 { Darwin.shutdown(fd, SHUT_RDWR) }
     }
 
-    /// Called once by the owning worker thread as it exits; performs the sole `close` of the
-    /// descriptor.
     func closeOwned(_ value: Int32) {
         lock.lock(); defer { lock.unlock() }
         fd = -1

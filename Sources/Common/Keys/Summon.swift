@@ -1,7 +1,5 @@
 import Foundation
 
-/// What the overview opens showing: the whole map, or one app, so one key on an app does the right
-/// thing whatever its state (`AppSummon.decide`).
 public enum Summon: Equatable, Sendable {
     case map, app(AppRef)
 
@@ -12,8 +10,6 @@ public enum Summon: Equatable, Sendable {
         else { self = .map }
     }
 
-    /// What this summon does while the overview is already up, showing the strip of `stripApp` or
-    /// else the map.
     public enum Again: Equatable, Sendable { case close, step, summon(AppRef) }
 
     public func again(stripApp: String?, among windows: [WindowInfo]) -> Again {

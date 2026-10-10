@@ -1,7 +1,6 @@
 import Foundation
 
 extension AerospaceEvent {
-    /// The names that mean "AeroSpace changed, read it again".
     private static let readAgain: Set<String> = ["focused-workspace-changed", "focused-monitor-changed", "window-detected", "binding-triggered"]
 
     public static func parse(_ json: String) -> AerospaceEvent? {

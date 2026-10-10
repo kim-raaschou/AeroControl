@@ -60,9 +60,9 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   decisions to know. Kept by hand (the agent's, with every change that moves a rule), drawn into
   `docs/arch.html`, and checked: `make arch-check` fails on a doc over 250 words, a missing one, or a
   name in backticks the code no longer has. `python3 scripts/arch.py --init-docs` writes a skeleton for a
-  layer that has none. The types' own one-sentence `///` lines are the reference, drawn as the boxes in
-  section 2; the why of a change is its commit message. Code comments say what a thing is, in one
-  sentence; a `WORKAROUND` block and a line that stops a misreading are the exceptions.
+  layer that has none. The code carries no comments: what a thing is, the page and the layer docs say;
+  why, the commit that did it. The one exception is a `WORKAROUND` block, which names the issue it waits
+  on; `make arch-check` fails on any other comment.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,

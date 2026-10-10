@@ -1,15 +1,10 @@
 import SwiftUI
 import Common
 
-/// One "desktop" card: badge at the top-left, the workspace's windows below as a grid of snapshot
-/// cells.
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
-    /// The card as the map laid it out: its cell, and every window where it is drawn in it.
     let card: AeroControlLayout.MapCard
-    /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
-    /// The panel's namespace for the tiles (`AeroControlPanel.tiles`).
     let tiles: Namespace.ID
     private var size: CGSize { card.frame.size }
 
@@ -24,18 +19,15 @@ struct AeroControlWorkspaceCard: View {
             grid()
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
-        // An empty workspace the keys are on wears the ring itself: Enter switches to it.
         .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(state.markedWorkspace == workspace.name ? 1 : 0))
         .contentShape(shape)
         .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
-        // Dropped on another card, the workspace merges into it; tiles keep their own drag.
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
         .dropDestination(for: OverviewDragPayload.self) { items, _ in
             guard let item = items.first else { return false }
             isDropTarget = false
             switch item {
             case .window(let id):
-                // Dropped back where it came from: nothing to move, like a card on itself.
                 guard !workspace.windows.contains(where: { $0.windowId == id }) else { return false }
                 state.send(.action(.moveWindow(windowId: id, toWorkspace: workspace.name)))
             case .workspace(let source):
@@ -46,7 +38,6 @@ struct AeroControlWorkspaceCard: View {
         } isTargeted: { isDropTarget = $0 }
     }
 
-    /// What follows the cursor while a workspace is dragged: its badge, a little larger.
     private var dragPreview: some View {
         Text(workspace.name)
             .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
@@ -66,12 +57,11 @@ struct AeroControlWorkspaceCard: View {
                 AeroControlAppTile(window: window, size: frame.size, filtering: filtering, tiles: tiles)
                     .onHover { if $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: frame.minX, y: frame.minY)
-                    .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
+                    .opacity(ghost ? 0.7 : 1)
                     .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: card.ghosts))
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
-        // The card as laid out, frames included: a window settling into its size moves, not snaps.
         .animation(.easeInOut(duration: 0.15 * look.motion), value: card)
     }
 
@@ -84,9 +74,6 @@ struct AeroControlWorkspaceCard: View {
     }
 }
 
-/// A workspace card's face, the same on the map and in the app strip: the badge at the top-left,
-/// the display's name with more than one, the layout's symbol at the top-right, and the pictures in
-/// the inner box under them, on the card's fill and hairline.
 struct AeroControlCardFace<Content: View>: View {
     let workspace: WorkspaceInfo
     let size: CGSize
@@ -96,13 +83,11 @@ struct AeroControlCardFace<Content: View>: View {
     @Environment(\.aeroLook) private var look
 
     private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-    /// The display this workspace lives on; nil with a single display, where naming it is noise.
     private var monitorName: String? { state.model.spansMonitors ? workspace.monitorShortName : nil }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
-        // Same header lane on every card; the tile area's frame is fixed so a grid cannot push the badge.
-        VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
+        VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
             let inner = AeroControlLayout.inner(of: size)
             content().frame(width: inner.width, height: inner.height, alignment: .topLeading)
@@ -110,11 +95,10 @@ struct AeroControlCardFace<Content: View>: View {
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
         .background(cardFill(shape))
-        .overlay(shape.strokeBorder(look.palette.cardBorder, lineWidth: 1))   // focus shows on the badge and the window, not the card
+        .overlay(shape.strokeBorder(look.palette.cardBorder, lineWidth: 1))
         .clipShape(shape)
     }
 
-    /// A solid themed fill, or the platform's frosted glass when the theme is System.
     private func cardFill(_ shape: RoundedRectangle) -> some View {
         ZStack {
             if look.surface == .strip { shape.fill(.ultraThickMaterial) }
@@ -122,7 +106,6 @@ struct AeroControlCardFace<Content: View>: View {
         }
     }
 
-    /// The badge, and with more than one display the name of this workspace's.
     private var header: some View {
         HStack(spacing: 6) {
             badge
@@ -143,8 +126,6 @@ struct AeroControlCardFace<Content: View>: View {
         }
     }
 
-    /// The workspace name as a quiet monogram: a filled circle with no outline, in the accent color
-    /// for the focused workspace and a faint tint otherwise.
     private var badge: some View {
         Text(workspace.name)
             .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())

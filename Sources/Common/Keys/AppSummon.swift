@@ -1,15 +1,10 @@
 import Foundation
 
-/// What one key on an app does, decided from AeroSpace's state alone.
 public enum AppSummon: Equatable, Sendable {
-    /// Start the app, or bring it forward if it runs; its windows are macOS's to order.
     case launch(AppRef)
-    /// One window is the answer: focus it, and show nothing.
     case focus(windowId: Int)
-    /// Windows to choose between: show the strip, opened like this.
     case pick(Strip)
 
-    /// The rule: none, start; one, focus it; two and you are in one, the other; otherwise the strip.
     public static func decide(app ref: AppRef, model: OverviewModel, recent: [Int]) -> AppSummon {
         let windows = model.windowsInGridOrder.map(\.window).filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }

@@ -1,19 +1,14 @@
 import SwiftUI
 import Common
 
-/// The full-screen overview content: every workspace as a card, in even rows of equal-sized cards,
-/// as the store lays them out (`OverviewStore.cards`) on the screen the host gave it.
 public struct AeroControlPanel: View {
     let state: OverviewStore
     @Environment(\.aeroLook) private var look
-    /// One namespace for every tile, so a window that moves to another card is the same view to
-    /// SwiftUI and glides there (`matchedGeometryEffect`) rather than going out and coming in.
     @Namespace private var tiles
 
     public init(state: OverviewStore) { self.state = state }
 
     public var body: some View {
-        // The pill sits under the result, in a lane the grid reserves; a missing app has the lane alone.
         return VStack(spacing: AeroControlLayout.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
@@ -31,8 +26,6 @@ public struct AeroControlPanel: View {
         .environment(state)
     }
 
-    /// The map as the store lays it out: a query that found something draws only the workspaces
-    /// that hold a match, each with only its matching windows, in the same lattice as the full map.
     private var grid: some View {
         let shown = state.shown, filtering = state.filtering, usable = state.usable
         return ZStack(alignment: .topLeading) {
@@ -44,7 +37,6 @@ public struct AeroControlPanel: View {
         }
         .frame(width: usable.width, height: usable.height, alignment: .topLeading)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        // The filtered result re-flows as the query narrows; animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * look.motion), value: shown)
     }
 

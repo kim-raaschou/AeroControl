@@ -1,13 +1,10 @@
 import Foundation
 
-/// The windows inside a card as a justified photo grid: every tile at its own ratio, one shared
-/// height, rows filled greedily then spread evenly, a shorter row centred.
 public enum TilePacker {
     public struct Tile: Equatable, Sendable {
         public let x: CGFloat
         public let y: CGFloat
         public let width: CGFloat
-        /// Picture plus caption.
         public let height: CGFloat
     }
 
@@ -17,7 +14,6 @@ public enum TilePacker {
         public let tiles: [Tile]
     }
 
-    /// Tiles at picture height `tileHeight`, in rows no wider than `width`.
     public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
                                 gap: CGFloat, caption: CGFloat) -> Packed {
         guard !ratios.isEmpty else { return Packed(height: 0, width: 0, tiles: []) }
@@ -28,7 +24,6 @@ public enum TilePacker {
         }
         func rowWidth(_ row: [Int]) -> CGFloat { row.reduce(-gap) { $0 + sizes[$1].width + gap } }
 
-        // Rows filled greedily, then the same number filled evenly if that fits.
         var greedy: [[Int]] = [[]]
         for j in sizes.indices {
             if !greedy[greedy.count - 1].isEmpty, rowWidth(greedy[greedy.count - 1] + [j]) > width { greedy.append([]) }
@@ -38,7 +33,6 @@ public enum TilePacker {
         let even = stride(from: 0, to: sizes.count, by: perRow).map { Array($0..<min(sizes.count, $0 + perRow)) }
         let rows = even.allSatisfy { rowWidth($0) <= width } ? even : greedy
 
-        // A shorter row is centred under the widest rather than hung from the left.
         let widest = rows.map(rowWidth).max() ?? 0
         var tiles = [Tile](repeating: Tile(x: 0, y: 0, width: 0, height: 0), count: sizes.count)
         var y: CGFloat = 0
@@ -53,8 +47,6 @@ public enum TilePacker {
         return Packed(height: y - gap, width: widest, tiles: tiles)
     }
 
-    /// The largest shared picture height whose rows fit in `width` × `height`: fitting is monotone
-    /// in the height for a greedy fill, so a binary search finds it.
     public static func packHeight(ratios: [CGFloat], width: CGFloat, height: CGFloat,
                                   gap: CGFloat, caption: CGFloat) -> CGFloat {
         guard !ratios.isEmpty, width > 0, height > 0 else { return 0 }

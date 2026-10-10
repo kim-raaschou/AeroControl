@@ -18,8 +18,6 @@ public struct OverviewModel: Equatable {
 }
 
 public extension OverviewModel {
-    /// True when the workspaces span more than one display, the only case where naming a
-    /// workspace's display tells the reader anything.
     var spansMonitors: Bool { Set(workspaces.map(\.monitorId)).count > 1 }
 }
 
@@ -31,8 +29,6 @@ public enum OverviewInput: Sendable {
 
 public enum OverviewEffect: Equatable {
     case refresh
-    /// AeroSpace commands one after another, in order (a merge keeps the tiling order), then,
-    /// `thenRead`, AeroSpace read again.
     case run([AeroControlAction], thenRead: Bool)
 }
 
@@ -55,7 +51,6 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
     case .action(.mergeWorkspace(let source, let target)):
         let from = source == target ? nil : state.workspaces.first { $0.name == source }
         guard let from, !from.windows.isEmpty else { return (state, []) }
-        // Into an empty workspace the source's layout comes along, set on a tiled window: a stack stays a stack.
         let empty = state.workspaces.first { $0.name == target }?.windows.isEmpty == true && !from.rootLayout.isEmpty
         let layout: [AeroControlAction] = empty ? from.windows.first { !$0.isFloating }.map { [.focusWindow($0.windowId), .setLayout(from.rootLayout)] } ?? [] : []
         return (state, [.run(from.windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)] + layout, thenRead: true)])

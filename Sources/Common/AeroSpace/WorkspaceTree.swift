@@ -1,12 +1,7 @@
 import CoreGraphics
 import Foundation
 
-/// The layout's own order of a workspace's windows, read from AeroSpace's rects
-/// (`WindowInfo.layoutRect`): what the ring, the keys and the strip walk.
 public enum WorkspaceTree {
-    /// The layout's own order from AeroSpace's rects: the rects are cut along lines that cross no
-    /// window, columns before rows, and the parts read left to right and top to bottom, each part
-    /// the same way in turn.
     public static func order(_ rects: [(Int, CGRect)]) -> [Int] {
         guard rects.count > 1 else { return rects.map(\.0) }
         for (lo, hi) in [(\CGRect.minX, \CGRect.maxX), (\.minY, \.maxY)] {
@@ -15,8 +10,6 @@ public enum WorkspaceTree {
         return rects.map(\.0)
     }
 
-    /// The rects in runs separated by gaps along one axis, its edges `lo` and `hi`, each run in the
-    /// order the rects came; nil when there is no such gap.
     private static func cut(_ rects: [(Int, CGRect)], _ lo: KeyPath<CGRect, CGFloat>, _ hi: KeyPath<CGRect, CGFloat>) -> [[(Int, CGRect)]]? {
         let indexed = rects.enumerated().sorted { $0.element.1[keyPath: lo] < $1.element.1[keyPath: lo] }
         var runs: [[(offset: Int, element: (Int, CGRect))]] = [[indexed[0]]]

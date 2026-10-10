@@ -6,11 +6,8 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let bundleId: String
     public let isFloating: Bool
     public let isFullscreen: Bool
-    /// Out of the layout and on no screen, by AeroSpace's word: minimized, or its app hidden (⌘H).
     public let isHidden: Bool
     public let title: String
-    /// Where AeroSpace's layout last put the window, in screen points with a top-left origin
-    /// (`%{window-layout-rect}`, the owner's AeroSpace branch).
     public let layoutRect: CGRect?
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
@@ -25,9 +22,6 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.title = title
     }
 
-    /// The title without the app's own name at its end — "README.md — Visual Studio Code" is
-    /// "README.md": the icon says which app it is, and the title is the one thing that tells two
-    /// windows of one app apart, so the name only pushes it out of the caption.
     public var caption: String {
         let text = title.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return appName }
@@ -47,18 +41,10 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let name: String
     public let windows: [WindowInfo]
     public let monitorId: Int
-    /// The display AeroSpace put this workspace on, e.g. "BenQ RD280U"; shown only when there is
-    /// more than one.
     public let monitorName: String
-    /// AeroSpace's `monitor-appkit-nsscreen-screens-id`: 1-based into `NSScreen.screens`, 0 when it
-    /// did not say.
     public let screenIndex: Int
-    /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion`
-    /// or `v_accordion`.
     public let rootLayout: String
 
-    /// The first word of the display's name: "Built-in Retina Display" -> "Built-in", "BenQ RD280U"
-    /// -> "BenQ".
     public var monitorShortName: String {
         String(monitorName.split(separator: " ").first ?? "")
     }
@@ -72,13 +58,11 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
         self.rootLayout = rootLayout
     }
 
-    /// The same workspace holding only `windows`: a filter's view of it.
     public func with(windows: [WindowInfo]) -> WorkspaceInfo {
         WorkspaceInfo(name: name, windows: windows, monitorId: monitorId, monitorName: monitorName, screenIndex: screenIndex, rootLayout: rootLayout)
     }
 }
 
-/// What AeroSpace considers focused.
 public struct Focus: Equatable, Sendable {
     public let windowId: Int
     public let workspace: String
@@ -91,8 +75,6 @@ public struct Focus: Equatable, Sendable {
 
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
-    /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather than
-    /// wiping it.
     public let focus: Focus?
     public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
         self.workspaces = workspaces
@@ -100,8 +82,6 @@ public struct OverviewResult: Equatable, Sendable {
     }
 }
 
-/// A window with the workspace it sits on, as `list-windows` reports it; also what the overview's
-/// filter hands back for a match, which needs exactly the same pair.
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String

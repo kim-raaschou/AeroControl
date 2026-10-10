@@ -2,12 +2,9 @@ import AppKit
 import AeroControlKit
 import Common
 
-/// The menu under the status item.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
-    /// Any setting changed: the host redraws the overview with it.
     private let onSettingsChanged: () -> Void
-    /// Screen Recording: whether macOS lets us take the pictures, and how to ask.
     private let bridge: NativeApiBridge
     private let settings: SettingsStore
 
@@ -17,7 +14,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.settings = settings
     }
 
-    /// Empty until it opens: `menuNeedsUpdate` fills it every time, the first included.
     func settingsMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
@@ -53,7 +49,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
     }
 
-    /// An item that does `run` when chosen.
     private func item(_ title: String, _ run: @escaping () -> Void) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: #selector(choose(_:)), keyEquivalent: "")
         item.target = self
@@ -61,7 +56,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    /// A submenu of exclusive choices; the parent names the current one.
     private func choice(_ label: String, current: String,
                         options: [(name: String, image: NSImage?, isOn: Bool, select: () -> Void)]) -> NSMenuItem {
         let parent = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")
@@ -94,8 +88,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return sectionHeader("AeroControl \(version)")
     }
 
-    /// A dot in the theme's accent on its own background, so the list can be read at a glance
-    /// instead of by name alone.
     private func swatch(for theme: AeroControlTheme) -> NSImage {
         let side: CGFloat = 12
         return NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in

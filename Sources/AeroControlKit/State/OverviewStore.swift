@@ -6,56 +6,35 @@ import Common
 public class OverviewStore {
     public private(set) var model = OverviewModel() {
         didSet {
-            if let marking {    // the strip's windows, or the map's: all of them
+            if let marking {
                 self.marking = marking.kept(before: oldValue.windows(of: marking).map(\.window.windowId), after: model.windows(of: marking).map(\.window.windowId))
             }
             filterMatches = model.matching(filter)
         }
     }
 
-
     let runner: AerospaceProcessRunner
-    /// The windows' pictures this visit, kept and taken by their own store; this one says which windows.
     public let pictures: PictureStore
     public private(set) var error: String?
-    /// What the user has typed into the overview.
     public var filter: String = "" {
         didSet { filterMatches = model.matching(filter); marking = nil }
     }
-    /// The marking: the strip's, or the map's once a key or the pointer has moved the ring — until
-    /// then the ring is AeroSpace's focus, or the first match.
     public private(set) var marking: Strip?
-    /// The strip that is up, if the marking is one's.
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
-    /// The screen the overview is drawn on, from the host at each summon: its size, and every
-    /// screen's visible frame in AeroSpace's coordinates by AeroSpace's 1-based index — the area a
-    /// workspace's layout fills, and the shape a window nothing is known about gets.
     public var screen: (available: CGSize, frames: [Int: CGRect]) = (.zero, [:])
-    /// The cards' box on the screen (`AeroControlLayout.usable`).
     public var usable: CGSize { AeroControlLayout.usable(screen.available) }
 
-    /// Whether the map is a query's result: the workspaces holding a match, with only those
-    /// windows.
     public var filtering: Bool { strip == nil && !model.workspaces(holding: filterMatches).isEmpty }
-    /// The workspaces drawn: the strip's, a query's, or all of them.
     public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? model.workspaces(holding: filterMatches) : model.workspaces }
-    /// The map as drawn (`AeroControlLayout.mapLayout`): a card per workspace shown, in the lattice.
     public var cards: [AeroControlLayout.MapCard] {
         AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering)
     }
-    /// The strip as drawn (`AeroControlLayout.stripLayout`): a card per workspace holding the app, on one row.
     public var stripLayout: AeroControlLayout.StripLayout { AeroControlLayout.stripLayout(groups: stripWorkspaces, bundleId: strip?.app ?? "", sizes: pictures.sizes,
         screens: screen.frames, fallbackScreen: CGRect(origin: .zero, size: screen.available), viewWidth: usable.width, panelHeight: usable.height) }
-    /// The cards as the map or the strip draws them, every window where it is: the keys and the
-    /// pointer go by these.
     var drawn: [GridWalk.Card] { strip != nil ? stripLayout.grid : cards.map(\.grid) }
 
-    /// An app `open` could not start, told on the strip's lane until the visit ends: a typo in a
-    /// key's link is otherwise a key that does nothing.
     public var missingApp: AppRef?
 
-    /// The visit is over: nothing to stay in sync with while hidden, no pictures kept, no query,
-    /// and the next summon decides afresh whether there is a strip.
     public func endVisit() {
         following = false
         refreshTask?.cancel()
@@ -65,14 +44,8 @@ public class OverviewStore {
         missingApp = nil
         pictures.clear()
     }
-    /// The one shot is over and the host closes the overview: after a focus action (the window or
-    /// workspace asked for takes the keyboard), or when AeroSpace took the focus out of the
-    /// overview for good (`restoreFocus`: the app that has it is brought forward).
     public var onShotDone: ((_ restoreFocus: Bool) -> Void)?
 
-    /// Windows in the order they last had the focus, most recent first, as AeroSpace reports focus
-    /// changes for as long as AeroControl runs (`startListening`): AeroSpace keeps no such order to
-    /// ask for, and the window server's stacking does not follow it.
     public private(set) var recentWindows: [Int] = []
 
     public func noteFocus(_ windowId: Int) {
@@ -81,50 +54,31 @@ public class OverviewStore {
         if recentWindows.count > 64 { recentWindows.removeLast() }
     }
 
-
-    /// The strip's windows, in the order the map draws them.
     public var stripWindows: [ParsedWindow] { strip.map(model.windows(of:)) ?? [] }
 
-    /// The workspaces that hold the strip's app, whole: a card mirrors all of a workspace, the
-    /// other apps' windows drawn grey behind the app's, not only the app's windows.
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
 
-    /// A key moves the marking through the cards as drawn (`Strip.moved`); the map's marking starts
-    /// from the ring.
     private func move(_ move: StripMove) {
         let drawn = drawn, order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
         marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(move, ids: order, card: cardOf, cards: drawn)
     }
 
-    /// Where the mouse was when the overview last heard from it, in screen points.
     private var pointer: CGPoint?
 
-    /// The mouse's place as the map or the strip opens, so a card that slides or appears under it
-    /// is not pointed at.
     public func notePointer(_ location: CGPoint) { pointer = location }
 
-    /// The pointer entered a window: it marks it, the map's ring or the strip's marking alike — in
-    /// the strip only the app's own, as in krn.overview's — and only if the mouse moved.
     public func point(_ windowId: Int, at location: CGPoint) {
         guard location != pointer, model.windows(of: marking).contains(where: { $0.window.windowId == windowId }) else { return }
         pointer = location
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
-    /// Every window the query picks out, in the order the grid draws them.
     public private(set) var filterMatches: [ParsedWindow] = []
 
-    /// The window wearing the ring: the marking, else the first match while the filter has any,
-    /// else AeroSpace's focused window.
     public var ringWindowId: Int? { marking?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId }
 
-    /// The empty workspace the map's ring is on, a stop of its own for the keys: its card wears the
-    /// ring, and Enter switches to it.
     public var markedWorkspace: String? { marking?.marked.flatMap { Dictionary(model.workspaces.enumerated().map { (-1 - $0.offset, $0.element.name) }) { a, _ in a }[$0] } }
 
-
-    /// The window ⌘W closes and whose app ⌘Q quits, as its × and the app's own ⌘Q would: the one
-    /// under the ring, the map's or the strip's, which says on screen what goes.
     public var commandTarget: WindowInfo? {
         (missingApp.map { _ in [] } ?? model.workspaces.flatMap(\.windows)).first { $0.windowId == ringWindowId }
     }
@@ -137,7 +91,6 @@ public class OverviewStore {
         self.pictures = PictureStore(bridge: nativeSystem)
     }
 
-    /// Reads AeroSpace's whole state and applies it.
     public func reload() async {
         do {
             let result = try await loadOverview(using: runner)
@@ -148,52 +101,36 @@ public class OverviewStore {
         }
     }
 
-    /// While the overview is up, AeroSpace's changes are read and drawn; while it is hidden only
-    /// the focus changes are kept, for the order windows were used in.
     public var following = false
-
-    // MARK: Window previews — the store says which windows; `pictures` keeps them
 
     private var windowIds: [Int] { model.workspaces.flatMap(\.windows).map(\.windowId) }
 
-    /// Reads every window's size before any picture is taken (`PictureStore.measure`).
     public func measurePreviews() async { await pictures.measure(windowIds) }
 
-    /// Captures a preview of every window with a picture — the strip's workspaces', else all: a
-    /// query is a view of the map, and its pictures are the map's — once, at `maxSize`; returns
-    /// when all are in (`PictureStore.take`).
     public func capturePreviews(maxSize: CGSize) async {
         await pictures.take((strip != nil ? stripWorkspaces : model.workspaces).flatMap { $0.windows.map(\.windowId) },
                             cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
     }
 
-    /// One key on an app, `aerocontrol://app-id=<bundle id>` or `app-name=<name>`.
     public func summonApp(_ app: AppRef) -> AppSummon {
         missingApp = nil
         let decision = AppSummon.decide(app: app, model: model, recent: recentWindows)
         guard case .pick(let opened) = decision else { return decision }
         marking = opened
-        // Up already, the strip takes over another's: its pictures come as a focus event's would.
         if following { requestRefresh() }
         return decision
     }
 
-
-    /// Type-to-filter.
     public func handle(_ key: FilterKey) -> FilterKeyAction {
         if case .move(let move) = key { self.move(move); return .handled }
-        // ⇧⌘ and a workspace's name: the window under the ring goes there, and the overview stays, as after ⌘W.
         if case .moveToWorkspace(let name) = key, let target = commandTarget { send(.action(.moveWindow(windowId: target.windowId, toWorkspace: name))); return .handled }
-        if strip != nil || missingApp != nil { return handleStrip(key) }   // a notice is a strip of no windows
+        if strip != nil || missingApp != nil { return handleStrip(key) }
         if key == .enter, let workspace = markedWorkspace { send(.action(.focusWorkspace(workspace))); return .handled }
         let action = filterKeyAction(query: filter, ring: ringWindowId, key: key)
         if case .setQuery(let query) = action { filter = query }
         return action
     }
 
-    /// A key in the strip, by its own rules (`AppStripModel.action`): steps move the marking, a key
-    /// or Enter picks, Escape is the window's to close with; anything else is swallowed, since
-    /// there is no typing in the strip.
     private func handleStrip(_ key: FilterKey) -> FilterKeyAction {
         let ids = stripWindows.map(\.window.windowId)
         switch AppStripModel.action(for: key, ids: ids, marked: strip?.marked, workspaces: stripWorkspaces.map(\.name)) {
@@ -205,14 +142,11 @@ public class OverviewStore {
         return .handled
     }
 
-    /// One connection to AeroSpace's events for as long as AeroControl runs, from launch: one
-    /// socket line per change, nothing taken from the screen.
     public func startListening() {
         guard subscribeTask == nil else { return }
         subscribeTask = Task.detached(priority: .utility) { [weak self] in
             var reconnecting = false
             while let self, !Task.isCancelled {
-                // What happened while the stream was down is lost (`--no-send-initial`): read once after a reconnect.
                 if reconnecting, await self.following { await self.reload() }
                 do {
                     let stream = self.runner.subscribe(AerospaceCommand.subscribe)
@@ -229,18 +163,13 @@ public class OverviewStore {
         }
     }
 
-    /// The one entrance: the reducer runs in the caller's turn, the model changes in one step (the
-    /// grid animates its own reflow), and the effects run at once — each is a Task, and `.loaded`
-    /// never asks for a refresh, so nothing here re-enters.
     public func send(_ input: OverviewInput) {
         let (newState, effects) = Common.updateOverview(model, input)
         let focusMoved = newState.focusedWindowId != model.focusedWindowId
         let hadStrip = strip != nil
-        if newState != model { model = newState }               // keeps the strip, or ends it with its app's last window
-        // AeroSpace's focus decides, from the event or the read: out of the strip's app, it is over.
+        if newState != model { model = newState }
         if focusMoved, let strip { marking = strip.following(model.focusedWindow) }
-        if hadStrip, strip == nil { onShotDone?(true) }        // over: the host closes and the focused app gets the keyboard
-        // A focus ends the shot; on the window already focused AeroSpace does nothing, so the host gives the keyboard.
+        if hadStrip, strip == nil { onShotDone?(true) }
         if case .action(let action) = input, action.isFocus { onShotDone?(action == .focusWindow(model.focusedWindowId)) }
         for effect in effects {
             switch effect {
@@ -250,7 +179,6 @@ public class OverviewStore {
         }
     }
 
-    /// Runs the commands strictly one after another, then reads once if asked.
     private func run(_ actions: [AeroControlAction], thenRead: Bool) {
         Task { [weak self] in
             guard let self else { return }
@@ -284,7 +212,6 @@ public class OverviewStore {
             guard let self, !Task.isCancelled,
                   let result = try? await loadOverview(using: self.runner),
                   generation == self.refreshGeneration else { return }
-            // The layout lands as read; the sizes and the pictures follow together once the windows stand still.
             self.error = nil
             self.send(.loaded(result))
             let pictureGeneration = self.pictures.generation
@@ -297,16 +224,10 @@ public class OverviewStore {
         }
     }
 
-    /// A refresh reads AeroSpace this long after the event: a key's `binding-triggered` comes
-    /// before its commands run, and nothing after them, so a read at once was of the state before
-    /// them.
     static let readAfter: Duration = .milliseconds(20)
-    /// What `PictureStore.settled` says for the windows with pictures — the strip's workspaces',
-    /// else all — as `result` will have them.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
         let shown = result.workspaces.filter { ws in strip.map { ws.windows.contains(where: $0.owns) } ?? true }
         return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)
     }
-
 
 }
