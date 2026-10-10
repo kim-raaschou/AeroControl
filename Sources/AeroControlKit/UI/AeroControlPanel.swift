@@ -9,7 +9,16 @@ public struct AeroControlPanel: View {
     public init(state: OverviewStore) { self.state = state }
 
     public var body: some View {
-        return VStack(spacing: AeroControlLayout.pillGap) {
+        return ZStack {
+            content
+            if state.showingHelp { AeroControlKeyHelp() }
+        }
+        .fixedSize()
+        .environment(state)
+    }
+
+    private var content: some View {
+        VStack(spacing: AeroControlLayout.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
             } else if state.model.workspaces.isEmpty || state.missingApp != nil {
@@ -22,8 +31,6 @@ public struct AeroControlPanel: View {
             }
             AeroControlFilterPill(matchCount: state.filterMatches.count)
         }
-        .fixedSize()
-        .environment(state)
     }
 
     private var grid: some View {

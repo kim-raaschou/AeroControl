@@ -34,6 +34,7 @@ public class OverviewStore {
     var drawn: [GridWalk.Card] { strip != nil ? stripLayout.grid : cards.map(\.grid) }
 
     public var missingApp: AppRef?
+    public var showingHelp = false
 
     public func endVisit() {
         following = false
@@ -42,6 +43,7 @@ public class OverviewStore {
         filter = ""
         marking = nil
         missingApp = nil
+        showingHelp = false
         pictures.clear()
     }
     public var onShotDone: ((_ restoreFocus: Bool) -> Void)?
@@ -122,6 +124,7 @@ public class OverviewStore {
     }
 
     public func handle(_ key: FilterKey) -> FilterKeyAction {
+        if key == .help || (key == .escape && showingHelp) { showingHelp.toggle(); return .handled }
         if case .move(let move) = key { self.move(move); return .handled }
         if case .moveToWorkspace(let name) = key, let target = commandTarget { send(.action(.moveWindow(windowId: target.windowId, toWorkspace: name))); return .handled }
         if strip != nil || missingApp != nil { return handleStrip(key) }

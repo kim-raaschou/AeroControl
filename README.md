@@ -200,15 +200,15 @@ On the map:
 | Key | Does |
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
-| ← → | move the ring through a workspace's windows in reading order, then on to the next workspace, round the map; an empty workspace is one stop, its card wearing the ring |
-| ↑ ↓ | move the ring straight up / down as drawn, to the nearest window over / under it, into the card over or under |
-| ⌘→ / ⌘← | move the ring to the next / previous workspace's first window, or onto it when it is empty |
-| ⌘↓ / ⌘↑ | move the ring to the first window of the workspace below / above |
-| Enter | focus the window under the ring: where the keys put it, the first match, or the focused window; on an empty workspace, switch to it |
-| Escape | clear the query; on an empty query, dismiss |
-| ⌘W | close the window under the ring, as its × does — the overview stays up |
-| ⌘Q | quit the app under the ring — the overview stays up |
-| ⇧⌘ + a workspace's name | move the window under the ring to that workspace: ⇧⌘3 to 3, ⇧⌘0 to 10 — the overview stays up. A name no workspace has yet creates it, as AeroSpace does: ⇧⌘q is a new workspace q with that window |
+| ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace; an empty one is a stop |
+| ⌘← ⌘→ | the previous / next workspace's first window, or the empty workspace itself |
+| ⌘↑ ⌘↓ | the first window of the workspace above / below |
+| ⇧⌘ + a key | move the window under the ring to the workspace of that name; a new name creates it |
+| ⌘W | close the window under the ring; the overview stays up |
+| ⌘Q | quit the app under the ring; the overview stays up |
+| ⏎ | focus the window under the ring; on an empty workspace, switch to it |
+| Esc | clear the query; on an empty query, dismiss |
+| ⌘/ | this help |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
@@ -219,17 +219,18 @@ In the strip the keys move the marking as they move the ring on the map, the str
 
 | Key | Does |
 |---|---|
-| ← → ↑ ↓ | as on the map: through a workspace's windows and on to the next, or straight up / down |
-| ⌘→ / ⌘← | move the marking to the next / previous workspace, the row sliding with it |
-| a workspace's name | move the marking to that workspace: 3 for workspace 3, 0 for 10 |
-| ⌘1 – ⌘9, ⌘a – ⌘f | focus that window: the keys the windows carry, fifteen in all |
-| ⌘W / ⌘Q | close the marked window / quit the app, as on the map; the marking goes on to the next |
-| ⇧⌘ + a workspace's name | move the marked window to that workspace, as on the map; a new name creates the workspace |
-| the app's own key again | move the marking on, as Cmd-` does |
-| Enter | focus the marked window |
-| Escape | dismiss, back on the window you came from |
+| ← → ↑ ↓ | move the marking through the app's windows, on to the next workspace |
+| ⌘← ⌘→ | the previous / next workspace, the row sliding with it |
+| a workspace's name | move the marking to that workspace: 3 for 3, 0 for 10 |
+| ⌘1 – ⌘9, ⌘a – ⌘f | focus the window carrying that key |
+| ⇧⌘ + a key | move the marked window to the workspace of that name; a new name creates it |
+| ⌘W / ⌘Q | close the marked window / quit its app; the marking moves on |
+| the app's key again | move the marking on, as ⌘` does |
+| ⏎ | focus the marked window |
+| Esc | dismiss, back on the window you came from |
+| ⌘/ | this help |
 
-There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.
+There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map. ⌘/, or the ? on the lane, shows these keys over the overview.
 
 ## Configure it from the menu bar
 

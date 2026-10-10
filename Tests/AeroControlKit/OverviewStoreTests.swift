@@ -240,6 +240,17 @@ struct OverviewStoreTests {
                 && store.handle(.move(.window(-1))) == .handled && store.strip?.marked == 2)   // on to 1, back past 3 round to 2
     }
 
+    @Test("⌘/ shows the keys and hides them again; Escape closes the help before anything else; the visit's end closes it")
+    func help() async {
+        let (_, store) = await loaded(windows: teams(2), workspaces: workspacesJSON(["1"]), focus: (1, "1"))
+        #expect(!store.showingHelp && store.handle(.help) == .handled && store.showingHelp)
+        store.filter = "te"
+        #expect(store.handle(.escape) == .handled && !store.showingHelp && store.filter == "te")   // the help first, the query after
+        #expect(store.handle(.help) == .handled && store.handle(.help) == .handled && !store.showingHelp)
+        _ = store.handle(.help); store.endVisit()
+        #expect(!store.showingHelp)
+    }
+
     @Test("⇧⌘ and a workspace's name moves the window under the ring there, on the map and in the strip, and the overview stays up")
     func moveToWorkspace() async {
         let (runner, store) = await loaded(windows: teams(2), workspaces: workspacesJSON(["1", "2"]), focus: (2, "1"))

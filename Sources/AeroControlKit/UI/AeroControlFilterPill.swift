@@ -36,9 +36,17 @@ struct AeroControlFilterPill: View {
     private var hint: some View { keys(Self.mapKeys) }
 
     private func keys(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 12, weight: .medium, design: .rounded))
-            .foregroundStyle(look.palette.badgeText.opacity(0.4))
+        HStack(spacing: 10) {
+            Text(text)
+            Text("?")
+                .padding(.horizontal, 6)
+                .overlay(Capsule().strokeBorder(look.palette.badgeText.opacity(0.4), lineWidth: 1))
+                .contentShape(Capsule())
+                .onTapGesture { state.showingHelp.toggle() }
+                .help("⌘/ — the keys")
+        }
+        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }
 
     private func appPill(_ app: StripApp) -> some View {

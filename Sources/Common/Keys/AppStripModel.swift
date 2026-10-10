@@ -38,7 +38,7 @@ public enum AppStripModel {
         case .commandKey(let n):
             return ids.prefix(FilterKey.windowKeys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
         case .character(let c): return FilterKey.workspaceNamed(String(c)).flatMap(workspaces.firstIndex).map { .move(.card($0)) } ?? .none
-        case .backspace, .moveToWorkspace: return .none
+        case .backspace, .moveToWorkspace, .help: return .none
         }
     }
 }
