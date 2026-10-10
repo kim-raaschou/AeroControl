@@ -19,12 +19,12 @@ struct AeroControlFilterPill: View {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
         if let strip = state.strip, let first = state.stripWindows.first?.window {
             return StripApp(name: first.appName, icon: state.pictures.icon(for: strip.app ?? ""),
-                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "←→↑↓ move · ⌘←→ workspace · ⇧⌘x to x · ⏎ focus")
+                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: Self.mapKeys)
         }
         guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
         return StripApp(name: ringed.window.appName, icon: state.pictures.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
-    private static let mapKeys = "type to filter · ←→↑↓ move · ⌘←→↑↓ workspace · ⇧⌘x to x · ⏎ focus"
+    private static let mapKeys = "←→↑↓ move · ⏎ focus"
 
     var body: some View {
         Group {
