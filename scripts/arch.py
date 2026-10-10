@@ -372,7 +372,8 @@ def onion(rows) -> str:
             r0, r1 = inner + width * i + width / 2, inner + width * (i + 1) + width / 2
             k = 0.7071
             out.append(f'<line x1="{cx + r0 * k:.0f}" y1="{cy + r0 * k:.0f}" x2="{cx + r1 * k:.0f}" y2="{cy + r1 * k:.0f}" stroke="#d33" stroke-width="3" marker-end="url(#up)"/>')
-            out.append(f'<text x="{cx + r1 * k + 8:.0f}" y="{cy + r1 * k + 14:.0f}" fill="#d33" font-weight="600">↑ {ups}</text>')
+            # The count beside the shaft, inside the ring it leaves: past the head it read as the next ring's.
+            out.append(f'<text x="{cx + r0 * k + 14:.0f}" y="{cy + r0 * k - 2:.0f}" fill="#d33" font-weight="600">↑ {ups}</text>')
     out.insert(1, '<defs><marker id="up" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#d33"/></marker></defs>')
     out.append("</svg>")
     return "\n".join(out)
