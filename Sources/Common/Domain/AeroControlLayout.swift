@@ -43,15 +43,12 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The size a window is drawn at, and its picture taken to fit: on a visible workspace its own, as
-    /// the window server reports it. On one that is not, its slot, or its own size where that is larger:
-    /// a window either fills its slot or refuses it for a minimum, and parked in the corner it keeps the
-    /// size it last had — smaller than a slot that grew while it was hidden, larger than one it refused.
-    /// Nil with neither, as a window on a release AeroSpace without Screen Recording.
-    public static func drawnSize(_ window: WindowInfo, in workspace: WorkspaceInfo, sizes: [Int: CGSize]) -> CGSize? {
-        let own = sizes[window.windowId]
-        guard !workspace.isVisible, let slot = window.layoutRect?.size else { return own }
-        return CGSize(width: max(slot.width, own?.width ?? 0), height: max(slot.height, own?.height ?? 0))
+    /// The size a window is drawn at, and its picture taken to fit: its slot, where AeroSpace's layout
+    /// put it — the layout is the truth, not what the app did with it, which is a size it passes through,
+    /// or one it refused the slot for — and its own size, as the window server reports it, where it has
+    /// no slot: a float, a fullscreen window, a release AeroSpace. Nil with neither.
+    public static func drawnSize(_ window: WindowInfo, sizes: [Int: CGSize]) -> CGSize? {
+        window.layoutRect?.size ?? sizes[window.windowId]
     }
 
     /// A card's height that is not pictures: the padding, the badge lane, and the gap
@@ -73,8 +70,7 @@ public enum AeroControlLayout {
     }
 
     /// The workspace as AeroSpace laid it out, when it said where (`WindowInfo.layoutRect`, the
-    /// owner's AeroSpace branch): each tiled window at that place, at the size the window server
-    /// reports (an app with a minimum size overflows its slot, as on the screen), in the screen's
+    /// owner's AeroSpace branch): each tiled window at that place and that size, in the screen's
     /// coordinates scaled into `inner` and centred. Floating and fullscreen windows are not in the
     /// layout; they lie over it as `ghosts`, at their own scale, centred, since where a float lies
     /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
@@ -97,9 +93,8 @@ public enum AeroControlLayout {
         var frames: [Int: CGRect] = [:]
         for window in tiled {
             let r = window.layoutRect!
-            let size = drawnSize(window, in: workspace, sizes: sizes) ?? r.size
             frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
-                                             width: size.width * scale, height: size.height * scale)
+                                             width: r.width * scale, height: r.height * scale)
         }
         for id in ghosts {
             // A ghost's size is the window server's; without one (no Screen Recording) the screen's box.
@@ -265,7 +260,7 @@ public enum AeroControlLayout {
     /// The windows whose picture no longer fits what they are drawn at (`drawnSize`), and so are taken
     /// again; one drawn at nothing known is not.
     public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
-        workspaces.flatMap { ws in ws.windows.filter { w in drawnSize(w, in: ws, sizes: sizes).map { !sameShape(pictures[w.windowId], $0) } ?? false } }.map(\.windowId)
+        workspaces.flatMap(\.windows).filter { w in drawnSize(w, sizes: sizes).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
     }
 
     /// A picture fits its window while their shapes agree to 2 %; none fits nothing.

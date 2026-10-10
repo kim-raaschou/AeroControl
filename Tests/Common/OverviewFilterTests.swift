@@ -104,12 +104,12 @@ struct FilteredWorkspacesTests {
             .map { ($0.name, $0.windows.map(\.windowId)) }
     }
 
-    @Test("a workspace kept for its matches is the same workspace: hidden stays hidden, its layout its own")
+    @Test("a workspace kept for its matches is the same workspace: its screen, its layout, its display")
     func keepsTheWorkspace() {
-        let hidden = WorkspaceInfo(name: "9", windows: [window(1, "Teams"), window(2, "Mail")], monitorId: 2, monitorName: "BenQ", screenIndex: 2, rootLayout: "v_tiles", isVisible: false)
-        let kept = OverviewModel(workspaces: [hidden]).workspaces(holding: [ParsedWindow(window: window(1, "Teams"), workspace: "9")])
-        #expect(kept == [hidden.with(windows: [window(1, "Teams")])])
-        #expect(kept.first?.isVisible == false && kept.first?.rootLayout == "v_tiles" && kept.first?.monitorName == "BenQ")
+        let far = WorkspaceInfo(name: "9", windows: [window(1, "Teams"), window(2, "Mail")], monitorId: 2, monitorName: "BenQ", screenIndex: 2, rootLayout: "v_tiles")
+        let kept = OverviewModel(workspaces: [far]).workspaces(holding: [ParsedWindow(window: window(1, "Teams"), workspace: "9")])
+        #expect(kept == [far.with(windows: [window(1, "Teams")])])
+        #expect(kept.first?.screenIndex == 2 && kept.first?.rootLayout == "v_tiles" && kept.first?.monitorName == "BenQ")
     }
 
     @Test("the marking's windows: a strip's app's, or every one for the map's or none")

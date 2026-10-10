@@ -29,7 +29,7 @@ struct AerospaceCommandArgvTests {
     func listWorkspaces() {
         #expect(AerospaceCommand.listWorkspaces == [
             "list-workspaces", "--monitor", "all", "--json", "--format",
-            "%{workspace} %{monitor-id} %{monitor-name} %{monitor-appkit-nsscreen-screens-id} %{workspace-root-container-layout} %{workspace-is-visible}",
+            "%{workspace} %{monitor-id} %{monitor-name} %{monitor-appkit-nsscreen-screens-id} %{workspace-root-container-layout}",
         ])
     }
 

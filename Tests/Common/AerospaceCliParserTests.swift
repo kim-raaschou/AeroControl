@@ -95,14 +95,6 @@ struct ParseWorkspacesTests {
         #expect(built.workspaces.map(\.screenIndex) == [1, 2, 0])
     }
 
-    @Test("whether a workspace is visible is read; a list without it decodes as visible, so the map draws as it always has")
-    func isVisible() throws {
-        let json = """
-        [{"workspace": "1", "monitor-id": 1, "workspace-is-visible": true}, {"workspace": "2", "monitor-id": 1, "workspace-is-visible": false}, {"workspace": "3", "monitor-id": 2}]
-        """
-        #expect(buildOverviewResult(windows: [], workspaceMonitors: try parseWorkspaces(json: json)).workspaces.map(\.isVisible) == [true, false, true])
-    }
-
     @Test("tolerates string NULL-MONITOR-ID monitor-id")
     func nullMonitorSentinel() throws {
         let json = """

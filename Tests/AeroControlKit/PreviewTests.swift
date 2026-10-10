@@ -150,15 +150,15 @@ struct TreeLayoutTests {
         #expect(abs(third.minY - (origin.y + (581 - 33) * scale)) < 0.01)
     }
 
-    @Test("a window is where AeroSpace's layout put it, as big as the app made it, hidden or not: AeroSpace sizes hidden windows for their slot too")
-    func windowDrawnWhereAerospacePutsIt() throws {
+    @Test("a window is drawn at its slot, whatever size its app made it: AeroSpace's layout is the truth, an app's refusal of it is not")
+    func windowDrawnAtItsSlot() throws {
         let inner = CGSize(width: 1000, height: 500)
         let row = [rected(287, "Claude", 16, 49, 418, 1052), rected(9134, "Ghostty", 446, 49, 412, 1052)]
         let scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
         let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: row), sizes: [287: CGSize(width: 600, height: 1052)], screen: screen, inner: inner))
         let drawn = try #require(laid.frames[287]), ghostty = try #require(laid.frames[9134])
-                #expect(abs(drawn.width - 600 * scale) < 0.01)                                 // a minimum width refused 418
-        #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)                     // the neighbour stays put
+        #expect(abs(drawn.width - 418 * scale) < 0.01)                                   // the slot, not the 600 the app refused it for
+        #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)
     }
 
     @Test("rects that overlap, an accordion's, cannot be a map: only the front one would show, so the card packs tiles instead")
@@ -169,25 +169,13 @@ struct TreeLayoutTests {
         #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
-    @Test("on a visible workspace a window is drawn at its own size, as on the screen; on one that is not, at its slot, or its own size where that is larger: parked in the corner it keeps the size it had, smaller than a slot that grew, larger than one it refused")
-    func hiddenWorkspaceDrawsSlots() throws {
-        let inner = CGSize(width: 1000, height: 500), small = ws7Rected.map { $0.windowId }.reduce(into: [Int: CGSize]()) { $0[$1] = CGSize(width: 400, height: 200) }
-        let shown = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: true), sizes: small, screen: screen, inner: inner))
-        let hidden = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: false), sizes: small, screen: screen, inner: inner))
-        let refused = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: false), sizes: [8266: CGSize(width: 1200, height: 200)], screen: screen, inner: inner))
-        let scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
-        #expect(abs((shown.frames[8266]?.width ?? 0) - 400 * scale) < 0.01 && abs((hidden.frames[8266]?.width ?? 0) - 842 * scale) < 0.01)
-        #expect(shown.frames[8266]?.origin == hidden.frames[8266]?.origin)                 // the slot's place either way
-        #expect(abs((refused.frames[8266]?.width ?? 0) - 1200 * scale) < 0.01 && abs((refused.frames[8266]?.height ?? 0) - 1052 * scale) < 0.01)   // its own width, the slot's height
-    }
-
-    @Test("a picture is stale when its shape no longer fits what the window is drawn at: its size on a visible workspace, its slot on one that is not, or its own size there where it refused the slot; a window without either is not")
+    @Test("a picture is stale when its shape no longer fits what the window is drawn at: its slot, or its own size when it has none; a window with neither is not")
     func stalePictures() {
-        let shown = WorkspaceInfo(name: "1", windows: [rected(1, "A", 0, 0, 800, 600), rected(2, "A", 0, 0, 800, 600)], isVisible: true)
-        let hidden = WorkspaceInfo(name: "2", windows: [rected(3, "A", 0, 0, 800, 600), win(4, "A"), rected(5, "A", 0, 0, 800, 600)], isVisible: false)
+        let tiled = WorkspaceInfo(name: "1", windows: [rected(1, "A", 0, 0, 800, 600), rected(2, "A", 0, 0, 800, 600), rected(5, "A", 0, 0, 800, 600)])
+        let floats = WorkspaceInfo(name: "2", windows: [win(3, "A"), win(4, "A")])
         let pictures = [1: CGSize(width: 400, height: 300), 2: CGSize(width: 400, height: 100), 3: CGSize(width: 400, height: 100), 4: CGSize(width: 400, height: 100), 5: CGSize(width: 400, height: 150)]
         let sizes = [1: CGSize(width: 800, height: 600), 2: CGSize(width: 800, height: 600), 3: CGSize(width: 800, height: 200), 5: CGSize(width: 1600, height: 600)]
-        #expect(AeroControlLayout.stale(workspaces: [shown, hidden], pictures: pictures, sizes: sizes) == [2, 3])   // 3: its size still fits, its slot does not; 5 refused its slot and its picture fits that
+        #expect(AeroControlLayout.stale(workspaces: [tiled, floats], pictures: pictures, sizes: sizes) == [2, 5])   // 5: its picture fits the size its app refused the slot for, not the slot
     }
 
     @Test("a tiled window without a rect, or none at all (a release AeroSpace), is no map: the card packs tiles")
