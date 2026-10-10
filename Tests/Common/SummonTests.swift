@@ -36,15 +36,6 @@ struct SummonTests {
         #expect(AppRef.bundleId("com.mail").identifies(bundleId: "com.mail", among: windows))
     }
 
-    @Test("the line that binds a key to an app is AeroSpace's own syntax, its link the app-id one a summon reads back")
-    func binding() throws {
-        #expect(aerospaceMapBinding == #"<key> = ['exec-and-forget open aerocontrol://workspaces']  # AeroControl"#)
-        let line = aerospaceBinding(for: WindowInfo(windowId: 1, appName: "Arc", bundleId: "company.thebrowser.Browser"))
-        #expect(line == #"<key> = ['exec-and-forget open "aerocontrol://app-id=company.thebrowser.Browser"']  # Arc"#)
-        let link = try #require(line.split(separator: "\"").first { $0.hasPrefix("aerocontrol://") })
-        #expect(Summon(try #require(URL(string: String(link)))) == .app(.bundleId("company.thebrowser.Browser")))
-    }
-
     @Test("one key per app: none, start; one, focus it; two and you are in one, the other; otherwise the strip, on the one after yours", arguments: [
         ([Int](), 0, AppSummon.launch(.bundleId("a"))),
         ([7], 0, .focus(windowId: 7)),

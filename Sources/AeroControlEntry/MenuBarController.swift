@@ -62,14 +62,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        // The key lines, to paste into your AeroSpace config: AeroControl writes no config.
-        menu.addItem(item("Copy AeroSpace key for the map") { self.copy(aerospaceMapBinding) })
-        menu.addItem(item("Copy AeroSpace key for the focused app") { self.withFocusedWindow { self.copy(aerospaceBinding(for: $0)) } })
-        menu.addItem(.separator())
         menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
     }
-
-    private func copy(_ line: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(line, forType: .string) }
 
     /// `run` with the window AeroSpace has focused; nothing with none.
     private func withFocusedWindow(_ run: @escaping (WindowInfo) -> Void) {

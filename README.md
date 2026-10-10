@@ -130,6 +130,8 @@ them to whatever keys you like in your AeroSpace config (`~/.aerospace.toml` or
 <another>       = ['exec-and-forget open aerocontrol://app-name=Safari']          # or by name, spaces as %20
 ```
 
+`aerospace list-apps` prints every running app's bundle id beside its name.
+
 `workspaces` closes the overview when it is already up; an app's key while it is up is that app's flow again, its strip
 taking over from whatever was showing. The strip is not a third view: it is the part of the app rule that cannot be
 settled without you (see *The map and the strip*). The rule:
@@ -232,17 +234,16 @@ There is no typing in the strip; the app is already chosen, and a key that names
 Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
 **Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
+- **Show overview** and **Show strip for the focused app**: what the keys do, from the menu.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
   looks the same whatever the system appearance is.
 - **Window Previews**: grant Screen Recording when it is missing.
-- **Copy AeroSpace key for the focused app**: puts the line that binds a key to the app in
-  front on the clipboard, `<key> = ['exec-and-forget open "aerocontrol://app-id=…"']  # App`,
-  for you to paste into your AeroSpace config and give a key. AeroControl writes no config.
-- **Reset settings** and **Quit**.
+- **Quit**.
 
-Selections persist automatically (`UserDefaults`).
+The theme persists (`UserDefaults`). AeroControl writes no config: the key lines above are
+yours to paste.
 
 ## Optional AeroSpace setting
 
