@@ -161,12 +161,13 @@ struct TreeLayoutTests {
         #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)
     }
 
-    @Test("rects that overlap, an accordion's, cannot be a map: only the front one would show, so the card packs tiles instead")
-    func overlappingRectsPackTiles() {
-        let same = [rected(1, "Claude", 16, 49, 1696, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: same), sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+    @Test("rects that overlap, an accordion's, are drawn as AeroSpace lays them: each at its rect, stacked, the padding showing the ones behind")
+    func overlappingRectsAreAStack() throws {
+        let inner = CGSize(width: 1000, height: 500), scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
         let padded = [rected(1, "Claude", 46, 49, 1636, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), sizes: [:], screen: screen, inner: inner))
+        let front = try #require(laid.frames[1]), behind = try #require(laid.frames[2])
+        #expect(abs(front.minX - behind.minX - 30 * scale) < 0.01 && abs(behind.width - front.width - 60 * scale) < 0.01 && front.minY == behind.minY)
     }
 
     @Test("a picture is stale when its shape no longer fits what the window is drawn at: its slot, or its own size when it has none; a window with neither is not")
