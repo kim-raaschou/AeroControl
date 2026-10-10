@@ -5,6 +5,9 @@ import AppKit
 public protocol NativeApiBridge: Sendable {
     /// The app's icon, for the badge in a picture's corner.
     func appIcon(bundleId: String) -> NSImage
+    /// A view showing the window as it changes, drawn at `pixels`, from when the bridge can
+    /// stream it until the view leaves its window; empty when it cannot.
+    func liveWindow(_ id: Int, pixels: CGSize) -> NSView
 
     /// Whether window previews can be captured (macOS Screen Recording permission).
     var canCapturePreviews: Bool { get }

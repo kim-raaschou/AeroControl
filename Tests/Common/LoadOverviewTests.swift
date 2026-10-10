@@ -37,6 +37,17 @@ struct LoadOverviewTests {
         #expect(result.workspaces[1].name == "2")
         #expect(result.workspaces[1].windows.isEmpty)
     }
+
+    @Test("the window AeroSpace has focused is read when asked, for the menu; none with nothing focused, or no answer")
+    func focusedWindow() async {
+        let runner = ScriptRunner()
+        runner.setFocus(windowId: 4, workspace: "1")
+        #expect(await loadFocusedWindow(using: runner) == WindowInfo(windowId: 4, appName: "App", bundleId: "com.app"))
+        runner.setFocus(windowId: nil, workspace: "1")
+        #expect(await loadFocusedWindow(using: runner) == nil)
+        runner.failing = true
+        #expect(await loadFocusedWindow(using: runner) == nil)
+    }
 }
 
 @Suite("loadOverview: layout rects when AeroSpace can give them")

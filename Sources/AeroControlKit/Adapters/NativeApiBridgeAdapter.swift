@@ -66,9 +66,13 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return content
     }
 
-    /// The window to stream for the live picture, from the visit's enumeration; nil without
-    /// Screen Recording, or for a window opened after the summon.
-    func window(_ id: Int) async -> SCWindow? { unsafe await resolvedContent()?.windows.first { unsafe Int($0.windowID) == id } }
+    /// The live picture's view, started once the visit's enumeration has the window: not without
+    /// Screen Recording, or for a window opened after the summon, and the picture beneath shows.
+    public func liveWindow(_ id: Int, pixels: CGSize) -> NSView {
+        let view = LiveWindowView()
+        Task { unsafe await resolvedContent()?.windows.first { unsafe Int($0.windowID) == id }.map { view.start($0, pixels: pixels) } }
+        return view
+    }
 
     /// Read from the window server each time, not from the visit's enumeration: a window resized
     /// while the overview is up — laid out again by AeroSpace, its app getting round to it — kept

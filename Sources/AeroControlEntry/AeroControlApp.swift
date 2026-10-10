@@ -42,7 +42,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(
             onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
             onSummon: { [weak self] in self?.overlayManager.toggleVisibility($0) },
-            focusedWindow: state.focusedWindow,
+            focusedWindow: { await loadFocusedWindow(using: runner) },
             bridge: nativeSystem,
             settings: settings
         )

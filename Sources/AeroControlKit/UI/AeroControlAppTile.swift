@@ -157,7 +157,7 @@ struct AeroControlAppTile: View {
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
             if isFocused {                                   // the window under the ring, live
-                LivePicture(windowId: window.windowId, pixels: drawnPixels, bridge: state.nativeSystem as? NativeApiBridgeAdapter)
+                LivePicture { state.pictures.live(window.windowId, pixels: drawnPixels) }
                     .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(plate)
                     .allowsHitTesting(false)
@@ -167,7 +167,7 @@ struct AeroControlAppTile: View {
             if let key {
                 keyCap(key.label, marked: key.marked)
             } else {
-                PixelImage(image: state.icon(for: window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
+                PixelImage(image: state.pictures.icon(for: window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .padding(badgeSize * 0.2)
             }
@@ -287,18 +287,10 @@ private struct FadingPicture<Content: View>: View {
     }
 }
 
-/// The window under the ring as it changes (`LiveWindowView`), over its picture: one view per
-/// window, started as it is made from the bridge's own enumeration, stopped as it goes.
+/// The window under the ring as it changes, over its picture: the bridge's view (`PictureStore.live`),
+/// one per window, made as the tile is and gone with it.
 private struct LivePicture: NSViewRepresentable {
-    let windowId: Int
-    let pixels: CGSize
-    let bridge: NativeApiBridgeAdapter?
-
-    func makeNSView(context: Context) -> LiveWindowView {
-        let view = LiveWindowView()
-        Task { await bridge?.window(windowId).map { view.start($0, pixels: pixels) } }
-        return view
-    }
-    func updateNSView(_ view: LiveWindowView, context: Context) {}
-    static func dismantleNSView(_ view: LiveWindowView, coordinator: ()) { view.stop() }
+    let make: () -> NSView
+    func makeNSView(context: Context) -> NSView { make() }
+    func updateNSView(_ view: NSView, context: Context) {}
 }

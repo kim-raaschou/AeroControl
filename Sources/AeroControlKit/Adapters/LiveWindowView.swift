@@ -25,8 +25,14 @@ final class LiveWindowView: NSView, SCStreamOutput {
         Task { try? await stream.startCapture() }
     }
 
-    /// Stopped when the tile goes, and again when the view does: a stream left running is one the
-    /// window server keeps counting.
+    /// Stopped as the view leaves its window — the tile went, or the overview's window let its
+    /// views go — and again when the view does: a stream left running is one the window server
+    /// keeps counting, and one that holds this view as its output.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { stop() }
+    }
+
     nonisolated func stop() {
         _ = stream.map { stream in Task { try? await stream.stopCapture() } }
         stream = nil

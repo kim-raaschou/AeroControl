@@ -269,16 +269,6 @@ struct OverviewStoreTests {
         #expect(store.missingApp == nil)
     }
 
-    @Test("the window AeroSpace has focused is read from AeroSpace when asked, for the menu; there is none with nothing focused")
-    func focusedWindow() async {
-        let runner = ScriptRunner()
-        runner.setFocus(windowId: 4, workspace: "1")
-        let store = started(runner)
-        #expect(await store.focusedWindow() == WindowInfo(windowId: 4, appName: "App", bundleId: "com.app"))
-        runner.setFocus(windowId: nil, workspace: "1")
-        #expect(await store.focusedWindow() == nil)
-    }
-
     // MARK: The strip
 
     /// A strip open on three Teams windows, the second focused, plus a Slack window whose title says Teams.
@@ -785,6 +775,14 @@ struct OverviewStorePreviewTests {
 
         store.endVisit()
         #expect(store.pictures.previews.isEmpty && store.pictures.sizes.isEmpty)
+    }
+
+    @Test("an app's icon and a window's live picture are the bridge's, through the picture store")
+    func iconsAndLive() {
+        let bridge = FakeBridge()
+        let store = OverviewStore(runner: ScriptRunner(), nativeSystem: bridge)
+        #expect(store.pictures.icon(for: "com.app") === bridge.icon)
+        #expect(store.pictures.live(1, pixels: CGSize(width: 10, height: 10)) === bridge.live)
     }
 
     @Test("without Screen Recording a capture stores nothing")

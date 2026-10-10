@@ -160,6 +160,12 @@ public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
     return Focus(windowId: windowId, workspace: workspace)
 }
 
+/// The window AeroSpace has focused, read when asked: for the menu, and for the check that a
+/// focus took. Nil with nothing focused, or when AeroSpace does not answer.
+public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
+    (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
+}
+
 /// Reads AeroSpace's whole state. The reads are **sequential on purpose**: AeroSpace
 /// serialises command execution, so two different commands issued concurrently contend and
 /// cost more than twice their sequential total — measured 12.8 ms concurrent against 6.4 ms

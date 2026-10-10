@@ -31,11 +31,11 @@ struct AeroControlFilterPill: View {
     private var app: StripApp? {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
         if let strip = state.strip, let first = state.stripWindows.first?.window {
-            return StripApp(name: first.appName, icon: state.icon(for: strip.app ?? ""),
+            return StripApp(name: first.appName, icon: state.pictures.icon(for: strip.app ?? ""),
                             summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: "← → ↑ ↓ move  ·  ⌘← ⌘→ workspace  ·  ⏎ focus")
         }
         guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
-        return StripApp(name: ringed.window.appName, icon: state.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
+        return StripApp(name: ringed.window.appName, icon: state.pictures.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
     /// The arrows and Enter only: the keys the cards do not show themselves (⌘1–⌘f, the
     /// workspaces' names) and the ones macOS makes standard (⌘W, ⌘Q, Escape) are left out.

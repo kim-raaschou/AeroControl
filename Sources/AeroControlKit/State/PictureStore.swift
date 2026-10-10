@@ -18,6 +18,13 @@ public final class PictureStore {
     private let bridge: NativeApiBridge
     init(bridge: NativeApiBridge) { self.bridge = bridge }
 
+    /// An app's icon, for the badge in a picture's corner: the one thing a picture does not say
+    /// about a window is which app it is. The bridge keeps them, once per app, for good.
+    public func icon(for bundleId: String) -> NSImage { bridge.appIcon(bundleId: bundleId) }
+    /// A window's picture as it changes, in a view, at `pixels`: the window under the ring, for
+    /// as long as it wears it. The view stops its stream as it leaves the window.
+    public func live(_ id: Int, pixels: CGSize) -> NSView { bridge.liveWindow(id, pixels: pixels) }
+
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private(set) var generation = 0
 

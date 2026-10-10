@@ -99,7 +99,11 @@ final class FakeBridge: NativeApiBridge {
     var captured: [[Int]] = []
     /// Bundle ids of apps macOS reports hidden.
 
-    func appIcon(bundleId: String) -> NSImage { NSImage() }
+    /// What the bridge gives for any app's icon, and for a live picture: one each, to be recognised.
+    let icon = NSImage()
+    let live = NSView()
+    func appIcon(bundleId: String) -> NSImage { icon }
+    func liveWindow(_ id: Int, pixels: CGSize) -> NSView { live }
     var canCapturePreviews: Bool { granted }
     func requestPreviewAccess() {}
     func prepareCapture() {}

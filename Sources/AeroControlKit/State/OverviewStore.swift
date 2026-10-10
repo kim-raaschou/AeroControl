@@ -15,12 +15,7 @@ public class OverviewStore {
     }
 
 
-    /// An app's icon, for the badge in a picture's corner: the one thing a picture does not say
-    /// about a window is which app it is. The bridge keeps them, once per app, for good.
-    public func icon(for bundleId: String) -> NSImage { nativeSystem.appIcon(bundleId: bundleId) }
-
     let runner: AerospaceProcessRunner
-    let nativeSystem: NativeApiBridge
     /// The windows' pictures this visit, kept and taken by their own store; this one says which windows.
     public let pictures: PictureStore
     public private(set) var error: String?
@@ -140,7 +135,6 @@ public class OverviewStore {
 
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.runner = runner
-        self.nativeSystem = nativeSystem
         self.pictures = PictureStore(bridge: nativeSystem)
     }
 
@@ -174,12 +168,6 @@ public class OverviewStore {
     public func capturePreviews(maxSize: CGSize) async {
         await pictures.take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) },
                             cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
-    }
-
-    /// The window AeroSpace has focused, read from AeroSpace when asked: the menu copies its
-    /// app's key line, or shows its app's strip. Nil with nothing focused.
-    public func focusedWindow() async -> WindowInfo? {
-        (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
     }
 
     /// One key on an app, `aerocontrol://app-id=<bundle id>` or `app-name=<name>`. The count is free; the model
@@ -302,8 +290,7 @@ public class OverviewStore {
     /// if AeroSpace's focus is elsewhere, it is asked for once more.
     private func focusAgainIfMissed(_ windowId: Int) async {
         try? await Task.sleep(for: .milliseconds(300))
-        let focused = try? parseWindows(json: await runner.run(AerospaceCommand.listFocusedWindow)).first?.window.windowId
-        if focused != windowId { _ = try? await runner.run(AerospaceCommand.argv(for: .focusWindow(windowId))) }
+        if await loadFocusedWindow(using: runner)?.windowId != windowId { _ = try? await runner.run(AerospaceCommand.argv(for: .focusWindow(windowId))) }
     }
 
     private var refreshGeneration = 0

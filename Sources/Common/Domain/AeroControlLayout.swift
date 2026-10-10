@@ -235,7 +235,7 @@ public enum AeroControlLayout {
     /// The box pictures are first taken to fit, in pixels. In the strip: a strip card at its largest,
     /// `AppStripModel.tallest` of the panel high in the screen's shape. On the map: a card's inner box, the most a tile
     /// there draws (a window alone on its card), never more than the strip's. A tile drawn larger,
-    /// by a query or the strip taking over, asks for it again at its size (`OverviewStore.wantPicture`).
+    /// by a query or the strip taking over, asks for it again at its size (`PictureStore.want`).
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
         let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
