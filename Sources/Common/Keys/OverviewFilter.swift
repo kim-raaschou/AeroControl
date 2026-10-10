@@ -72,9 +72,9 @@ public extension FilterKey {
         }
     }
 
-    public static let windowKeys: [Character] = Array("123456789abcdef")
+    static let windowKeys: [Character] = Array("123456789abcdef")
 
-    public static func workspaceNamed(_ key: String) -> String? {
+    static func workspaceNamed(_ key: String) -> String? {
         guard key.count == 1, let c = key.first, typed(c) != nil else { return nil }
         return ["0": "10"][key] ?? key
     }
