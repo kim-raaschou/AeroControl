@@ -2131,5 +2131,14 @@
     "complexity": 923,
     "prodComplexity": 510,
     "files": 63
+  },
+  {
+    "timestamp": "2026-10-09T19:15:05+02:00",
+    "commit": "c24c2b0",
+    "subject": "An empty workspace's card wears its layout symbol too",
+    "code": 5371,
+    "complexity": 922,
+    "prodComplexity": 509,
+    "files": 63
   }
 ]

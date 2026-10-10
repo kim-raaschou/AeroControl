@@ -43,18 +43,13 @@ public class OverviewStore {
     public var filtering: Bool { strip == nil && !model.workspaces(holding: filterMatches).isEmpty }
     /// The workspaces drawn: the strip's, a query's, or all of them.
     public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? model.workspaces(holding: filterMatches) : model.workspaces }
-    /// A refresh has landed and the windows may still be moving: AeroSpace laid them out, and their
-    /// apps resize in their own time (70–280 ms measured). The cards draw their slots meanwhile,
-    /// then the settled sizes and the new pictures together — so a move is one move, not a freeze
-    /// and then every size on the way.
-    public private(set) var settling = false
     /// The map as drawn (`AeroControlLayout.mapLayout`): a card per workspace shown, in the lattice.
     public var cards: [AeroControlLayout.MapCard] {
-        AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering, settled: !settling)
+        AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering)
     }
     /// The strip as drawn (`AeroControlLayout.stripLayout`): a card per workspace holding the app, on one row.
     public var stripLayout: AeroControlLayout.StripLayout { AeroControlLayout.stripLayout(groups: stripWorkspaces, bundleId: strip?.app ?? "", sizes: pictures.sizes,
-        screens: screen.frames, fallbackScreen: CGRect(origin: .zero, size: screen.available), viewWidth: usable.width, panelHeight: usable.height, settled: !settling) }
+        screens: screen.frames, fallbackScreen: CGRect(origin: .zero, size: screen.available), viewWidth: usable.width, panelHeight: usable.height) }
     /// The cards as the map or the strip draws them, every window where it is: the keys and the
     /// pointer go by these. An empty workspace's card holds its stand-in.
     var drawn: [GridWalk.Card] { strip != nil ? stripLayout.grid : cards.map(\.grid) }
@@ -69,7 +64,6 @@ public class OverviewStore {
         following = false
         refreshTask?.cancel()
         refreshTask = nil
-        settling = false
         filter = ""
         marking = nil
         missingApp = nil
@@ -323,16 +317,15 @@ public class OverviewStore {
             guard let self, !Task.isCancelled,
                   let result = try? await loadOverview(using: self.runner),
                   generation == self.refreshGeneration else { return }
-            // The layout lands as read, the windows drawn in their slots (`settling`); the sizes and
-            // the pictures follow together once the windows stand still. Drawn as it came, the card
-            // showed every size the windows passed through; waiting for all of it froze it a second.
+            // The layout lands as read, each window at the size it had, which is what it still has until
+            // its app gets round to the new slot — on the screen too, the window moves first and resizes
+            // after. The sizes and the pictures follow together once the windows stand still; waiting
+            // for them before anything moved froze the overview for up to a second.
             self.error = nil
-            self.settling = true
             self.send(.loaded(result))
             let pictureGeneration = self.pictures.generation
             let (sizes, fresh) = await self.settled(result)
-            guard !Task.isCancelled, generation == self.refreshGeneration else { return }   // the next refresh settles, or `endVisit` did
-            self.settling = false
+            guard !Task.isCancelled, generation == self.refreshGeneration else { return }
             if let sizes, pictureGeneration == self.pictures.generation {
                 self.pictures.sizes = sizes
                 self.pictures.replace(fresh)
