@@ -1,5 +1,6 @@
 import AppKit
 import AeroControlKit
+import Common
 
 /// The menu under the status item.
 @MainActor
@@ -98,7 +99,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private func swatch(for theme: AeroControlTheme) -> NSImage {
         let side: CGFloat = 12
         return NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
-            let palette = theme.palette(for: .dark)
+            let palette = AeroControlPalette.of(theme, in: .dark)
             (NSColor(palette.cardFill ?? .clear)).setFill()
             NSBezierPath(ovalIn: rect).fill()
             NSColor(palette.accent).setFill()

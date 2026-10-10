@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import AeroControlKit
+import Common
 
 @MainActor
 @Suite("SettingsStore")

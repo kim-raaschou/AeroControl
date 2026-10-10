@@ -180,7 +180,7 @@ final class OverlayWindowManager {
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
         // A fixed palette needs its own appearance for the parts macOS draws, the blur among them.
-        window.appearance = settings.theme.enforcedAppearance.map { NSAppearance(named: $0 == .dark ? .darkAqua : .aqua) } ?? nil
+        window.appearance = settings.theme.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
         // What AeroSpace tiles into (no menu bar, no dock), in its coordinates: AppKit's y grows
         // upward from the main screen's bottom, AeroSpace's downward from its top.
         let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in

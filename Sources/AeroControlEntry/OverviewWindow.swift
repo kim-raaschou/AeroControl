@@ -140,7 +140,7 @@ struct OverviewRoot: View {
     /// The overview comes in at once; only its pictures fade in.
 
     var body: some View {
-        let palette = theme.palette(for: colorScheme)
+        let palette = AeroControlPalette.of(theme, in: colorScheme)
         ZStack {
             ZStack {
                 BackdropBlur()

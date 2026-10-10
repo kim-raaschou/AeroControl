@@ -1,26 +1,27 @@
 import SwiftUI
 import Testing
 @testable import AeroControlKit
+@testable import Common
 
 @Suite("Theme")
 struct ThemeTests {
     @Test("system follows the platform: frosted cards, the user's accent, appearance-dependent chrome")
     func systemFollowsThePlatform() {
-        let light = AeroControlTheme.system.palette(for: .light)
-        let dark = AeroControlTheme.system.palette(for: .dark)
+        let light = AeroControlPalette.of(.system, in: .light)
+        let dark = AeroControlPalette.of(.system, in: .dark)
         #expect(light.cardFill == nil && dark.cardFill == nil)      // nil means the frosted material
         #expect(light.accent == .accentColor)
         #expect(light.cardBorder != dark.cardBorder)
-        #expect(AeroControlTheme.system.enforcedAppearance == nil)
+        #expect(AeroControlTheme.system.isDark == nil)
     }
 
     @Test("a fixed palette ignores the appearance and pins the one macOS draws in")
     func fixedPalettesAreFixed() {
         for theme in AeroControlTheme.all where theme != .system {
-            let light = theme.palette(for: .light), dark = theme.palette(for: .dark)
+            let light = AeroControlPalette.of(theme, in: .light), dark = AeroControlPalette.of(theme, in: .dark)
             #expect(light.cardFill != nil, "\(theme.name) should paint its own card")
             #expect(light.accent == dark.accent, "\(theme.name) should not follow the appearance")
-            #expect(theme.enforcedAppearance != nil, "\(theme.name) must pin an appearance")
+            #expect(theme.isDark != nil, "\(theme.name) must pin an appearance")
         }
     }
 
