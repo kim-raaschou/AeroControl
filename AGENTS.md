@@ -52,7 +52,8 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   layers and what names what, every type as a box with its lines, complexity, stored state and
   public members, the call flow in the host and the stores, and a table of where to look (the
   biggest types, the widest fan-out, arrows pointing up a layer, pairs naming each other, functions
-  at complexity ≥ 8). Regenerate it with a review; `make arch-check` says when it is stale.
+  at complexity ≥ 8), and Robert C. Martin's coupling per layer (Ca, Ce, I, A, D, arrows up, cycles),
+  which `make arch` prints as one line. Regenerate it with a review; `make arch-check` says when it is stale.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,

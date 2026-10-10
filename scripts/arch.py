@@ -224,7 +224,7 @@ def call_flow(by_name: dict[str, Type]) -> tuple[list[tuple[str, str, int]], lis
     for tn, fs in funcs.items():
         for fn, _, body in fs:
             body = re.sub(r"///.*|//.*", "", body)
-            for (on, ofn) in known:
+            for (on, ofn) in sorted(known):      # in one order, so `--check` compares like with like
                 if (on, ofn) == (tn, fn):
                     continue
                 qualified = rf"\b(?:{re.escape(on)}|state|store|pictures|self)\s*[.?]?\.\s*{re.escape(ofn)}\s*\(" if on != tn else rf"(?<![\w.]){re.escape(ofn)}\s*\("
@@ -328,6 +328,36 @@ def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[
     return rows
 
 
+def coupling(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[tuple[str, int, int, int, float, float, float, int, int]]:
+    """Robert C. Martin's package metrics, a layer being the package: Ca, the types outside that name
+    a type in it; Ce, the types outside that its types name; I = Ce / (Ca + Ce), 0 for a layer all
+    lean on, 1 for one that leans on all; A, the share of its types that are protocols; D = |A + I − 1|,
+    how far from the line where a stable layer is abstract and a concrete one unstable. With them the
+    arrows that point up out of the layer, and the pairs in it that name each other."""
+    rows = []
+    for _, layer in LAYERS:
+        mine = {n for n, t in by_name.items() if t.layer == layer}
+        ca = {a for (a, b) in edges if b in mine and a not in mine}
+        ce = {b for (a, b) in edges if a in mine and b not in mine}
+        i = len(ce) / (len(ca) + len(ce)) if ca or ce else 0.0
+        a = sum(1 for n in mine if by_name[n].kind == "protocol") / len(mine) if mine else 0.0
+        ups = sum(1 for (x, y) in edges if x in mine and RANK.get(by_name[y].layer, 0) > RANK[layer])
+        cycles = sum(1 for (x, y) in edges if x in mine and (y, x) in edges and x < y)
+        rows.append((layer, len(mine), len(ca), len(ce), i, a, abs(a + i - 1), ups, cycles))
+    return rows
+
+
+def coupling_table(rows) -> str:
+    head = "<tr><th>Layer</th><th>Types</th><th>Ca</th><th>Ce</th><th>I</th><th>A</th><th>D</th><th>↑ out</th><th>⟲</th></tr>"
+    return head + "".join(f"<tr><th>{esc(l)}</th><td>{n}</td><td>{ca}</td><td>{ce}</td><td>{i:.2f}</td><td>{a:.2f}</td><td>{d:.2f}</td><td>{u}</td><td>{c}</td></tr>"
+                          for l, n, ca, ce, i, a, d, u, c in rows)
+
+
+def coupling_summary(rows) -> str:
+    ups, cycles = sum(r[7] for r in rows), sum(r[8] for r in rows)
+    return "arch: " + "  ".join(f"{l.split(' · ')[-1]} I={i:.2f}" for l, _, _, _, i, _, _, _, _ in rows) + f"  ·  {ups} up, {cycles} cycles"
+
+
 def esc(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -369,6 +399,9 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 </pre>
 <h2>4. Where to look</h2>
 <table>{table}</table>
+<h2>5. Coupling, by layer</h2>
+<p>Robert C. Martin's package metrics, a layer being the package. <b>Ca</b>: the types outside the layer that name a type in it (afferent: who leans on it). <b>Ce</b>: the types outside that its types name (efferent: what it leans on). <b>I</b> = Ce / (Ca + Ce): 0 is a layer everything leans on and that leans on nothing, as Domain should be; 1 is one nothing leans on, as the host should be; I should rise down the table. <b>A</b>: the share of its types that are protocols. <b>D</b> = |A + I − 1|: the distance from the line where what is stable is abstract and what is concrete is free to change; a concrete layer all lean on is far from it, and that is the cost of a domain of values. <b>↑ out</b>: arrows from the layer that point up; <b>⟲</b>: pairs in it that name each other. Both should be 0.</p>
+<table>{coupling_table(coupling(by_name, edges))}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, flowchart: {{ useMaxWidth: true }}, class: {{ useMaxWidth: true }} }});</script>
 </body></html>
@@ -386,6 +419,7 @@ def main() -> int:
     edges = dependencies(by_name)
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     html = render(by_name, edges, head)
+    print(coupling_summary(coupling(by_name, edges)))
     if check:
         current = OUT.read_text() if OUT.exists() else ""
         strip = lambda s: re.sub(r"at <code>\w+</code>", "", s)
