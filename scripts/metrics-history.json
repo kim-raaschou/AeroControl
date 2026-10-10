@@ -2113,5 +2113,14 @@
     "complexity": 910,
     "prodComplexity": 506,
     "files": 62
+  },
+  {
+    "timestamp": "2026-10-09T17:14:49+02:00",
+    "commit": "58f27ee",
+    "subject": "The menu is settings and Quit: Show overview and Show strip go",
+    "code": 5309,
+    "complexity": 910,
+    "prodComplexity": 506,
+    "files": 63
   }
 ]

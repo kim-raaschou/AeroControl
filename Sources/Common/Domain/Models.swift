@@ -104,3 +104,14 @@ public struct OverviewResult: Equatable, Sendable {
     }
 }
 
+/// A window with the workspace it sits on, as `list-windows` reports it; also what the
+/// overview's filter hands back for a match, which needs exactly the same pair.
+public struct ParsedWindow: Equatable {
+    public let window: WindowInfo
+    public let workspace: String
+
+    public init(window: WindowInfo, workspace: String) {
+        self.window = window
+        self.workspace = workspace
+    }
+}
