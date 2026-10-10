@@ -53,7 +53,8 @@ public enum FilterKey: Equatable, Sendable {
     case move(StripMove)
     case commandKey(Int)
     case moveToWorkspace(String)
-    case help
+    case close
+    case quit
 }
 
 public extension FilterKey {
@@ -80,7 +81,7 @@ public extension FilterKey {
     }
 
     private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: windowKeys.enumerated().map { (String($1), .commandKey($0 + 1)) })
-        .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1)), "/": .help]) { a, _ in a }
+        .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1)), "w": .close, "q": .quit]) { a, _ in a }
 
     init?(command characters: String, shift: Bool) {
         guard let key = shift ? Self.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] else { return nil }

@@ -112,8 +112,6 @@ final class OverlayWindowManager {
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
         window.onDismiss = { [weak self] in self?.state.update { $0.hide(restoreFocus: true) } }
-        window.onQuitApp = { [weak self] in self?.state.update { $0.quitRinged() } }
-        window.onCloseWindow = { [weak self] in self?.state.update { $0.closeRinged() } }
         window.onKey = { [weak self] in self?.state.handle($0) ?? false }
         state.screen = (screen.frame.size, screenFrames)
         let root = OverviewRoot(

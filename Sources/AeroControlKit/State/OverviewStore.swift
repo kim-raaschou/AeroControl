@@ -73,7 +73,7 @@ public class OverviewStore {
     public func measurePreviews() async { await pictures.measure(model.workspaces.flatMap(\.windows).map(\.windowId)) }
 
     public func capturePreviews(maxSize: CGSize) async {
-        await pictures.take((strip != nil ? visit.stripWorkspaces : model.workspaces).flatMap { $0.windows.map(\.windowId) },
+        await pictures.take(visit.shownWorkspaces.flatMap { $0.windows.map(\.windowId) },
                             cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
     }
 
@@ -88,8 +88,7 @@ public class OverviewStore {
         sync.refresh { read, current in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            let shown = result.workspaces.filter { ws in self.strip.map { ws.windows.contains(where: $0.owns) } ?? true }
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown, current: current)
+            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, current: current)
         }
     }
 }

@@ -177,10 +177,6 @@ final class TestApp {
                                                                            workspaces: store.model.workspaces.count, strip: store.strip != nil))
     }
 
-    func closeKey() { store.update { $0.closeRinged() } }
-
-    func quitKey() { store.update { $0.quitRinged() } }
-
     func backdrop() { store.update { $0.hide(restoreFocus: true) } }
 
     func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }

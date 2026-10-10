@@ -93,7 +93,6 @@ func pressed(_ start: Visit, _ k: FilterKey) -> String {
     let (taken, effects) = v.key(k, drawn: drawn(v))
     guard taken else { return k == .escape ? "the window closes" : "nothing" }
     var parts = effects.map(describe)
-    if v.help != start.help { parts.insert(v.help ? "show the keys" : "hide the keys", at: 0) }
     if v.query != start.query { parts.insert(v.query.isEmpty ? "clear the query" : "query becomes \(code(v.query))", at: 0) }
     if v.visible, v.marking != start.marking { parts.insert("mark window \(v.marking?.marked.map(String.init) ?? "–")", at: 0) }
     return parts.isEmpty ? "nothing" : parts.joined(separator: " · ")
@@ -262,7 +261,7 @@ let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
 p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.")
-p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>Visit.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.")
+p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, keys like the rest (<code>FilterKey(command:)</code>, <code>Visit.commandTarget</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")
 p("Hand-written, from <code>Visit.apply</code> and <code>OverlayWindowManager.perform</code>: a focus action (focus window, focus workspace) and a strip that is over (<code>Strip.following</code> returned nil) both make <code>Visit.apply</code> answer <code>hide</code>. The host hides the window and, unless the focus just moved there, gives the focused app the keyboard. Escape and a click on the backdrop end the same way, through <code>Visit.hide</code>.")

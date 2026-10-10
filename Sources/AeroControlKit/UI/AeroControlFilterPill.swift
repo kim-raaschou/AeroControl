@@ -24,23 +24,13 @@ struct AeroControlFilterPill: View {
 
     var body: some View {
         Group {
-            if let app { appPill(app) } else if case .query(let query, let miss) = lane { pill(query, miss: miss) } else { hint }
+            if let app { appPill(app) } else if case .query(let query, let miss) = lane { pill(query, miss: miss) } else { keys(Self.mapKeys) }
         }
         .frame(height: AeroControlLayout.pillLane)
     }
 
-    private var hint: some View { keys(Self.mapKeys) }
-
     private func keys(_ text: String) -> some View {
-        HStack(spacing: 10) {
-            Text(text)
-            Text("?")
-                .padding(.horizontal, 6)
-                .overlay(Capsule().strokeBorder(look.palette.badgeText.opacity(0.4), lineWidth: 1))
-                .contentShape(Capsule())
-                .onTapGesture { state.handle(.help) }
-                .help("⌘/ — the keys")
-        }
+        Text(text)
         .font(.system(size: 12, weight: .medium, design: .rounded))
         .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }

@@ -7,29 +7,23 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onSettingsChanged: () -> Void
     private let bridge: NativeApiBridge
     private let settings: SettingsStore
+    let menu = NSMenu()
 
     init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
         self.bridge = bridge
         self.settings = settings
-    }
-
-    func settingsMenu() -> NSMenu {
-        let menu = NSMenu()
+        super.init()
         menu.delegate = self
-        return menu
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        populate(menu)
-    }
-
-    private func populate(_ menu: NSMenu) {
         menu.removeAllItems()
 
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
+        menu.addItem(keys())
         let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
         theme.image = swatch(for: settings.theme)
@@ -68,6 +62,26 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
         parent.submenu = submenu
         return parent
+    }
+
+    private func keys() -> NSMenuItem {
+        let parent = NSMenuItem(title: "Keys", action: nil, keyEquivalent: ""), submenu = NSMenu()
+        submenu.autoenablesItems = false
+        submenu.items = [sectionHeader("On the map")] + KeyHelp.map.map(keyLine) + [.separator(), sectionHeader("In the strip")] + KeyHelp.strip.map(keyLine)
+        parent.submenu = submenu
+        return parent
+    }
+
+    private static let column: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.tabStops = [NSTextTab(textAlignment: .left, location: 190)]
+        return style
+    }()
+
+    private func keyLine(_ row: KeyHelp.Row) -> NSMenuItem {
+        let line = NSMenuItem(title: row.keys, action: nil, keyEquivalent: "")
+        line.attributedTitle = NSAttributedString(string: "\(row.keys)\t\(row.does)", attributes: [.paragraphStyle: Self.column, .font: NSFont.menuFont(ofSize: 0)])
+        return line
     }
 
     private final class Action { let run: () -> Void; init(_ run: @escaping () -> Void) { self.run = run } }

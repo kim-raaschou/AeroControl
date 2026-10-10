@@ -119,14 +119,15 @@ struct FilterKeyCodeTests {
 
 @Suite("FilterKey(command:)")
 struct FilterKeyCommandTests {
-    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order, ⌘ with an arrow a workspace along; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
+    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order, ⌘ with an arrow a workspace along; ⌘W closes and ⌘Q quits; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
         ("1", false, FilterKey?.some(.commandKey(1))),
         ("9", false, .commandKey(9)),
         ("a", false, .commandKey(10)),
         ("f", false, .commandKey(15)),
         ("0", false, nil),
         ("g", false, nil),
-        ("q", false, nil),
+        ("q", false, .quit),
+        ("w", false, .close),
         ("", false, nil),
         ("ab", false, nil),                       // a key that types two characters is not one key, and no crash
         ("\u{F703}", false, .move(.workspace(1))),       // ⌘→, the next workspace

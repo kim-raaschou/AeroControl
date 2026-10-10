@@ -18,8 +18,6 @@ class OverviewWindow: NSPanel {
     private var fade: TimeInterval { Self.fadeDuration * motion }
     let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
-    var onQuitApp: (() -> Void)?
-    var onCloseWindow: (() -> Void)?
     var onKey: ((FilterKey) -> Bool)?
     private var isDismissing = false
 
@@ -51,12 +49,7 @@ class OverviewWindow: NSPanel {
         let key = event.charactersIgnoringModifiers ?? ""
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
-        if let key = FilterKey(command: key, shift: modifiers.contains(.shift)), onKey?(key) == true { return true }
-        switch (key.lowercased(), modifiers.contains(.shift)) {
-        case ("q", false): onQuitApp?()
-        case ("w", false): onCloseWindow?()
-        default: break
-        }
+        _ = FilterKey(command: key, shift: modifiers.contains(.shift)).map { onKey?($0) }
         return true
     }
 

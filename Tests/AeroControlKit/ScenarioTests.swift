@@ -56,7 +56,7 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 2)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
-        app.closeKey()
+        app.key(.close)
         await app.until { aero.windows(on: "1") == [1] && app.scene.cards.flatMap(\.tiles).map(\.window.windowId) == [1] && app.scene.body == .map }
     }
 
@@ -110,22 +110,6 @@ struct ScenarioTests {
         #expect(aero.layout(of: "3") == "h_tiles" && aero.layout(of: "6") == "h_tiles")
     }
 
-    @Test("⌘/ lays the keys over the overview; Escape takes them away before it does anything else")
-    func help() async {
-        let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1))
-        await app.open("aerocontrol://workspaces")
-        app.key(.help)
-        #expect(app.scene.help)
-        app.key(.escape)
-        #expect(!app.scene.help && app.scene.body == .map)
-        app.key(.help); app.key(.help)
-        #expect(!app.scene.help)
-        app.key(.help)
-        await app.open("aerocontrol://workspaces")
-        await app.open("aerocontrol://workspaces")
-        #expect(app.store.visit.visible && !app.scene.help)
-    }
-
     @Test("the map's key again closes the overview and gives the keyboard back to the app under AeroSpace's focus")
     func mapKeyAgainCloses() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(3, "Code")]], focused: 3))
@@ -159,7 +143,7 @@ struct ScenarioTests {
         #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
     }
 
-    @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then is the window's; ⌘/ and the strip's keys leave it be")
+    @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then is the window's; the strip's keys leave it be")
     func queryEditing() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 2))
         await app.open("aerocontrol://workspaces")
@@ -168,7 +152,6 @@ struct ScenarioTests {
         #expect(app.store.visit.query == "te2 ")
         app.key(.backspace); app.key(.backspace)
         #expect(app.store.visit.query == "te")
-        app.key(.help); app.key(.help)
         #expect(!app.key(.commandKey(2)) && app.store.visit.query == "te")
         #expect(app.key(.escape) && app.store.visit.query.isEmpty)
         #expect(!app.key(.escape) && !app.key(.backspace) && app.store.visit.visible)
@@ -226,7 +209,7 @@ struct ScenarioTests {
     func quitRinged() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 2))
         await app.open("aerocontrol://workspaces")
-        app.quitKey()
+        app.key(.quit)
         #expect(app.host.last == .quit(bundleId: "com.slack") && app.store.visit.visible)
     }
 
@@ -252,17 +235,17 @@ struct ScenarioTests {
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
         app.type("standup")
-        app.closeKey()
+        app.key(.close)
         await app.until { aero.windows(on: "1") == [1] }
         await app.open("aerocontrol://workspaces")
         await app.open("aerocontrol://app-id=com.teams")
         #expect(marked(app) == 1)
-        app.closeKey()
+        app.key(.close)
         await app.until { marked(app) == 3 }
         app.key(.move(.window(1)))
-        app.closeKey()
+        app.key(.close)
         await app.until { marked(app) == 3 && aero.windows(on: "3").isEmpty }
-        app.closeKey()
+        app.key(.close)
         await app.until { !app.store.visit.visible && aero.windows(on: "2").isEmpty }
     }
 

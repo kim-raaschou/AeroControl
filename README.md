@@ -208,7 +208,6 @@ On the map:
 | ⌘Q | quit the app under the ring; the overview stays up |
 | ⏎ | focus the window under the ring; on an empty workspace, switch to it |
 | Esc | clear the query; on an empty query, dismiss |
-| ⌘/ | this help |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
@@ -228,15 +227,15 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | the app's key again | move the marking on, as ⌘` does |
 | ⏎ | focus the marked window |
 | Esc | dismiss, back on the window you came from |
-| ⌘/ | this help |
 
-There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map. ⌘/, or the ? on the lane, shows these keys over the overview.
+There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.
 
 ## Configure it from the menu bar
 
 Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
 **Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
+- **Keys**: both tables above, on the map and in the strip.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette

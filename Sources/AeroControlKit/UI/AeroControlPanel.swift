@@ -10,19 +10,16 @@ public struct AeroControlPanel: View {
 
     public var body: some View {
         let scene = state.scene
-        return ZStack {
-            VStack(spacing: AeroControlLayout.pillGap) {
-                switch scene.body {
-                case .error(let message): errorView(message)
-                case .nothing: EmptyView()
-                case .strip:
-                    AeroControlAppStrip(scene: scene, tiles: tiles)
-                        .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
-                case .map: grid(scene)
-                }
-                AeroControlFilterPill(lane: scene.lane)
+        return VStack(spacing: AeroControlLayout.pillGap) {
+            switch scene.body {
+            case .error(let message): errorView(message)
+            case .nothing: EmptyView()
+            case .strip:
+                AeroControlAppStrip(scene: scene, tiles: tiles)
+                    .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
+            case .map: grid(scene)
             }
-            if scene.help { AeroControlKeyHelp(strip: scene.body == .strip) }
+            AeroControlFilterPill(lane: scene.lane)
         }
         .fixedSize()
         .environment(state)

@@ -62,7 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             image?.isTemplate = true
             button.image = image
         }
-        item.menu = menuBarController.settingsMenu()
+        item.menu = menuBarController.menu
         statusItem = item
     }
 

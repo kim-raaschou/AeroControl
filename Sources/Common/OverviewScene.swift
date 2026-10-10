@@ -38,7 +38,6 @@ public struct OverviewScene: Sendable {
     public let size: CGSize
     public let cards: [Card]
     public let lane: Lane
-    public let help: Bool
     public let ringed: Int?
     public let held: Int?
     public let grid: [GridWalk.Card]
@@ -46,7 +45,7 @@ public struct OverviewScene: Sendable {
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], sizes: [Int: CGSize]) {
         let model = visit.model, strip = visit.strip, mine = visit.stripWindows, ring = visit.ringWindowId
         let usable = AeroControlLayout.usable(available)
-        (size, help, ringed, lane) = (usable, visit.help, ring, Self.lane(visit))
+        (size, ringed, lane) = (usable, ring, Self.lane(visit))
         func tile(_ w: WindowInfo, _ frame: CGRect, ghost: Bool = false, faded: Bool = false, captioned: Bool = false, key: String? = nil) -> Tile {
             Tile(window: w, frame: frame, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId, ghost: ghost,
                  faded: faded, captioned: captioned, key: key, keyMarked: key != nil && w.windowId == strip?.marked,

@@ -26,7 +26,6 @@ public struct Visit: Equatable {
     public private(set) var query = ""
     public private(set) var matches: [ParsedWindow] = []
     public private(set) var missingApp: AppRef?
-    public private(set) var help = false
     public private(set) var recent: [Int] = []
     public private(set) var visible = false
     private var loading = false
@@ -36,6 +35,7 @@ public struct Visit: Equatable {
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
     public var stripWindows: [ParsedWindow] { strip.map(model.windows(of:)) ?? [] }
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
+    public var shownWorkspaces: [WorkspaceInfo] { strip == nil ? model.workspaces : stripWorkspaces }
     public var ringWindowId: Int? { marking?.marked ?? matches.first?.window.windowId ?? model.focusedWindow?.windowId }
     public var markedWorkspace: String? { marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name } }
     public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
@@ -74,10 +74,10 @@ public struct Visit: Equatable {
     public mutating func key(_ key: FilterKey, drawn: [GridWalk.Card]) -> (Bool, [Effect]) {
         switch key {
         case _ where !visible: return (false, [])
-        case .help: help.toggle()
-        case .escape where help: help = false
         case .move(let step): move(step, drawn: drawn)
         case .moveToWorkspace(let name) where commandTarget != nil: return (true, apply(.action(.moveWindow(windowId: commandTarget!.windowId, toWorkspace: name))))
+        case .close: return (true, closeRinged())
+        case .quit: return (true, quitRinged())
         case .enter where missingApp == nil: return (true, enter())
         case _ where strip != nil || missingApp != nil: return stripKey(key, drawn: drawn)
         case .escape where !query.isEmpty: setQuery("")
@@ -144,9 +144,9 @@ public struct Visit: Equatable {
         return [.host(.hide)] + (restoreFocus ? model.focusedWindow.map { [.host(.activate(bundleId: $0.bundleId))] } ?? [] : [])
     }
 
-    public mutating func closeRinged() -> [Effect] { commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? [] }
+    private mutating func closeRinged() -> [Effect] { commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? [] }
 
-    public func quitRinged() -> [Effect] { visible ? commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? [] : [] }
+    private func quitRinged() -> [Effect] { commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? [] }
 
     public mutating func launchFailed(_ ref: AppRef) -> [Effect] {
         guard !visible else { return [] }
@@ -163,7 +163,7 @@ public struct Visit: Equatable {
 
     public mutating func end() {
         setQuery("")
-        (missingApp, help) = (nil, false)
+        missingApp = nil
     }
 
     private mutating func setQuery(_ text: String) {
