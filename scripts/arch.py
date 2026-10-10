@@ -56,16 +56,6 @@ LAYERS = [
     ("Sources/AeroControlEntry/", "App / Entry"),
 ]
 RANK = {name: i for i, (_, name) in enumerate(LAYERS)}
-# The rings of the onion, innermost first. AeroSpace is not a port but the heart of the app, which
-# cannot exist without it: its model — the values and how they are read — is one core, the two
-# Common folders together; the folders are values against parsing, not two layers.
-RINGS = [
-    ("AeroSpace's model", ["Common · Domain", "Common · Aerospace"]),
-    ("Adapters", ["Kit · Adapters"]),
-    ("State", ["Kit · State"]),
-    ("UI", ["Kit · UI"]),
-    ("Entry", ["App / Entry"]),
-]
 # The functions whose calls are drawn: the host and the stores, where the flow lives.
 FLOW_TYPES = {"AeroControlApp", "OverlayWindowManager", "OverviewWindow", "MenuBarController", "OverviewStore", "PictureStore"}
 COMPLEX_FUNCTION = 8
@@ -359,6 +349,30 @@ def coupling(by_name: dict[str, Type], edges: dict[tuple[str, str], int],
     return rows
 
 
+def rings(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[tuple[str, list[str]]]:
+    """The onion's rings, read from the arrows and nothing else: ring 0 is the layers that name no other
+    layer, ring k the layers whose every arrow lands in a ring below k. Layers that land in the same
+    ring are one ring, named together. An arrow that points up (a cycle between layers) would never
+    settle; such a layer is put in the ring after the last that did."""
+    names = [layer for _, layer in LAYERS]
+    deps = {l: set() for l in names}
+    for (a, b) in edges:
+        if by_name[a].layer != by_name[b].layer:
+            deps[by_name[a].layer].add(by_name[b].layer)
+    level: dict[str, int] = {}
+    while len(level) < len(names):
+        settled = [l for l in names if l not in level and all(d in level for d in deps[l] if d != l)]
+        if not settled:
+            settled = [l for l in names if l not in level]
+        for l in settled:
+            level[l] = max([level[d] + 1 for d in deps[l] if d in level] or [0])
+    out: list[tuple[str, list[str]]] = []
+    for k in sorted(set(level.values())):
+        members = [l for l in names if level[l] == k]
+        out.append((" + ".join(l.split(" · ")[-1].replace("App / ", "") for l in members), members))
+    return out
+
+
 def coupling_table(rows) -> str:
     head = "<tr><th>Layer</th><th>Types</th><th>Ca</th><th>Ce</th><th>I</th><th>A</th><th>D</th><th>↑ out</th><th>⟲</th></tr>"
     return head + "".join(f"<tr><th>{esc(l)}</th><td>{n}</td><td>{ca}</td><td>{ce}</td><td>{i:.2f}</td><td>{a:.2f}</td><td>{d:.2f}</td><td>{u}</td><td>{c}</td></tr>"
@@ -439,8 +453,8 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <table>{table}</table>
 <h2>5. Coupling, by layer</h2>
 <p>Robert C. Martin's package metrics, a layer being the package. <b>Ca</b>: the types outside the layer that name a type in it (afferent: who leans on it). <b>Ce</b>: the types outside that its types name (efferent: what it leans on). <b>I</b> = Ce / (Ca + Ce): 0 is a layer everything leans on and that leans on nothing, as Domain should be; 1 is one nothing leans on, as the host should be; I should rise down the table. <b>A</b>: the share of its types that are protocols. <b>D</b> = |A + I − 1|: the distance from the line where what is stable is abstract and what is concrete is free to change; a concrete layer all lean on is far from it, and that is the cost of a domain of values. <b>↑ out</b>: arrows from the layer that point up; <b>⟲</b>: pairs in it that name each other. Both should be 0.</p>
-<p>As rings: AeroSpace's model at the heart — the app is an AeroSpace client and cannot exist without it, so its model is the core, not a port; the two Common folders are values against parsing, one ring — and the host at the rim, each darker the more stable. A sound build is dark in the middle and pale at the edge, with no red spoke.</p>
-{onion(coupling(by_name, edges, RINGS))}
+<p>As rings, read from the arrows alone: the heart is what names no other layer, each ring out is what names only rings within, and layers that settle at the same depth share a ring. Each ring is darker the more stable. A sound build is dark in the middle and pale at the edge, with no red spoke.</p>
+{onion(coupling(by_name, edges, rings(by_name, edges)))}
 <table>{coupling_table(coupling(by_name, edges))}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, flowchart: {{ useMaxWidth: true }}, class: {{ useMaxWidth: true }} }});</script>

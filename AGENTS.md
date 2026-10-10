@@ -53,7 +53,7 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   public members, the call flow in the host and the stores, and a table of where to look (the
   biggest types, the widest fan-out, arrows pointing up a layer, pairs naming each other, functions
   at complexity ≥ 8), and Robert C. Martin's coupling per layer (Ca, Ce, I, A, D, arrows up, cycles), drawn as
-  rings — AeroSpace's model (all of Common) at the heart, darker the more stable, a red spoke per arrow up — which `make arch`
+  rings read from the arrows alone — the heart is what names no other layer, darker the more stable, a red spoke per arrow up — which `make arch`
   prints as one line. Regenerate it with a review; `make arch-check` says when it is stale.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
