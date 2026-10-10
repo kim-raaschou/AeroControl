@@ -40,20 +40,23 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   `floor(baseline × 1.01)`.
 - `.githooks/pre-commit` runs `python3 scripts/code_metrics.py --check` and fails the commit
   when a ceiling is exceeded. Enable once per clone: `git config core.hooksPath .githooks`.
-- When you **reduce** code, ratchet down: `python3 scripts/code_metrics.py --update-baseline`
-  and commit `scripts/metrics-baseline.json` (with `scripts/metrics-history.json` and
-  `docs/code-metrics.html`, which the script regenerates).
+- When you **reduce** code, ratchet down: `python3 scripts/code_metrics.py --update-baseline`,
+  which writes `scripts/metrics-baseline.json` and a point in `scripts/metrics-history.json`;
+  then `make arch`, and commit the three. The script draws no page: its numbers are on
+  `docs/arch.html`.
 - Default answer to "the metric went up" is **make it smaller**, not raise the baseline. Raise
   it only as a deliberate, explained exception — in the commit that earns it (a feature and
   its cost are one reviewable change), with the cost stated in the message.
 
 ### Rule: `docs/flow.html` is written by running the rules — `make flow`
-- `make arch` draws the architecture from the code into `docs/arch.html` (`scripts/arch.py`), four
-  sections: the layers as rings read from the arrows, with Robert C. Martin's coupling per layer (Ca,
-  Ce, I, arrows up, cycles) and one line of it printed; where to look (the biggest types, the widest
-  fan-out and fan-in, arrows up, pairs naming each other, functions at complexity ≥ 8); every type as
-  a box in its layer and area with its lines, complexity, stored state and public members, and what
-  names what; and the layer docs. Regenerate it with a review; `make arch-check` says when it is stale.
+- `make arch` draws the architecture and the metrics from the code into `docs/arch.html`
+  (`scripts/arch.py`, reading the gate's numbers from `scripts/code_metrics.py`), six sections: the
+  layers as rings read from the arrows, with Robert C. Martin's coupling per layer; where to look —
+  size against the ceiling, tests, the longest function, the deepest nesting, duplicated code, Common's
+  purity, the biggest types, fan-out and fan-in, arrows up, pairs naming each other, functions at
+  complexity ≥ 8; code lines and complexity over time; every type as a box in its layer and area, and
+  what names what; the layer docs; and every file. Regenerate it with a review; `make arch-check`
+  says when it is stale.
 - `docs/layers/<layer>.md`, one per layer, at most 250 words: what the layer is for, its rules, and the
   decisions to know. Kept by hand (the agent's, with every change that moves a rule), drawn into
   `docs/arch.html`, and checked: `make arch-check` fails on a doc over 250 words, a missing one, or a

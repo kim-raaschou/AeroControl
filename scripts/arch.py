@@ -44,6 +44,8 @@ except ImportError:
     os.execv(str(venv_py), [str(venv_py), __file__, *sys.argv[1:]])
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import code_metrics as metrics  # the gate's own numbers, so the page and the gate cannot disagree
 OUT = ROOT / "docs" / "arch.html"
 
 # The layers, lowest first: an arrow may point along or down this list; one that points up is marked.
@@ -261,8 +263,18 @@ def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -
     return "\n".join(out)
 
 
-def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[tuple[str, str]]:
+def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload: dict) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
+    totals, health, base = payload["totals"], payload["health"], metrics.load_baseline() or {}
+    cap = lambda k: f" (ceiling {metrics.ceiling(base[k])})" if k in base else ""
+    rows.append(("Size", f"{totals['code']} code lines{cap('code')} · prod complexity {totals['prodComplexity']}{cap('prodComplexity')} · test complexity {totals['testComplexity']} · {totals['files']} files"))
+    rows.append(("Tests", f"{health['testCode']} test lines to {health['prodCode']} production lines ({health['testRatio']:.2f})"))
+    longest = health["longestFunc"]
+    rows.append(("Longest function", f"{longest['name']} in {longest['file']} ({longest['code']} lines)" if longest else "none"))
+    rows.append(("Deepest nesting", f"{health['maxNesting']} in {health['deepestFile']}"))
+    dup = health["duplicates"]
+    rows.append(("Duplicated code", f"{dup['blocks']} blocks, {dup['prodLines']} production lines and {dup['testLines']} test lines"))
+    rows.append(("Common purity", "; ".join(f"{v['path']} imports {v['import']}" for v in payload["purity"]) or "no UI framework imported"))
     types = list(by_name.values())
     top = lambda key, n=5: ", ".join(f"{t.name} ({key(t)})" for t in sorted(types, key=lambda t: -key(t))[:n] if key(t))
     rows.append(("Biggest types (lines)", top(lambda t: t.nloc)))
@@ -516,12 +528,44 @@ def layer_docs_html() -> str:
     return "\n".join(parts)
 
 
+def trend(history: list[dict]) -> str:
+    """Code lines and production complexity at every point of the history, as two lines on one time
+    axis, each scaled to its own range, with a legend clear of both."""
+    if len(history) < 2:
+        return ""
+    w, h, pad = 900, 220, 40
+    top = pad + 20
+    def line(key: str, colour: str, label: str, row: int) -> str:
+        values = [e[key] for e in history]
+        lo, hi = min(values), max(values)
+        span = max(1, hi - lo)
+        points = " ".join(f"{pad + (w - 2 * pad) * i / (len(values) - 1):.1f},{h - pad - (h - pad - top) * (v - lo) / span:.1f}"
+                          for i, v in enumerate(values))
+        return (f'<polyline points="{points}" fill="none" stroke="{colour}" stroke-width="2"/>'
+                f'<rect x="{pad + 200 * row}" y="{pad - 16}" width="12" height="3" fill="{colour}"/>'
+                f'<text x="{pad + 200 * row + 18}" y="{pad - 11}" fill="currentColor">{label} {values[-1]} <tspan fill-opacity="0.6">from {values[0]}</tspan></text>')
+    first, last = history[0]["timestamp"][:10], history[-1]["timestamp"][:10]
+    return (f'<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="Code lines and complexity over time" '
+            f'style="max-width:100%;height:auto;font:12px -apple-system,system-ui,sans-serif">'
+            f'<line x1="{pad}" y1="{h - pad}" x2="{w - pad}" y2="{h - pad}" stroke="currentColor" stroke-opacity="0.3"/>'
+            + line("code", "#3b82f6", "code lines", 0) + line("prodComplexity", "#d97706", "prod complexity", 1) +
+            f'<text x="{pad}" y="{h - pad + 18}" fill="currentColor" fill-opacity="0.6">{first}</text>'
+            f'<text x="{w - pad}" y="{h - pad + 18}" text-anchor="end" fill="currentColor" fill-opacity="0.6">{last} · {len(history)} points</text></svg>')
+
+
+def files_table(payload: dict) -> str:
+    head = "<tr><th>File</th><th>Code</th><th>Complexity</th><th>Hardest function</th><th>Deepest nesting</th></tr>"
+    return head + "".join(f"<tr><td><code>{esc(r['path'])}</code></td><td>{r['code']}</td><td>{r['complexity']}</td><td>{r['maxFuncCx']}</td><td>{r['maxDepth']}</td></tr>"
+                          for r in payload["files"])
+
+
 def esc(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: str) -> str:
-    table = "\n".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in smells(by_name, edges))
+    payload = metrics.build_payload()
+    table = "\n".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in smells(by_name, edges, payload))
     groups = rings(by_name, edges)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -537,7 +581,7 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
   .docs .layer {{ margin: 1rem 0; border: 1px solid var(--line); border-radius: 10px; padding: .25rem 1.25rem 1rem; }}
   .docs h3 {{ font-size: 1.1rem; margin: 1rem 0 .25rem; }} .docs h4 {{ margin: 1.25rem 0 .25rem; font-size: 1rem; }} .docs p {{ color: var(--fg); }} .docs ul {{ max-width: 90ch; }}
 </style></head><body>
-<h1>AeroControl — architecture, from the code</h1>
+<h1>AeroControl — architecture and metrics, from the code</h1>
 <p>Generated by <code>make arch</code> at <code>{esc(head)}</code> from <code>Sources/</code>; nothing here is drawn by hand.</p>
 <h2>1. The rings</h2>
 <p>Read from the arrows: the heart names no other layer, each ring out names only rings within, darker the more stable. An arrow is how often a ring's types name the inner ring's; a red one points up and should not be there.</p>
@@ -545,15 +589,22 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <table>{coupling_table(coupling(by_name, edges))}</table>
 <p><b>Ca</b>: types outside the layer that name it. <b>Ce</b>: types outside it names. <b>I</b> = Ce / (Ca + Ce): 0 at the heart, 1 at the rim. <b>↑ out</b>: arrows up out of it. <b>⟲</b>: pairs in it naming each other.</p>
 <h2>2. Where to look</h2>
+<p>The gate's own numbers (<code>scripts/code_metrics.py</code>): a commit fails above the ceiling, the baseline +1%.</p>
 <table>{table}</table>
-<h2>3. Types, and what names what</h2>
+<h2>3. Over time</h2>
+<p>Code lines and production complexity at every point of <code>scripts/metrics-history.json</code>, each line on its own scale.</p>
+{trend(metrics.load_history())}
+<h2>4. Types, and what names what</h2>
 <p>Every type in its layer and area, with its lines, complexity, stored properties and public members. An arrow is three namings or more, one that points up (↑), or a pair naming each other (⟲); a dotted hollow arrow is a conformance. Weaker arrows are summed in the rings.</p>
 <pre class="mermaid">
 {esc(class_diagram(by_name, edges))}
 </pre>
-<h2>4. The layers, in words</h2>
+<h2>5. The layers, in words</h2>
 <p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words, kept by hand; <code>make arch-check</code> fails on a name in backticks the code no longer has.</p>
 <div class="docs">{layer_docs_html()}</div>
+<h2>6. Every file</h2>
+<p>Tests, tools and benchmarks included; only production and tests count toward the gate's code lines.</p>
+<table>{files_table(payload)}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, class: {{ useMaxWidth: true }} }});</script>
 </body></html>
