@@ -38,6 +38,7 @@ public enum AerospaceCommand {
         case .moveWindow(let id, let workspace): ["move-node-to-workspace", "--window-id", String(id), "--focus-follows-window", workspace]
         case .moveWindowQuietly(let id, let workspace): ["move-node-to-workspace", "--window-id", String(id), workspace]
         case .closeWindow(let id): ["close", "--window-id", String(id)]
+        case .setLayout(let layout): ["layout", layout]
         }
     }
 }

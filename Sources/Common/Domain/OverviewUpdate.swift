@@ -54,9 +54,14 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
     case .event(.changed):
         return (state, [.refresh])
     case .action(.mergeWorkspace(let source, let target)):
-        let windows = source == target ? [] : state.workspaces.first { $0.name == source }?.windows ?? []
-        guard !windows.isEmpty else { return (state, []) }
-        return (state, [.run(windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)], thenRead: true)])
+        let from = source == target ? nil : state.workspaces.first { $0.name == source }
+        guard let from, !from.windows.isEmpty else { return (state, []) }
+        // The windows arrive one by one in the target's root, so a stack would come apart into a row.
+        // Into an empty workspace the root is theirs: it is given the source's layout, and a stack
+        // stays a stack. Into one with windows the layout is its own, and they tile beside it.
+        let empty = state.workspaces.first { $0.name == target }?.windows.isEmpty == true && !from.rootLayout.isEmpty
+        return (state, [.run(from.windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)]
+                            + (empty ? [.setLayout(from.rootLayout)] : []), thenRead: true)])
     case .action(let action):
         return (state, [.run([action], thenRead: !action.isFocus)])
     }

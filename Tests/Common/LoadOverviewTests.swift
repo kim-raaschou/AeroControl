@@ -10,6 +10,7 @@ struct ArgvForActionTests {
         (.moveWindow(windowId: 7, toWorkspace: "2"), ["move-node-to-workspace", "--window-id", "7", "--focus-follows-window", "2"]),
         (.moveWindowQuietly(windowId: 7, toWorkspace: "2"), ["move-node-to-workspace", "--window-id", "7", "2"]),
         (.closeWindow(5), ["close", "--window-id", "5"]),
+        (.setLayout("h_accordion"), ["layout", "h_accordion"]),
     ])
     func argv(action: AeroControlAction, argv: [String]) {
         #expect(AerospaceCommand.argv(for: action) == argv)
