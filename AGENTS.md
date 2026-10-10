@@ -48,14 +48,12 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   its cost are one reviewable change), with the cost stated in the message.
 
 ### Rule: `docs/flow.html` is written by running the rules — `make flow`
-- `make arch` draws the architecture from the code into `docs/arch.html` (`scripts/arch.py`): the
-  layers and what names what, every type as a box with its lines, complexity, stored state and
-  public members, the call flow in the host and the stores, and a table of where to look (the
-  biggest types, the widest fan-out, arrows pointing up a layer, pairs naming each other, functions
-  at complexity ≥ 8), and Robert C. Martin's coupling per layer (Ca, Ce, I, A, D, arrows up, cycles), drawn as
-  rings read from the arrows alone — the heart is what names no other layer, darker the more stable, a red spoke per arrow up — which `make arch`
-  prints as one line; and, as section 6, the layer docs. Regenerate it with a review; `make arch-check`
-  says when it is stale.
+- `make arch` draws the architecture from the code into `docs/arch.html` (`scripts/arch.py`), four
+  sections: the layers as rings read from the arrows, with Robert C. Martin's coupling per layer (Ca,
+  Ce, I, arrows up, cycles) and one line of it printed; where to look (the biggest types, the widest
+  fan-out and fan-in, arrows up, pairs naming each other, functions at complexity ≥ 8); every type as
+  a box in its layer and area with its lines, complexity, stored state and public members, and what
+  names what; and the layer docs. Regenerate it with a review; `make arch-check` says when it is stale.
 - `docs/layers/<layer>.md`, one per layer, at most 250 words: what the layer is for, its rules, and the
   decisions to know. Kept by hand (the agent's, with every change that moves a rule), drawn into
   `docs/arch.html`, and checked: `make arch-check` fails on a doc over 250 words, a missing one, or a

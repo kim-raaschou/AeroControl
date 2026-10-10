@@ -57,8 +57,6 @@ LAYERS = [
     ("Sources/AeroControlEntry/", "App / Entry"),
 ]
 RANK = {name: i for i, (_, name) in enumerate(LAYERS)}
-# The functions whose calls are drawn: the host and the stores, where the flow lives.
-FLOW_TYPES = {"AeroControlApp", "OverlayWindowManager", "OverviewWindow", "MenuBarController", "OverviewStore", "PictureStore"}
 COMPLEX_FUNCTION = 8
 # An arrow is drawn between two types when one names the other this often, or it points up a layer, or they name each other.
 STRONG = 3
@@ -222,35 +220,6 @@ def dependencies(by_name: dict[str, Type]) -> dict[tuple[str, str], int]:
     return edges
 
 
-def call_flow(by_name: dict[str, Type]) -> tuple[list[tuple[str, str, int]], list[tuple[str, str, str]]]:
-    """Functions of the flow types, and which call which: an edge when a body names another's function."""
-    nodes: list[tuple[str, str, int]] = []
-    funcs: dict[str, list[tuple[str, int, str]]] = {}
-    for t in by_name.values():
-        if t.name not in FLOW_TYPES:
-            continue
-        lines = (ROOT / t.path).read_text().split("\n")
-        for f in t.functions:
-            name = f.name.split("::")[-1]
-            if name in ("init", "deinit") or name.startswith("$"):
-                continue
-            body = "\n".join(lines[f.start_line - 1:f.end_line])
-            funcs.setdefault(t.name, []).append((name, f.cyclomatic_complexity, body))
-            nodes.append((t.name, name, f.cyclomatic_complexity))
-    known = {(tn, fn) for tn, fs in funcs.items() for fn, _, _ in fs}
-    edges: list[tuple[str, str, str]] = []
-    for tn, fs in funcs.items():
-        for fn, _, body in fs:
-            body = re.sub(r"///.*|//.*", "", body)
-            for (on, ofn) in sorted(known):      # in one order, so `--check` compares like with like
-                if (on, ofn) == (tn, fn):
-                    continue
-                qualified = rf"\b(?:{re.escape(on)}|state|store|pictures|self)\s*[.?]?\.\s*{re.escape(ofn)}\s*\(" if on != tn else rf"(?<![\w.]){re.escape(ofn)}\s*\("
-                if re.search(qualified, body):
-                    edges.append((f"{tn}.{fn}", f"{on}.{ofn}", ""))
-    return nodes, edges
-
-
 def mermaid_id(name: str) -> str:
     return re.sub(r"\W", "_", name)
 
@@ -289,43 +258,6 @@ def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -
             seen.add((a, b))
         elif (b, a) not in edges and (n >= STRONG or up):
             out.append(f"  {a} --> {b} : {n}{' ↑' if up else ''}")
-    return "\n".join(out)
-
-
-def layer_map(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> str:
-    """The layers as boxes with their types' totals, and the arrows between layers summed."""
-    out = ["flowchart LR"]
-    totals: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
-    for t in by_name.values():
-        totals[t.layer][0] += 1
-        totals[t.layer][1] += t.nloc
-        totals[t.layer][2] += t.cx
-    for _, layer in LAYERS:
-        n, loc, cx = totals[layer]
-        out.append(f"  {mermaid_id(layer)}[\"{layer}<br/>{n} types · {loc} loc · cx {cx}\"]")
-    between: dict[tuple[str, str], int] = defaultdict(int)
-    for (a, b), n in edges.items():
-        if by_name[a].layer != by_name[b].layer:
-            between[(by_name[a].layer, by_name[b].layer)] += n
-    for (a, b), n in sorted(between.items(), key=lambda e: -e[1]):
-        up = RANK[b] > RANK[a]
-        out.append(f"  {mermaid_id(a)} {'-.->' if up else '-->'}|{n}{' ↑' if up else ''}| {mermaid_id(b)}")
-    return "\n".join(out)
-
-
-def flow_diagram(nodes: list[tuple[str, str, int]], edges: list[tuple[str, str, str]]) -> str:
-    out = ["flowchart TD"]
-    by_type: dict[str, list[tuple[str, int]]] = defaultdict(list)
-    for tn, fn, cx in nodes:
-        by_type[tn].append((fn, cx))
-    for tn, fs in by_type.items():
-        out.append(f"  subgraph {tn}")
-        for fn, cx in fs:
-            shape = ("{{", "}}") if cx >= COMPLEX_FUNCTION else ("[", "]")
-            out.append(f"    {mermaid_id(tn + '.' + fn)}{shape[0]}\"{fn} · {cx}\"{shape[1]}")
-        out.append("  end")
-    for a, b, _ in edges:
-        out.append(f"  {mermaid_id(a)} --> {mermaid_id(b)}")
     return "\n".join(out)
 
 
@@ -420,8 +352,8 @@ def check_areas(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> 
 
 
 def coupling_table(rows) -> str:
-    head = "<tr><th>Layer</th><th>Types</th><th>Ca</th><th>Ce</th><th>I</th><th>A</th><th>D</th><th>↑ out</th><th>⟲</th></tr>"
-    return head + "".join(f"<tr><th>{esc(l)}</th><td>{n}</td><td>{ca}</td><td>{ce}</td><td>{i:.2f}</td><td>{a:.2f}</td><td>{d:.2f}</td><td>{u}</td><td>{c}</td></tr>"
+    head = "<tr><th>Layer</th><th>Types</th><th>Ca</th><th>Ce</th><th>I</th><th>↑ out</th><th>⟲</th></tr>"
+    return head + "".join(f"<tr><th>{esc(l)}</th><td>{n}</td><td>{ca}</td><td>{ce}</td><td>{i:.2f}</td><td>{u}</td><td>{c}</td></tr>"
                           for l, n, ca, ce, i, a, d, u, c in rows)
 
 
@@ -589,10 +521,8 @@ def esc(s: str) -> str:
 
 
 def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: str) -> str:
-    nodes, calls = call_flow(by_name)
     table = "\n".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in smells(by_name, edges))
-    legend = "\n".join(
-        f"<tr><td>{esc(name)}</td><td>{', '.join(sorted(t.name for t in by_name.values() if t.layer == name))}</td></tr>" for _, name in LAYERS)
+    groups = rings(by_name, edges)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroControl — architecture</title>
@@ -600,7 +530,7 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
   :root {{ --bg: #fff; --fg: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --card: #f5f5f7; }}
   @media (prefers-color-scheme: dark) {{ :root {{ --bg: #1c1c1e; --fg: #f2f2f7; --muted: #98989d; --line: #3a3a3c; --card: #2c2c2e; }} }}
   body {{ margin: 0 auto; max-width: 1600px; padding: 2rem 1.5rem 4rem; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, system-ui, sans-serif; }}
-  h1 {{ font-size: 1.6rem; }} h2 {{ margin-top: 2.5rem; font-size: 1.2rem; }} p {{ color: var(--muted); max-width: 70ch; }}
+  h1 {{ font-size: 1.6rem; }} h2 {{ margin-top: 2.5rem; font-size: 1.2rem; }} p {{ color: var(--muted); max-width: 80ch; }}
   pre.mermaid {{ background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; overflow-x: auto; }}
   table {{ border-collapse: collapse; margin: 1rem 0; }} th, td {{ border: 1px solid var(--line); padding: .35rem .6rem; text-align: left; vertical-align: top; }}
   th {{ background: var(--card); white-space: nowrap; }} code {{ font-size: .9em; }}
@@ -608,35 +538,24 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
   .docs h3 {{ font-size: 1.1rem; margin: 1rem 0 .25rem; }} .docs h4 {{ margin: 1.25rem 0 .25rem; font-size: 1rem; }} .docs p {{ color: var(--fg); }} .docs ul {{ max-width: 90ch; }}
 </style></head><body>
 <h1>AeroControl — architecture, from the code</h1>
-<p>Generated by <code>make arch</code> at <code>{esc(head)}</code>, read from <code>Sources/</code>: nothing here is drawn by hand. Boxes are the types, by layer, each with its lines, cyclomatic complexity and stored properties, and its public members. An arrow is one type naming another, weighted by how often; dotted is once. <b>↑</b> marks an arrow that points up a layer, <b>⟲</b> a pair that name each other.</p>
-<h2>1. The layers</h2>
-<p>Each layer with its types' totals; an arrow between layers sums every type naming a type in the other. Dotted marks one that points up.</p>
-<pre class="mermaid">
-{esc(layer_map(by_name, edges))}
-</pre>
-<h2>2. Types and what names what</h2>
-<p>Every type, in its layer. An arrow is drawn when one type names another {STRONG} times or more, or the arrow points up a layer (↑), or the two name each other (⟲); the weaker ones are left out for the eye, and counted in the layer map above.</p>
+<p>Generated by <code>make arch</code> at <code>{esc(head)}</code> from <code>Sources/</code>; nothing here is drawn by hand.</p>
+<h2>1. The rings</h2>
+<p>Read from the arrows: the heart names no other layer, each ring out names only rings within, darker the more stable. An arrow is how often a ring's types name the inner ring's; a red one points up and should not be there.</p>
+{onion(coupling(by_name, edges, groups), groups, by_name, edges)}
+<table>{coupling_table(coupling(by_name, edges))}</table>
+<p><b>Ca</b>: types outside the layer that name it. <b>Ce</b>: types outside it names. <b>I</b> = Ce / (Ca + Ce): 0 at the heart, 1 at the rim. <b>↑ out</b>: arrows up out of it. <b>⟲</b>: pairs in it naming each other.</p>
+<h2>2. Where to look</h2>
+<table>{table}</table>
+<h2>3. Types, and what names what</h2>
+<p>Every type in its layer and area, with its lines, complexity, stored properties and public members. An arrow is three namings or more, one that points up (↑), or a pair naming each other (⟲); a dotted hollow arrow is a conformance. Weaker arrows are summed in the rings.</p>
 <pre class="mermaid">
 {esc(class_diagram(by_name, edges))}
 </pre>
-<table><tr><th>Layer (low to high)</th><th>Types</th></tr>{legend}</table>
-<h2>3. Call flow in the host and the stores</h2>
-<p>Each function of {', '.join(sorted(FLOW_TYPES))} with its complexity; an arrow is a call. A hexagon is a function at complexity {COMPLEX_FUNCTION} or more.</p>
-<pre class="mermaid">
-{esc(flow_diagram(nodes, calls))}
-</pre>
-<h2>4. Where to look</h2>
-<table>{table}</table>
-<h2>5. Coupling, by layer</h2>
-<p>Robert C. Martin's package metrics, a layer being the package. <b>Ca</b>: the types outside the layer that name a type in it (afferent: who leans on it). <b>Ce</b>: the types outside that its types name (efferent: what it leans on). <b>I</b> = Ce / (Ca + Ce): 0 is a layer everything leans on and that leans on nothing, as Domain should be; 1 is one nothing leans on, as the host should be; I should rise down the table. <b>A</b>: the share of its types that are protocols. <b>D</b> = |A + I − 1|: the distance from the line where what is stable is abstract and what is concrete is free to change; a concrete layer all lean on is far from it, and that is the cost of a domain of values. <b>↑ out</b>: arrows from the layer that point up; <b>⟲</b>: pairs in it that name each other. Both should be 0.</p>
-<p>As rings, read from the arrows alone: the heart is what names no other layer, each ring out is what names only rings within, and layers that settle at the same depth share a ring. Each ring is darker the more stable. An arrow from a ring to one within it is how often its types name that ring's, summed; a red one points up and should not be there. A sound build is dark in the middle and pale at the edge, with no red arrow.</p>
-{onion(coupling(by_name, edges, rings(by_name, edges)), rings(by_name, edges), by_name, edges)}
-<table>{coupling_table(coupling(by_name, edges))}</table>
-<h2>6. The layers, in words</h2>
-<p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words each, kept by hand and checked against the code: every name in backticks must exist. The types themselves are the boxes in section 2; these are what the layer is for, its rules, and the decisions to know.</p>
+<h2>4. The layers, in words</h2>
+<p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words, kept by hand; <code>make arch-check</code> fails on a name in backticks the code no longer has.</p>
 <div class="docs">{layer_docs_html()}</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
-<script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, flowchart: {{ useMaxWidth: true }}, class: {{ useMaxWidth: true }} }});</script>
+<script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, class: {{ useMaxWidth: true }} }});</script>
 </body></html>
 """
 
