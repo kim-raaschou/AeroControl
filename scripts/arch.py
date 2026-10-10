@@ -380,28 +380,40 @@ def coupling_table(rows) -> str:
                           for l, n, ca, ce, i, a, d, u, c in rows)
 
 
-def onion(rows) -> str:
-    """The layers as rings, Domain in the middle and the host outermost: each ring its name, types and
-    I, filled darker the more stable it is, so a sound build is dark at the heart and pale at the rim;
-    a red spoke for every arrow that points up out of a ring, with its count."""
+def onion(rows, groups, by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> str:
+    """The layers as rings, the heart in the middle and the host outermost: each ring its name, types
+    and I, filled darker the more stable it is, so a sound build is dark at the heart and pale at the
+    rim. An arrow from a ring to one within it is how often its types name that ring's, summed; a red
+    one points up, out of its ring, and should not be there."""
+    import math
     cx = cy = 330
     inner, width = 60, 44
-    out = [f'<svg viewBox="0 0 {2 * cx} {2 * cy}" width="{2 * cx}" height="{2 * cy}" role="img" aria-label="Coupling by layer, as rings" style="max-width:100%;height:auto;font:13px -apple-system,system-ui,sans-serif">']
+    ring_of = {layer: i for i, (_, layers) in enumerate(groups) for layer in layers}
+    between: dict[tuple[int, int], int] = defaultdict(int)
+    for (a, b), n in edges.items():
+        ra, rb = ring_of.get(by_name[a].layer), ring_of.get(by_name[b].layer)
+        if ra is not None and rb is not None and ra != rb:
+            between[(ra, rb)] += n
+    mid = lambda i: inner + width * i + width / 2 + (0 if i else -inner / 2 + 4)
+    out = [f'<svg viewBox="0 0 {2 * cx} {2 * cy}" width="{2 * cx}" height="{2 * cy}" role="img" aria-label="Coupling by layer, as rings" style="max-width:100%;height:auto;font:13px -apple-system,system-ui,sans-serif">',
+           '<defs><marker id="in" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
+           '<marker id="up" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#d33"/></marker></defs>']
     for i, (layer, n, ca, ce, inst, a, d, ups, cycles) in reversed(list(enumerate(rows))):
-        r = inner + width * (i + 1)
-        out.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="currentColor" fill-opacity="{0.06 + 0.26 * (1 - inst):.2f}" stroke="currentColor" stroke-opacity="0.35"/>')
+        out.append(f'<circle cx="{cx}" cy="{cy}" r="{inner + width * (i + 1)}" fill="currentColor" fill-opacity="{0.06 + 0.26 * (1 - inst):.2f}" stroke="currentColor" stroke-opacity="0.35"/>')
+    # The arrows fan out from 30° past the top, round to 30° short of it, so the names at the top stay clear.
+    arrows = sorted(between.items(), key=lambda kv: (kv[0][0], kv[0][1]))
+    for k, ((ra, rb), n) in enumerate(arrows):
+        angle = math.radians(-60 + 300 * (k + 0.5) / len(arrows))
+        r0, r1 = mid(ra), mid(rb)
+        x0, y0, x1, y1 = cx + r0 * math.cos(angle), cy + r0 * math.sin(angle), cx + r1 * math.cos(angle), cy + r1 * math.sin(angle)
+        up = rb > ra
+        colour, marker = ("#d33", "up") if up else ("currentColor", "in")
+        out.append(f'<line x1="{x0:.0f}" y1="{y0:.0f}" x2="{x1:.0f}" y2="{y1:.0f}" stroke="{colour}" stroke-width="{1 + min(4, n / 10):.1f}" stroke-opacity="{1 if up else 0.7}" marker-end="url(#{marker})"/>')
+        lx, ly = cx + (r0 + 12) * math.cos(angle), cy + (r0 + 12) * math.sin(angle)
+        out.append(f'<text x="{lx:.0f}" y="{ly + 4:.0f}" text-anchor="middle" font-size="11" font-weight="600" fill="{colour}">{"↑ " if up else ""}{n}</text>')
     for i, (layer, n, ca, ce, inst, a, d, ups, cycles) in enumerate(rows):
-        mid = inner + width * i + width / 2 + (0 if i else -inner / 2 + 4)
-        short = layer
-        out.append(f'<text x="{cx}" y="{cy - mid + 5}" text-anchor="middle" fill="currentColor">{esc(short)}'
+        out.append(f'<text x="{cx}" y="{cy - mid(i) + 5}" text-anchor="middle" fill="currentColor">{esc(layer)}'
                    f'<tspan font-size="11" fill-opacity="0.75"> · {n} · I {inst:.2f}</tspan></text>')
-        if ups:
-            r0, r1 = inner + width * i + width / 2, inner + width * (i + 1) + width / 2
-            k = 0.7071
-            out.append(f'<line x1="{cx + r0 * k:.0f}" y1="{cy + r0 * k:.0f}" x2="{cx + r1 * k:.0f}" y2="{cy + r1 * k:.0f}" stroke="#d33" stroke-width="3" marker-end="url(#up)"/>')
-            # The count beside the shaft, inside the ring it leaves: past the head it read as the next ring's.
-            out.append(f'<text x="{cx + r0 * k + 14:.0f}" y="{cy + r0 * k - 2:.0f}" fill="#d33" font-weight="600">↑ {ups}</text>')
-    out.insert(1, '<defs><marker id="up" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#d33"/></marker></defs>')
     out.append("</svg>")
     return "\n".join(out)
 
@@ -565,8 +577,8 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <table>{table}</table>
 <h2>5. Coupling, by layer</h2>
 <p>Robert C. Martin's package metrics, a layer being the package. <b>Ca</b>: the types outside the layer that name a type in it (afferent: who leans on it). <b>Ce</b>: the types outside that its types name (efferent: what it leans on). <b>I</b> = Ce / (Ca + Ce): 0 is a layer everything leans on and that leans on nothing, as Domain should be; 1 is one nothing leans on, as the host should be; I should rise down the table. <b>A</b>: the share of its types that are protocols. <b>D</b> = |A + I − 1|: the distance from the line where what is stable is abstract and what is concrete is free to change; a concrete layer all lean on is far from it, and that is the cost of a domain of values. <b>↑ out</b>: arrows from the layer that point up; <b>⟲</b>: pairs in it that name each other. Both should be 0.</p>
-<p>As rings, read from the arrows alone: the heart is what names no other layer, each ring out is what names only rings within, and layers that settle at the same depth share a ring. Each ring is darker the more stable. A sound build is dark in the middle and pale at the edge, with no red spoke.</p>
-{onion(coupling(by_name, edges, rings(by_name, edges)))}
+<p>As rings, read from the arrows alone: the heart is what names no other layer, each ring out is what names only rings within, and layers that settle at the same depth share a ring. Each ring is darker the more stable. An arrow from a ring to one within it is how often its types name that ring's, summed; a red one points up and should not be there. A sound build is dark in the middle and pale at the edge, with no red arrow.</p>
+{onion(coupling(by_name, edges, rings(by_name, edges)), rings(by_name, edges), by_name, edges)}
 <table>{coupling_table(coupling(by_name, edges))}</table>
 <h2>6. The layers, in words</h2>
 <p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words each, kept by hand and checked against the code: every name in backticks must exist. The types themselves are the boxes in section 2; these are what the layer is for, its rules, and the decisions to know.</p>
