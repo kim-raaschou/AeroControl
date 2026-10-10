@@ -277,7 +277,6 @@ def rules(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload: 
         ("No two types name each other", [f"{a} ⟲ {b}" for a, b in cycles], ""),
         ("Common's areas name only downwards", check_areas(by_name, edges), ""),
         ("No comments but WORKAROUND", check_comments(), ""),
-        (f"Layer docs true to the code, at most {DOC_WORDS} words", check_layer_docs(by_name), ""),
     ]
     return "".join(f'<tr><td class="{"ok" if not broken else "bad"}">{"✓" if not broken else "✗"}</td><th>{esc(name)}</th>'
                    f'<td>{esc("; ".join(broken) if broken else note)}</td></tr>' for name, broken, note in rows)
@@ -432,50 +431,6 @@ def coupling_summary(rows) -> str:
     return "arch: " + "  ".join(f"{l.split(' · ')[-1]} I={i:.2f}" for l, _, _, _, i, _, _, _, _ in rows) + f"  ·  {ups} up, {cycles} cycles"
 
 
-DOCS = ROOT / "docs" / "layers"
-DOC_WORDS = 250
-
-
-def doc_slug(layer: str) -> str:
-    return layer.split(" · ")[-1].split(" / ")[-1].lower()
-
-
-def init_layer_docs(by_name: dict[str, Type]) -> list[str]:
-    """A skeleton for a layer that has no doc yet: its title and the names of its types, for the
-    writer; the words are the agent's to write and keep. Returns the files written."""
-    written = []
-    DOCS.mkdir(parents=True, exist_ok=True)
-    for _, layer in LAYERS:
-        path = DOCS / f"{doc_slug(layer)}.md"
-        if path.exists():
-            continue
-        names = ", ".join(f"`{n}`" for n in sorted(t.name for t in by_name.values() if t.layer == layer))
-        path.write_text(f"# {layer}\n\n_What this layer is for, its rules, and the decisions to know — at most {DOC_WORDS} words._\n\nTypes: {names}\n")
-        written.append(str(path.relative_to(ROOT)))
-    return written
-
-
-def check_layer_docs(by_name: dict[str, Type]) -> list[str]:
-    """What is wrong with the layer docs: one missing, one over `DOC_WORDS` words, or a name in
-    backticks that the code no longer has — a type, a function, a framework's name, any word of it."""
-    wrong = []
-    sources = tracked_sources()
-    known = set(re.findall(r"\b[A-Za-z_]\w*\b", "\n".join((ROOT / p).read_text() for p in sources))) | {part for p in sources for part in p.split("/")}
-    for _, layer in LAYERS:
-        path = DOCS / f"{doc_slug(layer)}.md"
-        if not path.exists():
-            wrong.append(f"{path.relative_to(ROOT)} is missing; run `python3 scripts/arch.py --init-docs`")
-            continue
-        text = path.read_text()
-        words = len(re.findall(r"\S+", re.sub(r"^#.*$", "", text, flags=re.M)))
-        if words > DOC_WORDS:
-            wrong.append(f"{path.relative_to(ROOT)} is {words} words; the most is {DOC_WORDS}")
-        for name in sorted(set(re.findall(r"`([A-Za-z]\w*)`", text))):
-            if name not in known and name not in {l for _, l in LAYERS}:
-                wrong.append(f"{path.relative_to(ROOT)} names `{name}`, which the code does not have")
-    return wrong
-
-
 def check_comments() -> list[str]:
     """Comments in the code: none. What a thing is, the architecture page and the layer docs say; why,
     the commit that did it. The one exception is a `WORKAROUND` block, which names the issue it waits on."""
@@ -503,49 +458,6 @@ def check_comments() -> list[str]:
                     break
             i += 1
     return wrong
-
-
-def markdown(text: str) -> str:
-    """Enough Markdown for the layer docs: headings, paragraphs, lists, `code`, _em_, **strong**."""
-    def inline(s: str) -> str:
-        s = esc(s)
-        s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
-        s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
-        s = re.sub(r"(?<![\w])_([^_]+)_(?![\w])", r"<em>\1</em>", s)
-        return s
-    out, para, in_list = [], [], False
-    def flush():
-        nonlocal para
-        if para:
-            out.append(f"<p>{inline(' '.join(para))}</p>")
-            para = []
-    for line in text.split("\n") + [""]:
-        if line.startswith("- "):
-            flush()
-            if not in_list:
-                out.append("<ul>"); in_list = True
-            out.append(f"<li>{inline(line[2:])}</li>")
-            continue
-        if in_list:
-            out.append("</ul>"); in_list = False
-        if line.startswith("# "):
-            flush(); out.append(f"<h3>{inline(line[2:])}</h3>")
-        elif line.startswith("## "):
-            flush(); out.append(f"<h4>{inline(line[3:])}</h4>")
-        elif not line.strip():
-            flush()
-        else:
-            para.append(line)
-    return "\n".join(out)
-
-
-def layer_docs_html() -> str:
-    parts = []
-    for _, layer in LAYERS:
-        path = DOCS / f"{doc_slug(layer)}.md"
-        if path.exists():
-            parts.append(f'<section class="layer">{markdown(path.read_text())}</section>')
-    return "\n".join(parts)
 
 
 def trend(history: list[dict]) -> str:
@@ -606,8 +518,6 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
   table {{ border-collapse: collapse; margin: 1rem 0; }} th, td {{ border: 1px solid var(--line); padding: .35rem .6rem; text-align: left; vertical-align: top; }}
   th {{ background: var(--card); white-space: nowrap; }} code {{ font-size: .9em; }}
   td.ok {{ color: #16a34a; font-weight: 600; }} td.bad {{ color: #dc2626; font-weight: 600; }} td.hot {{ background: rgba(217, 119, 6, .18); font-weight: 600; }}
-  .docs .layer {{ margin: 1rem 0; border: 1px solid var(--line); border-radius: 10px; padding: .25rem 1.25rem 1rem; }}
-  .docs h3 {{ font-size: 1.1rem; margin: 1rem 0 .25rem; }} .docs h4 {{ margin: 1.25rem 0 .25rem; font-size: 1rem; }} .docs p {{ color: var(--fg); }} .docs ul {{ max-width: 90ch; }}
 </style></head><body>
 <h1>AeroControl — architecture and metrics, from the code</h1>
 <p>Generated by <code>make arch</code> at <code>{esc(head)}</code> from <code>Sources/</code>; nothing here is drawn by hand.</p>
@@ -636,10 +546,7 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <pre class="mermaid">
 {esc(class_diagram(by_name, edges))}
 </pre>
-<h2>7. The layers, in words</h2>
-<p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words, kept by hand; <code>make arch-check</code> fails on a name in backticks the code no longer has.</p>
-<div class="docs">{layer_docs_html()}</div>
-<h2>8. Every file</h2>
+<h2>7. Every file</h2>
 <p>Tests, tools and benchmarks included; only production and tests count toward the gate's code lines.</p>
 <table>{files_table(payload)}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
@@ -656,12 +563,8 @@ def main() -> int:
         attach_functions(types, path)
         all_types += types
     by_name = fold_private(merge_extensions(all_types))
-    if "--init-docs" in sys.argv:
-        for path in init_layer_docs(by_name):
-            print(f"Wrote {path}")
-        return 0
     edges = dependencies(by_name)
-    for line in check_layer_docs(by_name) + check_comments() + check_areas(by_name, edges):
+    for line in check_comments() + check_areas(by_name, edges):
         print(f"arch: {line}", file=sys.stderr)
         if check:
             return 1

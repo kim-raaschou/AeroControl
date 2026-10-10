@@ -55,15 +55,11 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   to, each ✓ or ✗; health (tests, duplication, the longest and deepest production function); the
   hotspots, the ten most complex types against six measures, and the fifteen most complex functions;
   code lines and complexity over time; every type as a box in its layer and area, and what names
-  what; the layer docs; and every file. Regenerate it with a review; `make arch-check` says when it
-  is stale.
-- `docs/layers/<layer>.md`, one per layer, at most 250 words: what the layer is for, its rules, and the
-  decisions to know. Kept by hand (the agent's, with every change that moves a rule), drawn into
-  `docs/arch.html`, and checked: `make arch-check` fails on a doc over 250 words, a missing one, or a
-  name in backticks the code no longer has. `python3 scripts/arch.py --init-docs` writes a skeleton for a
-  layer that has none. The code carries no comments: what a thing is, the page and the layer docs say;
-  why, the commit that did it. The one exception is a `WORKAROUND` block, which names the issue it waits
-  on; `make arch-check` fails on any other comment.
+  what; and every file. Regenerate it with a review; `make arch-check` says when it is stale.
+- The code carries no comments: what a thing is, the page and the Architecture section below say;
+  why, the commit that did it, and the tests' titles, which say it as a sentence the code holds true.
+  The one exception is a `WORKAROUND` block, which names the issue it waits on; `make arch-check`
+  fails on any other comment.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,
