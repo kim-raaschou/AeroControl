@@ -29,6 +29,18 @@ struct FollowingScenarioTests {
         #expect(aero.commands.filter { $0.first == "subscribe" }.count == 1)
     }
 
+    @Test("a key bound in AeroSpace is announced before its command runs, and a new layout announces nothing: the map reads AeroSpace again a moment later and shows the layout the key set")
+    func lateLayout() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
+        let app = TestApp(aerospace: aero)
+        await app.open("aerocontrol://workspaces")
+        let before = aero.commands.count
+        aero.announce("binding-triggered")
+        await app.until { aero.commands.count >= before + 5 }
+        aero.relayout("1", "h_accordion")
+        await app.until { app.scene.cards.first?.workspace.rootLayout == "h_accordion" }
+    }
+
     @Test("a read that changes nothing redraws nothing; one that changes the windows does")
     func redrawsOnlyChanges() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
@@ -99,7 +111,7 @@ struct FollowingScenarioTests {
             if width == 500 { aero.announce() }
         }
         await app.until { app.bridge.captured.count == 2 }
-        await app.past(PictureStore.retakeAfter)
+        await app.past(AerospaceSync.readAgainAfter)
         #expect(app.bridge.captured == [[1, 2], [2]] && app.store.pictures.sizes[2]?.width == 600)
     }
 

@@ -260,7 +260,7 @@ let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
     return row[2] == "nothing" && row[3] == "nothing" ? nil : row
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
-p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.")
+p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. A key that moves the ring onto another workspace runs <code>workspace</code> there, so AeroSpace's own keys act on the workspace in view; pointing moves only the ring. Tab, Home, End and the function keys do nothing.")
 p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, keys like the rest (<code>FilterKey(command:)</code>, <code>Visit.commandTarget</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")

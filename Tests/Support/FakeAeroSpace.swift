@@ -56,6 +56,8 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     func userWorkspace(_ name: String) { let event = locked { switchTo(name) }; events?.yield(event) }
 
+    func relayout(_ workspace: String, _ layout: String) { locked { layouts[workspace] = layout } }
+
     func announce(_ event: String = "focused-workspace-changed") {
         events?.yield(#"{"_event":"\#(event)","workspace":"\#(focusedWorkspace)"}"#)
     }

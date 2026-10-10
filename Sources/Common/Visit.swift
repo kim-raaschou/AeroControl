@@ -74,7 +74,7 @@ public struct Visit: Equatable {
     public mutating func key(_ key: FilterKey, drawn: [GridWalk.Card]) -> (Bool, [Effect]) {
         switch key {
         case _ where !visible: return (false, [])
-        case .move(let step): move(step, drawn: drawn)
+        case .move(let step): return (true, move(step, drawn: drawn))
         case .moveToWorkspace(let name) where commandTarget != nil: return (true, apply(.action(.moveWindow(windowId: commandTarget!.windowId, toWorkspace: name))))
         case .close: return (true, closeRinged())
         case .quit: return (true, quitRinged())
@@ -99,22 +99,25 @@ public struct Visit: Equatable {
         switch key {
         case .escape: return (false, [])
         case .commandKey(let n) where ids.indices.contains(n - 1): return (true, apply(.action(.focusWindow(ids[n - 1]))))
-        case .character(let c) where card(c) != nil: move(.card(card(c)!), drawn: drawn)
+        case .character(let c) where card(c) != nil: _ = move(.card(card(c)!), drawn: drawn)
         default: break
         }
         return (true, [])
     }
 
-    private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) {
+    private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) -> [Effect] {
         let order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
         marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(step, ids: order, card: cardOf, cards: drawn)
+        let ringed = model.workspaces.first { ws in ws.standIn == ringWindowId || ws.windows.contains { $0.windowId == ringWindowId } }?.name
+        guard strip == nil, let ringed, ringed != model.focusedWorkspace else { return [] }
+        return [.run([.focusWorkspace(ringed)], thenRead: false)]
     }
 
     public mutating func summon(_ summon: Summon, drawn: [GridWalk.Card]) -> [Effect] {
         guard visible else { (visible, loading) = (true, true); return [.host(.show(summon))] }
         guard !loading else { return [] }
         guard case .app(let ref) = summon else { return hide(restoreFocus: true) }
-        if let app = strip?.app, ref.identifies(bundleId: app, among: model.workspaces.flatMap(\.windows)) { move(.window(1), drawn: drawn); return [] }
+        if let app = strip?.app, ref.identifies(bundleId: app, among: model.workspaces.flatMap(\.windows)) { return move(.window(1), drawn: drawn) }
         return open(ref, takingOver: true)
     }
 

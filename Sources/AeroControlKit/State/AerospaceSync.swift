@@ -7,6 +7,7 @@ final class AerospaceSync {
     private var refreshing: Task<Void, Never>?
     private var generation = 0
     static let readAfter: Duration = .milliseconds(20)
+    static let readAgainAfter: Duration = .milliseconds(300)
     static let focusAgainAfter: Duration = .milliseconds(300)
 
     init(runner: AerospaceProcessRunner) { self.runner = runner }
@@ -31,23 +32,30 @@ final class AerospaceSync {
     }
 
     private var commanded = 0
+    private var queue: Task<Void, Never>?
 
     func run(_ actions: [AeroControlAction]) async {
         commanded &+= 1
-        let mine = commanded
-        for action in actions { _ = try? await runner.run(AerospaceCommand.argv(for: action)) }
+        let mine = commanded, before = queue
+        let turn = Task { [runner] in
+            await before?.value
+            for action in actions { _ = try? await runner.run(AerospaceCommand.argv(for: action)) }
+        }
+        queue = turn
+        await turn.value
         if case .focusWindow(let id) = actions.last { await focusAgainIfMissed(id, unlessAfter: mine) }
     }
 
-    func refresh(_ land: @escaping @MainActor (Result<OverviewResult, Error>, _ current: @escaping @MainActor () -> Bool) async -> Void) {
+    func refresh(_ land: @escaping @MainActor (Result<OverviewResult, Error>, _ again: Bool, _ current: @escaping @MainActor () -> Bool) async -> Void) {
         generation &+= 1
         let mine = generation
         refreshing?.cancel()
         refreshing = Task {
-            try? await Task.sleep(for: Self.readAfter)
-            let result = await read()
-            guard mine == generation else { return }
-            await land(result) { mine == self.generation }
+            for (wait, again) in [(Self.readAfter, false), (Self.readAgainAfter, true)] {
+                try? await Task.sleep(for: wait)
+                guard mine == generation else { return }
+                await land(await read(), again) { mine == self.generation }
+            }
         }
     }
 

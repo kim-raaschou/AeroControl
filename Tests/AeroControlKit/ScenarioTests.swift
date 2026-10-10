@@ -266,6 +266,19 @@ struct ScenarioTests {
         #expect(app.scene.ringed == 3)
     }
 
+    @Test("moving the ring onto another workspace takes AeroSpace there, so AeroSpace's own keys act on the workspace in view; within a workspace AeroSpace's focus stays")
+    func ringTakesAeroSpaceAlong() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
+        let app = TestApp(aerospace: aero)
+        await app.open("aerocontrol://workspaces")
+        app.key(.move(.window(1)))
+        await app.past(AerospaceSync.readAfter)
+        #expect(app.scene.ringed == 2 && aero.focused == 1)
+        app.key(.move(.window(1)))
+        await app.until { aero.focusedWorkspace == "2" && app.store.model.focusedWorkspace == "2" }
+        #expect(app.scene.ringed == 3 && app.store.visit.visible && app.scene.cards.map(\.focused) == [false, true])
+    }
+
     @Test("the ring on an empty workspace stays on it when AeroSpace forgets another workspace")
     func emptyRingSurvivesTheList() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [], "3": [win(3, "Code")], "4": []], focused: 1)
@@ -273,6 +286,7 @@ struct ScenarioTests {
         await app.open("aerocontrol://workspaces")
         for _ in 1...3 { app.key(.move(.window(1))) }
         #expect(app.scene.cards.last?.ringed == true)
+        await app.until { aero.focusedWorkspace == "4" }
         aero.forget("2")
         await app.until { app.scene.cards.map(\.workspace.name) == ["1", "3", "4"] && app.scene.cards.last?.ringed == true }
     }

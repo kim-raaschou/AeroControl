@@ -116,11 +116,23 @@ long as the app. Hidden, it only keeps the order of focus, which decides where a
 moves the focus at once. **On hide** previews are dropped and the query is cleared. The windows
 themselves always come from commands, never from an event.
 
+### Rule: true to AeroSpace, live
+
+The map and the strip show what AeroSpace shows, while it changes: its layouts, its windows,
+its focused workspace. A change is read again even when AeroSpace announces nothing (a layout
+key: `readAgainAfter`). A key that moves the ring onto another workspace takes AeroSpace there,
+so AeroSpace's own keys act on the workspace in view; the ring alone never focuses a window,
+and pointing moves only the ring. A feature that would show anything AeroSpace does not, or
+keep AeroSpace somewhere else than the overview shows, needs the user's decision first. The
+scenarios `lateLayout` and `ringTakesAeroSpaceAlong` guard it.
+
 ### Load-bearing defensive code (do not delete as "paranoia")
 
 - `AerospaceSync.refresh` cancel-and-reload with its generation: every event or completed
   action re-derives truth from AeroSpace; the generation counter drops stale results. There is
   **no optimistic local state**.
+- The second read, `readAgainAfter` later: AeroSpace announces a bound key (`binding-triggered`)
+  before its command runs, and a new layout announces nothing, so the first read can miss it.
 - Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream
   loses whatever happened meanwhile.
 - `PictureStore.generation`: a capture that finishes after `clear()` is discarded.

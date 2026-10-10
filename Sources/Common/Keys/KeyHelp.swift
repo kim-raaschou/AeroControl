@@ -8,7 +8,7 @@ public enum KeyHelp {
 
     public static let map: [Row] = [
         Row(keys: "letters, digits, space", does: "filter; the grid narrows from the second character"),
-        Row(keys: "← → ↑ ↓", does: "move the ring through the windows as drawn, on to the next workspace; an empty one is a stop"),
+        Row(keys: "← → ↑ ↓", does: "move the ring through the windows as drawn, on to the next workspace, AeroSpace going along; an empty one is a stop"),
         Row(keys: "⌘← ⌘→", does: "the previous / next workspace's first window, or the empty workspace itself"),
         Row(keys: "⌘↑ ⌘↓", does: "the first window of the workspace above / below"),
         Row(keys: "⇧⌘ + a key", does: "move the window under the ring to the workspace of that name; a new name creates it"),

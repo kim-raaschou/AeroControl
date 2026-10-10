@@ -52,23 +52,15 @@ public final class PictureStore {
         PictureResampler.forget()
     }
 
-    static let retakeAfter: Duration = .milliseconds(300)
-
-    func settle(_ ids: [Int], shown: [WorkspaceInfo], current: @MainActor () -> Bool) async {
+    func settle(_ ids: [Int], shown: [WorkspaceInfo], retake: Bool, current: @MainActor () -> Bool) async {
         guard let size = captureSize else { return }
         let generation = generation
-        func still() -> Bool { current() && generation == self.generation }
         let sizes = await bridge.previewSizes(windowIds: ids)
-        guard still() else { return }
-        self.sizes = sizes
-        try? await Task.sleep(for: Self.retakeAfter)
-        guard still() else { return }
-        let settled = await bridge.previewSizes(windowIds: ids)
-        let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: settled)
+        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes) : []
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await bridge.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
-        guard still() else { return }
-        self.sizes = settled
+        guard current(), generation == self.generation else { return }
+        self.sizes = sizes
         replace(pictures)
     }
 }

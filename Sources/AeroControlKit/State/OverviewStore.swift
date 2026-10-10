@@ -85,10 +85,10 @@ public class OverviewStore {
     }
 
     private func requestRefresh() {
-        sync.refresh { read, current in
+        sync.refresh { read, again, current in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, current: current)
+            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, retake: again, current: current)
         }
     }
 }

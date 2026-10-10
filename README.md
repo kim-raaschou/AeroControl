@@ -200,7 +200,7 @@ On the map:
 | Key | Does |
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
-| ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace; an empty one is a stop |
+| ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace, AeroSpace going along; an empty one is a stop |
 | ⌘← ⌘→ | the previous / next workspace's first window, or the empty workspace itself |
 | ⌘↑ ⌘↓ | the first window of the workspace above / below |
 | ⇧⌘ + a key | move the window under the ring to the workspace of that name; a new name creates it |
@@ -212,7 +212,8 @@ On the map:
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
 standing and says so. Without a query the ring is on AeroSpace's focused window until a key
-moves it.
+moves it. A key that moves the ring onto another workspace takes AeroSpace there too, so
+AeroSpace's own keys, a layout key say, act on the workspace in view. Pointing moves only the ring.
 
 In the strip the keys move the marking as they move the ring on the map, the strip being one row of cards:
 
