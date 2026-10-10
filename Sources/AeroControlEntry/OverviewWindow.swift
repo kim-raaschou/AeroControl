@@ -16,7 +16,7 @@ class OverviewWindow: NSPanel {
     private static let fadeDuration: TimeInterval = 0.2
     var motion: Double = 1
     private var fade: TimeInterval { Self.fadeDuration * motion }
-    private let targetScreen: NSScreen
+    let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
     var onQuitApp: (() -> Void)?
     var onCloseWindow: (() -> Void)?
@@ -126,7 +126,7 @@ struct OverviewRoot: View {
                 BackdropBlur()
                 palette.backdrop
             }
-            .opacity(state.strip != nil || state.missingApp != nil ? 0.002 : 1)
+            .opacity(state.strip != nil || state.visit.missingApp != nil ? 0.002 : 1)
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture(perform: onDismiss)

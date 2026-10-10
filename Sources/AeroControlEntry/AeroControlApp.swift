@@ -48,7 +48,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if let summon = pendingSummon {
             pendingSummon = nil
-            overlayManager.toggleVisibility(summon)
+            state.summon(summon)
         }
     }
 
@@ -67,14 +67,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        overlayManager.toggleVisibility()
+        state.summon(.map)
         return false
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
-        guard let overlayManager else { pendingSummon = Summon(url); return }
-        overlayManager.toggleVisibility(Summon(url))
+        guard let state else { pendingSummon = Summon(url); return }
+        state.summon(Summon(url))
     }
 }

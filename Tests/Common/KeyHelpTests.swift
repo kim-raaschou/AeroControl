@@ -4,11 +4,9 @@ import Testing
 
 @Suite("KeyHelp")
 struct KeyHelpTests {
-    @Test("⌘/ is the help key, nothing to the filter or the strip")
+    @Test("⌘/ is the help key")
     func helpKey() {
         #expect(FilterKey(command: "/", shift: false) == .help)
-        #expect(filterKeyAction(query: "ab", ring: 1, key: .help) == .none)
-        #expect(AppStripModel.action(for: .help, ids: [1], marked: 1) == .none)
     }
 
     @Test("the README's two key tables are the help's rows, word for word: one source")

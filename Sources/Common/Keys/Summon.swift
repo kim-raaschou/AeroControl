@@ -9,13 +9,4 @@ public enum Summon: Equatable, Sendable {
         else if host.hasPrefix("app-name="), host.count > 9 { self = .app(.name(String(host.dropFirst(9)))) }
         else { self = .map }
     }
-
-    public enum Again: Equatable, Sendable { case close, step, summon(AppRef) }
-
-    public func again(stripApp: String?, among windows: [WindowInfo]) -> Again {
-        switch self {
-        case .map: .close
-        case .app(let ref): stripApp.map { ref.identifies(bundleId: $0, among: windows) } == true ? .step : .summon(ref)
-        }
-    }
 }

@@ -1,3 +1,4 @@
+import Testing
 import Foundation
 @testable import AeroControlKit
 @testable import Common
@@ -10,6 +11,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         var title: String
         var workspace: String
         var floating = false
+        var fullscreen = false
     }
 
     private let lock = NSLock()
@@ -18,16 +20,18 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private var focusedId: Int?
     private var focusedName: String
     private var layouts: [String: String] = [:]
+    private let knowsRects: Bool
     private var log: [[String]] = []
     private var events: AsyncThrowingStream<String, Error>.Continuation?
 
-    init(_ workspaces: KeyValuePairs<String, [Window]>, focused: Int? = nil, layouts: [String: String] = [:]) {
+    init(_ workspaces: KeyValuePairs<String, [Window]>, focused: Int? = nil, layouts: [String: String] = [:], knowsRects: Bool = false) {
         let all = workspaces.flatMap { name, ws in ws.map { var w = $0; w.workspace = name; return w } }
         workspaceNames = workspaces.map(\.key)
         windows = all
         focusedId = focused
         focusedName = focused.flatMap { id in all.first { $0.id == id }?.workspace } ?? workspaces.first?.key ?? "1"
         self.layouts = layouts
+        self.knowsRects = knowsRects
     }
 
     private func locked<T>(_ body: () -> T) -> T { lock.lock(); defer { lock.unlock() }; return body() }
@@ -39,15 +43,31 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     func layout(of workspace: String) -> String { locked { layouts[workspace] ?? "h_tiles" } }
 
     func run(_ args: [String]) async throws -> String {
-        if args.contains(where: { $0.contains("window-layout-rect") }) {
+        locked { log.append(args) }
+        if !knowsRects, args.contains(where: { $0.contains("window-layout-rect") }) {
             throw AerospaceSocketError.commandFailed(arguments: args, exitCode: 1, stderr: "Can't parse 'window-layout-rect'", serverVersion: nil)
         }
-        let (answer, event) = locked { () -> (String, String?) in
-            log.append(args)
-            return answer(args)
-        }
+        let (answer, event) = locked { answer(args) }
         if let event { events?.yield(event) }
         return answer
+    }
+
+    func userFocus(_ id: Int) { let event = locked { focus(Optional(id)) }; event.map { events?.yield($0) } }
+
+    func userWorkspace(_ name: String) { let event = locked { switchTo(name) }; events?.yield(event) }
+
+    func announce(_ event: String = "focused-workspace-changed") {
+        events?.yield(#"{"_event":"\#(event)","workspace":"\#(focusedWorkspace)"}"#)
+    }
+
+    func add(_ window: Window, to workspace: String) {
+        locked { create(workspace); var w = window; w.workspace = workspace; windows.append(w) }
+        events?.yield(#"{"_event":"window-detected","windowId":\#(window.id),"workspace":"\#(workspace)"}"#)
+    }
+
+    func forget(_ workspace: String) {
+        locked { workspaceNames.removeAll { $0 == workspace && !windows.contains { $0.workspace == workspace } } }
+        events?.yield(#"{"_event":"focused-workspace-changed","workspace":"\#(focusedWorkspace)"}"#)
     }
 
     func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
@@ -66,11 +86,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "focus":
             return ("", focus(id))
         case "workspace":
-            let name = args[1]
-            create(name)
-            focusedName = name
-            focusedId = windows.last { $0.workspace == name }?.id
-            return ("", changed())
+            return ("", switchTo(args[1]))
         case "move-node-to-workspace":
             guard let id, let at = windows.firstIndex(where: { $0.id == id }), let name = args.last else { return ("", nil) }
             create(name)
@@ -90,6 +106,13 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     private var ordered: [Window] { workspaceNames.flatMap { name in windows.filter { $0.workspace == name } } }
 
+    private func switchTo(_ name: String) -> String {
+        create(name)
+        focusedName = name
+        focusedId = windows.last { $0.workspace == name }?.id
+        return changed()
+    }
+
     private func create(_ name: String) { if !workspaceNames.contains(name) { workspaceNames.append(name) } }
 
     private func focus(_ id: Int?) -> String? {
@@ -105,40 +128,70 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private func json(_ list: [Window]) -> String {
         "[" + list.map { w in
             #"{"window-id":\#(w.id),"app-name":"\#(w.app)","app-bundle-id":"\#(w.bundleId)","window-title":"\#(w.title)","#
-                + #""workspace":"\#(w.workspace)","window-parent-container-layout":"\#(w.floating ? "floating" : layouts[w.workspace] ?? "h_tiles")"}"#
+                + #""workspace":"\#(w.workspace)","window-parent-container-layout":"\#(w.floating ? "floating" : layouts[w.workspace] ?? "h_tiles")","window-is-fullscreen":\#(w.fullscreen)}"#
         }.joined(separator: ",") + "]"
     }
 }
 
-func win(_ id: Int, _ app: String, _ title: String = "", floating: Bool = false) -> FakeAeroSpace.Window {
-    FakeAeroSpace.Window(id: id, app: app, bundleId: "com." + app.lowercased(), title: title, workspace: "", floating: floating)
+func win(_ id: Int, _ app: String, _ title: String = "", floating: Bool = false, fullscreen: Bool = false) -> FakeAeroSpace.Window {
+    FakeAeroSpace.Window(id: id, app: app, bundleId: "com." + app.lowercased(), title: title, workspace: "", floating: floating, fullscreen: fullscreen)
 }
 
 @MainActor
 final class TestApp {
     let store: OverviewStore
+    let bridge = FakeBridge()
+    private(set) var host: [Visit.Host] = []
+    private var pending: Summon?
 
     init(aerospace: FakeAeroSpace) {
-        store = OverviewStore(runner: aerospace, nativeSystem: FakeBridge())
+        bridge.granted = true
+        store = OverviewStore(runner: aerospace, nativeSystem: bridge)
         store.screen = (available: CGSize(width: 1600, height: 1000), frames: [:])
         store.startListening()
+        store.onEffect = { [unowned self] effect in
+            self.host.append(effect)
+            if case .show(let summon) = effect { self.pending = summon }
+            if case .hide = effect { self.store.endVisit() }
+            if case .capture = effect { Task { [weak self] in await self?.capture() } }
+        }
     }
 
     var scene: OverviewScene { store.scene }
 
     func open(_ link: String) async {
+        store.summon(Summon(URL(string: link)!))
+        guard let summon = pending else { return }
+        pending = nil
+        store.endVisit()
         await store.reload()
-        if case .app(let ref) = Summon(URL(string: link)!), case .focus(let id) = store.summonApp(ref) { store.send(.action(.focusWindow(id))) }
+        store.update { $0.summoned(summon) }
+        guard store.visit.visible else { return }
+        await store.measurePreviews()
         store.following = true
+        await capture()
     }
+
+    private func capture() async {
+        await store.capturePreviews(maxSize: AeroControlLayout.captureSize(available: store.screen.available, backingScale: 2,
+                                                                           workspaces: store.model.workspaces.count, strip: store.strip != nil))
+    }
+
+    func closeKey() { store.update { $0.closeRinged() } }
+
+    func quitKey() { store.update { $0.quitRinged() } }
+
+    func backdrop() { store.update { $0.hide(restoreFocus: true) } }
+
+    func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }
 
     func type(_ text: String) { for c in text { key(.character(c)) } }
 
-    func key(_ key: FilterKey) {
-        if case .focus(let id) = store.handle(key) { store.send(.action(.focusWindow(id))) }
-    }
+    @discardableResult func key(_ key: FilterKey) -> Bool { store.handle(key) }
 
-    func closeRinged() { if let target = store.commandTarget { store.send(.action(.closeWindow(target.windowId))) } }
+    func hover(_ windowId: Int, at point: CGPoint) { store.point(windowId, at: point) }
 
-    func settled() async { try? await Task.sleep(for: .milliseconds(150)) }
+    func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async { await waitUntil(condition, sourceLocation: sourceLocation) }
+
+    func past(_ delay: Duration) async { try? await Task.sleep(for: delay + .milliseconds(100)) }
 }

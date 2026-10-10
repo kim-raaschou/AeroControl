@@ -236,15 +236,13 @@ struct StripLayoutTests {
                                       viewWidth: view, panelHeight: panel)
     }
 
-    @Test("a card that cannot be read is its workspace's screen all the same: the app's windows only, packed in it as the map packs them, as large as it allows")
+    @Test("a card that cannot be read is its workspace's screen all the same: every window on it, packed as the map packs them, the other apps' marked")
     func packedCardIsTheScreen() throws {
-        let l = layout([ghostty("3", 1...4, [WindowInfo(windowId: 9, appName: "Code", bundleId: "com.Code")]), ghostty("4", 5...5)])   // four and a Code, one alone
+        let stack = ghostty("3", 1...4, [WindowInfo(windowId: 9, appName: "Code", bundleId: "com.Code")])
+        let l = layout([stack, ghostty("4", 5...5)])
         let four = try #require(l.cards.first), box = inner(l, four)
-        #expect(four.frames.count == 4 && four.others.isEmpty && l.cards[1].frames.count == 1)
-        #expect(Set(four.frames.values.map(\.minY)).count == 2 && four.frames.values.allSatisfy { $0.maxX <= box.width + 0.5 && $0.maxY <= box.height + 0.5 })   // two by two
-        #expect(l.cards[0].span.width == l.cards[1].span.width && (l.cards[1].frames[5]?.width ?? 0) > box.width * 0.9)   // each a screen, one window filling it
-        let wide = CGSize(width: 2400, height: 1000), two = try #require(layout([ghostty("3", 1...2)], sizes: [1: wide, 2: wide]).cards.first)
-        #expect(two.frames[1]?.minY == two.frames[2]?.minY)                               // two are side by side, even where stacked would be larger
+        #expect(four.frames == AeroControlLayout.packed(stack.windows, sizes: [:], screen: screen, inner: box, caption: 0).frames && four.others == [9])
+        #expect(l.cards[0].span.width == l.cards[1].span.width && (l.cards[1].frames[5]?.width ?? 0) > box.width * 0.9)
     }
     private func ghostty(_ ws: String, _ ids: ClosedRange<Int>, _ other: [WindowInfo] = []) -> WorkspaceInfo {
         WorkspaceInfo(name: ws, windows: ids.map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty") } + other, screenIndex: 1, rootLayout: "h_accordion")
@@ -311,12 +309,6 @@ private func rected(_ id: Int, _ app: String, _ x: CGFloat, _ y: CGFloat, _ w: C
     WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", layoutRect: CGRect(x: x, y: y, width: w, height: h))
 }
 
-private let twoWindows = windowsJSON([(1, "1"), (2, "1")])
-private let oneWorkspace = workspacesJSON(["1"])
-
-@MainActor private func previewStore(_ bridge: FakeBridge) -> OverviewStore {
-    OverviewStore(runner: ScriptRunner(windows: twoWindows, workspaces: oneWorkspace), nativeSystem: bridge)
-}
 
 @Suite("a picture at the screen's pixels")
 @MainActor struct PictureResamplerTests {
@@ -352,7 +344,7 @@ private let oneWorkspace = workspacesJSON(["1"])
     func forgottenOnClose() throws {
         let source = image(1100, 690)
         let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
-        previewStore(FakeBridge()).endVisit()
+        OverviewStore(runner: FakeAeroSpace(["1": []]), nativeSystem: FakeBridge()).endVisit()
         #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
     }
 }

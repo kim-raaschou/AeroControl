@@ -33,44 +33,10 @@ func code(_ s: String) -> String { "<code>\(esc(s))</code>" }
 @MainActor func mermaid(_ body: String) { out += "<pre class=\"mermaid\">\n\(body)\n</pre>\n" }
 func label(_ s: String) -> String { s.replacingOccurrences(of: "\"", with: "'") }
 
-func describe(_ s: AppSummon) -> String {
-    switch s {
-    case .launch(let ref): return "start \(describe(ref)), or bring it forward; no such app: the strip's lane says so"
-    case .focus(let id): return "focus window \(id)"
-    case .pick(let strip): return "the strip, marked on window \(strip.marked.map(String.init) ?? "–")"
-    }
-}
 func describe(_ r: AppRef) -> String {
     switch r {
     case .bundleId(let id): return "the app with bundle id \(id)"
     case .name(let n): return "the app named \(n)"
-    }
-}
-func describe(_ a: Summon.Again) -> String {
-    switch a {
-    case .close: return "close, back on the window you came from"
-    case .step: return "step the strip's marking on"
-    case .summon(let ref): return "that app's flow again (<a href=\"#link\">section 1</a>): \(describe(ref))"
-    }
-}
-func describe(_ a: FilterKeyAction) -> String {
-    switch a {
-    case .none: return "nothing"
-    case .setQuery(let q): return q.isEmpty ? "clear the query" : "query becomes \(code(q))"
-    case .focus(let id): return "focus window \(id) · the shot is done"
-    case .handled: return "swallowed"
-    }
-}
-func describe(_ a: AppStripModel.Action) -> String {
-    switch a {
-    case .none: return "nothing"
-    case .move(.window(let d)): return d > 0 ? "step the marking on" : "step the marking back"
-    case .move(.row(let d)): return d > 0 ? "mark the window below" : "mark the window above"
-    case .move(.workspace(let d)): return d > 0 ? "mark the next workspace's first window" : "mark the previous workspace's first window"
-    case .move(.workspaceRow(let d)): return d > 0 ? "mark the first window of the workspace below" : "mark the first window of the workspace above"
-    case .move(.card(let c)): return "mark the first window of card \(c + 1)"
-    case .commit(let id): return "focus window \(id) · close"
-    case .cancel: return "close, back on the window you came from"
     }
 }
 func describe(_ k: FilterKey?) -> String {
@@ -81,12 +47,24 @@ func describe(_ k: FilterKey?) -> String {
     default: return "\(k)"
     }
 }
-func describe(_ e: OverviewEffect) -> String {
+func describe(_ e: Visit.Effect) -> String {
     switch e {
     case .refresh: return "read AeroSpace again"
     case .run(let actions, let thenRead):
         return "run " + actions.map { code(AerospaceCommand.argv(for: $0).joined(separator: " ")) }.joined(separator: ", then ")
             + (thenRead ? ", then read AeroSpace again" : "")
+    case .host(let h): return describe(h)
+    }
+}
+func describe(_ h: Visit.Host) -> String {
+    switch h {
+    case .show(let s): return "show the overview for \(s)"
+    case .hide: return "close"
+    case .activate(let b): return "give \(b) the keyboard"
+    case .quit(let b): return "quit \(b)"
+    case .launch(let ref): return "start \(describe(ref)), or bring it forward; no such app: the strip's lane says so"
+    case .rebuild: return "build the window again"
+    case .capture: return "take the pictures again, at the size of what is showing"
     }
 }
 func describe(_ s: Strip?) -> String {
@@ -94,7 +72,32 @@ func describe(_ s: Strip?) -> String {
     return "\(s.app ?? "the map") · marked \(s.marked.map(String.init) ?? "–") · centre \(s.centre.map(String.init) ?? "–")"
 }
 
-let all = model.workspaces.flatMap(\.windows)
+@MainActor func visit(_ m: OverviewModel) -> Visit {
+    var v = Visit()
+    _ = v.apply(.loaded(OverviewResult(workspaces: m.workspaces, focus: Focus(windowId: m.focusedWindowId, workspace: m.focusedWorkspace))))
+    return v
+}
+func drawn(_ v: Visit) -> [GridWalk.Card] { OverviewScene(v, error: nil, available: CGSize(width: 1600, height: 1000), screens: [:], sizes: [:]).grid }
+@MainActor func up(_ m: OverviewModel, _ s: Summon) -> (Visit, [Visit.Effect]) {
+    var v = visit(m)
+    _ = v.summon(s, drawn: [])
+    let effects = v.summoned(s)
+    return (v, effects)
+}
+func outcome(_ v: Visit, _ effects: [Visit.Effect]) -> String {
+    let parts = (v.visible ? v.strip.map { ["the strip, marked on window \($0.marked.map(String.init) ?? "–")"] } ?? [] : []) + effects.map(describe)
+    return parts.isEmpty ? "nothing" : parts.joined(separator: " · ")
+}
+func pressed(_ start: Visit, _ k: FilterKey) -> String {
+    var v = start
+    let (taken, effects) = v.key(k, drawn: drawn(v))
+    guard taken else { return k == .escape ? "the window closes" : "nothing" }
+    var parts = effects.map(describe)
+    if v.help != start.help { parts.insert(v.help ? "show the keys" : "hide the keys", at: 0) }
+    if v.query != start.query { parts.insert(v.query.isEmpty ? "clear the query" : "query becomes \(code(v.query))", at: 0) }
+    if v.visible, v.marking != start.marking { parts.insert("mark window \(v.marking?.marked.map(String.init) ?? "–")", at: 0) }
+    return parts.isEmpty ? "nothing" : parts.joined(separator: " · ")
+}
 
 // MARK: - 1. A link
 
@@ -107,7 +110,7 @@ table(["URL", "Summon"], [
     "aerocontrol://workspaces", "aerocontrol://app-id=com.c", "aerocontrol://app-id=Com.C", "aerocontrol://app-name=C", "aerocontrol://app-name=Two%20Words", "aerocontrol://com.c", "aerocontrol://anything-else", "aerocontrol://",
 ].map { [code($0), code("\(Summon(URL(string: $0)!))")] })
 
-p("For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture:")
+p("For an app, <code>Visit.summoned</code> settles it from the windows the app has. Run against the fixture:")
 struct Case { let title: String; let app: AppRef; let model: OverviewModel }
 @MainActor func focused(_ id: Int) -> OverviewModel { OverviewModel(workspaces: model.workspaces, focusedWindowId: id, focusedWorkspace: "1") }
 let cases = [
@@ -120,8 +123,8 @@ let cases = [
     Case(title: "the same, by name: app-name=A", app: .name("A"), model: focused(6)),
     Case(title: "by a name no window has: app-name=Z", app: .name("Z"), model: focused(6)),
 ]
-let on = cases.map { AppSummon.decide(app: $0.app, model: $0.model, recent: []) }
-table(["Case", "What the key does"], zip(cases, on).map { [$0.title, describe($1)] })
+let on = cases.map { c in let (v, effects) = up(c.model, .app(c.app)); return outcome(v, effects) }
+table(["Case", "What the key does"], zip(cases, on).map { [$0.title, $1] })
 mermaid("""
 flowchart TD
   L["open aerocontrol://…"] --> H{"which link?"}
@@ -129,10 +132,10 @@ flowchart TD
   click MAP "#map"
   H -- "app-id= · app-name=" --> APP["that app, by bundle id or by name"]
   APP --> N{"windows of the app"}
-  N -- "none" --> A0["\(label(describe(on[0])))"]
-  N -- "one" --> A1["\(label(describe(on[1])))"]
-  N -- "two, you in one" --> A2["\(label(describe(on[2])))"]
-  N -- "otherwise" --> A4["\(label(describe(on[4])))<br/>→ section 3, the strip"]
+  N -- "none" --> A0["\(label((on[0])))"]
+  N -- "one" --> A1["\(label((on[1])))"]
+  N -- "two, you in one" --> A2["\(label((on[2])))"]
+  N -- "otherwise" --> A4["\(label((on[4])))<br/>→ section 3, the strip"]
   click A4 "#strip"
 """)
 p("Two leaves continue: the map in <a href=\"#map\">section 4</a>, and the strip, the one case that needs you, in <a href=\"#strip\">section 3</a>. Everything else is settled and done here.")
@@ -146,26 +149,27 @@ table(["You are in", "The app's windows", "Used last", "Opens on"], [
 ])
 
 h(2, "2. The link again, while the overview is up", id: "again")
-p("<code>Summon.again</code>, given which app's strip is up, if any:")
-let strips: [(String, String?)] = [("the map is up", nil), ("A's strip is up", "com.a")]
+p("<code>Visit.summon</code> while the overview is up, given what is showing:")
+let showing: [Summon] = [.map, .app(.bundleId("com.a"))]
 table(["Link", "the map is up", "A's strip is up"], [
     ("workspaces", Summon.map), ("app-id=com.a", Summon.app(.bundleId("com.a"))), ("app-name=A", Summon.app(.name("A"))), ("app-id=com.c", Summon.app(.bundleId("com.c"))),
-].map { name, s in [code(name)] + strips.map { describe(s.again(stripApp: $0.1, among: all)) } })
-p("The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step moves the marking on, as → does; a summon runs section 1 again in place, so the strip takes over from whatever was showing.")
+].map { name, s in [code(name)] + showing.map { first in var (v, _) = up(model, first); let effects = v.summon(s, drawn: drawn(v)); return outcome(v, effects) } })
+p("The host carries the effects out (<code>OverlayWindowManager.perform</code>). Another app's link runs section 1 again in place, so the strip takes over from whatever was showing.")
 
 // MARK: - 3. The strip
 
 h(2, "3. The strip", id: "strip")
-p("This is where the last leaf of <a href=\"#link\">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:")
-let stripIds = [1, 2, 8]
+p("This is where the last leaf of <a href=\"#link\">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>Visit.key</code>, run against A's strip of windows [1, 2, 8], opened from window 1 and marked on 2:")
+let (stripVisit, _) = up(model, .app(.bundleId("com.a")))
 let stripKeys: [FilterKey] = [.move(.window(1)), .move(.window(-1)), .move(.row(1)), .move(.workspace(1)), .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
 table(["Key", "Does"], stripKeys.compactMap { k in
-    let does = describe(AppStripModel.action(for: k, ids: stripIds, marked: 2))
+    let does = pressed(stripVisit, k)
     return does == "nothing" ? nil : [describe(k), does]
 })
-p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>AppStripModel.action</code>), run against a strip of fifteen windows:")
+p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>Visit.key</code>), run against a strip of fifteen windows:")
+let (fifteen, _) = up(OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: (1...15).map { w($0, "A") }), WorkspaceInfo(name: "2", windows: [w(20, "B")])], focusedWindowId: 20, focusedWorkspace: "2"), .app(.bundleId("com.a")))
 table(["⌘ + character", "In a strip of fifteen windows"], ["1", "9", "a", "f", "g", "0"].map { c in
-    ["⌘\(c)", FilterKey(command: c, shift: false).map { describe(AppStripModel.action(for: $0, ids: Array(1...15), marked: 1)) } ?? "nothing: not a window's key"]
+    ["⌘\(c)", FilterKey(command: c, shift: false).map { pressed(fifteen, $0) } ?? "nothing: not a window's key"]
 })
 p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
 
@@ -217,8 +221,8 @@ p("The line under the cards (<code>AppStripModel.summary</code>), after the app'
 // MARK: - 4. The map
 
 h(2, "4. The map", id: "map")
-p("Hand-written, from <code>OverlayWindowManager.show</code>: read everything once (<code>reload</code>: list-windows with layout rects, list-workspaces, the focus), decide the summon (<a href=\"#link\">section 1</a>), measure every window's size, follow AeroSpace's events, build the window and reveal it after 120 ms, then take the pictures, which land card by card. While it is up, every AeroSpace event goes through <code>OverviewStore.send</code> into the reducer:")
-let inputs: [(String, OverviewInput)] = [
+p("Hand-written, from <code>OverlayWindowManager.show</code>: read everything once (<code>reload</code>: list-windows with layout rects, list-workspaces, the focus), decide the summon (<a href=\"#link\">section 1</a>), measure every window's size, follow AeroSpace's events, build the window and reveal it after 120 ms, then take the pictures, which land card by card. While it is up, every AeroSpace event goes through <code>OverviewStore.send</code> into <code>Visit.apply</code>:")
+let inputs: [(String, Visit.Input)] = [
     ("event: focus-changed to window 5 on workspace 2", .event(.focusChanged(windowId: 5, workspace: "2"))),
     ("event: anything else AeroSpace reports", .event(.changed)),
     ("a read came back", .loaded(OverviewResult(workspaces: [model.workspaces[0]], focus: Focus(windowId: 2, workspace: "1")))),
@@ -229,7 +233,8 @@ let inputs: [(String, OverviewInput)] = [
     ("action: merge workspace 1 into 2", .action(.mergeWorkspace(source: "1", into: "2"))),
 ]
 table(["Input", "Model after", "Effects"], inputs.map { name, input in
-    let (new, effects) = updateOverview(model, input)
+    var v = visit(model)
+    let effects = v.apply(input), new = v.model
     let change = new == model ? "unchanged" : "focus → window \(new.focusedWindowId) on workspace \(new.focusedWorkspace)" + (new.workspaces != model.workspaces ? ", workspaces replaced" : "")
     return [name, change, effects.isEmpty ? "—" : effects.map(describe).joined(separator: "<br/>")]
 })
@@ -241,30 +246,26 @@ table(["Line", "Event"], [
     #"{"_event":"mode-changed","mode":"resize"}"#, #"{"_event":"some-future-event"}"#, "not json",
 ].map { [code($0), AerospaceEvent.parse($0).map { "\($0)" } ?? "not an event: ignored"] })
 
-p("Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>filterKeyAction</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>d</code> the first match is app D, window 6:")
+p("Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>Visit.key</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>d</code> the first match is app D, window 6:")
 let keys: [(String, UInt16, Bool, String?)] = [
     ("Escape", 53, false, nil), ("Backspace", 51, false, nil), ("Enter", 36, false, "\r"), ("Tab", 48, false, "\t"),
     ("→", 124, false, nil), ("←", 123, false, nil), ("↑", 126, false, "\u{F700}"), ("↓", 125, false, "\u{F701}"), ("Home", 115, false, nil),
     ("a", 0, false, "a"), ("2", 19, false, "2"), ("space", 49, false, " "), ("F1", 122, false, "\u{F704}"),
 ]
-let ring1: Int? = 1, ring6: Int? = 6
-/// On the map an Escape the filter has no use for is the window's: it closes. Every other key
-/// the filter answers `.none` to does nothing.
-func onMap(_ k: FilterKey, query: String, ring: Int?) -> String {
-    let action = filterKeyAction(query: query, ring: ring, key: k)
-    return action == .none && k == .escape ? "the window closes" : describe(action)
-}
+let onMap = visit(model)
+var typed = onMap
+_ = typed.key(.character("d"), drawn: drawn(typed))
 let mapRows: [[String]] = keys.compactMap { name, kc, _, chars in
     guard let k = FilterKey(keyCode: kc, characters: chars) else { return nil }
-    let row = [name, describe(k), onMap(k, query: "", ring: ring1), onMap(k, query: "d", ring: ring6)]
+    let row = [name, describe(k), pressed(onMap, k), pressed(typed, k)]
     return row[2] == "nothing" && row[3] == "nothing" ? nil : row
 }
 table(["Key", "FilterKey", "No query, ring on 1", "Query <code>d</code>, ring on 6"], mapRows)
 p("The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.")
-p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.")
+p("⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>Visit.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.")
 
 h(2, "5. One way out", id: "out")
-p("Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape and a click on the backdrop hide it directly.")
+p("Hand-written, from <code>Visit.apply</code> and <code>OverlayWindowManager.perform</code>: a focus action (focus window, focus workspace) and a strip that is over (<code>Strip.following</code> returned nil) both make <code>Visit.apply</code> answer <code>hide</code>. The host hides the window and, unless the focus just moved there, gives the focused app the keyboard. Escape and a click on the backdrop end the same way, through <code>Visit.hide</code>.")
 
 // MARK: - write
 

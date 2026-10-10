@@ -86,38 +86,39 @@ fails on any violation.
 ## Architecture
 
 - `Sources/Common/` — **the functional core: AeroSpace's world, pure**. One layer, in four areas, each a step
-  down: `Keys/` (what a key and a summon do) over `Layout/` (geometry) over `AeroSpace/` (the model, the
-  reducer, the reading of AeroSpace), the theme at the root; `make arch-check` fails if two areas name each other.
-  `OverviewModel`, the reducer `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`),
-  the layout, the keys, type-to-filter (`OverviewFilter.swift`: matching, `FilterKey`,
-  `filterKeyAction`), and the reading of AeroSpace — command argv and response decoding
+  down: `Keys/` (keys, links and the strip's moves) over `Layout/` (geometry) over `AeroSpace/` (the model and
+  the reading of AeroSpace), with `Visit`, `OverviewScene` and the theme at the root; `make arch-check` fails if
+  two areas name each other. `Visit` is one visit of the overview as a value: every key, link, read and event
+  goes in through a transition that returns the new value and its effects (`Visit.Effect`: commands to run,
+  a read, and `Visit.Host` for the host). `OverviewScene` is what is drawn, derived from a `Visit`. Then
+  `OverviewModel`, the layout, type-to-filter (`OverviewFilter.swift`: matching, `FilterKey`), and the reading of AeroSpace — command argv and response decoding
   (`AerospaceCliParser.swift`, `AerospaceCommands.swift`), the `AerospaceProcessRunner` port. The app
   is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
   socket protocol; `AerospaceSync` is everything that talks to AeroSpace through it — the
   read, the event stream and its reconnect, the commands in order, the debounced refresh and
-  its generation, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) owns the
-  model, runs the reducer, carries out its effects through the sync, holds the visit — the
-  marking (one `Strip` for the map and the strip), the query, the help — and derives the layout
-  from the screen the host gives it as one value, `OverviewScene` (in Common: the body, every card
-  and tile with what it wears, the lane, the help); `PictureStore`, owned by it, keeps the windows'
+  its generation, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) holds the
+  `Visit`, runs its commands and reads through the sync, hands `Visit.Host` effects to the host, and
+  derives the `OverviewScene` from the visit and the screen the host gives it; `PictureStore`, owned by it, keeps the windows'
   pictures and sizes and talks to the bridge for them; SwiftUI views
   `AeroControlPanel → WorkspaceCard → AppTile` draw the scene and nothing else of the store's state.
-- `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
+- `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (carries out `Visit.Host`: show,
+  hide, activate, quit, launch, rebuild, capture),
   `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
-- Do **not** merge the reducer into the store. The store's size is the effects it owns.
+- Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
 
 ### The one-shot model
 
 Summon → `reload()` reads AeroSpace's whole state → previews are captured → the overlay
-appears. **While visible** the store follows AeroSpace's event stream (`subscribe`,
-`--no-send-initial`); every event means "read again" (`.changed` → `.refresh`). **On hide** the
-subscription stops, previews are dropped, the filter is cleared. Nothing keeps the model in
-sync while hidden — nothing reads it. Events carry **no data**; all state comes from commands.
+appears. One subscription to AeroSpace's event stream (`subscribe`, `--no-send-initial`) lives as
+long as the app. Hidden, it only keeps the order of focus, which decides where a strip opens.
+**While visible** every event means "read again" (`.changed` → `.refresh`), and a focus change
+moves the focus at once. **On hide** previews are dropped and the query is cleared. The windows
+themselves always come from commands, never from an event.
 
 ### Load-bearing defensive code (do not delete as "paranoia")
 
-- `requestRefresh` cancel-and-reload with `refreshGeneration`: every event or completed
+- `AerospaceSync.refresh` cancel-and-reload with its generation: every event or completed
   action re-derives truth from AeroSpace; the generation counter drops stale results. There is
   **no optimistic local state**.
 - Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream

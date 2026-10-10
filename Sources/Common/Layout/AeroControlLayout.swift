@@ -127,27 +127,13 @@ public enum AeroControlLayout {
         let full = StripGeometry.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
                                             chrome: 2 * cardPadding + cardGap, panelHeight: panelHeight)
         let widths = aspects.map { (full * $0).rounded() }
-        let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
-        let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
-        let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
-        let mirrors = groups.indices.map { treeLayout(groups[$0], sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
         var x: CGFloat = 0, cards: [StripCard] = []
         for g in groups.indices {
             if g > 0 { x += cardGap }
-            var frames: [Int: CGRect] = [:], others: Set<Int> = []
-            if let mirror = mirrors[g] {
-                frames = mirror.frames
-                others = Set(groups[g].windows.map(\.windowId)).subtracting(ours[g].map(\.windowId))
-            } else {
-                let inner = CGSize(width: widths[g], height: full)
-                let side = ((inner.width - gaps[g]) / max(0.01, shapes[g].reduce(0, +))).rounded(.down)
-                let th = shapes[g].count == 2 ? min(full, side) : TilePacker.packHeight(ratios: shapes[g], width: inner.width, height: inner.height, gap: gaps[g], caption: 0)
-                let packed = TilePacker.packRows(ratios: shapes[g], tileHeight: th, width: inner.width, gap: gaps[g], caption: 0)
-                let at = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
-                frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
-                    CGRect(x: at.x + $0.x, y: at.y + $0.y, width: $0.width, height: $0.height) }))
-            }
-            cards.append(StripCard(workspace: groups[g].name, span: StripGeometry.Span(x: x, width: widths[g] + 2 * cardPadding), frames: frames, others: others))
+            let inner = CGSize(width: widths[g], height: full)
+            let laid = treeLayout(groups[g], sizes: sizes, screen: areas[g], inner: inner) ?? packed(groups[g].windows, sizes: sizes, screen: areas[g], inner: inner, caption: 0)
+            let others = Set(groups[g].windows.filter { $0.bundleId != bundleId }.map(\.windowId))
+            cards.append(StripCard(workspace: groups[g].name, span: StripGeometry.Span(x: x, width: widths[g] + 2 * cardPadding), frames: laid.frames, others: others))
             x += widths[g] + 2 * cardPadding
         }
         return StripLayout(height: full + cardChrome, width: x, cards: cards)

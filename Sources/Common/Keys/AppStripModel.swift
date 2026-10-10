@@ -22,23 +22,4 @@ public enum AppStripModel {
         if let last = recent.first(where: { ids.contains($0) && $0 != origin }) { return last }
         return stepIndex(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: 1).map { ids[$0] }
     }
-
-    public enum Action: Equatable, Sendable {
-        case none
-        case move(StripMove)
-        case commit(Int)
-        case cancel
-    }
-
-    public static func action(for key: FilterKey, ids: [Int], marked: Int?, workspaces: [String] = []) -> Action {
-        switch key {
-        case .escape: return .cancel
-        case .enter: return marked.map { .commit($0) } ?? .none
-        case .move(let move): return .move(move)
-        case .commandKey(let n):
-            return ids.prefix(FilterKey.windowKeys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
-        case .character(let c): return FilterKey.workspaceNamed(String(c)).flatMap(workspaces.firstIndex).map { .move(.card($0)) } ?? .none
-        case .backspace, .moveToWorkspace, .help: return .none
-        }
-    }
 }

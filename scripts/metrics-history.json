@@ -2176,5 +2176,14 @@
     "complexity": 968,
     "prodComplexity": 542,
     "files": 71
+  },
+  {
+    "timestamp": "2026-10-10T16:26:27+02:00",
+    "commit": "3964a74",
+    "subject": "A fake AeroSpace that is a world, and the scenarios that drive the app against it",
+    "code": 4931,
+    "complexity": 901,
+    "prodComplexity": 510,
+    "files": 71
   }
 ]

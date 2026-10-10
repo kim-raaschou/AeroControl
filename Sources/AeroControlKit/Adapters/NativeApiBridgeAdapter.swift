@@ -38,7 +38,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     private var content: SCShareableContent?
 
     public func prepareCapture() {
-        guard canCapturePreviews else { return }
+        guard canCapturePreviews else { return requestPreviewAccess() }
         content = nil
         pendingContent = Task { @MainActor in await Self.shareableContent() }
     }

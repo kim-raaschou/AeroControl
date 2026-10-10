@@ -43,32 +43,27 @@ public struct OverviewScene: Sendable {
     public let held: Int?
     public let grid: [GridWalk.Card]
 
-    public init(model: OverviewModel, marking: Strip?, query: String, matches: [ParsedWindow], missingApp: AppRef?, help: Bool, error: String?,
-                available: CGSize, screens: [Int: CGRect], sizes: [Int: CGSize]) {
-        let v = (model: model, marking: marking, query: query, matches: matches, missingApp: missingApp, error: error, available: available, screens: screens, sizes: sizes)
-        let strip = v.marking.flatMap { m in m.app.map { _ in m } }
-        let usable = AeroControlLayout.usable(v.available)
-        let ring = v.marking?.marked ?? v.matches.first?.window.windowId ?? v.model.focusedWindowId
-        let mine = strip.map(v.model.windows(of:)) ?? []
-        (size, self.help, ringed) = (usable, help, ring)
-        lane = Self.lane(query: query, matches: matches, model: model, marking: marking, missingApp: missingApp, strip: strip, mine: mine)
+    public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], sizes: [Int: CGSize]) {
+        let model = visit.model, strip = visit.strip, mine = visit.stripWindows, ring = visit.ringWindowId
+        let usable = AeroControlLayout.usable(available)
+        (size, help, ringed, lane) = (usable, visit.help, ring, Self.lane(visit))
         func tile(_ w: WindowInfo, _ frame: CGRect, ghost: Bool = false, faded: Bool = false, captioned: Bool = false, key: String? = nil) -> Tile {
-            Tile(window: w, frame: frame, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == v.model.focusedWindowId, ghost: ghost,
+            Tile(window: w, frame: frame, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId, ghost: ghost,
                  faded: faded, captioned: captioned, key: key, keyMarked: key != nil && w.windowId == strip?.marked,
-                 stacking: AeroControlLayout.stacking(windowId: w.windowId, focused: v.model.focusedWindowId, ghosts: ghost ? [w.windowId] : []))
+                 stacking: AeroControlLayout.stacking(windowId: w.windowId, focused: model.focusedWindowId, ghosts: ghost ? [w.windowId] : []))
         }
         func card(_ ws: WorkspaceInfo, _ frame: CGRect, cut: Bool = false, tiles: [Tile]) -> Card {
-            Card(workspace: ws, frame: frame, focused: ws.name == v.model.focusedWorkspace,
-                 monitor: v.model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: cut, tiles: tiles)
+            Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
+                 monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: cut, tiles: tiles)
         }
-        if let error = v.error {
+        if let error {
             (body, cards, grid, held) = (.error(error), [], [], nil)
-        } else if v.model.workspaces.isEmpty || v.missingApp != nil {
+        } else if model.workspaces.isEmpty || visit.missingApp != nil {
             (body, cards, grid, held) = (.nothing, [], [], nil)
         } else if let strip, !mine.isEmpty {
-            let groups = v.model.workspaces.filter { $0.windows.contains(where: strip.owns) }
-            let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: strip.app ?? "", sizes: v.sizes, screens: v.screens,
-                                                       fallbackScreen: CGRect(origin: .zero, size: v.available), viewWidth: usable.width, panelHeight: usable.height)
+            let groups = model.workspaces.filter { $0.windows.contains(where: strip.owns) }
+            let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: strip.app ?? "", sizes: sizes, screens: screens,
+                                                       fallbackScreen: CGRect(origin: .zero, size: available), viewWidth: usable.width, panelHeight: usable.height)
             let ids = mine.map(\.window.windowId)
             body = .strip
             held = layout.cards.firstIndex { c in strip.centre.map { c.frames[$0] != nil } ?? false }
@@ -81,30 +76,29 @@ public struct OverviewScene: Sendable {
                                 tile(w, f, faded: laid.others.contains(w.windowId), key: ids.firstIndex(of: w.windowId).flatMap(AppStripModel.keyLabel)) } })
             }
         } else {
-            let filtered = v.model.workspaces(holding: v.matches), filtering = !filtered.isEmpty
-            let shown = filtering ? filtered : v.model.workspaces
-            let laid = AeroControlLayout.mapLayout(workspaces: shown, sizes: v.sizes, screens: v.screens, available: v.available, usable: usable, filtering: filtering)
+            let filtered = model.workspaces(holding: visit.matches), filtering = !filtered.isEmpty
+            let shown = filtering ? filtered : model.workspaces
+            let laid = AeroControlLayout.mapLayout(workspaces: shown, sizes: sizes, screens: screens, available: available, usable: usable, filtering: filtering)
             (body, held, grid) = (.map, nil, laid.map(\.grid))
             cards = zip(shown, laid).map { ws, c in
                 card(ws, c.frame, tiles: ws.windows.map { w in
                     let f = c.frames[w.windowId] ?? .zero
                     return tile(w, f, ghost: c.ghosts.contains(w.windowId),
-                                captioned: (filtering || v.sizes[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight)
+                                captioned: (filtering || sizes[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight)
                 })
             }
         }
     }
 
-    private static func lane(query: String, matches: [ParsedWindow], model: OverviewModel, marking: Strip?, missingApp: AppRef?,
-                             strip: Strip?, mine: [ParsedWindow]) -> Lane {
-        if let missing = missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
-        if let strip, let first = mine.first?.window {
-            return .app(name: first.appName, bundleId: strip.app ?? "", summary: AppStripModel.summary(mine, marked: strip.marked))
+    private static func lane(_ visit: Visit) -> Lane {
+        if let missing = visit.missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
+        if let strip = visit.strip, let first = visit.stripWindows.first?.window {
+            return .app(name: first.appName, bundleId: strip.app ?? "", summary: AppStripModel.summary(visit.stripWindows, marked: strip.marked))
         }
-        if let marked = marking?.marked, let ringed = model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) {
+        if let marked = visit.marking?.marked, let ringed = visit.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) {
             return .app(name: ringed.window.appName, bundleId: ringed.window.bundleId, summary: ringed.window.caption + " · ws " + ringed.workspace)
         }
-        if query.isEmpty { return .keys }
-        return .query(query, miss: matches.isEmpty && query.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength)
+        if visit.query.isEmpty { return .keys }
+        return .query(visit.query, miss: visit.matches.isEmpty && visit.query.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength)
     }
 }

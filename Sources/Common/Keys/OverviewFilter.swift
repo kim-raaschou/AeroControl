@@ -94,26 +94,3 @@ public extension FilterKey {
         return .character(character)
     }
 }
-
-public enum FilterKeyAction: Equatable, Sendable {
-    case none
-    case setQuery(String)
-    case focus(windowId: Int)
-    case handled
-}
-
-public func filterKeyAction(query: String, ring: Int?, key: FilterKey) -> FilterKeyAction {
-    switch key {
-    case .escape:
-        return query.isEmpty ? .none : .setQuery("")
-    case .enter:
-        return ring.map { .focus(windowId: $0) } ?? .none
-    case .move, .commandKey, .moveToWorkspace, .help:
-        return .none
-    case .backspace:
-        return query.isEmpty ? .none : .setQuery(String(query.dropLast()))
-    case .character(let character):
-        guard !(query.isEmpty && character.isWhitespace) else { return .none }
-        return .setQuery(query + String(character))
-    }
-}

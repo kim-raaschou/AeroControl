@@ -49,9 +49,6 @@ struct AeroControlAppTile: View {
         }
             .frame(width: size.width, height: size.height)
             .matchedGeometryEffect(id: window.windowId, in: tiles)
-            .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
-                state.pictures.want(window.windowId, pixels: preview.map { AeroControlMetrics.cover($0.size, into: drawnPixels) } ?? drawnPixels)
-            }
             .contentShape(Rectangle())
             .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }
             .onHover(perform: hoverChanged)

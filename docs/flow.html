@@ -28,16 +28,16 @@
 <tr><td><code>aerocontrol://anything-else</code></td><td><code>map</code></td></tr>
 <tr><td><code>aerocontrol://</code></td><td><code>map</code></td></tr>
 </table>
-<p>For an app, <code>AppSummon.decide</code> settles it from the windows the app has. Run against the fixture:</p>
+<p>For an app, <code>Visit.summoned</code> settles it from the windows the app has. Run against the fixture:</p>
 <table><tr><th>Case</th><th>What the key does</th></tr>
-<tr><td>no window of the app (E)</td><td>start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so</td></tr>
-<tr><td>one window: B on workspace 1 only</td><td>focus window 3</td></tr>
-<tr><td>two windows, you are in one: C, focus on window 4</td><td>focus window 5</td></tr>
+<tr><td>no window of the app (E)</td><td>close · start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so</td></tr>
+<tr><td>one window: B on workspace 1 only</td><td>close · run <code>focus --window-id 3</code></td></tr>
+<tr><td>two windows, you are in one: C, focus on window 4</td><td>close · run <code>focus --window-id 5</code></td></tr>
 <tr><td>two windows, from elsewhere: C, focus on A</td><td>the strip, marked on window 4</td></tr>
 <tr><td>three windows, you are in one: A, focus on window 1</td><td>the strip, marked on window 2</td></tr>
 <tr><td>three windows, from elsewhere: A, focus on D</td><td>the strip, marked on window 1</td></tr>
 <tr><td>the same, by name: app-name=A</td><td>the strip, marked on window 1</td></tr>
-<tr><td>by a name no window has: app-name=Z</td><td>start the app named Z, or bring it forward; no such app: the strip's lane says so</td></tr>
+<tr><td>by a name no window has: app-name=Z</td><td>close · start the app named Z, or bring it forward; no such app: the strip's lane says so</td></tr>
 </table>
 <pre class="mermaid">
 flowchart TD
@@ -46,9 +46,9 @@ flowchart TD
   click MAP "#map"
   H -- "app-id= · app-name=" --> APP["that app, by bundle id or by name"]
   APP --> N{"windows of the app"}
-  N -- "none" --> A0["start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so"]
-  N -- "one" --> A1["focus window 3"]
-  N -- "two, you in one" --> A2["focus window 5"]
+  N -- "none" --> A0["close · start the app with bundle id com.e, or bring it forward; no such app: the strip's lane says so"]
+  N -- "one" --> A1["close · run <code>focus --window-id 3</code>"]
+  N -- "two, you in one" --> A2["close · run <code>focus --window-id 5</code>"]
   N -- "otherwise" --> A4["the strip, marked on window 2<br/>→ section 3, the strip"]
   click A4 "#strip"
 </pre>
@@ -62,32 +62,32 @@ flowchart TD
 <tr><td>another app</td><td>[1, 2, 8]</td><td>none known</td><td>1</td></tr>
 </table>
 <h2 id="again">2. The link again, while the overview is up</h2>
-<p><code>Summon.again</code>, given which app's strip is up, if any:</p>
+<p><code>Visit.summon</code> while the overview is up, given what is showing:</p>
 <table><tr><th>Link</th><th>the map is up</th><th>A's strip is up</th></tr>
-<tr><td><code>workspaces</code></td><td>close, back on the window you came from</td><td>close, back on the window you came from</td></tr>
-<tr><td><code>app-id=com.a</code></td><td>that app's flow again (<a href="#link">section 1</a>): the app with bundle id com.a</td><td>step the strip's marking on</td></tr>
-<tr><td><code>app-name=A</code></td><td>that app's flow again (<a href="#link">section 1</a>): the app named A</td><td>step the strip's marking on</td></tr>
-<tr><td><code>app-id=com.c</code></td><td>that app's flow again (<a href="#link">section 1</a>): the app with bundle id com.c</td><td>that app's flow again (<a href="#link">section 1</a>): the app with bundle id com.c</td></tr>
+<tr><td><code>workspaces</code></td><td>close · give com.a the keyboard</td><td>close · give com.a the keyboard</td></tr>
+<tr><td><code>app-id=com.a</code></td><td>the strip, marked on window 2 · take the pictures again, at the size of what is showing</td><td>the strip, marked on window 8</td></tr>
+<tr><td><code>app-name=A</code></td><td>the strip, marked on window 2 · take the pictures again, at the size of what is showing</td><td>the strip, marked on window 8</td></tr>
+<tr><td><code>app-id=com.c</code></td><td>the strip, marked on window 4 · take the pictures again, at the size of what is showing</td><td>the strip, marked on window 4 · take the pictures again, at the size of what is showing</td></tr>
 </table>
-<p>The host (<code>OverlayWindowManager.toggleVisibility</code>) carries the answer out: close hides; step moves the marking on, as → does; a summon runs section 1 again in place, so the strip takes over from whatever was showing.</p>
+<p>The host carries the effects out (<code>OverlayWindowManager.perform</code>). Another app's link runs section 1 again in place, so the strip takes over from whatever was showing.</p>
 <h2 id="strip">3. The strip</h2>
-<p>This is where the last leaf of <a href="#link">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>AppStripModel.action</code>, run against a strip of windows [1, 2, 8] marked on 2:</p>
+<p>This is where the last leaf of <a href="#link">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>Visit.key</code>, run against A's strip of windows [1, 2, 8], opened from window 1 and marked on 2:</p>
 <table><tr><th>Key</th><th>Does</th></tr>
-<tr><td>move(Common.StripMove.window(1))</td><td>step the marking on</td></tr>
-<tr><td>move(Common.StripMove.window(-1))</td><td>step the marking back</td></tr>
-<tr><td>move(Common.StripMove.row(1))</td><td>mark the window below</td></tr>
-<tr><td>move(Common.StripMove.workspace(1))</td><td>mark the next workspace's first window</td></tr>
-<tr><td>enter</td><td>focus window 2 · close</td></tr>
-<tr><td>escape</td><td>close, back on the window you came from</td></tr>
-<tr><td>⌘1</td><td>focus window 1 · close</td></tr>
-<tr><td>⌘3</td><td>focus window 8 · close</td></tr>
+<tr><td>move(Common.StripMove.window(1))</td><td>mark window 8</td></tr>
+<tr><td>move(Common.StripMove.window(-1))</td><td>mark window 1</td></tr>
+<tr><td>move(Common.StripMove.row(1))</td><td>mark window 8</td></tr>
+<tr><td>move(Common.StripMove.workspace(1))</td><td>mark window 8</td></tr>
+<tr><td>enter</td><td>close · run <code>focus --window-id 2</code></td></tr>
+<tr><td>escape</td><td>the window closes</td></tr>
+<tr><td>⌘1</td><td>close · give com.a the keyboard · run <code>focus --window-id 1</code></td></tr>
+<tr><td>⌘3</td><td>close · run <code>focus --window-id 8</code></td></tr>
 </table>
-<p>Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>AppStripModel.action</code>), run against a strip of fifteen windows:</p>
+<p>Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>Visit.key</code>), run against a strip of fifteen windows:</p>
 <table><tr><th>⌘ + character</th><th>In a strip of fifteen windows</th></tr>
-<tr><td>⌘1</td><td>focus window 1 · close</td></tr>
-<tr><td>⌘9</td><td>focus window 9 · close</td></tr>
-<tr><td>⌘a</td><td>focus window 10 · close</td></tr>
-<tr><td>⌘f</td><td>focus window 15 · close</td></tr>
+<tr><td>⌘1</td><td>close · run <code>focus --window-id 1</code></td></tr>
+<tr><td>⌘9</td><td>close · run <code>focus --window-id 9</code></td></tr>
+<tr><td>⌘a</td><td>close · run <code>focus --window-id 10</code></td></tr>
+<tr><td>⌘f</td><td>close · run <code>focus --window-id 15</code></td></tr>
 <tr><td>⌘g</td><td>nothing: not a window's key</td></tr>
 <tr><td>⌘0</td><td>nothing: not a window's key</td></tr>
 </table>
@@ -121,7 +121,7 @@ flowchart TD
 </pre>
 <p>The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: <code>3 windows on 2 workspaces · second · ws 1</code>. The marked window's key is on its card; pointing at a window marks it, so its title is read here.</p>
 <h2 id="map">4. The map</h2>
-<p>Hand-written, from <code>OverlayWindowManager.show</code>: read everything once (<code>reload</code>: list-windows with layout rects, list-workspaces, the focus), decide the summon (<a href="#link">section 1</a>), measure every window's size, follow AeroSpace's events, build the window and reveal it after 120 ms, then take the pictures, which land card by card. While it is up, every AeroSpace event goes through <code>OverviewStore.send</code> into the reducer:</p>
+<p>Hand-written, from <code>OverlayWindowManager.show</code>: read everything once (<code>reload</code>: list-windows with layout rects, list-workspaces, the focus), decide the summon (<a href="#link">section 1</a>), measure every window's size, follow AeroSpace's events, build the window and reveal it after 120 ms, then take the pictures, which land card by card. While it is up, every AeroSpace event goes through <code>OverviewStore.send</code> into <code>Visit.apply</code>:</p>
 <table><tr><th>Input</th><th>Model after</th><th>Effects</th></tr>
 <tr><td>event: focus-changed to window 5 on workspace 2</td><td>focus → window 5 on workspace 2</td><td>read AeroSpace again</td></tr>
 <tr><td>event: anything else AeroSpace reports</td><td>unchanged</td><td>read AeroSpace again</td></tr>
@@ -144,19 +144,14 @@ flowchart TD
 <tr><td><code>{"_event":"some-future-event"}</code></td><td>not an event: ignored</td></tr>
 <tr><td><code>not json</code></td><td>not an event: ignored</td></tr>
 </table>
-<p>Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>filterKeyAction</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>d</code> the first match is app D, window 6:</p>
+<p>Keys on the map (<code>FilterKey(keyCode:)</code>, then <code>Visit.key</code>). The ring is AeroSpace's focused window, window 1, until a query has a match; with the query <code>d</code> the first match is app D, window 6:</p>
 <table><tr><th>Key</th><th>FilterKey</th><th>No query, ring on 1</th><th>Query <code>d</code>, ring on 6</th></tr>
-<tr><td>Escape</td><td>escape</td><td>the window closes</td><td>clear the query</td></tr>
-<tr><td>Backspace</td><td>backspace</td><td>nothing</td><td>clear the query</td></tr>
-<tr><td>Enter</td><td>enter</td><td>focus window 1 · the shot is done</td><td>focus window 6 · the shot is done</td></tr>
-<tr><td>a</td><td>character <code>a</code></td><td>query becomes <code>a</code></td><td>query becomes <code>da</code></td></tr>
-<tr><td>2</td><td>character <code>2</code></td><td>query becomes <code>2</code></td><td>query becomes <code>d2</code></td></tr>
-<tr><td>space</td><td>character <code> </code></td><td>nothing</td><td>query becomes <code>d </code></td></tr>
+<tr><td>Escape</td><td>escape</td><td>the window closes</td><td>the window closes</td></tr>
 </table>
 <p>The arrows, ⌘ and an arrow, and pointing move the ring on the map as they move the marking in the strip (<code>Strip.moved</code>, <code>GridWalk</code>): until a key or the pointer moves it the ring is AeroSpace's focus, and AeroSpace's focus stays on screen as the thin outline. Tab, Home, End and the function keys do nothing.</p>
-<p>⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>OverviewStore.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.</p>
+<p>⇧⌘ and a workspace's name (<code>FilterKey.moveToWorkspace</code>, 0 the tenth) moves the window under the ring to that workspace, on the map and in the strip, and the overview stays up. Two ⌘ keys act on the window under the ring, as they would without the overview, taken before the filter sees them (<code>Visit.commandTarget</code>, <code>OverviewWindow.performKeyEquivalent</code>): ⌘W closes it, as its × does, and ⌘Q quits its app, on the map and in the strip, and the overview stays up; with no window under the ring (an empty workspace's card, a notice) ⌘W does nothing. Every other ⌘ key does nothing.</p>
 <h2 id="out">5. One way out</h2>
-<p>Hand-written, from <code>OverviewStore.send</code> and <code>OverlayWindowManager</code>: a focus action (focus window, focus workspace) makes the store say <code>onShotDone(restoreFocus: false)</code>, and a strip that is over (<code>following</code> returned nil) makes it say <code>onShotDone(restoreFocus: true)</code>. The host hides the window either way, bringing the focused app forward when the focus did not just move there. Escape and a click on the backdrop hide it directly.</p>
+<p>Hand-written, from <code>Visit.apply</code> and <code>OverlayWindowManager.perform</code>: a focus action (focus window, focus workspace) and a strip that is over (<code>Strip.following</code> returned nil) both make <code>Visit.apply</code> answer <code>hide</code>. The host hides the window and, unless the focus just moved there, gives the focused app the keyboard. Escape and a click on the backdrop end the same way, through <code>Visit.hide</code>.</p>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', flowchart: { useMaxWidth: true } });</script>

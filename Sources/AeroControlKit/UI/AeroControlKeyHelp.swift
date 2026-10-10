@@ -21,6 +21,6 @@ struct AeroControlKeyHelp: View {
         .background(look.palette.cardFill ?? Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous).strokeBorder(look.palette.cardBorder, lineWidth: 1))
         .shadow(color: .black.opacity(0.4), radius: 24, y: 8)
-        .onTapGesture { state.showingHelp = false }
+        .onTapGesture { state.handle(.help) }
     }
 }

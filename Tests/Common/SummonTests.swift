@@ -36,34 +36,10 @@ struct SummonTests {
         #expect(AppRef.bundleId("com.mail").identifies(bundleId: "com.mail", among: windows))
     }
 
-    @Test("one key per app: none, start; one, focus it; two and you are in one, the other; otherwise the strip, on the one after yours", arguments: [
-        ([Int](), 0, AppSummon.launch(.bundleId("a"))),
-        ([7], 0, .focus(windowId: 7)),
-        ([1, 2], 1, .focus(windowId: 2)),
-        ([1, 2], 2, .focus(windowId: 1)),                                              // and back
-        ([1, 2], 9, .pick(Strip(app: "a", marked: 1, centre: 1))),      // from another app
-        ([1, 2, 3], 2, .pick(Strip(app: "a", marked: 3, centre: 3))),
-    ] as [([Int], Int, AppSummon)])
-    func decide(app: [Int], focused: Int, expected: AppSummon) {
-        let windows = app.map { WindowInfo(windowId: $0, appName: "A", bundleId: "a") } + [WindowInfo(windowId: 9, appName: "B", bundleId: "b")]
-        let model = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: windows)], focusedWindowId: focused, focusedWorkspace: "1")
-        #expect(AppSummon.decide(app: .bundleId("a"), model: model, recent: []) == expected)
-    }
-
     @Test("an app nothing answers to is told by the name the link gave, and why nothing came")
     func notFound() {
         let id = AppRef.bundleId("com.typo").notFound, name = AppRef.name("Two Words").notFound
         #expect(id.name == "com.typo" && id.reason == "no app has this id")
         #expect(name.name == "Two Words" && name.reason == "no app has this name")
-    }
-
-    @Test("while the overview is up the strip's own key steps it, by either name; any other app key is the app's whole flow again; the map's key closes")
-    func againWhileUp() {
-        let windows = [w(1, "Arc", "com.arc"), w(2, "Claude", "com.claude")]
-        #expect(Summon.map.again(stripApp: nil, among: windows) == .close && Summon.map.again(stripApp: "com.arc", among: windows) == .close)
-        #expect(Summon.app(.bundleId("com.arc")).again(stripApp: "com.arc", among: windows) == .step)
-        #expect(Summon.app(.name("Arc")).again(stripApp: "com.arc", among: windows) == .step)
-        #expect(Summon.app(.bundleId("com.claude")).again(stripApp: nil, among: windows) == .summon(.bundleId("com.claude")))
-        #expect(Summon.app(.name("Claude")).again(stripApp: "com.arc", among: windows) == .summon(.name("Claude")))
     }
 }

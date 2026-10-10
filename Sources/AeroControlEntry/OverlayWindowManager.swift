@@ -9,72 +9,51 @@ final class OverlayWindowManager {
     private let settings: SettingsStore
 
     private var window: OverviewWindow?
-    private var requestedVisible = false
-    private var loading = false
     private static let revealAfter: Duration = .milliseconds(120)
     init(state: OverviewStore, bridge: NativeApiBridge, settings: SettingsStore) {
         self.state = state
         self.bridge = bridge
         self.settings = settings
-        state.onShotDone = { [weak self] in self?.hide(restoreFocus: $0) }
+        state.onEffect = { [weak self] in self?.perform($0) }
     }
 
-    private func hide(restoreFocus: Bool) {
-        guard requestedVisible else { return }
-        requestedVisible = false
+    private func perform(_ effect: Visit.Host) {
+        switch effect {
+        case .show(let summon): show(summon)
+        case .hide: hide()
+        case .activate(let bundleId): app(bundleId)?.activate()
+        case .quit(let bundleId): app(bundleId)?.terminate()
+        case .launch(let ref): launch(ref)
+        case .rebuild: rebuild()
+        case .capture: if let screen = window?.targetScreen { Task { await capture(on: screen) } }
+        }
+    }
+
+    private func hide() {
         let ended: @MainActor @Sendable () -> Void = { [weak self] in
-            guard let self, !self.requestedVisible else { return }
+            guard let self, !self.state.visit.visible else { return }
             self.window?.contentView = nil
             self.window = nil
             self.state.endVisit()
         }
         if let window { window.dismiss(then: ended) } else { ended() }
-        guard restoreFocus, let app = owner(of: state.model.focusedWindow) else { return }
-        app.activate()
     }
 
-    private func owner(of window: WindowInfo?) -> NSRunningApplication? {
-        guard let bundleId = window?.bundleId, bundleId != Bundle.main.bundleIdentifier else { return nil }
+    private func app(_ bundleId: String) -> NSRunningApplication? {
+        guard bundleId != Bundle.main.bundleIdentifier else { return nil }
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
-    }
-
-    private func quitRingedApp() {
-        guard requestedVisible, let app = owner(of: state.commandTarget) else { return }
-        app.terminate()
-    }
-
-    private func closeRingedWindow() {
-        guard let target = state.commandTarget else { return }
-        state.send(.action(.closeWindow(target.windowId)))
-    }
-
-    private func handleKey(_ key: FilterKey) -> Bool {
-        guard requestedVisible else { return false }
-        let action = state.handle(key)
-        if case .focus(let windowId) = action { state.send(.action(.focusWindow(windowId))) }
-        return action != .none
     }
 
     private func show(_ summon: Summon) {
         state.endVisit()
-        requestedVisible = true
-        loading = true
         Task { [weak self] in
             guard let self else { return }
             self.bridge.prepareCapture()
             await self.state.reload()
-            self.loading = false
-            guard self.requestedVisible else { return }
-            switch summon {
-            case .map: break
-            case .app(let ref): guard self.carryOut(self.state.summonApp(ref)) else { return }
-            }
-            if self.bridge.canCapturePreviews {
-                await self.state.measurePreviews()
-                guard self.requestedVisible else { return }
-            } else {
-                self.bridge.requestPreviewAccess()
-            }
+            self.state.update { $0.summoned(summon) }
+            guard self.state.visit.visible else { return }
+            await self.state.measurePreviews()
+            guard self.state.visit.visible else { return }
             self.state.following = true
             self.window?.contentView = nil
             self.window?.orderOut(nil)
@@ -82,26 +61,17 @@ final class OverlayWindowManager {
             let window = self.makeWindow(for: screen, hidden: true)
             self.window = window
             Task { [weak self] in
-                if self?.bridge.canCapturePreviews == true { try? await Task.sleep(for: Self.revealAfter) }
-                guard let self, self.requestedVisible, self.window === window else { return }
+                try? await Task.sleep(for: Self.revealAfter)
+                guard let self, self.state.visit.visible, self.window === window else { return }
                 window.reveal()
             }
-            await self.state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor,
-                                                                                     workspaces: self.state.model.workspaces.count, strip: self.state.strip != nil))
+            await self.capture(on: screen)
         }
     }
 
-    private func carryOut(_ action: AppSummon) -> Bool {
-        switch action {
-        case .pick:
-            return true
-        case .focus(let windowId):
-            state.send(.action(.focusWindow(windowId)))
-        case .launch(let ref):
-            hide(restoreFocus: false)
-            launch(ref)
-        }
-        return false
+    private func capture(on screen: NSScreen) async {
+        await state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor,
+                                                                           workspaces: state.model.workspaces.count, strip: state.strip != nil))
     }
 
     private func targetScreen() -> NSScreen {
@@ -111,7 +81,7 @@ final class OverlayWindowManager {
     }
 
     func rebuild() {
-        guard requestedVisible else { return }
+        guard state.visit.visible else { return }
         window?.contentView = nil
         window?.orderOut(nil)
         window = makeWindow(for: targetScreen(), hidden: false)
@@ -126,24 +96,9 @@ final class OverlayWindowManager {
         }
         open.terminationHandler = { process in
             guard process.terminationStatus != 0 else { return }
-            Task { @MainActor [weak self] in
-                guard let self, !self.requestedVisible else { return }
-                self.requestedVisible = true
-                self.state.missingApp = ref
-                self.rebuild()
-            }
+            Task { @MainActor [weak self] in self?.state.update { $0.launchFailed(ref) } }
         }
         try? open.run()
-    }
-
-    func toggleVisibility(_ summon: Summon = .map) {
-        guard requestedVisible else { return show(summon) }
-        guard !loading else { return }
-        switch summon.again(stripApp: state.strip?.app, among: state.model.workspaces.flatMap(\.windows)) {
-        case .close: hide(restoreFocus: true)
-        case .step: _ = state.handle(.move(.window(1)))
-        case .summon(let ref): _ = carryOut(state.summonApp(ref))
-        }
     }
 
     private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
@@ -156,17 +111,17 @@ final class OverlayWindowManager {
         })
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
-        window.onDismiss = { [weak self] in self?.hide(restoreFocus: true) }
-        window.onQuitApp = { [weak self] in self?.quitRingedApp() }
-        window.onCloseWindow = { [weak self] in self?.closeRingedWindow() }
-        window.onKey = { [weak self] in self?.handleKey($0) ?? false }
+        window.onDismiss = { [weak self] in self?.state.update { $0.hide(restoreFocus: true) } }
+        window.onQuitApp = { [weak self] in self?.state.update { $0.quitRinged() } }
+        window.onCloseWindow = { [weak self] in self?.state.update { $0.closeRinged() } }
+        window.onKey = { [weak self] in self?.state.handle($0) ?? false }
         state.screen = (screen.frame.size, screenFrames)
         let root = OverviewRoot(
             state: state,
             panel: AeroControlPanel(state: state),
             theme: settings.theme,
             motion: motion,
-            onDismiss: { [weak self] in self?.hide(restoreFocus: true) }
+            onDismiss: { [weak self] in self?.state.update { $0.hide(restoreFocus: true) } }
         )
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []

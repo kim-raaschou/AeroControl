@@ -38,7 +38,7 @@ struct AeroControlFilterPill: View {
                 .padding(.horizontal, 6)
                 .overlay(Capsule().strokeBorder(look.palette.badgeText.opacity(0.4), lineWidth: 1))
                 .contentShape(Capsule())
-                .onTapGesture { state.showingHelp.toggle() }
+                .onTapGesture { state.handle(.help) }
                 .help("⌘/ — the keys")
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))

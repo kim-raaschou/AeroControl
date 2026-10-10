@@ -2,8 +2,7 @@ import Foundation
 import Testing
 @testable import Common
 
-// Type-to-filter, the pure half: which windows a query picks out, and what a keystroke does
-// to the query. Everything AppKit and SwiftUI do with the answers is a thin shell over these.
+// Type-to-filter, the pure half: which windows a query picks out, and what a key names.
 
 private func window(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
     WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", title: title)
@@ -83,7 +82,6 @@ struct OverviewMatchingTests {
         ])
         let matches = spread.matching("teams")
         #expect(matches.map(\.window.windowId) == [1, 2, 3, 4])
-        #expect(spread.workspaces(holding: matches).map { $0.windows.map(\.windowId) } == [[1, 2], [3, 4]])
     }
 }
 
@@ -94,82 +92,6 @@ struct FilterKeyNamesTests {
         #expect(String(FilterKey.windowKeys) == "123456789abcdef")
         #expect(FilterKey.workspaceNamed("4") == "4" && FilterKey.workspaceNamed("0") == "10")
         #expect(FilterKey.workspaceNamed("\u{F703}") == nil && FilterKey.workspaceNamed("ab") == nil)
-    }
-}
-
-@Suite("the filtered grid")
-struct FilteredWorkspacesTests {
-    private func grid(_ query: String) -> [(String, [Int])] {
-        model.workspaces(holding: model.matching(query))
-            .map { ($0.name, $0.windows.map(\.windowId)) }
-    }
-
-    @Test("a workspace kept for its matches is the same workspace: its screen, its layout, its display")
-    func keepsTheWorkspace() {
-        let far = WorkspaceInfo(name: "9", windows: [window(1, "Teams"), window(2, "Mail")], monitorId: 2, monitorName: "BenQ", screenIndex: 2, rootLayout: "v_tiles")
-        let kept = OverviewModel(workspaces: [far]).workspaces(holding: [ParsedWindow(window: window(1, "Teams"), workspace: "9")])
-        #expect(kept == [far.with(windows: [window(1, "Teams")])])
-        #expect(kept.first?.screenIndex == 2 && kept.first?.rootLayout == "v_tiles" && kept.first?.monitorName == "BenQ")
-    }
-
-    @Test("the marking's windows: a strip's app's, or every one for the map's or none")
-    func windowsOfMarking() {
-        let model = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [window(1, "Teams"), window(2, "Mail")])])
-        #expect(model.windows(of: nil).map(\.window.windowId) == [1, 2])
-        #expect(model.windows(of: Strip(app: nil, marked: 2, centre: nil)).map(\.window.windowId) == [1, 2])
-        #expect(model.windows(of: Strip(app: "com.Mail", marked: nil, centre: nil)).map(\.window.windowId) == [2])
-        #expect(model.window(2)?.appName == "Mail" && model.window(9) == nil)
-    }
-
-    @Test("a workspace with no match is gone, and the rest keep only their matches")
-    func dropsAndTrims() {
-        let teams = grid("Teams")
-        #expect(teams.map(\.0) == ["1"])                 // workspace 2 holds no Teams window
-        #expect(teams.map(\.1) == [[1, 2]])
-    }
-
-    @Test("no match is no grid: the caller draws the whole map rather than an empty screen", arguments: [
-        "zzz", "", "c",                                  // a miss, the filter off, below the threshold
-    ])
-    func missDrawsNothing(query: String) {
-        #expect(grid(query).isEmpty)
-    }
-}
-
-@Suite("filterKeyAction")
-struct FilterKeyActionTests {
-    /// The two Teams windows: what most rows resolve Enter against.
-    private var two: [ParsedWindow] { model.matching("Teams") }
-
-    private func action(_ query: String, _ key: FilterKey, ring: Int?? = nil) -> FilterKeyAction {
-        filterKeyAction(query: query, ring: ring ?? two[0].window.windowId, key: key)
-    }
-
-    @Test("what a keystroke does to the query, against two matches", arguments: [
-        ("Tea", FilterKey.character("m"), FilterKeyAction.setQuery("Team")),
-        ("", .character("T"), .setQuery("T")),
-        ("Team", .backspace, .setQuery("Tea")),
-        ("", .backspace, .none),                         // not ours
-        ("Team", .escape, .setQuery("")),                // clear first…
-        ("", .escape, .none),                            // …then the window dismisses
-        ("code", .character("2"), .setQuery("code2")),   // a digit is text: nothing on screen answers to a key
-        ("x", .character("٣"), .setQuery("x٣")),
-        ("code", .commandKey(2), .none),                 // ⌘2 is the strip's; the map leaves it be
-        ("", .character(" "), .none),                    // a query cannot start with a space…
-        ("cafe", .character(" "), .setQuery("cafe ")),   // …but can hold one
-    ])
-    func keys(query: String, key: FilterKey, expected: FilterKeyAction) {
-        #expect(action(query, key) == expected)
-    }
-
-    /// Nothing walks the map: the ring is AeroSpace's focus, or the first match while typing,
-    /// and Enter picks whichever it is on.
-    @Test("Enter picks the window under the ring, and nothing when there is none; the map does not answer to the strip's keys")
-    func picks() {
-        #expect(action("Teams", .enter) == .focus(windowId: two[0].window.windowId))
-        #expect(action("", .enter, ring: .some(7)) == .focus(windowId: 7))         // no query: AeroSpace's focused window
-        #expect(action("zzz", .enter, ring: .some(nil)) == .none)                 // nothing focused, nothing matched
-        for key in [FilterKey.move(.window(1)), .move(.window(-1)), .commandKey(1), .move(.row(1)), .move(.workspace(1)), .moveToWorkspace("2")] { #expect(action("Teams", key) == .none) }
     }
 }
 
