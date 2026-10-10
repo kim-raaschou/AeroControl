@@ -9,42 +9,36 @@ public struct AeroControlPanel: View {
     public init(state: OverviewStore) { self.state = state }
 
     public var body: some View {
+        let scene = state.scene
         return ZStack {
-            content
-            if state.showingHelp { AeroControlKeyHelp() }
+            VStack(spacing: AeroControlLayout.pillGap) {
+                switch scene.body {
+                case .error(let message): errorView(message)
+                case .nothing: EmptyView()
+                case .strip:
+                    AeroControlAppStrip(scene: scene, tiles: tiles)
+                        .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
+                case .map: grid(scene)
+                }
+                AeroControlFilterPill(lane: scene.lane)
+            }
+            if scene.help { AeroControlKeyHelp(strip: scene.body == .strip) }
         }
         .fixedSize()
         .environment(state)
     }
 
-    private var content: some View {
-        VStack(spacing: AeroControlLayout.pillGap) {
-            if let errorMsg = state.error {
-                errorView(errorMsg)
-            } else if state.model.workspaces.isEmpty || state.missingApp != nil {
-                EmptyView()
-            } else if state.strip != nil, !state.stripWindows.isEmpty {
-                AeroControlAppStrip(tiles: tiles)
-                    .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
-            } else {
-                grid
-            }
-            AeroControlFilterPill(matchCount: state.filterMatches.count)
-        }
-    }
-
-    private var grid: some View {
-        let shown = state.shown, filtering = state.filtering, usable = state.usable
-        return ZStack(alignment: .topLeading) {
-            ForEach(zip(shown, state.cards).map { $0 }, id: \.0.name) { workspace, card in
-                AeroControlWorkspaceCard(workspace: workspace, card: card, filtering: filtering, tiles: tiles)
+    private func grid(_ scene: OverviewScene) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(scene.cards, id: \.workspace.name) { card in
+                AeroControlWorkspaceCard(card: card, tiles: tiles)
                     .offset(x: card.frame.minX, y: card.frame.minY)
                     .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
             }
         }
-        .frame(width: usable.width, height: usable.height, alignment: .topLeading)
+        .frame(width: scene.size.width, height: scene.size.height, alignment: .topLeading)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        .animation(.easeInOut(duration: 0.15 * look.motion), value: shown)
+        .animation(.easeInOut(duration: 0.15 * look.motion), value: scene.cards.map(\.workspace))
     }
 
     private func errorView(_ message: String) -> some View {

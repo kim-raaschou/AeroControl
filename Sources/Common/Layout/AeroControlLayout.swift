@@ -17,6 +17,7 @@ public enum AeroControlLayout {
     public static let captionTitleHeight: CGFloat = 32
     public static let captionGap: CGFloat = 6
     public static let captionLane: CGFloat = captionTitleHeight + captionGap
+    public static let minPictureHeight: CGFloat = 92
 
     public static func screenRatio(for available: CGSize) -> CGFloat {
         available.height > 0 ? available.width / available.height : 1.5

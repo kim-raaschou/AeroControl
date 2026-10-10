@@ -4,9 +4,10 @@ import SwiftUI
 struct AeroControlKeyHelp: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
+    let strip: Bool
 
     var body: some View {
-        let rows = state.strip != nil ? KeyHelp.strip : KeyHelp.map
+        let rows = strip ? KeyHelp.strip : KeyHelp.map
         Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
             ForEach(rows, id: \.keys) { row in
                 GridRow {

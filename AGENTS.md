@@ -99,9 +99,10 @@ fails on any violation.
   its generation, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) owns the
   model, runs the reducer, carries out its effects through the sync, holds the visit — the
   marking (one `Strip` for the map and the strip), the query, the help — and derives the layout
-  from the screen the host gives it (`shown`, `cards`, `stripLayout`, `drawn`); `PictureStore`,
-  owned by it, keeps the windows' pictures and sizes and talks to the bridge for them; SwiftUI
-  views `AeroControlPanel → WorkspaceCard → AppTile` read the layout and draw it.
+  from the screen the host gives it as one value, `OverviewScene` (in Common: the body, every card
+  and tile with what it wears, the lane, the help); `PictureStore`, owned by it, keeps the windows'
+  pictures and sizes and talks to the bridge for them; SwiftUI views
+  `AeroControlPanel → WorkspaceCard → AppTile` draw the scene and nothing else of the store's state.
 - `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
   `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
 - Do **not** merge the reducer into the store. The store's size is the effects it owns.

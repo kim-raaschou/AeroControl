@@ -22,16 +22,11 @@ public class OverviewStore {
     public private(set) var marking: Strip?
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
     public var screen: (available: CGSize, frames: [Int: CGRect]) = (.zero, [:])
-    public var usable: CGSize { AeroControlLayout.usable(screen.available) }
-
-    public var filtering: Bool { strip == nil && !filtered.isEmpty }
-    public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? filtered : model.workspaces }
-    public var cards: [AeroControlLayout.MapCard] {
-        AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering)
+    public var scene: OverviewScene {
+        OverviewScene(model: model, marking: marking, query: filter, matches: filterMatches, missingApp: missingApp, help: showingHelp,
+                      error: error, available: screen.available, screens: screen.frames, sizes: pictures.sizes)
     }
-    public var stripLayout: AeroControlLayout.StripLayout { AeroControlLayout.stripLayout(groups: stripWorkspaces, bundleId: strip?.app ?? "", sizes: pictures.sizes,
-        screens: screen.frames, fallbackScreen: CGRect(origin: .zero, size: screen.available), viewWidth: usable.width, panelHeight: usable.height) }
-    var drawn: [GridWalk.Card] { strip != nil ? stripLayout.grid : cards.map(\.grid) }
+    var drawn: [GridWalk.Card] { scene.grid }
 
     public var missingApp: AppRef?
     public var showingHelp = false
@@ -72,8 +67,7 @@ public class OverviewStore {
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
-    public private(set) var filterMatches: [ParsedWindow] = [] { didSet { filtered = model.workspaces(holding: filterMatches) } }
-    private var filtered: [WorkspaceInfo] = []
+    public private(set) var filterMatches: [ParsedWindow] = []
 
     public var ringWindowId: Int? { marking?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId }
 

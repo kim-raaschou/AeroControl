@@ -11,24 +11,20 @@ struct AeroControlFilterPill: View {
 
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
-    let matchCount: Int
-
-    private var query: String { state.filter }
+    let lane: OverviewScene.Lane
 
     private var app: StripApp? {
-        if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
-        if let strip = state.strip, let first = state.stripWindows.first?.window {
-            return StripApp(name: first.appName, icon: state.pictures.icon(for: strip.app ?? ""),
-                            summary: AppStripModel.summary(state.stripWindows, marked: strip.marked), keys: Self.mapKeys)
+        switch lane {
+        case .notice(let name, let reason): StripApp(name: name, icon: nil, summary: reason, keys: "esc  close")
+        case .app(let name, let bundleId, let summary): StripApp(name: name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: Self.mapKeys)
+        case .keys, .query: nil
         }
-        guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
-        return StripApp(name: ringed.window.appName, icon: state.pictures.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
     private static let mapKeys = "←→↑↓ move · ⏎ focus"
 
     var body: some View {
         Group {
-            if let app { appPill(app) } else if query.isEmpty { hint } else { pill }
+            if let app { appPill(app) } else if case .query(let query, let miss) = lane { pill(query, miss: miss) } else { hint }
         }
         .frame(height: AeroControlLayout.pillLane)
     }
@@ -70,11 +66,11 @@ struct AeroControlFilterPill: View {
 
     private static let titleWidth: CGFloat = 560
 
-    private var pill: some View {
+    private func pill(_ query: String, miss: Bool) -> some View {
         HStack(spacing: 8) {
             Text(query)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-            if matchCount == 0, query.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength {
+            if miss {
                 Text("no match")
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .opacity(0.75)

@@ -2,10 +2,9 @@ import SwiftUI
 import Common
 
 struct AeroControlWorkspaceCard: View {
-    let workspace: WorkspaceInfo
-    let card: AeroControlLayout.MapCard
-    let filtering: Bool
+    let card: OverviewScene.Card
     let tiles: Namespace.ID
+    private var workspace: WorkspaceInfo { card.workspace }
     private var size: CGSize { card.frame.size }
 
     @State private var isDropTarget = false
@@ -15,11 +14,11 @@ struct AeroControlWorkspaceCard: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
-        AeroControlCardFace(workspace: workspace, size: size) {
+        AeroControlCardFace(card: card) {
             grid()
         }
         .overlay(dropTargetHint.allowsHitTesting(false))
-        .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(state.markedWorkspace == workspace.name ? 1 : 0))
+        .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(card.ringed ? 1 : 0))
         .contentShape(shape)
         .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
@@ -48,17 +47,14 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private func grid() -> some View {
-        let windows = workspace.windows
         let inner = AeroControlLayout.inner(of: size)
         return ZStack(alignment: .topLeading) {
-            ForEach(windows, id: \.windowId) { window in
-                let frame = card.frames[window.windowId] ?? .zero
-                let ghost = card.ghosts.contains(window.windowId)
-                AeroControlAppTile(window: window, size: frame.size, filtering: filtering, tiles: tiles)
-                    .onHover { if $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
-                    .offset(x: frame.minX, y: frame.minY)
-                    .opacity(ghost ? 0.7 : 1)
-                    .zIndex(AeroControlLayout.stacking(windowId: window.windowId, focused: state.model.focusedWindowId, ghosts: card.ghosts))
+            ForEach(card.tiles, id: \.window.windowId) { tile in
+                AeroControlAppTile(tile: tile, tiles: tiles)
+                    .onHover { if $0 { state.point(tile.window.windowId, at: NSEvent.mouseLocation) } }
+                    .offset(x: tile.frame.minX, y: tile.frame.minY)
+                    .opacity(tile.ghost ? 0.7 : 1)
+                    .zIndex(tile.stacking)
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
@@ -75,15 +71,16 @@ struct AeroControlWorkspaceCard: View {
 }
 
 struct AeroControlCardFace<Content: View>: View {
-    let workspace: WorkspaceInfo
-    let size: CGSize
+    let card: OverviewScene.Card
     @ViewBuilder let content: () -> Content
 
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
 
-    private var isFocused: Bool { workspace.name == state.model.focusedWorkspace }
-    private var monitorName: String? { state.model.spansMonitors ? workspace.monitorShortName : nil }
+    private var workspace: WorkspaceInfo { card.workspace }
+    private var size: CGSize { card.frame.size }
+    private var isFocused: Bool { card.focused }
+    private var monitorName: String? { card.monitor }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
@@ -109,7 +106,7 @@ struct AeroControlCardFace<Content: View>: View {
     private var header: some View {
         HStack(spacing: 6) {
             badge
-            if let monitorName, !monitorName.isEmpty {
+            if let monitorName {
                 Label(monitorName, systemImage: "display")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(look.palette.badgeText)

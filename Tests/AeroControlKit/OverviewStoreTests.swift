@@ -198,12 +198,12 @@ struct OverviewStoreTests {
     @Test("the store lays the map out itself: a card per workspace shown, a query narrowing them to the ones holding a match; the strip its own cards")
     func laysItselfOut() async {
         let (_, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (2, "1"))
-        #expect(store.shown.map(\.name) == ["1", "2", "3"] && !store.filtering && store.cards.map(\.workspace) == ["1", "2", "3"])
+        #expect(store.scene.body == .map && store.scene.cards.map(\.workspace.name) == ["1", "2", "3"])
         store.filter = "app"                                                            // every window's app
-        #expect(store.shown.map(\.name) == ["1", "3"] && store.filtering && store.cards.count == 2 && store.drawn.count == 2)
-        store.filter = "zzz"; #expect(store.shown.count == 3 && !store.filtering)       // a miss: the whole map stands
+        #expect(store.scene.cards.map(\.workspace.name) == ["1", "3"] && store.scene.cards.flatMap(\.tiles).allSatisfy(\.captioned) && store.drawn.count == 2)
+        store.filter = "zzz"; #expect(store.scene.cards.count == 3 && store.scene.lane == .query("zzz", miss: true))   // a miss: the whole map stands
         let (_, strip) = await stripOnTeams()
-        #expect(strip.shown.map(\.name) == ["1", "2", "3"] && strip.stripLayout.cards.count == 3 && strip.drawn.count == 3)
+        #expect(strip.scene.body == .strip && strip.scene.cards.map(\.workspace.name) == ["1", "2", "3"] && strip.drawn.count == 3)
     }
 
     @Test("the filter is the user's alone: no reload touches it, and it asks AeroSpace nothing")
@@ -259,7 +259,7 @@ struct OverviewStoreTests {
     @Test("on the map ← and → walk a marking from AeroSpace's focus through a workspace's windows as drawn and on to the next, an empty one a stop where Enter switches to it; AeroSpace moving its focus moves the outline, not the marking; a query starts again")
     func arrowsWalkTheMap() async {
         let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (2, "1"))
-        #expect(store.cards.count == 3 && store.drawn.map { $0.windows.keys.sorted() } == [[1, 2], [WorkspaceInfo(name: "2", windows: []).standIn], [3]])   // as the map lays it out
+        #expect(store.scene.cards.count == 3 && store.drawn.map { $0.windows.keys.sorted() } == [[1, 2], [WorkspaceInfo(name: "2", windows: []).standIn], [3]])   // as the map lays it out
         #expect(store.handle(.move(.window(1))) == .handled && store.markedWorkspace == "2")    // the empty one
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 3)
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 1)  // round

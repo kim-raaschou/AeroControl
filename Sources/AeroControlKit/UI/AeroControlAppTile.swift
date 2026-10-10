@@ -5,25 +5,20 @@ struct AeroControlAppTile: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
 
-    let window: WindowInfo
-    let size: CGSize
-    let filtering: Bool
+    let tile: OverviewScene.Tile
     let tiles: Namespace.ID
-    var key: (label: String, marked: Bool)?
-    var faded = false
+    private var window: WindowInfo { tile.window }
+    private var size: CGSize { tile.frame.size }
+    private var key: (label: String, marked: Bool)? { tile.key.map { ($0, tile.keyMarked) } }
+    private var faded: Bool { tile.faded }
 
     @State private var isHovering = false
     @Environment(\.displayScale) private var displayScale
 
     private var preview: NSImage? { state.pictures.previews[window.windowId] }
-    private var isFocused: Bool { window.windowId == state.ringWindowId }
-    private var isOrigin: Bool { !isFocused && window.windowId == state.model.focusedWindowId }
-
-    private var showsCaption: Bool {
-        (filtering || state.pictures.sizes[window.windowId] == nil) && size.height >= AeroControlLayout.captionLane + Self.minPictureHeight
-    }
-
-    private static let minPictureHeight: CGFloat = 92
+    private var isFocused: Bool { tile.ringed }
+    private var isOrigin: Bool { tile.origin }
+    private var showsCaption: Bool { tile.captioned }
 
     private func hoverChanged(_ hovering: Bool) { isHovering = hovering }
     private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
@@ -38,7 +33,7 @@ struct AeroControlAppTile: View {
     var body: some View {
         if look.surface == .map {
             face.draggable(OverviewDragPayload.window(id: window.windowId)) {
-                tile
+                stack
                     .frame(width: contentSize.width, height: contentSize.height)
                     .onAppear { hoverChanged(false) }
             }
@@ -88,7 +83,7 @@ struct AeroControlAppTile: View {
     }
 
     private var artwork: some View {
-        tile
+        stack
             .frame(width: contentSize.width, height: contentSize.height)
             .overlay { if faded { outline } }
             .saturation(faded ? 0 : 1)
@@ -100,7 +95,7 @@ struct AeroControlAppTile: View {
             .overlay(alignment: .topLeading) { stateBadge }
     }
 
-    private var tile: some View {
+    private var stack: some View {
         ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in

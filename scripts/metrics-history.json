@@ -2167,5 +2167,14 @@
     "complexity": 940,
     "prodComplexity": 518,
     "files": 69
+  },
+  {
+    "timestamp": "2026-10-10T13:36:02+02:00",
+    "commit": "dba884b",
+    "subject": "AerospaceSync: everything that talks to AeroSpace leaves the store",
+    "code": 5658,
+    "complexity": 968,
+    "prodComplexity": 542,
+    "files": 71
   }
 ]
