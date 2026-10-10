@@ -71,7 +71,7 @@ struct AeroControlAppTile: View {
     /// On the map a tile is dragged onto another card to move its window; the strip has no card to
     /// drop on, so there it is not dragged at all.
     var body: some View {
-        if state.strip == nil {
+        if look.surface == .map {
             face.draggable(OverviewDragPayload.window(id: window.windowId)) {
                 tile
                     .frame(width: contentSize.width, height: contentSize.height)
@@ -222,7 +222,7 @@ struct AeroControlAppTile: View {
 
     /// On the map only: the strip is for choosing, and a window closed there moved AeroSpace's focus.
     @ViewBuilder private var closeButton: some View {
-        if isHovering, state.strip == nil {
+        if isHovering, look.surface == .map {
             let diameter: CGFloat = 18
             Button { state.send(.action(.closeWindow(window.windowId))) } label: {
                 Image(systemName: "xmark")

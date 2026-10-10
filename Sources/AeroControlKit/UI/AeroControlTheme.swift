@@ -129,13 +129,20 @@ extension Color {
 
 /// What every overview view draws with, resolved once at the root: the palette for the theme
 /// and the window's appearance, and the animation scale from settings, by which every duration
-/// is multiplied, so 0 is instant and 2 is leisurely. (A plain `EnvironmentKey`: SwiftUI's
-/// `@Entry` macro needs a plugin the Command Line Tools toolchain does not ship.)
+/// is multiplied, so 0 is instant and 2 is leisurely; and, set by the panel, where it is drawn.
+/// (A plain `EnvironmentKey`: SwiftUI's `@Entry` macro needs a plugin the Command Line Tools
+/// toolchain does not ship.)
 public struct AeroLook: Sendable {
     public let palette: AeroControlPalette
     public let motion: Double
-    public init(palette: AeroControlPalette, motion: Double) { self.palette = palette; self.motion = motion }
+    public let surface: AeroSurface
+    public init(palette: AeroControlPalette, motion: Double, surface: AeroSurface = .map) { (self.palette, self.motion, self.surface) = (palette, motion, surface) }
 }
+
+/// Where a card or a tile is drawn: on the map, where a tile is dragged and closed and a card
+/// lies on the dimmed desktop; or in the strip, which only chooses, over the bare desktop. The
+/// leaves draw by this, not by asking the store what is up.
+public enum AeroSurface: Sendable { case map, strip }
 
 private struct AeroLookKey: EnvironmentKey {
     static let defaultValue = AeroLook(palette: AeroControlTheme.system.palette(for: .dark), motion: 1)

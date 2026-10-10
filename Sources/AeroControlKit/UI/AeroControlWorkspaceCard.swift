@@ -120,7 +120,7 @@ struct AeroControlCardFace<Content: View>: View {
     /// Over the bare desktop, in the strip, it lies on a thick frost as ⌘Tab's panel does, so nothing behind reads through.
     private func cardFill(_ shape: RoundedRectangle) -> some View {
         ZStack {
-            if state.strip != nil { shape.fill(.ultraThickMaterial) }
+            if look.surface == .strip { shape.fill(.ultraThickMaterial) }
             if let fill = look.palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
         }
     }

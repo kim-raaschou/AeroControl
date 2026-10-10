@@ -31,6 +31,7 @@ public struct AeroControlPanel: View {
                 EmptyView()
             } else if state.strip != nil, !state.stripWindows.isEmpty {
                 AeroControlAppStrip(usable: usable, screens: screenFrames, fallbackScreen: CGRect(origin: .zero, size: available))
+                    .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
             } else {
                 grid(matches)
             }
