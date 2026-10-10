@@ -52,7 +52,8 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
         let from = source == target ? nil : state.workspaces.first { $0.name == source }
         guard let from, !from.windows.isEmpty else { return (state, []) }
         let empty = state.workspaces.first { $0.name == target }?.windows.isEmpty == true && !from.rootLayout.isEmpty
-        let layout: [AeroControlAction] = empty ? from.windows.first { !$0.isFloating }.map { [.focusWindow($0.windowId), .setLayout(from.rootLayout)] } ?? [] : []
+        let tiled = empty ? from.windows.first(where: \.isTiled) : nil
+        let layout = tiled.map { [AeroControlAction.focusWindow($0.windowId), .setLayout(from.rootLayout)] } ?? []
         return (state, [.run(from.windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)] + layout, thenRead: true)])
     case .action(let action):
         return (state, [.run([action], thenRead: !action.isFocus)])

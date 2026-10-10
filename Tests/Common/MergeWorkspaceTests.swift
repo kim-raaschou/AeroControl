@@ -50,6 +50,12 @@ struct MergeWorkspaceTests {
             .moveWindowQuietly(windowId: 9, toWorkspace: "3"), .moveWindowQuietly(windowId: 10, toWorkspace: "3"), .moveWindowQuietly(windowId: 11, toWorkspace: "3"),
             .focusWorkspace("3"), .focusWindow(10), .setLayout("h_accordion"),
         ], thenRead: true)])
+        let minimized = WindowInfo(windowId: 8, appName: "A", bundleId: "a", isHidden: true), full = WindowInfo(windowId: 7, appName: "A", bundleId: "a", isFullscreen: true)
+        let mixed = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [minimized, full, float, window(10)], rootLayout: "h_accordion"), ws("3")])
+        #expect(updateOverview(mixed, .action(.mergeWorkspace(source: "1", into: "3"))).1 == [.run([
+            .moveWindowQuietly(windowId: 8, toWorkspace: "3"), .moveWindowQuietly(windowId: 7, toWorkspace: "3"), .moveWindowQuietly(windowId: 9, toWorkspace: "3"), .moveWindowQuietly(windowId: 10, toWorkspace: "3"),
+            .focusWorkspace("3"), .focusWindow(10), .setLayout("h_accordion"),
+        ], thenRead: true)])   // the layout is set on a tiled window: a minimized or fullscreen one has a container of its own
         let floats = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [float], rootLayout: "h_accordion"), ws("3")])
         #expect(updateOverview(floats, .action(.mergeWorkspace(source: "1", into: "3"))).1 == [.run([.moveWindowQuietly(windowId: 9, toWorkspace: "3"), .focusWorkspace("3")], thenRead: true)])
         #expect(updateOverview(stack, .action(.mergeWorkspace(source: "1", into: "2"))).1 == [.run([

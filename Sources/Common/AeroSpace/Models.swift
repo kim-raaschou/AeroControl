@@ -22,6 +22,8 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.title = title
     }
 
+    public var isTiled: Bool { !isFloating && !isFullscreen && !isHidden }
+
     public var caption: String {
         let text = title.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return appName }

@@ -41,8 +41,8 @@ public enum AeroControlLayout {
     public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let windows = workspace.windows
-        let ghosts = windows.filter { $0.isFloating || $0.isFullscreen || $0.isHidden }.map(\.windowId)
-        let tiled = windows.filter { !ghosts.contains($0.windowId) }
+        let ghosts = windows.filter { !$0.isTiled }.map(\.windowId)
+        let tiled = windows.filter(\.isTiled)
         let rects = tiled.compactMap(\.layoutRect)
         guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
               !rects.indices.contains(where: { i in rects.indices.contains { j in
