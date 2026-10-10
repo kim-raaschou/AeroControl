@@ -100,6 +100,7 @@ class Type:
         self.cx = 0
         self.functions: list = []
         self.body = ""
+        self.conforms: list[str] = []
 
     @property
     def stored(self) -> int:
@@ -122,6 +123,9 @@ def parse_file(path: str, text: str) -> list[Type]:
             m = TYPE_RE.match(line)
             if m and "{" in line:
                 current = Type(m.group("name"), m.group("kind"), (m.group("access") or "internal").strip(), path, i)
+                # What it conforms to or inherits: the names after the colon, up to the brace.
+                after = line[m.end():line.index("{")]
+                current.conforms = re.findall(r"\b([A-Z]\w*)\b", after.split(":", 1)[1]) if ":" in after else []
                 types.append(current)
         elif depth == 1 and current:
             m = MEMBER_RE.match(line)
@@ -150,6 +154,7 @@ def merge_extensions(types: list[Type]) -> dict[str, Type]:
         if t.name in by_name:
             base = by_name[t.name]
             base.members += t.members
+            base.conforms += [c for c in t.conforms if c not in base.conforms]
             base.body += "\n" + t.body
             base.functions += t.functions
             base.nloc += t.nloc
@@ -258,7 +263,15 @@ def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -
             out.append("    }")
         out.append("  }")
     seen = set()
+    # A conformance is drawn whatever its count: implementing a protocol of ours is the relation that matters.
+    for t in by_name.values():
+        for c in t.conforms:
+            if c in by_name and c != t.name:
+                out.append(f"  {t.name} ..|> {c} : conforms")
+                seen.add((t.name, c))
     for (a, b), n in sorted(edges.items(), key=lambda e: -e[1]):
+        if (a, b) in seen:
+            continue
         up = RANK.get(by_name[b].layer, 0) > RANK.get(by_name[a].layer, 0)
         if (b, a) in edges and (b, a) not in seen:
             out.append(f"  {a} <--> {b} : {n} / {edges[(b, a)]} ⟲")
