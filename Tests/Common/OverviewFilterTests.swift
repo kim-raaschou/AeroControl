@@ -118,6 +118,7 @@ struct FilteredWorkspacesTests {
         #expect(model.windows(of: nil).map(\.window.windowId) == [1, 2])
         #expect(model.windows(of: Strip(app: nil, marked: 2, centre: nil)).map(\.window.windowId) == [1, 2])
         #expect(model.windows(of: Strip(app: "com.Mail", marked: nil, centre: nil)).map(\.window.windowId) == [2])
+        #expect(model.window(2)?.appName == "Mail" && model.window(9) == nil)
     }
 
     @Test("a workspace with no match is gone, and the rest keep only their matches")

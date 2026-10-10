@@ -31,9 +31,9 @@ public extension OverviewModel {
         windowsInGridOrder.filter { marking?.owns($0.window) ?? true }
     }
 
-    var focusedWindow: WindowInfo? {
-        workspaces.lazy.flatMap(\.windows).first { $0.windowId == focusedWindowId }
-    }
+    func window(_ id: Int) -> WindowInfo? { workspaces.lazy.flatMap(\.windows).first { $0.windowId == id } }
+
+    var focusedWindow: WindowInfo? { window(focusedWindowId) }
 
     func workspaces(holding matches: [ParsedWindow]) -> [WorkspaceInfo] {
         let ids = Set(matches.map(\.window.windowId))

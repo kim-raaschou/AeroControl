@@ -29,18 +29,17 @@ final class OverlayWindowManager {
             self.state.endVisit()
         }
         if let window { window.dismiss(then: ended) } else { ended() }
-        guard restoreFocus, let app = owner(ofWindow: state.model.focusedWindowId) else { return }
+        guard restoreFocus, let app = owner(of: state.model.focusedWindow) else { return }
         app.activate()
     }
 
-    private func owner(ofWindow windowId: Int) -> NSRunningApplication? {
-        let window = state.model.workspaces.flatMap(\.windows).first { $0.windowId == windowId }
+    private func owner(of window: WindowInfo?) -> NSRunningApplication? {
         guard let bundleId = window?.bundleId, bundleId != Bundle.main.bundleIdentifier else { return nil }
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first
     }
 
     private func quitRingedApp() {
-        guard requestedVisible, let target = state.commandTarget, let app = owner(ofWindow: target.windowId) else { return }
+        guard requestedVisible, let app = owner(of: state.commandTarget) else { return }
         app.terminate()
     }
 

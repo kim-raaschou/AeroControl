@@ -94,12 +94,14 @@ fails on any violation.
   (`AerospaceCliParser.swift`, `AerospaceCommands.swift`), the `AerospaceProcessRunner` port. The app
   is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
-  socket protocol; `OverviewStore` (`@MainActor @Observable`) owns the model, runs the
-  reducer, interprets effects, and holds the marking (`marking`, one `Strip` for the map and
-  the strip, `filter`, `filterMatches`, `ringWindowId`); `PictureStore`, owned by it, keeps
-  the windows' pictures and sizes and talks to the bridge for them; SwiftUI views
-  `AeroControlPanel → WorkspaceCard → AppTile` draw from pure layouts (`mapLayout`,
-  `stripLayout`) and hand the store the cards as drawn (`drawn`) for the keys.
+  socket protocol; `AerospaceSync` is everything that talks to AeroSpace through it — the
+  read, the event stream and its reconnect, the commands in order, the debounced refresh and
+  its generation, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) owns the
+  model, runs the reducer, carries out its effects through the sync, holds the visit — the
+  marking (one `Strip` for the map and the strip), the query, the help — and derives the layout
+  from the screen the host gives it (`shown`, `cards`, `stripLayout`, `drawn`); `PictureStore`,
+  owned by it, keeps the windows' pictures and sizes and talks to the bridge for them; SwiftUI
+  views `AeroControlPanel → WorkspaceCard → AppTile` read the layout and draw it.
 - `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (summon / hide),
   `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
 - Do **not** merge the reducer into the store. The store's size is the effects it owns.

@@ -13,7 +13,7 @@ public class OverviewStore {
         }
     }
 
-    let runner: AerospaceProcessRunner
+    private let sync: AerospaceSync
     public let pictures: PictureStore
     public private(set) var error: String?
     public var filter: String = "" {
@@ -38,9 +38,7 @@ public class OverviewStore {
 
     public func endVisit() {
         following = false
-        refreshGeneration &+= 1
-        refreshTask?.cancel()
-        refreshTask = nil
+        sync.stop()
         filter = ""
         marking = nil
         missingApp = nil
@@ -52,9 +50,7 @@ public class OverviewStore {
     public private(set) var recentWindows: [Int] = []
 
     public func noteFocus(_ windowId: Int) {
-        recentWindows.removeAll { $0 == windowId }
-        recentWindows.insert(windowId, at: 0)
-        if recentWindows.count > 64 { recentWindows.removeLast() }
+        recentWindows = [windowId] + recentWindows.filter { $0 != windowId }.prefix(63)
     }
 
     public var stripWindows: [ParsedWindow] { strip.map(model.windows(of:)) ?? [] }
@@ -83,32 +79,25 @@ public class OverviewStore {
 
     public var markedWorkspace: String? { marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name } }
 
-    public var commandTarget: WindowInfo? {
-        (missingApp.map { _ in [] } ?? model.workspaces.flatMap(\.windows)).first { $0.windowId == ringWindowId }
-    }
-
-    private var subscribeTask: Task<Void, Never>?
-    private var refreshTask: Task<Void, Never>?
+    public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
 
     public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
-        self.runner = runner
+        self.sync = AerospaceSync(runner: runner)
         self.pictures = PictureStore(bridge: nativeSystem)
     }
 
-    public func reload() async {
-        if let result = await read() { send(.loaded(result)) }
-    }
+    public func reload() async { if let result = landed(await sync.read()) { send(.loaded(result)) } }
 
-    private func read() async -> OverviewResult? {
-        do { let result = try await loadOverview(using: runner); error = nil; return result }
-        catch { self.error = "Load error: \(error.localizedDescription)"; return nil }
+    private func landed(_ read: Result<OverviewResult, Error>) -> OverviewResult? {
+        switch read {
+        case .success(let result): error = nil; return result
+        case .failure(let failure): error = "Load error: \(failure.localizedDescription)"; return nil
+        }
     }
 
     public var following = false
 
-    private var windowIds: [Int] { model.workspaces.flatMap(\.windows).map(\.windowId) }
-
-    public func measurePreviews() async { await pictures.measure(windowIds) }
+    public func measurePreviews() async { await pictures.measure(model.workspaces.flatMap(\.windows).map(\.windowId)) }
 
     public func capturePreviews(maxSize: CGSize) async {
         await pictures.take((strip != nil ? stripWorkspaces : model.workspaces).flatMap { $0.windows.map(\.windowId) },
@@ -147,24 +136,10 @@ public class OverviewStore {
     }
 
     public func startListening() {
-        guard subscribeTask == nil else { return }
-        subscribeTask = Task.detached(priority: .utility) { [self] in
-            var reconnecting = false
-            while !Task.isCancelled {
-                do {
-                    let stream = runner.subscribe(AerospaceCommand.subscribe)
-                    if reconnecting, await following { await reload() }
-                    for try await line in stream {
-                        guard let event = AerospaceEvent.parse(line) else { continue }
-                        if case .focusChanged(let id?, _) = event { await noteFocus(id) }
-                        if await following { await send(.event(event)) }
-                    }
-                } catch {}
-                guard !Task.isCancelled else { return }
-                reconnecting = true
-                try? await Task.sleep(for: .seconds(1))
-            }
-        }
+        sync.listen({ event in
+            if case .focusChanged(let id?, _) = event { self.noteFocus(id) }
+            if self.following { self.send(.event(event)) }
+        }, resumed: { if self.following { await self.reload() } })
     }
 
     public func send(_ input: OverviewInput) {
@@ -184,48 +159,21 @@ public class OverviewStore {
     }
 
     private func run(_ actions: [AeroControlAction], thenRead: Bool) {
-        Task { [weak self] in
-            guard let self else { return }
-            for action in actions {
-                _ = try? await self.runner.run(AerospaceCommand.argv(for: action))
-            }
-            if case .focusWindow(let id) = actions.last { await self.focusAgainIfMissed(id) }
-            if thenRead { self.requestRefresh() }
-        }
+        Task { await sync.run(actions); if thenRead { requestRefresh() } }
     }
-
-    /// WORKAROUND for AeroSpace issue 101, https://github.com/nikitabobko/AeroSpace/issues/101 —
-    /// remove once AeroSpace fixes it. Asked to focus a window of an app that has windows on more
-    /// than one monitor, AeroSpace activates the app, and macOS, as the activation completes, gives
-    /// the keyboard back to the app's last key window, often on the other monitor; AeroSpace
-    /// follows. Asked again once the app is active, the focus holds. So a moment after a focus,
-    /// if AeroSpace's focus is elsewhere, it is asked for once more.
-    private func focusAgainIfMissed(_ windowId: Int) async {
-        try? await Task.sleep(for: .milliseconds(300))
-        if await loadFocusedWindow(using: runner)?.windowId != windowId { _ = try? await runner.run(AerospaceCommand.argv(for: .focusWindow(windowId))) }
-    }
-
-    private var refreshGeneration = 0
 
     private func requestRefresh() {
-        refreshGeneration &+= 1
-        let generation = refreshGeneration
-        refreshTask?.cancel()
-        refreshTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.readAfter)
-            guard let self, !Task.isCancelled, let result = await self.read(), generation == self.refreshGeneration else { return }
+        sync.refresh { read, current in
+            guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
             let pictureGeneration = self.pictures.generation
             let (sizes, fresh) = await self.settled(result)
-            guard !Task.isCancelled, generation == self.refreshGeneration else { return }
-            if let sizes, pictureGeneration == self.pictures.generation {
-                self.pictures.sizes = sizes
-                self.pictures.replace(fresh)
-            }
+            guard current(), let sizes, pictureGeneration == self.pictures.generation else { return }
+            self.pictures.sizes = sizes
+            self.pictures.replace(fresh)
         }
     }
 
-    static let readAfter: Duration = .milliseconds(20)
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
         let shown = result.workspaces.filter { ws in strip.map { ws.windows.contains(where: $0.owns) } ?? true }
         return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)
