@@ -571,6 +571,22 @@ struct OverviewStoreTests {
         #expect(bridge.captured == [[1, 2], [2]] && (store.pictures.previews[2]?.size.height ?? 0) < 40)   // once, 100 × 33
     }
 
+    @Test("a refresh cut off by the next while the windows still settle takes no pictures: the next takes them")
+    func cutOffWhileSettlingTakesNothing() async {
+        let runner = ScriptRunner(), bridge = FakeBridge()
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        let store = await summoned(runner, bridge)
+        store.send(.event(.changed))
+        for width in [400.0, 500.0, 600.0] {                                            // the app on its way
+            try? await Task.sleep(for: .milliseconds(35))
+            bridge.sizes[2] = CGSize(width: width, height: 200)
+            if width == 500 { store.send(.event(.changed)) }                            // AeroSpace's next event, mid-settle
+        }
+        await waitUntil { bridge.captured.count >= 2 }
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(bridge.captured == [[1, 2], [2]])                                       // the cut-off refresh took none
+    }
+
     @Test("a refresh cut off by the next while it takes pictures loses nothing: the next takes them, nothing having been stored")
     func overlappingRefreshesKeepTheirPictures() async {
         let runner = ScriptRunner(), bridge = FakeBridge()

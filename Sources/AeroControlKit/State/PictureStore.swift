@@ -150,6 +150,9 @@ public final class PictureStore {
             if again == sizes { break }
             sizes = again
         }
+        // Cut off by the next refresh: its pictures would be of windows still on their way, and
+        // thrown away by the caller — a merge's windows were taken twice, once halfway.
+        guard !Task.isCancelled else { return (nil, [:]) }
         let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes)
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await bridge.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
