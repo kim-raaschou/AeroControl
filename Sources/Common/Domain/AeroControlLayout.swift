@@ -43,14 +43,6 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The size a window is drawn at, and its picture taken to fit: its slot, where AeroSpace's layout
-    /// put it — the layout is the truth, not what the app did with it, which is a size it passes through,
-    /// or one it refused the slot for — and its own size, as the window server reports it, where it has
-    /// no slot: a float, a fullscreen window, a release AeroSpace. Nil with neither.
-    public static func drawnSize(_ window: WindowInfo, sizes: [Int: CGSize]) -> CGSize? {
-        window.layoutRect?.size ?? sizes[window.windowId]
-    }
-
     /// A card's height that is not pictures: the padding, the badge lane, and the gap
     /// between the badge and the first row of tiles.
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
@@ -257,10 +249,12 @@ public enum AeroControlLayout {
         return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
     }
 
-    /// The windows whose picture no longer fits what they are drawn at (`drawnSize`), and so are taken
-    /// again; one drawn at nothing known is not.
+    /// The windows whose picture no longer fits them, and so are taken again. A picture is of the window
+    /// as it is, whatever its slot — an app that refused the slot keeps its own shape, and a picture of
+    /// it can never be the slot's — so it is the window's own size that says; the slot stands in for a
+    /// window never measured, and one with neither is not stale.
     public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
-        workspaces.flatMap(\.windows).filter { w in drawnSize(w, sizes: sizes).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
+        workspaces.flatMap(\.windows).filter { w in (sizes[w.windowId] ?? w.layoutRect?.size).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
     }
 
     /// A picture fits its window while their shapes agree to 2 %; none fits nothing.

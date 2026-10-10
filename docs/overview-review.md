@@ -115,7 +115,7 @@ moves the marking on, as Cmd-` does.
   eye, krn.overview's 0.15 vanished on a dark card. The window you came from wears the same outline at full strength. A card
   whose layout cannot be read packs only the app's windows. Each card is the map's card (`AeroControlCardFace`).
 - Pictures are taken at one size, a strip card's at its largest (`AeroControlLayout.captureSize`); a tile that draws
-  one larger asks for it again at its size (`OverviewStore.wantPicture`), once. The strip takes only its workspaces'
+  one larger asks for it again at its size (`PictureStore.want`), once. The strip takes only its workspaces'
   windows. A visit's pictures are held back until the capture is in, or 120 ms have passed, then land together;
   closing drops them. A picture taken again fades in over the one it replaces (`FadingPicture`).
 

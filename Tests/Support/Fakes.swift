@@ -93,7 +93,7 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 /// Native bridge a test can drive: icons and preview capture.
 @MainActor
 final class FakeBridge: NativeApiBridge {
-    /// Screen Recording granted? Drives `PictureStore.available`.
+    /// Screen Recording granted?
     var granted = false
     /// Every window-id list the store has asked to capture.
     var captured: [[Int]] = []

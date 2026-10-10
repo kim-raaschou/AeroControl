@@ -136,7 +136,7 @@ public final class PictureStore {
 
     /// The windows' sizes once they stand still, and new pictures of those `shown` whose picture
     /// no longer fits what they are drawn at (`AeroControlLayout.stale`), or that have none: the
-    /// neighbours that widened into a hole, a window that appeared, a hidden workspace's slot that
+    /// neighbours that widened into a hole, a window that appeared, a workspace's slot that
     /// changed, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
     /// off by the next loses nothing. Nil while the overview is hidden: `clear` has dropped the
     /// capture size.

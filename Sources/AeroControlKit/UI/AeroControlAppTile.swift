@@ -26,10 +26,9 @@ struct AeroControlAppTile: View {
     @State private var isHovering = false
     @Environment(\.displayScale) private var displayScale
 
-    /// The window's snapshot, fitted into the cell with its own aspect ratio, with the app's
-    /// icon badged in its corner; until it lands — or for good, without Screen Recording —
-    /// the tile is a plate in the snapshot's shape, and nothing else: an icon standing in for
-    /// a picture flashed in whenever a picture went away.
+    /// The window's snapshot, covering the cell and cut at its edges, with the app's icon badged in
+    /// its corner; until it lands — or for good, without Screen Recording — the tile is a plate,
+    /// and nothing else: an icon standing in for a picture flashed in whenever a picture went away.
     private var preview: NSImage? { state.pictures.previews[window.windowId] }
     /// The ring: AeroSpace's focus on the map until an arrow moves it, the selected match while filtering.
     private var isFocused: Bool { window.windowId == state.ringWindowId }
@@ -90,9 +89,10 @@ struct AeroControlAppTile: View {
         }
             .frame(width: size.width, height: size.height)
             .matchedGeometryEffect(id: window.windowId, in: tiles)
-            // Drawn larger than it was taken, the picture is asked for again at this size.
+            // Drawn larger than it was taken, the picture is asked for again at the size it is drawn:
+            // covering the box with its own shape, it is larger than the box one way.
             .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
-                state.pictures.want(window.windowId, pixels: drawnPixels)
+                state.pictures.want(window.windowId, pixels: preview.map { AeroControlMetrics.cover($0.size, into: drawnPixels) } ?? drawnPixels)
             }
             .contentShape(Rectangle())
             .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }

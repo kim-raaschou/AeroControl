@@ -169,13 +169,13 @@ struct TreeLayoutTests {
         #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
-    @Test("a picture is stale when its shape no longer fits what the window is drawn at: its slot, or its own size when it has none; a window with neither is not")
+    @Test("a picture is of the window as it is, and stale when the window's own shape no longer fits it; its slot stands in only for a window never measured, and a window with neither is not")
     func stalePictures() {
-        let tiled = WorkspaceInfo(name: "1", windows: [rected(1, "A", 0, 0, 800, 600), rected(2, "A", 0, 0, 800, 600), rected(5, "A", 0, 0, 800, 600)])
+        let tiled = WorkspaceInfo(name: "1", windows: [rected(1, "A", 0, 0, 800, 600), rected(2, "A", 0, 0, 800, 600), rected(5, "A", 0, 0, 800, 600), rected(6, "A", 0, 0, 800, 600)])
         let floats = WorkspaceInfo(name: "2", windows: [win(3, "A"), win(4, "A")])
-        let pictures = [1: CGSize(width: 400, height: 300), 2: CGSize(width: 400, height: 100), 3: CGSize(width: 400, height: 100), 4: CGSize(width: 400, height: 100), 5: CGSize(width: 400, height: 150)]
+        let pictures = [1: CGSize(width: 400, height: 300), 2: CGSize(width: 400, height: 100), 3: CGSize(width: 400, height: 100), 4: CGSize(width: 400, height: 100), 5: CGSize(width: 400, height: 150), 6: CGSize(width: 400, height: 100)]
         let sizes = [1: CGSize(width: 800, height: 600), 2: CGSize(width: 800, height: 600), 3: CGSize(width: 800, height: 200), 5: CGSize(width: 1600, height: 600)]
-        #expect(AeroControlLayout.stale(workspaces: [tiled, floats], pictures: pictures, sizes: sizes) == [2, 5])   // 5: its picture fits the size its app refused the slot for, not the slot
+        #expect(AeroControlLayout.stale(workspaces: [tiled, floats], pictures: pictures, sizes: sizes) == [2, 6])   // 5 refused its slot and its picture fits it as it is; 6 was never measured, so its slot says
     }
 
     @Test("a tiled window without a rect, or none at all (a release AeroSpace), is no map: the card packs tiles")

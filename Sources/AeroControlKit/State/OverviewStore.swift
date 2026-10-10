@@ -98,7 +98,7 @@ public class OverviewStore {
     /// empty workspace standing in as one window the size of its card; the map's marking starts
     /// from the ring. While there is a query, the matches are all that is drawn.
     private func move(_ move: StripMove) {
-        let order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { [drawn] (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
+        let drawn = drawn, order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
         marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(move, ids: order, card: cardOf, cards: drawn)
     }
 
@@ -336,7 +336,8 @@ public class OverviewStore {
     /// A refresh reads AeroSpace this long after the event: a key's `binding-triggered` comes before
     /// its commands run, and nothing after them, so a read at once was of the state before them.
     static let readAfter: Duration = .milliseconds(20)
-    /// What `PictureStore.settled` says for the windows `pictured` as `result` will have them.
+    /// What `PictureStore.settled` says for the windows with pictures — the strip's workspaces', else
+    /// all — as `result` will have them.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
         let shown = result.workspaces.filter { ws in strip.map { ws.windows.contains(where: $0.owns) } ?? true }
         return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)

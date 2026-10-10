@@ -8,11 +8,15 @@ import AppKit
 /// until the first frame the picture taken at the summon shows through.
 final class LiveWindowView: NSView, SCStreamOutput {
     private nonisolated(unsafe) var stream: SCStream?
+    /// Set by `stop`: a window resolved after the view has left its window must not start a stream,
+    /// which would hold the view as its output and never end.
+    private nonisolated(unsafe) var stopped = false
     /// About as often as a window changes in a glance; the window server sends no more.
     private static let frameInterval = CMTime(value: 1, timescale: 20)
 
     /// Streams `window` at `pixels`, the size it is drawn at, into the layer until `stop`.
     func start(_ window: SCWindow, pixels: CGSize) {
+        guard !stopped else { return }
         wantsLayer = true
         layer?.contentsGravity = .resizeAspectFill            // the slot is the frame; the window's overhang is cut
         let config = SCStreamConfiguration()
@@ -34,6 +38,7 @@ final class LiveWindowView: NSView, SCStreamOutput {
     }
 
     nonisolated func stop() {
+        stopped = true
         _ = stream.map { stream in Task { try? await stream.stopCapture() } }
         stream = nil
     }

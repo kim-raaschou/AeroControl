@@ -42,14 +42,18 @@ struct MergeWorkspaceTests {
         #expect(effects == [.run([.moveWindowQuietly(windowId: 20, toWorkspace: "3"), .focusWorkspace("3")], thenRead: true)])
     }
 
-    @Test("into an empty workspace the source's layout comes along: a stack stays a stack, since the windows arrive one by one in the root; into one with windows it does not")
+    @Test("into an empty workspace the source's layout comes along, set on a tiled window of it focused for that: a stack stays a stack, since the windows arrive one by one in the root; into one with windows it does not, nor from floats alone")
     func keepsTheLayoutIntoEmpty() {
-        let stack = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [window(10), window(11)], rootLayout: "h_accordion"), ws("2", window(20)), ws("3")])
+        let float = WindowInfo(windowId: 9, appName: "A", bundleId: "a", isFloating: true)
+        let stack = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [float, window(10), window(11)], rootLayout: "h_accordion"), ws("2", window(20)), ws("3")])
         #expect(updateOverview(stack, .action(.mergeWorkspace(source: "1", into: "3"))).1 == [.run([
-            .moveWindowQuietly(windowId: 10, toWorkspace: "3"), .moveWindowQuietly(windowId: 11, toWorkspace: "3"), .focusWorkspace("3"), .setLayout("h_accordion"),
+            .moveWindowQuietly(windowId: 9, toWorkspace: "3"), .moveWindowQuietly(windowId: 10, toWorkspace: "3"), .moveWindowQuietly(windowId: 11, toWorkspace: "3"),
+            .focusWorkspace("3"), .focusWindow(10), .setLayout("h_accordion"),
         ], thenRead: true)])
+        let floats = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [float], rootLayout: "h_accordion"), ws("3")])
+        #expect(updateOverview(floats, .action(.mergeWorkspace(source: "1", into: "3"))).1 == [.run([.moveWindowQuietly(windowId: 9, toWorkspace: "3"), .focusWorkspace("3")], thenRead: true)])
         #expect(updateOverview(stack, .action(.mergeWorkspace(source: "1", into: "2"))).1 == [.run([
-            .moveWindowQuietly(windowId: 10, toWorkspace: "2"), .moveWindowQuietly(windowId: 11, toWorkspace: "2"), .focusWorkspace("2"),
+            .moveWindowQuietly(windowId: 9, toWorkspace: "2"), .moveWindowQuietly(windowId: 10, toWorkspace: "2"), .moveWindowQuietly(windowId: 11, toWorkspace: "2"), .focusWorkspace("2"),
         ], thenRead: true)])
     }
 }

@@ -112,6 +112,7 @@ final class OverlayWindowManager {
                 self.bridge.requestPreviewAccess()
             }
             self.state.following = true
+            self.window?.contentView = nil                       // its views go now, the live view's stream with them
             self.window?.orderOut(nil)
             let screen = self.targetScreen()
             let window = self.makeWindow(for: screen, hidden: true)
@@ -152,6 +153,7 @@ final class OverlayWindowManager {
     /// none to rebuild; the next summon builds its own.
     func rebuild() {
         guard requestedVisible else { return }
+        window?.contentView = nil
         window?.orderOut(nil)
         window = makeWindow(for: targetScreen(), hidden: false)
     }
