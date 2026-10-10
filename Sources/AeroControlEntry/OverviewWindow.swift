@@ -48,11 +48,11 @@ class OverviewWindow: NSPanel {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+        let key = event.charactersIgnoringModifiers ?? ""
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
         if let key = FilterKey(command: key, shift: modifiers.contains(.shift)), onKey?(key) == true { return true }
-        switch (key, modifiers.contains(.shift)) {
+        switch (key.lowercased(), modifiers.contains(.shift)) {
         case ("q", false): onQuitApp?()
         case ("w", false): onCloseWindow?()
         default: break
