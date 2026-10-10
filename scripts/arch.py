@@ -408,7 +408,7 @@ def onion(rows, groups, by_name: dict[str, Type], edges: dict[tuple[str, str], i
         x0, y0, x1, y1 = cx + r0 * math.cos(angle), cy + r0 * math.sin(angle), cx + r1 * math.cos(angle), cy + r1 * math.sin(angle)
         up = rb > ra
         colour, marker = ("#d33", "up") if up else ("currentColor", "in")
-        out.append(f'<line x1="{x0:.0f}" y1="{y0:.0f}" x2="{x1:.0f}" y2="{y1:.0f}" stroke="{colour}" stroke-width="{1 + min(4, n / 10):.1f}" stroke-opacity="{1 if up else 0.7}" marker-end="url(#{marker})"/>')
+        out.append(f'<line x1="{x0:.0f}" y1="{y0:.0f}" x2="{x1:.0f}" y2="{y1:.0f}" stroke="{colour}" stroke-width="{1.5 + min(3.5, n / 10):.1f}" stroke-opacity="{1 if up else 0.7}" marker-end="url(#{marker})"/>')
         lx, ly = cx + (r0 + 12) * math.cos(angle), cy + (r0 + 12) * math.sin(angle)
         out.append(f'<text x="{lx:.0f}" y="{ly + 4:.0f}" text-anchor="middle" font-size="11" font-weight="600" fill="{colour}">{"↑ " if up else ""}{n}</text>')
     for i, (layer, n, ca, ce, inst, a, d, ups, cycles) in enumerate(rows):
