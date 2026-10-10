@@ -172,7 +172,8 @@ def merge_extensions(types: list[Type]) -> dict[str, Type]:
 
 
 def attach_functions(types: list[Type], path: str) -> None:
-    info = lizard.analyze_file(str(ROOT / path))
+    # The gate's analyser (modified McCabe, nesting), so a type's numbers add up to the gate's.
+    info = lizard.FileAnalyzer(lizard.get_extensions(["modified", "ns"])).analyze_source_code(path, (ROOT / path).read_text())
     for f in info.function_list:
         for t in types:
             if t.start <= f.start_line <= t.end:
@@ -262,37 +263,59 @@ def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -
     return "\n".join(out)
 
 
-def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload: dict) -> list[tuple[str, str]]:
-    rows: list[tuple[str, str]] = []
-    totals, health, base = payload["totals"], payload["health"], metrics.load_baseline() or {}
-    cap = lambda k: f" (ceiling {metrics.ceiling(base[k])})" if k in base else ""
-    rows.append(("Size", f"{totals['code']} code lines{cap('code')} · prod complexity {totals['prodComplexity']}{cap('prodComplexity')} · test complexity {totals['testComplexity']} · {totals['files']} files"))
-    rows.append(("Tests", f"{health['testCode']} test lines to {health['prodCode']} production lines ({health['testRatio']:.2f})"))
-    longest = health["longestFunc"]
-    rows.append(("Longest function", f"{longest['name']} in {longest['file']} ({longest['code']} lines)" if longest else "none"))
-    rows.append(("Deepest nesting", f"{health['maxNesting']} in {health['deepestFile']}"))
-    dup = health["duplicates"]
-    rows.append(("Duplicated code", f"{dup['blocks']} blocks, {dup['prodLines']} production lines and {dup['testLines']} test lines"))
-    rows.append(("Common purity", "; ".join(f"{v['path']} imports {v['import']}" for v in payload["purity"]) or "no UI framework imported"))
-    types = list(by_name.values())
-    top = lambda key, n=5: ", ".join(f"{t.name} ({key(t)})" for t in sorted(types, key=lambda t: -key(t))[:n] if key(t))
-    rows.append(("Biggest types (lines)", top(lambda t: t.nloc)))
-    rows.append(("Most complexity", top(lambda t: t.cx)))
-    rows.append(("Most stored state", top(lambda t: t.stored)))
-    rows.append(("Widest public surface", top(lambda t: len(t.public))))
-    fan_out = defaultdict(set)
-    fan_in = defaultdict(set)
+def rules(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload: dict) -> str:
+    """The rules the build holds itself to, each kept or broken; a broken one names what breaks it."""
+    totals, base = payload["totals"], metrics.load_baseline() or {}
+    ups = [f"{a} → {b}" for (a, b) in edges if RANK.get(by_name[b].layer, 0) > RANK.get(by_name[a].layer, 0)]
+    cycles = sorted({tuple(sorted((a, b))) for (a, b) in edges if (b, a) in edges})
+    over = [f"{k} {totals[k]} > {metrics.ceiling(base[k])}" for k in metrics.GUARDED if k in base and totals[k] > metrics.ceiling(base[k])]
+    within = f"{totals['code']} of {metrics.ceiling(base['code'])} lines, complexity {totals['prodComplexity']} of {metrics.ceiling(base['prodComplexity'])}" if base else "no baseline"
+    rows = [
+        ("Size within the gate's ceiling", over, within),
+        ("Common imports no UI framework", [f"{v['path']} imports {v['import']}" for v in payload["purity"]], ""),
+        ("No arrow points up a layer", ups, ""),
+        ("No two types name each other", [f"{a} ⟲ {b}" for a, b in cycles], ""),
+        ("Common's areas name only downwards", check_areas(by_name, edges), ""),
+        ("No comments but WORKAROUND", check_comments(), ""),
+        (f"Layer docs true to the code, at most {DOC_WORDS} words", check_layer_docs(by_name), ""),
+    ]
+    return "".join(f'<tr><td class="{"ok" if not broken else "bad"}">{"✓" if not broken else "✗"}</td><th>{esc(name)}</th>'
+                   f'<td>{esc("; ".join(broken) if broken else note)}</td></tr>' for name, broken, note in rows)
+
+
+def health(by_name: dict[str, Type], payload: dict) -> str:
+    """The numbers to watch: tests against production, duplication, and the longest and deepest
+    production function."""
+    h, dup = payload["health"], payload["health"]["duplicates"]
+    funcs = [(f, t.name) for t in by_name.values() for f in t.functions]
+    longest = max(funcs, key=lambda ft: ft[0].nloc, default=None)
+    deepest = max(funcs, key=lambda ft: getattr(ft[0], "max_nested_structures", 0), default=None)
+    name = lambda ft: f"{ft[1]}.{ft[0].name.split('::')[-1]}"
+    rows = [
+        ("Tests", f"{h['testCode']} test lines to {h['prodCode']} production lines ({h['testRatio']:.2f})"),
+        ("Duplicated code", f"{dup['blocks']} blocks: {dup['prodLines']} production lines, {dup['testLines']} test lines"),
+        ("Longest production function", f"{name(longest)}, {longest[0].nloc} lines" if longest else "none"),
+        ("Deepest production nesting", f"{name(deepest)}, {getattr(deepest[0], 'max_nested_structures', 0)} levels" if deepest else "none"),
+    ]
+    return "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in rows)
+
+
+def hotspots(by_name: dict[str, Type], edges: dict[tuple[str, str], int], rows: int = 10) -> str:
+    """The heaviest types, one row each, the measures across: a type high in many columns is the one to
+    split. Rows are the most complex types; the three highest in each column are marked."""
+    fan_out, fan_in = defaultdict(set), defaultdict(set)
     for (a, b) in edges:
         fan_out[a].add(b)
         fan_in[b].add(a)
-    rows.append(("Widest fan-out (names most other types)", ", ".join(f"{k} ({len(v)})" for k, v in sorted(fan_out.items(), key=lambda kv: -len(kv[1]))[:5])))
-    rows.append(("Widest fan-in (named by most types)", ", ".join(f"{k} ({len(v)})" for k, v in sorted(fan_in.items(), key=lambda kv: -len(kv[1]))[:5])))
-    ups = [f"{a} → {b} ({by_name[a].layer} → {by_name[b].layer})" for (a, b) in edges if RANK.get(by_name[b].layer, 0) > RANK.get(by_name[a].layer, 0)]
-    rows.append(("Arrows pointing up a layer", "; ".join(ups) or "none"))
-    cycles = sorted({tuple(sorted((a, b))) for (a, b) in edges if (b, a) in edges})
-    rows.append(("Pairs that name each other", "; ".join(f"{a} ⟲ {b}" for a, b in cycles) or "none"))
-    return rows
-
+    columns = [("Lines", lambda t: t.nloc), ("Complexity", lambda t: t.cx), ("Stored state", lambda t: t.stored),
+               ("Public members", lambda t: len(t.public)), ("Names", lambda t: len(fan_out[t.name])),
+               ("Named by", lambda t: len(fan_in[t.name]))]
+    types = list(by_name.values())
+    ranks = {name: {t.name: r for r, t in enumerate(sorted(types, key=lambda t: (-key(t), t.name)))} for name, key in columns}
+    top = sorted(types, key=lambda t: (-t.cx, -t.nloc, t.name))[:rows]
+    head = "<tr><th>Type</th>" + "".join(f"<th>{esc(c)}</th>" for c, _ in columns) + "</tr>"
+    cell = lambda c, key, t: f'<td class="{"hot" if ranks[c][t.name] < 3 else ""}">{key(t)}</td>'
+    return head + "".join(f"<tr><th>{esc(t.name)}</th>" + "".join(cell(c, key, t) for c, key in columns) + "</tr>" for t in top)
 
 def coupling(by_name: dict[str, Type], edges: dict[tuple[str, str], int],
              groups: list[tuple[str, list[str]]] | None = None) -> list[tuple[str, int, int, int, float, float, float, int, int]]:
@@ -570,7 +593,6 @@ def esc(s: str) -> str:
 
 def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: str) -> str:
     payload = metrics.build_payload()
-    table = "\n".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in smells(by_name, edges, payload))
     groups = rings(by_name, edges)
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -583,6 +605,7 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
   pre.mermaid {{ background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; overflow-x: auto; }}
   table {{ border-collapse: collapse; margin: 1rem 0; }} th, td {{ border: 1px solid var(--line); padding: .35rem .6rem; text-align: left; vertical-align: top; }}
   th {{ background: var(--card); white-space: nowrap; }} code {{ font-size: .9em; }}
+  td.ok {{ color: #16a34a; font-weight: 600; }} td.bad {{ color: #dc2626; font-weight: 600; }} td.hot {{ background: rgba(217, 119, 6, .18); font-weight: 600; }}
   .docs .layer {{ margin: 1rem 0; border: 1px solid var(--line); border-radius: 10px; padding: .25rem 1.25rem 1rem; }}
   .docs h3 {{ font-size: 1.1rem; margin: 1rem 0 .25rem; }} .docs h4 {{ margin: 1.25rem 0 .25rem; font-size: 1rem; }} .docs p {{ color: var(--fg); }} .docs ul {{ max-width: 90ch; }}
 </style></head><body>
@@ -593,24 +616,30 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 {onion(coupling(by_name, edges, groups), groups, by_name, edges)}
 <table>{coupling_table(coupling(by_name, edges))}</table>
 <p><b>Ca</b>: types outside the layer that name it. <b>Ce</b>: types outside it names. <b>I</b> = Ce / (Ca + Ce): 0 at the heart, 1 at the rim. <b>↑ out</b>: arrows up out of it. <b>⟲</b>: pairs in it naming each other.</p>
-<h2>2. Where to look</h2>
-<p>The gate's own numbers (<code>scripts/code_metrics.py</code>): a commit fails above the ceiling, the baseline +1%.</p>
-<table>{table}</table>
+<h2>2. Rules</h2>
+<p>What the build holds itself to. A cross is a rule broken, and names what breaks it; <code>make arch-check</code> and the commit gate fail on it.</p>
+<table>{rules(by_name, edges, payload)}</table>
+<h2>3. Health</h2>
+<p>The numbers to watch, from the gate (<code>scripts/code_metrics.py</code>).</p>
+<table>{health(by_name, payload)}</table>
+<h2>4. Hotspots</h2>
+<p>The ten most complex types, the measures across: a type high in many columns does too much, and is where to cut first. The three highest in each column, over all types, are marked. <b>Names</b>: how many types it names; <b>Named by</b>: how many name it.</p>
+<table>{hotspots(by_name, edges)}</table>
 <h3>The fifteen most complex functions</h3>
-<p>Tests included. Complexity is lizard's modified McCabe; lines count code, length counts the function from brace to brace.</p>
+<p>Tests included. Complexity is modified McCabe; lines count code, length counts the function from brace to brace.</p>
 <table>{functions_table(payload)}</table>
-<h2>3. Over time</h2>
+<h2>5. Over time</h2>
 <p>Code lines and production complexity at every point of <code>scripts/metrics-history.json</code>, each line on its own scale.</p>
 {trend(metrics.load_history())}
-<h2>4. Types, and what names what</h2>
+<h2>6. Types, and what names what</h2>
 <p>Every type in its layer and area, with its lines, complexity, stored properties and public members. An arrow is three namings or more, one that points up (↑), or a pair naming each other (⟲); a dotted hollow arrow is a conformance. Weaker arrows are summed in the rings.</p>
 <pre class="mermaid">
 {esc(class_diagram(by_name, edges))}
 </pre>
-<h2>5. The layers, in words</h2>
+<h2>7. The layers, in words</h2>
 <p>One document per layer in <code>docs/layers/</code>, at most {DOC_WORDS} words, kept by hand; <code>make arch-check</code> fails on a name in backticks the code no longer has.</p>
 <div class="docs">{layer_docs_html()}</div>
-<h2>6. Every file</h2>
+<h2>8. Every file</h2>
 <p>Tests, tools and benchmarks included; only production and tests count toward the gate's code lines.</p>
 <table>{files_table(payload)}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
