@@ -80,10 +80,12 @@ fails on any violation.
 
 ## Architecture
 
-- `Sources/Common/` — **pure domain**. `OverviewModel`, the reducer
-  `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`), type-to-filter
-  (`OverviewFilter.swift`: matching, `FilterKey`, `filterKeyAction`), AeroSpace command argv and
-  response decoding (`Aerospace/`), the `AerospaceProcessRunner` port.
+- `Sources/Common/` — **the functional core: AeroSpace's world, pure**. One folder, one layer:
+  `OverviewModel`, the reducer `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`),
+  the layout, the keys, type-to-filter (`OverviewFilter.swift`: matching, `FilterKey`,
+  `filterKeyAction`), and the reading of AeroSpace — command argv and response decoding
+  (`AerospaceCliParser.swift`, `AerospaceCommands.swift`), the `AerospaceProcessRunner` port. The app
+  is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
   socket protocol; `OverviewStore` (`@MainActor @Observable`) owns the model, runs the
   reducer, interprets effects, and holds the marking (`marking`, one `Strip` for the map and

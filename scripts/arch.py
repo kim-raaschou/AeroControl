@@ -47,9 +47,10 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "arch.html"
 
 # The layers, lowest first: an arrow may point along or down this list; one that points up is marked.
+# Common is one layer: AeroSpace's world as values and pure functions — the model, the layout, the
+# keys, the reducer, and the reading of AeroSpace's answers — the functional core the rest is a shell around.
 LAYERS = [
-    ("Sources/Common/Domain/", "Common · Domain"),
-    ("Sources/Common/Aerospace/", "Common · Aerospace"),
+    ("Sources/Common/", "Common"),
     ("Sources/AeroControlKit/Adapters/", "Kit · Adapters"),
     ("Sources/AeroControlKit/State/", "Kit · State"),
     ("Sources/AeroControlKit/UI/", "Kit · UI"),
