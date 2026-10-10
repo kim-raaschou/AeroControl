@@ -73,17 +73,20 @@ public enum AeroControlLayout {
     /// owner's AeroSpace branch): each tiled window at that place and that size, in the screen's
     /// coordinates scaled into `inner` and centred. Floating and fullscreen windows are not in the
     /// layout; they lie over it as `ghosts`, at their own scale, centred, since where a float lies
-    /// is not readable, and the card draws them faint for that reason. An accordion's rects overlap,
-    /// and are drawn so: a stack, the focused window in front (`stacking`), the padding showing the
-    /// ones behind. Nil when a tiled window has no rect (a release AeroSpace, or a window opened on a
-    /// hidden workspace before it was next shown), or when the screen is unknown; the card then packs tiles.
+    /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
+    /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
+    /// shown), when the rects overlap (an accordion: only the front one would show), or when the
+    /// screen is unknown; the card then packs tiles.
     public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let windows = workspace.windows
         let ghosts = windows.filter { $0.isFloating || $0.isFullscreen || $0.isHidden }.map(\.windowId)
         let tiled = windows.filter { !ghosts.contains($0.windowId) }
         let rects = tiled.compactMap(\.layoutRect)
-        guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen else { return nil }
+        guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
+              !rects.indices.contains(where: { i in rects.indices.contains { j in
+                  j > i && rects[i].intersection(rects[j]).width > 2 && rects[i].intersection(rects[j]).height > 2 } })
+        else { return nil }
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted)
         let scale = fitted.width / screen.width
