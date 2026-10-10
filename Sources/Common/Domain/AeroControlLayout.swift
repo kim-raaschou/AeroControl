@@ -43,6 +43,17 @@ public enum AeroControlLayout {
         }
     }
 
+    /// The size a window is drawn at, and its picture taken to fit: on a visible workspace its own, as
+    /// the window server reports it. On one that is not, its slot, or its own size where that is larger:
+    /// a window either fills its slot or refuses it for a minimum, and parked in the corner it keeps the
+    /// size it last had — smaller than a slot that grew while it was hidden, larger than one it refused.
+    /// Nil with neither, as a window on a release AeroSpace without Screen Recording.
+    public static func drawnSize(_ window: WindowInfo, in workspace: WorkspaceInfo, sizes: [Int: CGSize]) -> CGSize? {
+        let own = sizes[window.windowId]
+        guard !workspace.isVisible, let slot = window.layoutRect?.size else { return own }
+        return CGSize(width: max(slot.width, own?.width ?? 0), height: max(slot.height, own?.height ?? 0))
+    }
+
     /// A card's height that is not pictures: the padding, the badge lane, and the gap
     /// between the badge and the first row of tiles.
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
@@ -85,10 +96,8 @@ public enum AeroControlLayout {
         let scale = fitted.width / screen.width
         var frames: [Int: CGRect] = [:]
         for window in tiled {
-            // A hidden workspace's window is parked at the size it last had, not the slot it will
-            // get, so there the slot is drawn: a window drawn small at its place left gaps.
             let r = window.layoutRect!
-            let size = (workspace.isVisible ? sizes[window.windowId] : nil) ?? r.size
+            let size = drawnSize(window, in: workspace, sizes: sizes) ?? r.size
             frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
                                              width: size.width * scale, height: size.height * scale)
         }
@@ -253,11 +262,10 @@ public enum AeroControlLayout {
         return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
     }
 
-    /// The windows whose picture no longer fits what they are drawn at — their size on a visible
-    /// workspace, their slot on one that is not — and so are taken again; one with neither is not.
+    /// The windows whose picture no longer fits what they are drawn at (`drawnSize`), and so are taken
+    /// again; one drawn at nothing known is not.
     public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
-        workspaces.flatMap { ws in ws.windows.filter { w in
-            ((ws.isVisible ? nil : w.layoutRect?.size) ?? sizes[w.windowId]).map { !sameShape(pictures[w.windowId], $0) } ?? false } }.map(\.windowId)
+        workspaces.flatMap { ws in ws.windows.filter { w in drawnSize(w, in: ws, sizes: sizes).map { !sameShape(pictures[w.windowId], $0) } ?? false } }.map(\.windowId)
     }
 
     /// A picture fits its window while their shapes agree to 2 %; none fits nothing.
