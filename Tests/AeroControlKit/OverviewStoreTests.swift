@@ -613,7 +613,7 @@ struct OverviewStoreTests {
         #expect((store.pictures.previews[2]?.size.height ?? 0) < 40)                            // taken in the new shape, 100 × 33, not the old 100 × 67
     }
 
-    @Test("focus moves at once: after a workspace switch the ring is on the window AeroSpace's event named, before any read, while the layout waits for the windows to settle")
+    @Test("focus moves at once: after a workspace switch the ring is on the window AeroSpace's event named, before any read; the layout lands as read, drawn in slots while the windows settle")
     func focusMovesAtOnce() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "4")]), workspaces: workspacesJSON(["1", "4"]))
@@ -626,11 +626,12 @@ struct OverviewStoreTests {
         #expect(store.ringWindowId == 2)                                                // applied at once: send is a call, not a queue
         await waitUntil { store.ringWindowId == 2 }
         #expect(store.model.focusedWorkspace == "4")
-        #expect(windowIds(store) == [1, 2])                                            // the layout not yet: still settling
-        await waitUntil { windowIds(store) == [1, 2, 3] }
+        await waitUntil { windowIds(store) == [1, 2, 3] }                               // as read, 20 ms on
+        #expect(store.settling)                                                         // the windows may still be moving: their slots are drawn
+        await waitUntil { !store.settling }
     }
 
-    @Test("the card changes once, read a moment after the key's binding-triggered, which comes before its commands run: the new layout, the settled sizes and the new pictures together")
+    @Test("read a moment after the key's binding-triggered, which comes before its commands run: the new layout at once, in slots; the settled sizes and the new pictures together after")
     func cardChangesOnce() async {
         let runner = ScriptRunner(), bridge = FakeBridge()
         runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1", "2"]))
@@ -640,9 +641,9 @@ struct OverviewStoreTests {
         runner.setState(windows: windowsJSON([(1, "2"), (2, "1")]), workspaces: workspacesJSON(["1", "2"]))   // now they have
         bridge.sizes[2] = CGSize(width: 600, height: 200)                               // and the neighbour widened into the hole
         try? await Task.sleep(for: .milliseconds(40))                                    // read, still settling
-        #expect(workspaceOf(store, 1) == "1")
-        await waitUntil { workspaceOf(store, 1) == "2" }
-        #expect(store.pictures.sizes[2]?.width == 600 && (store.pictures.previews[2]?.size.height ?? 0) < 40)  // with it, not after
+        #expect(workspaceOf(store, 1) == "2" && store.settling && store.pictures.sizes[2]?.width != 600)   // the layout, not yet the sizes
+        await waitUntil { !store.settling }
+        #expect(store.pictures.sizes[2]?.width == 600 && (store.pictures.previews[2]?.size.height ?? 0) < 40)  // together
     }
 
     @Test("a window that appears while the overview is open gets a picture; nothing changed, nothing is taken")

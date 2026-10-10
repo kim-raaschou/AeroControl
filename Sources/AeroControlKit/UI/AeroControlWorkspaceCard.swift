@@ -10,6 +10,8 @@ struct AeroControlWorkspaceCard: View {
     let card: AeroControlLayout.MapCard
     /// Whether this card is part of a filtered result rather than the map.
     let filtering: Bool
+    /// The panel's namespace for the tiles (`AeroControlPanel.tiles`).
+    let tiles: Namespace.ID
     private var size: CGSize { card.frame.size }
 
     @State private var isDropTarget = false
@@ -63,7 +65,7 @@ struct AeroControlWorkspaceCard: View {
             ForEach(windows, id: \.windowId) { window in
                 let frame = card.frames[window.windowId] ?? .zero
                 let ghost = card.ghosts.contains(window.windowId)
-                AeroControlAppTile(window: window, size: frame.size, filtering: filtering)
+                AeroControlAppTile(window: window, size: frame.size, filtering: filtering, tiles: tiles)
                     .onHover { if $0 { state.point(window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: frame.minX, y: frame.minY)
                     .opacity(ghost ? 0.7 : 1)          // see-through, as krn.overview draws a float: what lies under it shows
@@ -71,7 +73,8 @@ struct AeroControlWorkspaceCard: View {
             }
         }
         .frame(width: inner.width, height: inner.height, alignment: .topLeading)
-        .animation(.easeInOut(duration: 0.15 * look.motion), value: windows)
+        // The card as laid out, frames included: a window settling into its size moves, not snaps.
+        .animation(.easeInOut(duration: 0.15 * look.motion), value: card)
     }
 
     @ViewBuilder private var dropTargetHint: some View {

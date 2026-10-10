@@ -169,14 +169,15 @@ struct TreeLayoutTests {
         #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
-    @Test("on a visible workspace a window is drawn at its own size, as on the screen; on one that is not, at its slot: the size it has in the hide corner is the one it had, not the one it will get")
+    @Test("on a visible workspace a window is drawn at its own size, as on the screen; on one that is not, or while the windows are still settling, at its slot: the size it has in the hide corner, or on its way, is not the one it will get")
     func hiddenWorkspaceDrawsSlots() throws {
         let inner = CGSize(width: 1000, height: 500), small = ws7Rected.map { $0.windowId }.reduce(into: [Int: CGSize]()) { $0[$1] = CGSize(width: 400, height: 200) }
         let shown = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: true), sizes: small, screen: screen, inner: inner))
         let hidden = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: false), sizes: small, screen: screen, inner: inner))
+        let settling = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected, isVisible: true), sizes: small, screen: screen, inner: inner, settled: false))
         let scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
         #expect(abs((shown.frames[8266]?.width ?? 0) - 400 * scale) < 0.01 && abs((hidden.frames[8266]?.width ?? 0) - 842 * scale) < 0.01)
-        #expect(shown.frames[8266]?.origin == hidden.frames[8266]?.origin)                 // the slot's place either way
+        #expect(shown.frames[8266]?.origin == hidden.frames[8266]?.origin && settling.frames == hidden.frames)   // the slot's place either way
     }
 
     @Test("a picture is stale when its shape no longer fits what the window is drawn at: its size on a visible workspace, its slot on one that is not; a window without either is not")

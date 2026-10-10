@@ -12,6 +12,8 @@ import Common
 struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
+    /// The panel's namespace for the tiles (`AeroControlPanel.tiles`).
+    let tiles: Namespace.ID
 
     /// How long the row takes to slide a card along.
     private static let turn: Double = 0.4
@@ -52,7 +54,7 @@ struct AeroControlAppStrip: View {
                 let frame = laid.frames[window.windowId]!
                 let mine = !laid.others.contains(window.windowId)
                 let label = ids.firstIndex(of: window.windowId).flatMap(AppStripModel.keyLabel)
-                AeroControlAppTile(window: window, size: frame.size, filtering: false,
+                AeroControlAppTile(window: window, size: frame.size, filtering: false, tiles: tiles,
                                    key: label.map { ($0, window.windowId == state.strip?.marked) }, faded: !mine)
                     .allowsHitTesting(mine)
                     // The hover belongs to the window's own frame, so it goes on before the window is moved there.

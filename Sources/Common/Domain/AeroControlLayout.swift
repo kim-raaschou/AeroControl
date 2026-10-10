@@ -69,8 +69,10 @@ public enum AeroControlLayout {
     /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
     /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
     /// shown), when the rects overlap (an accordion: only the front one would show), or when the
-    /// screen is unknown; the card then packs tiles.
-    public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
+    /// screen is unknown; the card then packs tiles. While the windows are not `settled` — AeroSpace
+    /// has moved them and their apps are getting round to it — every window is drawn at its slot
+    /// too, not at the sizes it passes through on the way.
+    public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize, settled: Bool = true)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let windows = workspace.windows
         let ghosts = windows.filter { $0.isFloating || $0.isFullscreen || $0.isHidden }.map(\.windowId)
@@ -88,7 +90,7 @@ public enum AeroControlLayout {
             // A hidden workspace's window is parked at the size it last had, not the slot it will
             // get, so there the slot is drawn: a window drawn small at its place left gaps.
             let r = window.layoutRect!
-            let size = (workspace.isVisible ? sizes[window.windowId] : nil) ?? r.size
+            let size = (workspace.isVisible && settled ? sizes[window.windowId] : nil) ?? r.size
             frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
                                              width: size.width * scale, height: size.height * scale)
         }
@@ -125,12 +127,12 @@ public enum AeroControlLayout {
     /// the whole screen was tried on 2026-09-30 and dropped the same day: a single six-window
     /// workspace shrank every picture on the map to a stamp.
     public static func mapLayout(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect], available: CGSize, usable: CGSize,
-                                 filtering: Bool) -> [MapCard] {
+                                 filtering: Bool, settled: Bool = true) -> [MapCard] {
         let cells = CardGrid.lattice(count: workspaces.count, in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).enumerated().map { i, pair in
             let (ws, cell) = pair, screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let laid = filtering ? nil : treeLayout(ws, sizes: sizes, screen: screen, inner: inner)
+            let laid = filtering ? nil : treeLayout(ws, sizes: sizes, screen: screen, inner: inner, settled: settled)
             let placed = laid ?? packed(ws.windows, sizes: sizes, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [-1 - i: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }    // an empty workspace: one, the box
             return MapCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
@@ -187,7 +189,7 @@ public enum AeroControlLayout {
     /// reads as one window. Every card is its workspace's screen: the strip is a row of
     /// workspaces, and one that does not fit slides workspace by workspace (`slides`).
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
-                                   fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
+                                   fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat, settled: Bool = true) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
         let full = AppStripModel.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
@@ -196,7 +198,7 @@ public enum AeroControlLayout {
         let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
         let shapes = groups.indices.map { ratios(of: ours[$0], sizes: sizes, fallback: aspects[$0]) }
         let gaps = groups.indices.map { packedGap(screen: areas[$0].size, inner: CGSize(width: widths[$0], height: full)) }
-        let mirrors = groups.indices.map { treeLayout(groups[$0], sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full)) }
+        let mirrors = groups.indices.map { treeLayout(groups[$0], sizes: sizes, screen: areas[$0], inner: CGSize(width: widths[$0], height: full), settled: settled) }
         var x: CGFloat = 0, cards: [StripCard] = []
         for g in groups.indices {
             if g > 0 { x += cardGap }

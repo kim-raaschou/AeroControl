@@ -12,6 +12,9 @@ struct AeroControlAppTile: View {
     /// from what it is drawing — a second answer derived from the query length disagreed with
     /// it on a miss, and captioned every window on a map that had not moved.
     let filtering: Bool
+    /// The panel's namespace: this tile is the same view on whichever card it is drawn, and moving
+    /// to another it glides there.
+    let tiles: Namespace.ID
     /// The strip's key on this window, and whether it is the marked one: drawn where the icon
     /// is otherwise, on the picture's corner. A window that has a key does without its icon:
     /// every window with one is the strip's app, and the icon would say what is already known.
@@ -88,6 +91,7 @@ struct AeroControlAppTile: View {
             artwork
         }
             .frame(width: size.width, height: size.height)
+            .matchedGeometryEffect(id: window.windowId, in: tiles)
             // Drawn larger than it was taken, the picture is asked for again at this size.
             .onChange(of: [drawnPixels.width, drawnPixels.height, preview?.size.width ?? 0], initial: true) {
                 state.pictures.want(window.windowId, pixels: drawnPixels)

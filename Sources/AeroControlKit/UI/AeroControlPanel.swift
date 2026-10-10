@@ -6,6 +6,9 @@ import Common
 public struct AeroControlPanel: View {
     let state: OverviewStore
     @Environment(\.aeroLook) private var look
+    /// One namespace for every tile, so a window that moves to another card is the same view to
+    /// SwiftUI and glides there (`matchedGeometryEffect`) rather than going out and coming in.
+    @Namespace private var tiles
 
     public init(state: OverviewStore) { self.state = state }
 
@@ -19,7 +22,7 @@ public struct AeroControlPanel: View {
             } else if state.model.workspaces.isEmpty || state.missingApp != nil {
                 EmptyView()
             } else if state.strip != nil, !state.stripWindows.isEmpty {
-                AeroControlAppStrip()
+                AeroControlAppStrip(tiles: tiles)
                     .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
             } else {
                 grid
@@ -36,7 +39,7 @@ public struct AeroControlPanel: View {
         let shown = state.shown, filtering = state.filtering, usable = state.usable
         return ZStack(alignment: .topLeading) {
             ForEach(zip(shown, state.cards).map { $0 }, id: \.0.name) { workspace, card in
-                AeroControlWorkspaceCard(workspace: workspace, card: card, filtering: filtering)
+                AeroControlWorkspaceCard(workspace: workspace, card: card, filtering: filtering, tiles: tiles)
                     .offset(x: card.frame.minX, y: card.frame.minY)
                     .transition(unsafe .opacity.combined(with: .scale(scale: 0.96)))
             }
