@@ -141,7 +141,7 @@ struct AeroControlCardFace<Content: View>: View {
                     .truncationMode(.tail)
             }
             Spacer(minLength: 0)
-            if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout, windowCount: workspace.windows.count) {
+            if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout) {
                 Image(systemName: symbol.name)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(look.palette.badgeText.opacity(0.7))

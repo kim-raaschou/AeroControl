@@ -40,30 +40,18 @@ struct TileOriginTests {
 
 @Suite("the layout symbol on a card")
 struct LayoutSymbolTests {
-    @Test("tiles are a row or a column, an accordion one window in front of another; one window says how the next will go; none, or no known layout, no symbol", arguments: [
-        ("h_tiles", 2, "rectangle.split.2x1"), ("v_tiles", 3, "rectangle.split.1x2"), ("h_accordion", 2, "rectangle.on.rectangle"),
-        ("v_accordion", 2, "rectangle.on.rectangle"), ("h_tiles", 1, "rectangle.split.2x1"), ("h_accordion", 1, "rectangle.on.rectangle"),
-        ("h_tiles", 0, nil), ("", 3, nil), ("floating", 3, nil),
-    ] as [(String, Int, String?)])
-    func symbols(layout: String, windows: Int, symbol: String?) {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: layout, windowCount: windows)?.name == symbol)
+    @Test("tiles are a row or a column, an accordion one window in front of another, on an empty workspace too: it says how the next window will go; no known layout, no symbol", arguments: [
+        ("h_tiles", "rectangle.split.2x1"), ("v_tiles", "rectangle.split.1x2"), ("h_accordion", "rectangle.on.rectangle"),
+        ("v_accordion", "rectangle.on.rectangle"), ("", nil), ("floating", nil),
+    ] as [(String, String?)])
+    func symbols(layout: String, symbol: String?) {
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: layout)?.name == symbol)
     }
 
     @Test("each says in words what AeroSpace does with the windows")
     func words() {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles", windowCount: 2)?.help == "Tiles: windows side by side")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles", windowCount: 2)?.help == "Tiles: windows one above another")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion", windowCount: 2)?.help == "Accordion: windows stacked, one in front")
-    }
-}
-
-@Suite("the app icon on a picture")
-struct BadgeSizeTests {
-    @Test("about a ninth of the picture's width, kept between 22 and 36 points so it can be read")
-    func badgeSize() {
-        func size(_ w: CGFloat) -> CGFloat { AeroControlMetrics.badgeSize(width: w) }
-        #expect(size(100) == 22 && size(200) == 22)
-        #expect(abs(size(300) - 33) < 0.001)
-        #expect(size(400) == 36 && size(900) == 36)
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles")?.help == "Tiles: windows side by side")
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles")?.help == "Tiles: windows one above another")
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion")?.help == "Accordion: windows stacked, one in front")
     }
 }

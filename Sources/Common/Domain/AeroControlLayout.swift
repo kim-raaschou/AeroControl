@@ -287,10 +287,9 @@ public enum AeroControlLayout {
 
     /// The mark on a card for how AeroSpace lays its workspace out: tiles are a row or a column, an accordion
     /// a stack with one window in front. It says what AeroSpace does with the windows, not where any one is,
-    /// which a hidden workspace does not tell. One window gets it too: the layout is how the next one will be
-    /// arranged. Nothing for an empty workspace, whose card has no room, or for a layout it does not know.
-    public static func layoutSymbol(rootLayout: String, windowCount: Int) -> (name: String, help: String)? {
-        guard windowCount >= 1 else { return nil }
+    /// which a hidden workspace does not tell. An empty workspace wears it too: the layout is how the next
+    /// window will be arranged, and where a merge's windows will land. Nothing for a layout it does not know.
+    public static func layoutSymbol(rootLayout: String) -> (name: String, help: String)? {
         switch rootLayout {
         case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side")
         case "v_tiles": return ("rectangle.split.1x2", "Tiles: windows one above another")
