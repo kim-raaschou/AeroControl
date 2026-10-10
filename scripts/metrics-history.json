@@ -2194,5 +2194,14 @@
     "complexity": 893,
     "prodComplexity": 507,
     "files": 70
+  },
+  {
+    "timestamp": "2026-10-10T22:00:41+02:00",
+    "commit": "f7d4f3b",
+    "subject": "Tests hold \"true to AeroSpace, live\": the overview is checked against the mirror",
+    "code": 4925,
+    "complexity": 913,
+    "prodComplexity": 508,
+    "files": 70
   }
 ]
