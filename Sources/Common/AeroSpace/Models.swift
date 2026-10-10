@@ -47,6 +47,10 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let screenIndex: Int
     public let rootLayout: String
 
+    public var standIn: Int {
+        -1 - Int(name.utf8.reduce(UInt32(2_166_136_261)) { ($0 ^ UInt32($1)) &* 16_777_619 } >> 1)
+    }
+
     public var monitorShortName: String {
         String(monitorName.split(separator: " ").first ?? "")
     }

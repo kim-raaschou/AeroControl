@@ -79,11 +79,11 @@ public enum AeroControlLayout {
                                  filtering: Bool) -> [MapCard] {
         let cells = CardGrid.lattice(count: workspaces.count, in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
-        return zip(workspaces, cells).enumerated().map { i, pair in
-            let (ws, cell) = pair, screen = screens[ws.screenIndex], inner = inner(of: cell.size)
+        return zip(workspaces, cells).map { ws, cell in
+            let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
             let laid = filtering ? nil : treeLayout(ws, sizes: sizes, screen: screen, inner: inner)
             let placed = laid ?? packed(ws.windows, sizes: sizes, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
-            let standIn = [-1 - i: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
+            let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
             return MapCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
         }
     }

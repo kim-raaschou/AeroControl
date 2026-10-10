@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import Common
+import Observation
 
 @MainActor @Observable
 public class OverviewStore {
@@ -24,8 +24,8 @@ public class OverviewStore {
     public var screen: (available: CGSize, frames: [Int: CGRect]) = (.zero, [:])
     public var usable: CGSize { AeroControlLayout.usable(screen.available) }
 
-    public var filtering: Bool { strip == nil && !model.workspaces(holding: filterMatches).isEmpty }
-    public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? model.workspaces(holding: filterMatches) : model.workspaces }
+    public var filtering: Bool { strip == nil && !filtered.isEmpty }
+    public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? filtered : model.workspaces }
     public var cards: [AeroControlLayout.MapCard] {
         AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering)
     }
@@ -38,6 +38,7 @@ public class OverviewStore {
 
     public func endVisit() {
         following = false
+        refreshGeneration &+= 1
         refreshTask?.cancel()
         refreshTask = nil
         filter = ""
@@ -75,11 +76,12 @@ public class OverviewStore {
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
-    public private(set) var filterMatches: [ParsedWindow] = []
+    public private(set) var filterMatches: [ParsedWindow] = [] { didSet { filtered = model.workspaces(holding: filterMatches) } }
+    private var filtered: [WorkspaceInfo] = []
 
     public var ringWindowId: Int? { marking?.marked ?? filterMatches.first?.window.windowId ?? model.focusedWindowId }
 
-    public var markedWorkspace: String? { marking?.marked.flatMap { Dictionary(model.workspaces.enumerated().map { (-1 - $0.offset, $0.element.name) }) { a, _ in a }[$0] } }
+    public var markedWorkspace: String? { marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name } }
 
     public var commandTarget: WindowInfo? {
         (missingApp.map { _ in [] } ?? model.workspaces.flatMap(\.windows)).first { $0.windowId == ringWindowId }
@@ -94,13 +96,12 @@ public class OverviewStore {
     }
 
     public func reload() async {
-        do {
-            let result = try await loadOverview(using: runner)
-            send(.loaded(result))
-            error = nil
-        } catch {
-            self.error = "Load error: \(error.localizedDescription)"
-        }
+        if let result = await read() { send(.loaded(result)) }
+    }
+
+    private func read() async -> OverviewResult? {
+        do { let result = try await loadOverview(using: runner); error = nil; return result }
+        catch { self.error = "Load error: \(error.localizedDescription)"; return nil }
     }
 
     public var following = false
@@ -147,16 +148,16 @@ public class OverviewStore {
 
     public func startListening() {
         guard subscribeTask == nil else { return }
-        subscribeTask = Task.detached(priority: .utility) { [weak self] in
+        subscribeTask = Task.detached(priority: .utility) { [self] in
             var reconnecting = false
-            while let self, !Task.isCancelled {
-                if reconnecting, await self.following { await self.reload() }
+            while !Task.isCancelled {
                 do {
-                    let stream = self.runner.subscribe(AerospaceCommand.subscribe)
+                    let stream = runner.subscribe(AerospaceCommand.subscribe)
+                    if reconnecting, await following { await reload() }
                     for try await line in stream {
                         guard let event = AerospaceEvent.parse(line) else { continue }
-                        if case .focusChanged(let id?, _) = event { await self.noteFocus(id) }
-                        if await self.following { await self.send(.event(event)) }
+                        if case .focusChanged(let id?, _) = event { await noteFocus(id) }
+                        if await following { await send(.event(event)) }
                     }
                 } catch {}
                 guard !Task.isCancelled else { return }
@@ -212,10 +213,7 @@ public class OverviewStore {
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             try? await Task.sleep(for: Self.readAfter)
-            guard let self, !Task.isCancelled,
-                  let result = try? await loadOverview(using: self.runner),
-                  generation == self.refreshGeneration else { return }
-            self.error = nil
+            guard let self, !Task.isCancelled, let result = await self.read(), generation == self.refreshGeneration else { return }
             self.send(.loaded(result))
             let pictureGeneration = self.pictures.generation
             let (sizes, fresh) = await self.settled(result)

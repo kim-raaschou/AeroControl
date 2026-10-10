@@ -20,6 +20,8 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     private var focusedWorkspaceJSON = "[]"
     /// When set, every command throws — an AeroSpace that is not answering.
     var failing = false
+    /// How long every command takes to answer; none by default.
+    var readDelay: Duration?
     /// Answer the lists but refuse the two `--focused` reads.
     var refuseFocusReads = false
     /// Whether this AeroSpace knows `%{window-layout-rect}` (the owner's branch). Off by
@@ -57,6 +59,12 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
     }
 
     /// Delivers a raw event line to the store's subscribe listener.
+    /// The event stream breaks, as when AeroSpace restarts.
+    func dropStream() {
+        let cont = withLock { subCont }
+        cont?.finish(throwing: AerospaceSocketError.io("dropped"))
+    }
+
     func sendEvent(_ line: String) {
         let cont = withLock { subCont }
         cont?.yield(line)
@@ -64,6 +72,7 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 
     func run(_ args: [String]) async throws -> String {
         withLock { ranArgs.append(args) }
+        if let readDelay { try? await Task.sleep(for: readDelay) }
         if failing { throw AerospaceSocketError.io("no aerospace") }
         let focused = args.contains("--focused")
         if focused, refuseFocusReads { throw AerospaceSocketError.io("no focus") }
@@ -84,7 +93,7 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 
     func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { cont in
-            self.withLock { self.subCont = cont }
+            self.withLock { self.subCont = cont; self.ranArgs.append(args) }
             cont.onTermination = { [weak self] _ in self?.withLock { self?.subCont = nil } }
         }
     }

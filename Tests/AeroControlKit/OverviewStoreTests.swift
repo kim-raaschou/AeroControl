@@ -133,6 +133,45 @@ struct OverviewStoreTests {
         await waitUntil { windowIds(store) == [1] }
     }
 
+    @Test("a dropped stream is subscribed again before AeroSpace is read again, so nothing that happens in between is lost")
+    func reconnectSubscribesFirst() async {
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        store.startListening()
+        store.following = true
+        await waitUntil { runner.isSubscribed }
+        let before = runner.commandsRun.count
+        runner.dropStream()
+        await waitUntil { runner.commandsRun.dropFirst(before).contains { $0.first == "list-windows" } }
+        #expect(runner.commandsRun.dropFirst(before).first == AerospaceCommand.subscribe)
+    }
+
+    @Test("a visit that ends while a read is on its way keeps nothing of it")
+    func endedVisitDropsTheRead() async {
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        store.following = true
+        runner.setState(windows: windowsJSON([(1, "1"), (2, "1")]), workspaces: workspacesJSON(["1"]))
+        runner.readDelay = .milliseconds(50)
+        store.send(.event(.changed))
+        try? await Task.sleep(for: .milliseconds(40))                                   // past readAfter: the read is on its way
+        store.endVisit()
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(windowIds(store) == [1])
+    }
+
+    @Test("a read that fails while the overview is up says so, as a summon's does, and the next that succeeds clears it")
+    func failedRefreshSaysSo() async {
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
+        store.following = true
+        runner.failing = true
+        store.send(.event(.changed))
+        await waitUntil { store.error != nil }
+        #expect(store.error != nil)
+        runner.failing = false
+        store.send(.event(.changed))
+        await waitUntil { store.error == nil }
+        #expect(store.error == nil)
+    }
+
     @Test("an event that moves no window neither changes the model nor reloads")
     func inertEventIsInert() async {
         let (runner, store) = await loaded(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
@@ -220,7 +259,7 @@ struct OverviewStoreTests {
     @Test("on the map ← and → walk a marking from AeroSpace's focus through a workspace's windows as drawn and on to the next, an empty one a stop where Enter switches to it; AeroSpace moving its focus moves the outline, not the marking; a query starts again")
     func arrowsWalkTheMap() async {
         let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (2, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (2, "1"))
-        #expect(store.cards.count == 3 && store.drawn.map { $0.windows.keys.sorted() } == [[1, 2], [-2], [3]])   // as the map lays it out
+        #expect(store.cards.count == 3 && store.drawn.map { $0.windows.keys.sorted() } == [[1, 2], [WorkspaceInfo(name: "2", windows: []).standIn], [3]])   // as the map lays it out
         #expect(store.handle(.move(.window(1))) == .handled && store.markedWorkspace == "2")    // the empty one
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 3)
         #expect(store.handle(.move(.window(1))) == .handled && store.ringWindowId == 1)  // round
@@ -230,6 +269,15 @@ struct OverviewStoreTests {
         #expect(store.handle(.move(.workspace(1))) == .handled && store.markedWorkspace == "2" && store.handle(.enter) == .handled)
         await waitUntil { runner.didRun(["workspace", "2"]) }
         store.filter = ""; #expect(store.ringWindowId == 3)
+    }
+
+    @Test("the ring on an empty workspace stays on it when AeroSpace's list of workspaces changes")
+    func markedEmptyWorkspaceSurvivesTheList() async {
+        let (runner, store) = await loaded(windows: windowsJSON([(1, "1"), (3, "3")]), workspaces: workspacesJSON(["1", "2", "3"]), focus: (1, "1"))
+        #expect(store.handle(.move(.window(1))) == .handled && store.markedWorkspace == "2")
+        runner.setState(windows: windowsJSON([(3, "3")]), workspaces: workspacesJSON(["2", "3"]))
+        await store.reload()
+        #expect(store.markedWorkspace == "2")
     }
 
     @Test("in the strip ← and → go through the windows as the strip draws them, a card per workspace, round")

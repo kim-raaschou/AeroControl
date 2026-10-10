@@ -197,7 +197,7 @@ struct MapLayoutTests {
                                     usable: CGSize(width: 1600, height: 900), filtering: filtering)
     }
 
-    @Test("every card where the lattice put it, its windows where the card draws them, both in the map's space; an empty workspace's card holds one stand-in, keyed -1 - its index, the size of its inner box")
+    @Test("every card where the lattice put it, its windows where the card draws them, both in the map's space; an empty workspace's card holds one stand-in, keyed by its name, the size of its inner box")
     func cardsAsDrawn() throws {
         let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 16, 49, 842, 1052), rected(2, "B", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let cards = layout([a, WorkspaceInfo(name: "2", windows: [], screenIndex: 1)])
@@ -207,7 +207,9 @@ struct MapLayoutTests {
         let inCard = try #require(cards[0].frames[1])                                          // the card draws from its inner box
         #expect(abs(inCard.minX - (left.minX - cards[0].frame.minX - AeroControlLayout.cardPadding)) < 0.01
                 && abs(inCard.minY - (left.minY - cards[0].frame.minY - AeroControlLayout.badgeLane - AeroControlLayout.tileSpacing)) < 0.01)
-        let standIn = try #require(cards[1].grid.windows[-2])
+        let standIn = try #require(cards[1].grid.windows[WorkspaceInfo(name: "2", windows: []).standIn])
+        let ids = (1...10).map { WorkspaceInfo(name: "\($0)", windows: []).standIn }
+        #expect(Set(ids).count == 10 && ids.allSatisfy { $0 < 0 } && ids == (1...10).map { WorkspaceInfo(name: "\($0)", windows: []).standIn })
         #expect(cards[1].grid.windows.count == 1 && standIn.size == AeroControlLayout.inner(of: cards[1].frame.size) && cards[1].frame.contains(standIn))
     }
 
