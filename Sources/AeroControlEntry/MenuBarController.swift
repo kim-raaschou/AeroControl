@@ -1,6 +1,5 @@
 import AppKit
 import AeroControlKit
-import Common
 
 /// The menu under the status item. Every item carries what it does, so there is one handler;
 /// the menu is rebuilt each time it opens, so it always shows the current settings.
@@ -8,19 +7,12 @@ import Common
 final class MenuBarController: NSObject, NSMenuDelegate {
     /// Any setting changed: the host redraws the overview with it.
     private let onSettingsChanged: () -> Void
-    /// Show overview, show the focused app's strip: the host summons, as the keys do.
-    private let onSummon: (Summon) -> Void
-    /// The window AeroSpace has focused, read when an item about it is chosen.
-    private let focusedWindow: () async -> WindowInfo?
     /// Screen Recording: whether macOS lets us take the pictures, and how to ask.
     private let bridge: NativeApiBridge
     private let settings: SettingsStore
 
-    init(onSettingsChanged: @escaping () -> Void, onSummon: @escaping (Summon) -> Void,
-         focusedWindow: @escaping () async -> WindowInfo?, bridge: NativeApiBridge, settings: SettingsStore) {
+    init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
-        self.onSummon = onSummon
-        self.focusedWindow = focusedWindow
         self.bridge = bridge
         self.settings = settings
     }
@@ -42,9 +34,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
-        menu.addItem(item("Show overview") { self.onSummon(.map) })
-        menu.addItem(item("Show strip for the focused app") { self.withFocusedWindow { self.onSummon(.app(.bundleId($0.bundleId))) } })
-        menu.addItem(.separator())
         // Submenus, not thirty items: each parent names the current choice, the theme with its swatch.
         let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
@@ -63,11 +52,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         menu.addItem(item("Quit AeroControl") { NSApp.terminate(nil) })
-    }
-
-    /// `run` with the window AeroSpace has focused; nothing with none.
-    private func withFocusedWindow(_ run: @escaping (WindowInfo) -> Void) {
-        Task { await self.focusedWindow().map(run) }
     }
 
     /// An item that does `run` when chosen.
