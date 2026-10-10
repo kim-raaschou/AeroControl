@@ -54,7 +54,15 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   biggest types, the widest fan-out, arrows pointing up a layer, pairs naming each other, functions
   at complexity ≥ 8), and Robert C. Martin's coupling per layer (Ca, Ce, I, A, D, arrows up, cycles), drawn as
   rings read from the arrows alone — the heart is what names no other layer, darker the more stable, a red spoke per arrow up — which `make arch`
-  prints as one line. Regenerate it with a review; `make arch-check` says when it is stale.
+  prints as one line; and, as section 6, the layer docs. Regenerate it with a review; `make arch-check`
+  says when it is stale.
+- `docs/layers/<layer>.md`, one per layer, at most 250 words: what the layer is for, its rules, and the
+  decisions to know. Kept by hand (the agent's, with every change that moves a rule), drawn into
+  `docs/arch.html`, and checked: `make arch-check` fails on a doc over 250 words, a missing one, or a
+  name in backticks the code no longer has. `python3 scripts/arch.py --init-docs` writes a skeleton for a
+  layer that has none. The types' own one-sentence `///` lines are the reference, drawn as the boxes in
+  section 2; the why of a change is its commit message. Code comments say what a thing is, in one
+  sentence; a `WORKAROUND` block and a line that stops a misreading are the exceptions.
 
 - `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
   `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,
