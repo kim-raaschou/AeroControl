@@ -158,7 +158,7 @@ def build_payload() -> dict:
         stats = lizard_file_stats(rel, text)
         funcs = stats["funcs"]
         for f in funcs:
-            all_funcs.append({**f, "file": Path(rel).name, "layer": layer_for(rel)})
+            all_funcs.append({**f, "file": Path(rel).name, "path": rel, "layer": layer_for(rel)})
         rows.append(
             {
                 "path": rel,
@@ -204,6 +204,7 @@ def build_payload() -> dict:
         },
         "purity": purity_violations(files),
         "files": sorted(rows, key=lambda r: r["path"]),
+        "topFuncs": sorted(all_funcs, key=lambda f: (-f["complexity"], f["path"], f["name"]))[:15],
     }
 
 

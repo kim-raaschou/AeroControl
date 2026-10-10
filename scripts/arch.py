@@ -59,7 +59,6 @@ LAYERS = [
     ("Sources/AeroControlEntry/", "App / Entry"),
 ]
 RANK = {name: i for i, (_, name) in enumerate(LAYERS)}
-COMPLEX_FUNCTION = 8
 # An arrow is drawn between two types when one names the other this often, or it points up a layer, or they name each other.
 STRONG = 3
 
@@ -292,8 +291,6 @@ def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload:
     rows.append(("Arrows pointing up a layer", "; ".join(ups) or "none"))
     cycles = sorted({tuple(sorted((a, b))) for (a, b) in edges if (b, a) in edges})
     rows.append(("Pairs that name each other", "; ".join(f"{a} ⟲ {b}" for a, b in cycles) or "none"))
-    hot = sorted(((f.cyclomatic_complexity, t.name, f.name.split('::')[-1]) for t in types for f in t.functions if f.cyclomatic_complexity >= COMPLEX_FUNCTION), reverse=True)
-    rows.append((f"Functions at complexity ≥ {COMPLEX_FUNCTION}", ", ".join(f"{tn}.{fn} ({cx})" for cx, tn, fn in hot) or "none"))
     return rows
 
 
@@ -553,6 +550,14 @@ def trend(history: list[dict]) -> str:
             f'<text x="{w - pad}" y="{h - pad + 18}" text-anchor="end" fill="currentColor" fill-opacity="0.6">{last} · {len(history)} points</text></svg>')
 
 
+def functions_table(payload: dict) -> str:
+    head = ("<tr><th>Function</th><th>File</th><th>Complexity</th><th>Lines</th><th>Tokens</th>"
+            "<th>Parameters</th><th>Nesting</th><th>Length</th></tr>")
+    return head + "".join(
+        f"<tr><td><code>{esc(f['name'])}</code></td><td><code>{esc(f['path'])}</code></td><td>{f['complexity']}</td><td>{f['code']}</td>"
+        f"<td>{f['tokens']}</td><td>{f['params']}</td><td>{f['nesting']}</td><td>{f['length']}</td></tr>" for f in payload["topFuncs"])
+
+
 def files_table(payload: dict) -> str:
     head = "<tr><th>File</th><th>Code</th><th>Complexity</th><th>Hardest function</th><th>Deepest nesting</th></tr>"
     return head + "".join(f"<tr><td><code>{esc(r['path'])}</code></td><td>{r['code']}</td><td>{r['complexity']}</td><td>{r['maxFuncCx']}</td><td>{r['maxDepth']}</td></tr>"
@@ -591,6 +596,9 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <h2>2. Where to look</h2>
 <p>The gate's own numbers (<code>scripts/code_metrics.py</code>): a commit fails above the ceiling, the baseline +1%.</p>
 <table>{table}</table>
+<h3>The fifteen most complex functions</h3>
+<p>Tests included. Complexity is lizard's modified McCabe; lines count code, length counts the function from brace to brace.</p>
+<table>{functions_table(payload)}</table>
 <h2>3. Over time</h2>
 <p>Code lines and production complexity at every point of <code>scripts/metrics-history.json</code>, each line on its own scale.</p>
 {trend(metrics.load_history())}

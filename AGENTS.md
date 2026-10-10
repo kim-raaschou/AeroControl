@@ -53,8 +53,8 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   (`scripts/arch.py`, reading the gate's numbers from `scripts/code_metrics.py`), six sections: the
   layers as rings read from the arrows, with Robert C. Martin's coupling per layer; where to look —
   size against the ceiling, tests, the longest function, the deepest nesting, duplicated code, Common's
-  purity, the biggest types, fan-out and fan-in, arrows up, pairs naming each other, functions at
-  complexity ≥ 8; code lines and complexity over time; every type as a box in its layer and area, and
+  purity, the biggest types, fan-out and fan-in, arrows up, pairs naming each other, and the fifteen
+  most complex functions; code lines and complexity over time; every type as a box in its layer and area, and
   what names what; the layer docs; and every file. Regenerate it with a review; `make arch-check`
   says when it is stale.
 - `docs/layers/<layer>.md`, one per layer, at most 250 words: what the layer is for, its rules, and the
