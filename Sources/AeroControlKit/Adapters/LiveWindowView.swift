@@ -14,7 +14,7 @@ final class LiveWindowView: NSView, SCStreamOutput {
     /// Streams `window` at `pixels`, the size it is drawn at, into the layer until `stop`.
     func start(_ window: SCWindow, pixels: CGSize) {
         wantsLayer = true
-        layer?.contentsGravity = .resizeAspect
+        layer?.contentsGravity = .resizeAspectFill            // the slot is the frame; the window's overhang is cut
         let config = SCStreamConfiguration()
         (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
         config.minimumFrameInterval = Self.frameInterval

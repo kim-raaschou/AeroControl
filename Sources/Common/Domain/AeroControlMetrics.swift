@@ -14,6 +14,14 @@ public enum AeroControlMetrics {
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
+    /// `imageSize` scaled to cover `box` with its own aspect ratio, the overhang to be cut; the box
+    /// itself when the image has no size to speak of.
+    public static func cover(_ imageSize: CGSize, into box: CGSize) -> CGSize {
+        guard imageSize.width > 0, imageSize.height > 0 else { return box }
+        let scale = max(box.width / imageSize.width, box.height / imageSize.height)
+        return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
     /// `size` rounded to the screen's pixels, at least one each way: drawn at that size a
     /// picture of exactly that many pixels maps one to one onto the screen.
     public static func pixelSnapped(_ size: CGSize, scale: CGFloat) -> CGSize {

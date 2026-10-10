@@ -63,13 +63,11 @@ struct AeroControlAppTile: View {
         CGSize(width: size.width, height: size.height - (showsCaption ? AeroControlLayout.captionLane : 0))
     }
 
-    /// What is actually drawn: the fitted snapshot — sized from the window's measured size
-    /// before the picture is in, so the place it lands in is already its shape — or the
-    /// whole box when nothing is known about the window.
-    private var contentSize: CGSize {
-        guard let size = preview?.size ?? state.pictures.sizes[window.windowId] else { return pictureBox }
-        return AeroControlMetrics.pixelSnapped(AeroControlMetrics.fit(size, into: pictureBox), scale: displayScale)
-    }
+    /// What is actually drawn: the box, which is the window's slot as the layout placed it. The
+    /// picture covers it with its own shape and is cut at its edges, from the top left, as the
+    /// window itself is cut by its neighbour when its app refused the slot: the layout is the
+    /// truth, and a picture fitted inside the slot instead was a small box floating in it.
+    private var contentSize: CGSize { AeroControlMetrics.pixelSnapped(pictureBox, scale: displayScale) }
 
     /// On the map a tile is dragged onto another card to move its window; the strip has no card to
     /// drop on, so there it is not dragged at all.
@@ -155,7 +153,8 @@ struct AeroControlAppTile: View {
         ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
-                PixelImage(image: image, size: contentSize)
+                PixelImage(image: image, size: AeroControlMetrics.cover(image.size, into: contentSize))
+                    .frame(width: contentSize.width, height: contentSize.height, alignment: .topLeading)
                     .clipShape(plate)
                     // A hairline round the picture: a dark terminal on a dark card otherwise has no edge.
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))

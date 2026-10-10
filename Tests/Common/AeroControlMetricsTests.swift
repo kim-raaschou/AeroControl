@@ -13,6 +13,14 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.fit(.zero, into: box) == box)
     }
 
+    @Test("a picture covers its box with its own shape, the rest to be cut: the window's slot is the frame, whatever the app made of it")
+    func coveringPreview() {
+        let box = CGSize(width: 144, height: 96)
+        #expect(AeroControlMetrics.cover(CGSize(width: 1000, height: 1000), into: box) == CGSize(width: 144, height: 144))
+        #expect(AeroControlMetrics.cover(CGSize(width: 600, height: 200), into: box) == CGSize(width: 288, height: 96))
+        #expect(AeroControlMetrics.cover(.zero, into: box) == box)
+    }
+
     @Test("a picture is drawn a whole number of the screen's pixels wide and high, so one of its pixels is one of the screen's")
     func pixelSnapped() {
         #expect(AeroControlMetrics.pixelSnapped(CGSize(width: 100.3, height: 50.7), scale: 1) == CGSize(width: 100, height: 51))
