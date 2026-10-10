@@ -5,8 +5,8 @@ import AppKit
 public protocol NativeApiBridge: Sendable {
     /// The app's icon, for the badge in a picture's corner.
     func appIcon(bundleId: String) -> NSImage
-    /// A view showing the window as it changes, drawn at `pixels`, from when the bridge can
-    /// stream it until the view leaves its window; empty when it cannot.
+    /// A view showing the window as it changes, drawn at `pixels`, from when the bridge can stream
+    /// it until the view leaves its window; empty when it cannot.
     func liveWindow(_ id: Int, pixels: CGSize) -> NSView
 
     /// Whether window previews can be captured (macOS Screen Recording permission).
@@ -16,10 +16,10 @@ public protocol NativeApiBridge: Sendable {
     /// Starts whatever a capture needs that does not depend on which windows: called before
     /// AeroSpace is read, so the two overlap.
     func prepareCapture()
-    /// The on-screen size of each window, in points, before any picture is taken: the grid
-    /// takes its shape from these, so it does not reflow as pictures land.
+    /// The on-screen size of each window, in points, before any picture is taken: the grid takes
+    /// its shape from these, so it does not reflow as pictures land.
     func previewSizes(windowIds: [Int]) async -> [Int: CGSize]
-    /// One preview per window, scaled to fit `maxSize` (pixels), handed over one by one as
-    /// each lands. Windows that cannot be captured are simply never delivered.
+    /// One preview per window, scaled to fit `maxSize` (pixels), handed over one by one as each
+    /// lands.
     func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async
 }

@@ -1,9 +1,7 @@
 import AppKit
 
-/// A capture scaled once, with Core Graphics' high-quality interpolation, to exactly the
-/// pixels a tile draws it in. Drawn one to one and unfiltered, it is as sharp as the screen
-/// allows; left to the renderer, every frame shrank it with a bilinear filter, and a terminal
-/// shrunk threefold came out grainy.
+/// A capture scaled once, with Core Graphics' high-quality interpolation, to exactly the pixels a
+/// tile draws it in.
 @MainActor enum PictureResampler {
     private static let cache: NSCache<NSString, CGImage> = {
         let cache = NSCache<NSString, CGImage>()

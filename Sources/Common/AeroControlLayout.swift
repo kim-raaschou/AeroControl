@@ -1,18 +1,14 @@
 import CoreGraphics
 
-/// The overview's layout constants, and the two pure engines wired to them: `CardGrid`
-/// places the workspace cards (one identical, screen-shaped cell each, in a lattice),
-/// `TilePacker` places the windows inside a card (each at its own shape, one shared picture
-/// height inside the card, as large as its cell allows). All unit-tested.
+/// The overview's layout constants and the pure engines wired to them: `CardGrid` for the cards,
+/// `TilePacker` for the windows in a card.
 public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     /// The lane under the cards for the query, or the strip's line, and the air above it.
     public static let pillLane: CGFloat = 38
     public static let pillGap: CGFloat = 18
 
-    /// The cards' box on a screen: most of it, less the pill's lane. The lane comes out of the
-    /// box rather than being added to it: added, the panel grew taller than the screen the moment
-    /// anything was typed, and the lane was clipped off the bottom.
+    /// The cards' box on a screen: most of it, less the pill's lane.
     public static func usable(_ available: CGSize) -> CGSize {
         CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction - pillLane - pillGap)
     }
@@ -24,8 +20,8 @@ public enum AeroControlLayout {
     public static let badgeLane: CGFloat = 44
     /// Diameter of the workspace badge in the card header.
     public static let badgeSize: CGFloat = 24
-    /// While a filter is up each tile carries a caption above its picture: a title line and
-    /// the gap to the picture. Both the tile and `usedHeight` budget for it from here.
+    /// While a filter is up each tile carries a caption above its picture: a title line and the gap
+    /// to the picture.
     public static let captionTitleHeight: CGFloat = 32
     public static let captionGap: CGFloat = 6
     public static let captionLane: CGFloat = captionTitleHeight + captionGap
@@ -43,18 +39,15 @@ public enum AeroControlLayout {
         }
     }
 
-    /// A card's height that is not pictures: the padding, the badge lane, and the gap
-    /// between the badge and the first row of tiles.
+    /// A card's height that is not pictures: the padding, the badge lane, and the gap between the
+    /// badge and the first row of tiles.
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
     /// The room inside a card of `size` for its tiles: below the badge lane and its gap, inside the padding.
     public static func inner(of size: CGSize) -> CGSize { CGSize(width: size.width - 2 * cardPadding, height: size.height - cardChrome) }
 
     /// The gap between packed tiles, in the screen's points: one constant, scaled to the card like
     /// everything else, so a packed card (an accordion, a filtered subset, a workspace a release
-    /// AeroSpace cannot place) reads like a card drawn from AeroSpace's rects. It is an assumption
-    /// about the user's `gaps.inner`, the one in the overview; AeroSpace's own rects carry the real
-    /// gap, and only they are drawn as a map. `tileSpacing` when the screen is unknown; never
-    /// under 2 points, so tiles never touch.
+    /// AeroSpace cannot place) reads like a card drawn from AeroSpace's rects.
     public static let packedGapOnScreen: CGFloat = 12
     public static func packedGap(screen: CGSize?, inner: CGSize) -> CGFloat {
         guard let screen, screen.width > 0 else { return tileSpacing }
@@ -63,12 +56,7 @@ public enum AeroControlLayout {
 
     /// The workspace as AeroSpace laid it out, when it said where (`WindowInfo.layoutRect`, the
     /// owner's AeroSpace branch): each tiled window at that place and that size, in the screen's
-    /// coordinates scaled into `inner` and centred. Floating and fullscreen windows are not in the
-    /// layout; they lie over it as `ghosts`, at their own scale, centred, since where a float lies
-    /// is not readable, and the card draws them faint for that reason. Nil when a tiled window has
-    /// no rect (a release AeroSpace, or a window opened on a hidden workspace before it was next
-    /// shown), when the rects overlap (an accordion: only the front one would show), or when the
-    /// screen is unknown; the card then packs tiles.
+    /// coordinates scaled into `inner` and centred.
     public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let windows = workspace.windows
@@ -97,11 +85,8 @@ public enum AeroControlLayout {
     }
 
     /// One card of the map as drawn: where the lattice put it, in the map's space, and in it every
-    /// window where the card draws it, in the card's inner box (`frames`), the floats and fullscreen
-    /// windows that lie over the layout among them (`ghosts`). An empty workspace's card holds one
-    /// stand-in the size of the inner box, keyed `-1 - the workspace's index`, which no window has,
-    /// so the keys can stop on it and the card draws nothing for it. `grid` is the same card for the
-    /// keys, its windows in the map's space.
+    /// window where the card draws it, in the card's inner box (`frames`), the floats and
+    /// fullscreen windows that lie over the layout among them (`ghosts`).
     public struct MapCard: Equatable, Sendable {
         public let workspace: String
         public let frame: CGRect
@@ -113,13 +98,8 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The map as drawn: `workspaces` in the lattice, every cell this screen's shape, each card
-    /// holding its workspace as AeroSpace laid it out when it said where (`treeLayout`), otherwise
-    /// `TilePacker`'s tiles, each at its own shape at the largest shared picture height that fits
-    /// the inner box, centred in it. A filtered map shows a subset, so it packs. Each card on its
-    /// own: every cell is the same size, and a card fills its cell with what it has. One height for
-    /// the whole screen was tried on 2026-09-30 and dropped the same day: a single six-window
-    /// workspace shrank every picture on the map to a stamp.
+    /// The map as drawn: a card per workspace in the lattice, mirrored from AeroSpace's rects
+    /// (`treeLayout`) or packed (`TilePacker`).
     public static func mapLayout(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect], available: CGSize, usable: CGSize,
                                  filtering: Bool) -> [MapCard] {
         let cells = CardGrid.lattice(count: workspaces.count, in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
@@ -146,8 +126,8 @@ public enum AeroControlLayout {
         return (frames, [])
     }
 
-    /// One workspace in the strip: its place on the unrolled row, where each window is drawn
-    /// inside the card's picture area, and which of those belong to other apps.
+    /// One workspace in the strip: its place on the unrolled row, where each window is drawn inside
+    /// the card's picture area, and which of those belong to other apps.
     public struct StripCard: Equatable, Sendable {
         public let workspace: String
         public let span: AppStripModel.Span
@@ -162,8 +142,7 @@ public enum AeroControlLayout {
         public let width: CGFloat
         public let cards: [StripCard]
 
-        /// Whether the row slides in a view this wide: only when it does not fit. A row that fits
-        /// stands still, so the keys on its cards stay where they are read (krn.overview's rule).
+        /// Whether the row slides in a view this wide: only when it does not fit.
         public func slides(in viewWidth: CGFloat) -> Bool { width > viewWidth }
 
         /// The cards for the keys (`GridWalk`): each card's span on the unrolled row, and in it the
@@ -174,14 +153,9 @@ public enum AeroControlLayout {
         }
     }
 
-    /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding
-    /// the app, its pictures in its screen's shape at one height (`AppStripModel.cardHeight`)
-    /// inside the map card's padding and badge lane, mirroring the workspace as the map does — from
-    /// AeroSpace's rects — with the other apps' windows marked to be drawn faint. A card whose
-    /// layout cannot be read packs only the app's windows, each at its own shape, as large as its
-    /// box allows, as the map does — two always side by side, never one over the other, which
-    /// reads as one window. Every card is its workspace's screen: the strip is a row of
-    /// workspaces, and one that does not fit slides workspace by workspace (`slides`).
+    /// The strip as drawn: one map card per workspace holding the app, at one height
+    /// (`AppStripModel.cardHeight`), mirrored from AeroSpace's rects, the other apps' windows
+    /// marked faint.
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
                                    fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
@@ -221,12 +195,7 @@ public enum AeroControlLayout {
         public let x: CGFloat
     }
 
-    /// Where the strip's cards stand, in one row. A row that fits stands still and centred. One
-    /// that does not slides so the card holding `centre` — the window the keys put the marking
-    /// on — is in the middle, but no further than the row's ends: the first card stays at the
-    /// left edge and the last at the right, and from the last to the first the row slides back
-    /// the whole way. The card's middle, not the window's: stepping between windows of one
-    /// workspace moves the marking and leaves the row.
+    /// Where the strip's cards stand, in one row.
     public static func stripPlacements(_ layout: StripLayout, centre: Int?, viewWidth: CGFloat) -> [StripPlacement] {
         guard let first = layout.cards.first else { return [] }
         let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false } ?? first
@@ -235,10 +204,7 @@ public enum AeroControlLayout {
         return layout.cards.indices.map { StripPlacement(card: $0, x: (layout.cards[$0].span.x + offset).rounded()) }
     }
 
-    /// The box pictures are first taken to fit, in pixels. In the strip: a strip card at its largest,
-    /// `AppStripModel.tallest` of the panel high in the screen's shape. On the map: a card's inner box, the most a tile
-    /// there draws (a window alone on its card), never more than the strip's. A tile drawn larger,
-    /// by a query or the strip taking over, asks for it again at its size (`PictureStore.want`).
+    /// The box pictures are first taken to fit, in pixels.
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
         let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
@@ -249,10 +215,7 @@ public enum AeroControlLayout {
         return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
     }
 
-    /// The windows whose picture no longer fits them, and so are taken again. A picture is of the window
-    /// as it is, whatever its slot — an app that refused the slot keeps its own shape, and a picture of
-    /// it can never be the slot's — so it is the window's own size that says; the slot stands in for a
-    /// window never measured, and one with neither is not stale.
+    /// The windows whose picture no longer fits them, and so are taken again.
     public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
         workspaces.flatMap(\.windows).filter { w in (sizes[w.windowId] ?? w.layoutRect?.size).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
     }
@@ -263,27 +226,21 @@ public enum AeroControlLayout {
         return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
-    /// What lies over what when frames overlap: a ghost (a float, a fullscreen window) over
-    /// everything, as on the screen; the focused window over its neighbours, since a window that
-    /// refused its slot for a minimum size stands over the one beside it, and the one in front on
-    /// the screen is the one with focus; the rest as AeroSpace listed them.
+    /// What lies over what when frames overlap: a ghost over everything, the focused window over
+    /// its neighbours, the rest as listed.
     public static func stacking(windowId: Int, focused: Int, ghosts: Set<Int>) -> Double {
         ghosts.contains(windowId) ? 2 : windowId == focused ? 1 : 0
     }
 
-    /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with
-    /// fewer windows than the busiest reads as a centred picture and not as a top-heavy box.
-    /// Every cell is the same size, so this is what a lattice wants; a block too big for the
-    /// box is pinned at its top-left.
+    /// Where a card's packed tiles sit in its inner box: centred both ways, so a card with fewer
+    /// windows than the busiest reads as a centred picture and not as a top-heavy box.
     public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {
         CGPoint(x: max(0, ((inner.width - packed.width) / 2).rounded(.down)),
                 y: max(0, ((inner.height - packed.height) / 2).rounded(.down)))
     }
 
-    /// The mark on a card for how AeroSpace lays its workspace out: tiles are a row or a column, an accordion
-    /// a stack with one window in front. It says what AeroSpace does with the windows, not where any one is,
-    /// which a hidden workspace does not tell. An empty workspace wears it too: the layout is how the next
-    /// window will be arranged, and where a merge's windows will land. Nothing for a layout it does not know.
+    /// The mark on a card for how AeroSpace lays its workspace out: tiles are a row or a column, an
+    /// accordion a stack with one window in front.
     public static func layoutSymbol(rootLayout: String) -> (name: String, help: String)? {
         switch rootLayout {
         case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side")

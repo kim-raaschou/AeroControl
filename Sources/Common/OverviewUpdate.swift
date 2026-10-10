@@ -32,7 +32,7 @@ public enum OverviewInput: Sendable {
 public enum OverviewEffect: Equatable {
     case refresh
     /// AeroSpace commands one after another, in order (a merge keeps the tiling order), then,
-    /// `thenRead`, AeroSpace read again. A focus is not read after: the overview closes on it.
+    /// `thenRead`, AeroSpace read again.
     case run([AeroControlAction], thenRead: Bool)
 }
 
@@ -55,10 +55,7 @@ public func updateOverview(_ state: OverviewModel, _ input: OverviewInput) -> (O
     case .action(.mergeWorkspace(let source, let target)):
         let from = source == target ? nil : state.workspaces.first { $0.name == source }
         guard let from, !from.windows.isEmpty else { return (state, []) }
-        // The windows arrive one by one in the target's root, so a stack would come apart into a row.
-        // Into an empty workspace the root is theirs: it is given the source's layout, set on a tiled
-        // window focused for it (a float's layout is its own), and a stack stays a stack. Into one with
-        // windows the layout is its own, and they tile beside it.
+        // Into an empty workspace the source's layout comes along, set on a tiled window: a stack stays a stack.
         let empty = state.workspaces.first { $0.name == target }?.windows.isEmpty == true && !from.rootLayout.isEmpty
         let layout: [AeroControlAction] = empty ? from.windows.first { !$0.isFloating }.map { [.focusWindow($0.windowId), .setLayout(from.rootLayout)] } ?? [] : []
         return (state, [.run(from.windows.map { .moveWindowQuietly(windowId: $0.windowId, toWorkspace: target) } + [.focusWorkspace(target)] + layout, thenRead: true)])

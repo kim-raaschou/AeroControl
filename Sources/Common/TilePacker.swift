@@ -1,12 +1,7 @@
 import Foundation
 
-/// The windows inside a card, laid out as a justified photo grid: every tile at its own
-/// width/height ratio, one shared picture height for the whole card, rows filled greedily
-/// and then spread evenly so six windows are 3 + 3 rather than 4 + 2, a shorter row centred
-/// under the wider one. Ported from
-/// krn.overview's `CardGeometry.js`, where it was measured against flickr's per-row
-/// justification (which wasted half a fixed box) and Knuth–Plass (which broke the height
-/// search); see that repo's docs/LAYOUT.md for why this and not those.
+/// The windows inside a card as a justified photo grid: every tile at its own ratio, one shared
+/// height, rows filled greedily then spread evenly, a shorter row centred.
 public enum TilePacker {
     public struct Tile: Equatable, Sendable {
         public let x: CGFloat
@@ -22,9 +17,7 @@ public enum TilePacker {
         public let tiles: [Tile]
     }
 
-    /// Tiles at picture height `tileHeight`, in rows no wider than `width`. A tile wider than
-    /// the card is clamped to it and loses height on its own, in a row of its own, rather than
-    /// capping the shared height for every tile beside it. Each tile has `caption` under it.
+    /// Tiles at picture height `tileHeight`, in rows no wider than `width`.
     public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
                                 gap: CGFloat, caption: CGFloat) -> Packed {
         guard !ratios.isEmpty else { return Packed(height: 0, width: 0, tiles: []) }
@@ -60,8 +53,8 @@ public enum TilePacker {
         return Packed(height: y - gap, width: widest, tiles: tiles)
     }
 
-    /// The largest shared picture height whose rows fit in `width` × `height`: fitting is
-    /// monotone in the height for a greedy fill, so a binary search finds it.
+    /// The largest shared picture height whose rows fit in `width` × `height`: fitting is monotone
+    /// in the height for a greedy fill, so a binary search finds it.
     public static func packHeight(ratios: [CGFloat], width: CGFloat, height: CGFloat,
                                   gap: CGFloat, caption: CGFloat) -> CGFloat {
         guard !ratios.isEmpty, width > 0, height > 0 else { return 0 }

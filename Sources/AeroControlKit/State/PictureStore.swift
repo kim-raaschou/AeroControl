@@ -1,35 +1,31 @@
 import AppKit
 import Common
 
-/// The pictures of the overview's windows, for one visit: their sizes measured before any
-/// picture is taken, the pictures taken once and landed a card at a time, taken again sharper
-/// where a tile draws one larger, taken again where a refresh left one the wrong shape, and
-/// all dropped when the visit ends. The store says which windows, and which cards they are on;
-/// this keeps them and talks to the bridge.
+/// The pictures of the overview's windows for one visit: measured, taken a card at a time, taken
+/// again where a tile draws one larger or a window changed shape, and dropped when the visit ends.
 @MainActor @Observable
 public final class PictureStore {
     /// Window previews, captured when the overview is summoned and dropped when it hides.
-    /// They land a card at a time into a grid that is already on screen.
     public private(set) var previews: [Int: NSImage] = [:]
-    /// Each window's on-screen size, known before any picture is: the grid takes its
-    /// shape from these, so pictures landing later change nothing but the pictures.
+    /// Each window's on-screen size, known before any picture is: the grid takes its shape from
+    /// these, so pictures landing later change nothing but the pictures.
     public internal(set) var sizes: [Int: CGSize] = [:]
 
     private let bridge: NativeApiBridge
     init(bridge: NativeApiBridge) { self.bridge = bridge }
 
     /// An app's icon, for the badge in a picture's corner: the one thing a picture does not say
-    /// about a window is which app it is. The bridge keeps them, once per app, for good.
+    /// about a window is which app it is.
     public func icon(for bundleId: String) -> NSImage { bridge.appIcon(bundleId: bundleId) }
-    /// A window's picture as it changes, in a view, at `pixels`: the window under the ring, for
-    /// as long as it wears it. The view stops its stream as it leaves the window.
+    /// A window's picture as it changes, in a view, at `pixels`: the window under the ring, for as
+    /// long as it wears it.
     public func live(_ id: Int, pixels: CGSize) -> NSView { bridge.liveWindow(id, pixels: pixels) }
 
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private(set) var generation = 0
 
-    /// Reads every window's size — cheap, the enumeration was started with `prepare` — so
-    /// the overview can be revealed with its final shape before a picture is taken.
+    /// Reads every window's size — cheap, the enumeration was started with `prepare` — so the
+    /// overview can be revealed with its final shape before a picture is taken.
     func measure(_ ids: [Int]) async {
         generation += 1
         let generation = generation
@@ -42,9 +38,9 @@ public final class PictureStore {
     private var captureSize: CGSize?
     private var grouping: [[Int]] = []
 
-    /// Takes these windows' pictures at `size`, landing a card's once all of its pictures and
-    /// the cards' before it are in; when the capture is, the rest — a card with a window that
-    /// gave no picture. Returns when all are in. A `clear()` in the meantime discards the rest.
+    /// Takes these windows' pictures at `size`, landing a card's once all of its pictures and the
+    /// cards' before it are in; when the capture is, the rest — a card with a window that gave no
+    /// picture.
     func take(_ ids: [Int], cards: [[Int]], at size: CGSize) async {
         (captureSize, grouping) = (size, cards)
         let generation = generation, wanted = Set(ids)
@@ -60,11 +56,7 @@ public final class PictureStore {
         await landing?.value
     }
 
-    /// Pictures taken but not yet in `previews`. A card's land together once all of them are
-    /// in, the cards in reading order and `cardEvery` apart: one by one, or each card as it was
-    /// in, they came in all over the screen. And every picture stored redraws the whole
-    /// overview — on the main thread that drew the map once per window and kept the captures
-    /// still in flight from landing.
+    /// Pictures taken but not yet in `previews`.
     private var arriving: [Int: NSImage] = [:]
     static let cardEvery: Duration = .milliseconds(25)
     /// Cards whose pictures are in, waiting their turn.
@@ -94,10 +86,9 @@ public final class PictureStore {
         previews.merge(pictures) { $1 }
     }
 
-    /// The pixels a tile draws a picture at, as the tiles report them; a picture taken smaller
-    /// is taken again at that size, the few that need it together once the reports settle
-    /// (150 ms) — a filter narrowing to one window, a workspace alone on a card. What was asked
-    /// is kept, so a window too small to give more is not asked again: no loop, no clock.
+    /// The pixels a tile draws a picture at, as the tiles report them; a picture taken smaller is
+    /// taken again at that size, the few that need it together once the reports settle (150 ms) — a
+    /// filter narrowing to one window, a workspace alone on a card.
     public func want(_ id: Int, pixels: CGSize) {
         func covers(_ size: CGSize?) -> Bool { size.map { $0.width >= pixels.width * 0.95 && $0.height >= pixels.height * 0.95 } ?? false }
         guard previews[id] != nil, !covers(previews[id]?.size), !covers(asked[id]) else { return }
@@ -128,18 +119,14 @@ public final class PictureStore {
         PictureResampler.forget()
     }
 
-    /// After a refresh the windows' sizes are read from the window server every `settleEvery`, until two reads
-    /// agree or `settleWithin` has passed: apps resize after AeroSpace moves their windows, in their
-    /// own time, 70–280 ms measured. Taken at fixed times, a picture caught a window halfway.
+    /// After a refresh the windows' sizes are read from the window server every `settleEvery`,
+    /// until two reads agree or `settleWithin` has passed: apps resize after AeroSpace moves their
+    /// windows, in their own time, 70–280 ms measured.
     static let settleEvery: Duration = .milliseconds(50)
     static let settleWithin: Duration = .seconds(1)
 
-    /// The windows' sizes once they stand still, and new pictures of those `shown` whose picture
-    /// no longer fits what they are drawn at (`AeroControlLayout.stale`), or that have none: the
-    /// neighbours that widened into a hole, a window that appeared, a workspace's slot that
-    /// changed, the cards of a strip that took over another's. Nothing is stored, so a refresh cut
-    /// off by the next loses nothing. Nil while the overview is hidden: `clear` has dropped the
-    /// capture size.
+    /// The windows' sizes once they stand still, and new pictures of those `shown` whose picture no
+    /// longer fits them (`AeroControlLayout.stale`).
     func settled(_ ids: [Int], shown: [WorkspaceInfo]) async -> ([Int: CGSize]?, [Int: NSImage]) {
         guard let size = captureSize else { return (nil, [:]) }
         let deadline = ContinuousClock.now + Self.settleWithin
@@ -150,8 +137,7 @@ public final class PictureStore {
             if again == sizes { break }
             sizes = again
         }
-        // Cut off by the next refresh: its pictures would be of windows still on their way, and
-        // thrown away by the caller — a merge's windows were taken twice, once halfway.
+        // Cut off by the next refresh: its pictures would be thrown away.
         guard !Task.isCancelled else { return (nil, [:]) }
         let stale = AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes)
         var pictures: [Int: NSImage] = [:]

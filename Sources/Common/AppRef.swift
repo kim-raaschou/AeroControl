@@ -1,7 +1,7 @@
 import Foundation
 
-/// How a link names an app: by the two names AeroSpace itself uses for one, its bundle id
-/// (`app-id` in AeroSpace's config, `app-bundle-id` in `list-windows`) or its name (`app-name`).
+/// How a link names an app: by the two names AeroSpace itself uses for one, its bundle id (`app-id`
+/// in AeroSpace's config, `app-bundle-id` in `list-windows`) or its name (`app-name`).
 public enum AppRef: Equatable, Sendable {
     case bundleId(String)
     case name(String)
@@ -20,8 +20,8 @@ public enum AppRef: Equatable, Sendable {
         windows.contains { $0.bundleId == bundleId && matches($0) }
     }
 
-    /// What the strip's lane says when `open` found no such app: the name as the link gave it,
-    /// in the app's place, and why nothing came, in its count's.
+    /// What the strip's lane says when `open` found no such app: the name as the link gave it, in
+    /// the app's place, and why nothing came, in its count's.
     public var notFound: (name: String, reason: String) {
         switch self {
         case .bundleId(let id): (id, "no app has this id")

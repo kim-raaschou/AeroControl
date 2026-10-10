@@ -2,15 +2,11 @@ import CoreGraphics
 import Foundation
 
 /// The layout's own order of a workspace's windows, read from AeroSpace's rects
-/// (`WindowInfo.layoutRect`): what the ring, the keys and the strip walk. Nothing here infers
-/// a layout — the reconstruction from window sizes was removed on 2026-10-03, since it guessed
-/// what AeroSpace had not said, and the rects say it.
+/// (`WindowInfo.layoutRect`): what the ring, the keys and the strip walk.
 public enum WorkspaceTree {
     /// The layout's own order from AeroSpace's rects: the rects are cut along lines that cross no
-    /// window, columns before rows, and the parts read left to right and top to bottom, each
-    /// part the same way in turn. For a tiling layout that is the tree's order — a column is
-    /// read top to bottom before the window beside it. Rects that overlap, an accordion's, keep
-    /// the order they came in.
+    /// window, columns before rows, and the parts read left to right and top to bottom, each part
+    /// the same way in turn.
     public static func order(_ rects: [(Int, CGRect)]) -> [Int] {
         guard rects.count > 1 else { return rects.map(\.0) }
         for (lo, hi) in [(\CGRect.minX, \CGRect.maxX), (\.minY, \.maxY)] {

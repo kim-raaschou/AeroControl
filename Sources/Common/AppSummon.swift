@@ -1,8 +1,6 @@
 import Foundation
 
-/// What one key on an app does, decided from AeroSpace's state alone. Three of the four
-/// cases are settled at once and without a word; the fourth, windows to choose between, is
-/// the strip, and the strip to open comes with it.
+/// What one key on an app does, decided from AeroSpace's state alone.
 public enum AppSummon: Equatable, Sendable {
     /// Start the app, or bring it forward if it runs; its windows are macOS's to order.
     case launch(AppRef)

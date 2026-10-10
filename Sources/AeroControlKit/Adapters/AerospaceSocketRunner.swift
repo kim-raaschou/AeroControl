@@ -22,35 +22,17 @@ public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError
         }
     }
 
-    /// `localizedDescription` ignores `CustomStringConvertible`, and the overview shows
-    /// exactly that string when a load fails — without this the user gets NSError's
-    /// "The operation couldn't be completed" instead of what AeroSpace said.
+    /// `localizedDescription` ignores `CustomStringConvertible`, and the overview shows exactly
+    /// that string when a load fails — without this the user gets NSError's "The operation couldn't
+    /// be completed" instead of what AeroSpace said.
     public var errorDescription: String? { description }
 }
 
-/// Sends AeroSpace commands over its Unix socket instead of spawning the
-/// `aerospace` CLI. It speaks AeroSpace's wire protocol: AF_UNIX connect, a
-/// `UInt32` protocol-version handshake in both directions, then length-prefixed
-/// (`[UInt32 little-endian length][JSON]`) request/response framing.
-///
-/// Each `run` uses a fresh connection (connect + handshake are sub-millisecond
-/// on a Unix socket, measured indistinguishable from a reused connection), so
-/// there is no persistent state, no reconnect logic, and no ambiguous command
-/// replay. `subscribe` streams events over its own dedicated connection on a
-/// background thread. We trust AeroSpace as the source of truth: the only guard
-/// is the protocol-version handshake, and any transport failure surfaces as a
-/// thrown error rather than a fallback.
-///
-/// The blocking `connect`/`send`/`recv` syscalls run on a private concurrent
-/// `DispatchQueue`, never on the Swift cooperative pool: those calls have no
-/// timeout (we trust AeroSpace), so an alive-but-hung daemon would otherwise
-/// park a fixed cooperative thread — and `Task` cancellation can't interrupt a
-/// blocking `recv`. Offloading confines that cost to an elastic GCD worker.
+/// Sends AeroSpace commands over its Unix socket instead of spawning the `aerospace` CLI.
 public struct AerospaceSocketRunner: AerospaceProcessRunner {
     private let socketPath: String
 
-    /// Concurrent queue for blocking socket round-trips, keeping them off the
-    /// cooperative pool. Elastic: each in-flight `run` gets its own worker.
+    /// Concurrent queue for blocking socket round-trips, keeping them off the cooperative pool.
     private static let ioQueue = DispatchQueue(
         label: "com.aerocontrol.aerospace-socket.run",
         attributes: .concurrent
@@ -85,16 +67,15 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
     }
 }
 
-/// Low-level socket framing shared by the command and subscribe paths, split out
-/// so tests can drive the runner against a mock AF_UNIX server.
+/// Low-level socket framing shared by the command and subscribe paths, split out so tests can drive
+/// the runner against a mock AF_UNIX server.
 enum AerospaceSocket {
     struct ServerAnswer: Decodable {
         let exitCode: Int32
         let stdout: String
         let stderr: String
-        /// AeroSpace stamps every answer with its own version and commit, e.g.
-        /// "0.21.3-Beta d56e1637c3a1…". It is the only way to learn which AeroSpace we are
-        /// actually talking to, so it goes into the error a user would send us.
+        /// AeroSpace stamps every answer with its own version and commit, e.g. "0.21.3-Beta
+        /// d56e1637c3a1…".
         let serverVersionAndHash: String?
 
         func failure(_ args: [String]) -> AerospaceSocketError {
@@ -125,9 +106,6 @@ enum AerospaceSocket {
     }
 
     /// Streams raw ServerEvent JSON lines over a dedicated subscribe connection.
-    /// A dedicated `Thread` owns the blocking read loop so it never parks a
-    /// Swift-concurrency cooperative thread; `shutdown` + `close` from the
-    /// stream's termination handler unblocks and tears it down.
     static func subscribeStream(socketPath: String, args: [String]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let handle = SocketHandle()
@@ -139,13 +117,7 @@ enum AerospaceSocket {
                     continuation.finish(throwing: handle.isCancelled ? nil : error)
                     return
                 }
-                // The worker owns the fd for its whole lifetime and is the only
-                // one that closes it; cancellation merely shuts it down to
-                // interrupt the blocking read, so the descriptor is never freed
-                // out from under this thread (no fd-reuse race). A cancel during
-                // the handshake itself is intentionally not interrupted — that
-                // only matters if AeroSpace accepts then hangs mid-handshake,
-                // which our trust model rules out.
+                // The worker is the sole closer of the fd; a cancel only shuts it down to interrupt the read.
                 defer { handle.closeOwned(fd) }
                 do {
                     if handle.register(fd) {
@@ -153,11 +125,7 @@ enum AerospaceSocket {
                         var first = true
                         while !handle.isCancelled {
                             let body = try readFrame(fd)
-                            // A rejected subscribe (an unknown flag, say) is answered with one
-                            // ordinary ServerAnswer frame — and then the daemon never closes the
-                            // connection. Without this the read loop blocks forever, nothing
-                            // throws, and the overview silently stops following AeroSpace for
-                            // the life of the process. Events never decode as a ServerAnswer.
+                            // A rejected subscribe is one ServerAnswer and a connection left open: throw, or this loop blocks for good.
                             if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
                             first = false
                             if let line = String(data: body, encoding: .utf8) {
@@ -255,11 +223,8 @@ enum AerospaceSocket {
     }
 }
 
-/// Coordinates ownership of the subscribe connection's descriptor between the
-/// worker thread that performs the blocking reads and the stream's termination
-/// handler. The worker is the sole closer of the fd; cancellation only flips the
-/// flag and `shutdown`s the socket to interrupt the blocking read, so the
-/// descriptor number is never freed while the worker might still use it.
+/// Coordinates ownership of the subscribe connection's descriptor between the worker thread that
+/// performs the blocking reads and the stream's termination handler.
 private final class SocketHandle: @unchecked Sendable {
     private let lock = NSLock()
     private var fd: Int32 = -1
@@ -270,9 +235,7 @@ private final class SocketHandle: @unchecked Sendable {
         return cancelled
     }
 
-    /// Registers the worker-owned fd. Returns false if the stream was already
-    /// cancelled, in which case the worker should not start the read loop (it
-    /// still owns and must close the fd via `closeOwned`).
+    /// Registers the worker-owned fd.
     func register(_ value: Int32) -> Bool {
         lock.lock(); defer { lock.unlock() }
         if cancelled { return false }
@@ -280,16 +243,16 @@ private final class SocketHandle: @unchecked Sendable {
         return true
     }
 
-    /// Called from the stream's termination handler on any thread: request stop
-    /// and interrupt the blocking read without freeing the descriptor.
+    /// Called from the stream's termination handler on any thread: request stop and interrupt the
+    /// blocking read without freeing the descriptor.
     func cancel() {
         lock.lock(); defer { lock.unlock() }
         cancelled = true
         if fd >= 0 { Darwin.shutdown(fd, SHUT_RDWR) }
     }
 
-    /// Called once by the owning worker thread as it exits; performs the sole
-    /// `close` of the descriptor.
+    /// Called once by the owning worker thread as it exits; performs the sole `close` of the
+    /// descriptor.
     func closeOwned(_ value: Int32) {
         lock.lock(); defer { lock.unlock() }
         fd = -1

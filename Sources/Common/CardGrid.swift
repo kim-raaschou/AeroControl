@@ -1,16 +1,12 @@
 import CoreGraphics
 import Foundation
 
-/// The workspace cards on the screen: one identical, screen-shaped cell per workspace in a
-/// lattice, as GNOME Shell and KWin lay their overviews out. Of every row count the one whose
-/// cell comes out largest wins, the lattice is centred in the box, and a short last row is
-/// left-aligned with its holes at the end. A card's place and size depend on the workspace
-/// count alone, so nothing moves when windows come and go. Chosen over a row-break search
-/// with weighted cells on 2026-09-30; see docs/outer-grid-literature.md.
+/// The workspace cards on the screen: one identical, screen-shaped cell per workspace in a lattice,
+/// as GNOME Shell and KWin lay their overviews out.
 public enum CardGrid {
     /// `count` cells in `box`, `gap` apart, each cell's inner box — the cell less `chrome`, what a
-    /// card spends on header and padding — of `cellRatio` (width / height), so a screen drawn
-    /// into it fills it. With no chrome the cell itself has that shape.
+    /// card spends on header and padding — of `cellRatio` (width / height), so a screen drawn into
+    /// it fills it.
     public static func lattice(count n: Int, in box: CGSize, cellRatio: CGFloat, gap: CGFloat, chrome: CGSize = .zero) -> [CGRect] {
         guard n > 0 else { return [] }
         var best: (area: CGFloat, rows: Int, columns: Int, cell: CGSize)?

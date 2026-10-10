@@ -12,9 +12,8 @@ final class InteractiveHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }
 
-/// Mission-Control-style presentation: one borderless panel covering the whole screen,
-/// with a blurred, dimmed backdrop and the workspace cards centered on it. Escape or a
-/// click on the backdrop dismisses; the app stays an accessory (non-activating panel).
+/// Mission-Control-style presentation: one borderless panel covering the whole screen, with a
+/// blurred, dimmed backdrop and the workspace cards centered on it.
 class OverviewWindow: NSPanel {
     private static let fadeDuration: TimeInterval = 0.2
     /// The animation scale from settings; 0 reveals and dismisses in one frame.
@@ -23,7 +22,6 @@ class OverviewWindow: NSPanel {
     private let targetScreen: NSScreen
     var onDismiss: (() -> Void)?
     /// ⌘Q and ⌘W: quit the app, close the window, under the ring (`OverlayWindowManager`).
-    /// ⇧⌘ and a workspace's name moves it there (`FilterKey.moveToWorkspace`).
     var onQuitApp: (() -> Void)?
     var onCloseWindow: (() -> Void)?
     /// Offers a keystroke to the type-to-filter host; true when it took it.
@@ -49,9 +47,8 @@ class OverviewWindow: NSPanel {
     /// Key so Escape reaches us; non-activating so the app never takes over the menu bar.
     override var canBecomeKey: Bool { true }
 
-    /// Escape also arrives here rather than through `keyDown` — Cmd-period always does — so
-    /// the filter gets the same first refusal it gets there. Two Escape routes meaning two
-    /// different things is how Escape came to skip clearing the query on one of them.
+    /// Escape also arrives here rather than through `keyDown` — Cmd-period always does — so the
+    /// filter gets the same first refusal it gets there.
     override func cancelOperation(_ sender: Any?) {
         log.debug("overview: cancelOperation")
         if onKey?(.escape) == true { return }
@@ -60,16 +57,9 @@ class OverviewWindow: NSPanel {
 
     /// ⌘W closes the window under the ring and ⌘Q quits its app, on the map and in the strip, as
     /// they would without the overview, which stays up so you see each go.
-    ///
-    /// Both have to be intercepted here because summoning activates AeroControl, so while
-    /// the overview is up it owns the menu bar, including the Quit item SwiftUI installs by
-    /// default. Left alone, a stray Cmd-Q killed the whole agent: the overlay vanished, the
-    /// app underneath came to the front, and the summon keybind silently did nothing until
-    /// AeroControl was launched again. Quit stays in the menu bar item.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
-        // Only the modifiers that mean something here; the flag set also carries `.numericPad`,
-        // `.function` and the like.
+        // Only the modifiers that mean something here; the flags also carry `.numericPad` and `.function`.
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
         if let key = FilterKey(command: key, shift: modifiers.contains(.shift)), onKey?(key) == true { return true }
@@ -89,8 +79,8 @@ class OverviewWindow: NSPanel {
         if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }
     }
 
-    /// While the overview is up it owns the keyboard: if another app takes key status
-    /// (activation shuffles after the summon), take it back so Escape keeps working.
+    /// While the overview is up it owns the keyboard: if another app takes key status (activation
+    /// shuffles after the summon), take it back so Escape keeps working.
     override func resignKey() {
         super.resignKey()
         guard isVisible, !isDismissing else { return }
@@ -129,7 +119,6 @@ class OverviewWindow: NSPanel {
 }
 
 /// AppKit's half of `FilterKey`, which lives in `Common` and may not see an `NSEvent`.
-/// A modified key is somebody else's (Cmd-Q, Cmd-W, Ctrl-arrows in AeroSpace).
 private extension FilterKey {
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -148,10 +137,7 @@ struct OverviewRoot: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The overview comes in at once; only its pictures fade in. The backdrop dims the desktop
-    /// without blurring it on this system, and anything half there over it — the whole window
-    /// fading, or the cards — let the desktop's sharp text show through the pictures like a
-    /// shadow. The cards grew the last bit into place too, while the window was still hidden.
+    /// The overview comes in at once; only its pictures fade in.
 
     var body: some View {
         let palette = theme.palette(for: colorScheme)
@@ -160,8 +146,7 @@ struct OverviewRoot: View {
                 BackdropBlur()
                 palette.backdrop
             }
-            // The strip floats over the desktop as ⌘Tab's switcher does; the map dims it, as Mission
-            // Control does. Not quite gone: a window's clear pixels let a click through to the app below.
+            // The strip floats over the desktop, the map dims it; 0.002, not 0, so a click still lands here.
             .opacity(state.strip != nil || state.missingApp != nil ? 0.002 : 1)
             .ignoresSafeArea()
             .contentShape(Rectangle())

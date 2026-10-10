@@ -1,8 +1,8 @@
 import SwiftUI
 import Common
 
-/// The full-screen overview content: every workspace as a card, in even rows of equal-sized
-/// cards, as the store lays them out (`OverviewStore.cards`) on the screen the host gave it.
+/// The full-screen overview content: every workspace as a card, in even rows of equal-sized cards,
+/// as the store lays them out (`OverviewStore.cards`) on the screen the host gave it.
 public struct AeroControlPanel: View {
     let state: OverviewStore
     @Environment(\.aeroLook) private var look
@@ -13,9 +13,7 @@ public struct AeroControlPanel: View {
     public init(state: OverviewStore) { self.state = state }
 
     public var body: some View {
-        // The pill sits under the result rather than over it: the cards are only as tall as
-        // their pictures need now, so an overlay at the bottom would land on a card edge.
-        // A missing app has the lane alone; a map without workspaces has nothing to draw.
+        // The pill sits under the result, in a lane the grid reserves; a missing app has the lane alone.
         return VStack(spacing: AeroControlLayout.pillGap) {
             if let errorMsg = state.error {
                 errorView(errorMsg)
@@ -46,8 +44,7 @@ public struct AeroControlPanel: View {
         }
         .frame(width: usable.width, height: usable.height, alignment: .topLeading)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        // The map holds still through ordinary churn; the filtered result re-flows as the
-        // query narrows. Animated, or every letter would snap.
+        // The filtered result re-flows as the query narrows; animated, or every letter would snap.
         .animation(.easeInOut(duration: 0.15 * look.motion), value: shown)
     }
 

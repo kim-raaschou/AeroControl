@@ -2,10 +2,8 @@ import AppKit
 // ScreenCaptureKit's types are not marked Sendable yet; they are only ever touched on the main actor here.
 @unsafe @preconcurrency import ScreenCaptureKit
 
-/// A window's picture as it changes: one window streamed by ScreenCaptureKit, each frame put in
-/// the layer as it comes, never through SwiftUI, so nothing else is drawn again for it. The
-/// overview streams the window wearing the ring, one at a time, for as long as it wears it;
-/// until the first frame the picture taken at the summon shows through.
+/// A window's picture as it changes: one window streamed by ScreenCaptureKit, each frame put in the
+/// layer as it comes, never through SwiftUI, so nothing else is drawn again for it.
 final class LiveWindowView: NSView, SCStreamOutput {
     private nonisolated(unsafe) var stream: SCStream?
     /// Set by `stop`: a window resolved after the view has left its window must not start a stream,

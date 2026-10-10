@@ -1,7 +1,7 @@
 import CoreGraphics
 
-/// The keys on the map and the strip, as their windows are drawn: a card's windows in rows for
-/// ← and →, straight up and down for ↑ and ↓, a card's row for ⌘↑ and ⌘↓.
+/// The keys on the map and the strip, as their windows are drawn: a card's windows in rows for ←
+/// and →, straight up and down for ↑ and ↓, a card's row for ⌘↑ and ⌘↓.
 public enum GridWalk {
     /// A card on the map: where the lattice put it, and its windows as drawn.
     public typealias Card = (frame: CGRect, windows: [Int: CGRect])
@@ -18,8 +18,8 @@ public enum GridWalk {
     }
 
     /// ⌘↑ and ⌘↓: the first window, left of the top row, of the card above or below `id`'s
-    /// (`direction` -1 or 1), the nearest across; a lattice row of empty cards is passed, and
-    /// past the top or bottom it is nil.
+    /// (`direction` -1 or 1), the nearest across; a lattice row of empty cards is passed, and past
+    /// the top or bottom it is nil.
     public static func cardRow(from id: Int, direction: Int, cards: [Card]) -> Int? {
         let held = cards.filter { !$0.windows.isEmpty }, levels = Set(held.map { $0.frame.minY.rounded() }).sorted()
         guard let at = held.first(where: { $0.windows[id] != nil }), let level = levels.firstIndex(of: at.frame.minY.rounded()),

@@ -20,11 +20,6 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     }
 
     /// Keeps only the 256-point representation of a macOS icon (512 pixels on a 2x screen).
-    /// Left to itself, AppKit picks the representation nearest the drawn size, and for a 28 pt
-    /// badge on a 1x display that is the 32 px one, which for pre-Tahoe icons (VS Code,
-    /// IntelliJ) carries macOS 26's grey wrapper rim and looks smaller than its neighbours.
-    /// Scaled down from the large one (`PixelImage`), the artwork is the same clean one at
-    /// every size and on every display scale.
     static func largeRepresentation(of image: NSImage) -> NSImage {
         let side: CGFloat = 256
         let rect = NSRect(x: 0, y: 0, width: side, height: side)
@@ -43,8 +38,8 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         log.notice("previews: Screen Recording not granted; requested access -> \(granted)")
     }
 
-    /// The one system-wide window enumeration a capture needs (~100 ms), started early so it
-    /// runs while AeroSpace is being read instead of after.
+    /// The one system-wide window enumeration a capture needs (~100 ms), started early so it runs
+    /// while AeroSpace is being read instead of after.
     private var pendingContent: Task<SCShareableContent?, Never>?
     /// The enumeration `previewSizes` resolved, kept for the capture that follows it.
     private var content: SCShareableContent?
@@ -98,21 +93,14 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         }
     }
 
-    /// How many captures are in flight at once. They are independent and the window
-    /// server overlaps them, with diminishing returns: 18 windows took 243 ms one at a
-    /// time, 200 ms six at a time, ~150 ms sixteen at a time.
+    /// How many captures are in flight at once.
     private static let parallelCaptures = 16
 
-    /// Captures each window once, delivering each picture the moment it lands. Off-screen
-    /// windows parked by AeroSpace still have content and capture fine. AeroSpace window
-    /// ids are CGWindowIDs.
+    /// Captures each window once, delivering each picture the moment it lands.
     public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !windowIds.isEmpty, var content = await resolvedContent() else { return }
-        // The enumeration is kept for the visit: re-taking a few pictures while a query
-        // stands must not cost a second system-wide scan. A window opened after the summon
-        // is not in it and is simply not re-taken; the next summon enumerates afresh. One
-        // resized since is enumerated again, or its picture came out in the shape it had.
+        // The visit's enumeration is kept; a window resized since is enumerated again.
         let sizes = await previewSizes(windowIds: windowIds)
         if content.windows.contains(where: { sizes[Int($0.windowID)].map { [frame = $0.frame.size] in $0 != frame } ?? false }),
            let fresh = await Self.shareableContent() {
@@ -153,9 +141,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         guard frame.width > 1, frame.height > 1 else { return nil }
         let scale = min(maxSize.width / frame.width, maxSize.height / frame.height, 1)
         let config = SCStreamConfiguration()
-        // `maxSize` is in pixels, not points: a tile is a few hundred pixels wide even when
-        // a filter has left three of them, and a 2x bitmap was resampled down eightfold on
-        // every frame while holding four times the memory.
+        // `maxSize` is in pixels, not points.
         config.width = max(1, Int(frame.width * scale))
         config.height = max(1, Int(frame.height * scale))
         config.showsCursor = false

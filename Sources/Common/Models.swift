@@ -10,8 +10,7 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let isHidden: Bool
     public let title: String
     /// Where AeroSpace's layout last put the window, in screen points with a top-left origin
-    /// (`%{window-layout-rect}`, the owner's AeroSpace branch). Nil on a release AeroSpace,
-    /// for a floating window, and for a fullscreen window in front.
+    /// (`%{window-layout-rect}`, the owner's AeroSpace branch).
     public let layoutRect: CGRect?
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
@@ -26,10 +25,9 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.title = title
     }
 
-    /// The title without the app's own name at its end — "README.md — Visual Studio Code"
-    /// is "README.md": the icon says which app it is, and the title is the one thing that
-    /// tells two windows of one app apart, so the name only pushes it out of the caption.
-    /// A window with no title is named by its app.
+    /// The title without the app's own name at its end — "README.md — Visual Studio Code" is
+    /// "README.md": the icon says which app it is, and the title is the one thing that tells two
+    /// windows of one app apart, so the name only pushes it out of the caption.
     public var caption: String {
         let text = title.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return appName }
@@ -49,19 +47,18 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let name: String
     public let windows: [WindowInfo]
     public let monitorId: Int
-    /// The display AeroSpace put this workspace on, e.g. "BenQ RD280U"; shown only when
-    /// there is more than one.
+    /// The display AeroSpace put this workspace on, e.g. "BenQ RD280U"; shown only when there is
+    /// more than one.
     public let monitorName: String
-    /// AeroSpace's `monitor-appkit-nsscreen-screens-id`: 1-based into `NSScreen.screens`, 0
-    /// when it did not say. The card takes that screen's shape.
+    /// AeroSpace's `monitor-appkit-nsscreen-screens-id`: 1-based into `NSScreen.screens`, 0 when it
+    /// did not say.
     public let screenIndex: Int
-    /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion` or
-    /// `v_accordion`. Empty when AeroSpace did not say.
+    /// How AeroSpace lays out the workspace's root container: `h_tiles`, `v_tiles`, `h_accordion`
+    /// or `v_accordion`.
     public let rootLayout: String
 
-    /// The first word of the display's name: "Built-in Retina Display" -> "Built-in",
-    /// "BenQ RD280U" -> "BenQ". Enough to tell two displays apart in a card header, and
-    /// short enough to fit beside the badge.
+    /// The first word of the display's name: "Built-in Retina Display" -> "Built-in", "BenQ RD280U"
+    /// -> "BenQ".
     public var monitorShortName: String {
         String(monitorName.split(separator: " ").first ?? "")
     }
@@ -81,8 +78,7 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// What AeroSpace considers focused. Asked for separately from the window list because a
-/// workspace with no windows is still the focused one.
+/// What AeroSpace considers focused.
 public struct Focus: Equatable, Sendable {
     public let windowId: Int
     public let workspace: String
@@ -95,8 +91,8 @@ public struct Focus: Equatable, Sendable {
 
 public struct OverviewResult: Equatable, Sendable {
     public let workspaces: [WorkspaceInfo]
-    /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather
-    /// than wiping it. A present-but-empty `Focus` is an answer: nothing is focused.
+    /// `nil` when AeroSpace did not answer the focus reads — leave focus as it was rather than
+    /// wiping it.
     public let focus: Focus?
     public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
         self.workspaces = workspaces
@@ -104,8 +100,8 @@ public struct OverviewResult: Equatable, Sendable {
     }
 }
 
-/// A window with the workspace it sits on, as `list-windows` reports it; also what the
-/// overview's filter hands back for a match, which needs exactly the same pair.
+/// A window with the workspace it sits on, as `list-windows` reports it; also what the overview's
+/// filter hands back for a match, which needs exactly the same pair.
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String

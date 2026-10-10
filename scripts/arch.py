@@ -454,6 +454,29 @@ def check_layer_docs(by_name: dict[str, Type]) -> list[str]:
     return wrong
 
 
+DOC_LINES = 3
+
+
+def check_doc_comments() -> list[str]:
+    """`///` runs over `DOC_LINES` lines: a doc comment is one sentence saying what a thing is; the
+    why is the commit's and the layer doc's. A `WORKAROUND` block is the exception."""
+    wrong = []
+    for path in tracked_sources():
+        lines = (ROOT / path).read_text().split("\n")
+        i = 0
+        while i < len(lines):
+            if lines[i].strip().startswith("///"):
+                j = i
+                while j < len(lines) and lines[j].strip().startswith("///"):
+                    j += 1
+                if j - i > DOC_LINES and not any("WORKAROUND" in l for l in lines[i:j]):
+                    wrong.append(f"{path}:{i + 1} has a doc comment of {j - i} lines; one sentence, at most {DOC_LINES} lines")
+                i = j
+            else:
+                i += 1
+    return wrong
+
+
 def markdown(text: str) -> str:
     """Enough Markdown for the layer docs: headings, paragraphs, lists, `code`, _em_, **strong**."""
     def inline(s: str) -> str:
@@ -567,7 +590,7 @@ def main() -> int:
             print(f"Wrote {path}")
         return 0
     edges = dependencies(by_name)
-    for line in check_layer_docs(by_name):
+    for line in check_layer_docs(by_name) + check_doc_comments():
         print(f"arch: {line}", file=sys.stderr)
         if check:
             return 1

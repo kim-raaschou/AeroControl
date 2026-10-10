@@ -1,9 +1,8 @@
 import SwiftUI
 import Common
 
-/// One "desktop" card: badge at the top-left, the workspace's windows below as a grid of
-/// snapshot cells.
-/// Drop target for window tiles (move) and workspace cards (merge).
+/// One "desktop" card: badge at the top-left, the workspace's windows below as a grid of snapshot
+/// cells.
 struct AeroControlWorkspaceCard: View {
     let workspace: WorkspaceInfo
     /// The card as the map laid it out: its cell, and every window where it is drawn in it.
@@ -29,8 +28,7 @@ struct AeroControlWorkspaceCard: View {
         .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(state.markedWorkspace == workspace.name ? 1 : 0))
         .contentShape(shape)
         .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
-        // Grab the card anywhere outside a tile and drop it on another card to merge the
-        // workspace into it. Tiles keep their own drag (a single window).
+        // Dropped on another card, the workspace merges into it; tiles keep their own drag.
         .draggable(OverviewDragPayload.workspace(name: workspace.name)) { dragPreview }
         .dropDestination(for: OverviewDragPayload.self) { items, _ in
             guard let item = items.first else { return false }
@@ -86,9 +84,9 @@ struct AeroControlWorkspaceCard: View {
     }
 }
 
-/// A workspace card's face, the same on the map and in the app strip: the badge at the
-/// top-left, the display's name with more than one, the layout's symbol at the top-right,
-/// and the pictures in the inner box under them, on the card's fill and hairline.
+/// A workspace card's face, the same on the map and in the app strip: the badge at the top-left,
+/// the display's name with more than one, the layout's symbol at the top-right, and the pictures in
+/// the inner box under them, on the card's fill and hairline.
 struct AeroControlCardFace<Content: View>: View {
     let workspace: WorkspaceInfo
     let size: CGSize
@@ -103,10 +101,7 @@ struct AeroControlCardFace<Content: View>: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
-        // Same header lane on every card, so the badge sits in the same corner whether the
-        // workspace is empty (a narrow card) or full.
-        // The tile area gets a fixed frame: a grid that overflowed would otherwise widen the
-        // stack and push the badge out of its corner.
+        // Same header lane on every card; the tile area's frame is fixed so a grid cannot push the badge.
         VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {   // air between the badge and the pictures
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
             let inner = AeroControlLayout.inner(of: size)
@@ -120,7 +115,6 @@ struct AeroControlCardFace<Content: View>: View {
     }
 
     /// A solid themed fill, or the platform's frosted glass when the theme is System.
-    /// Over the bare desktop, in the strip, it lies on a thick frost as ⌘Tab's panel does, so nothing behind reads through.
     private func cardFill(_ shape: RoundedRectangle) -> some View {
         ZStack {
             if look.surface == .strip { shape.fill(.ultraThickMaterial) }
@@ -128,8 +122,7 @@ struct AeroControlCardFace<Content: View>: View {
         }
     }
 
-    /// The badge, and with more than one display the name of this workspace's. The tiles
-    /// say how many windows there are; the layout symbol says how AeroSpace arranges them.
+    /// The badge, and with more than one display the name of this workspace's.
     private var header: some View {
         HStack(spacing: 6) {
             badge
@@ -150,8 +143,8 @@ struct AeroControlCardFace<Content: View>: View {
         }
     }
 
-    /// The workspace name as a quiet monogram: a filled circle with no outline, in the
-    /// accent color for the focused workspace and a faint tint otherwise.
+    /// The workspace name as a quiet monogram: a filled circle with no outline, in the accent color
+    /// for the focused workspace and a faint tint otherwise.
     private var badge: some View {
         Text(workspace.name)
             .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit())

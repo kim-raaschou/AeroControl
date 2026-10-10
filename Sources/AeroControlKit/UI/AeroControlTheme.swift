@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// The overview's colors. `system` follows macOS (accent color, appearance, frosted glass);
-/// every other theme is a fixed palette that looks the same whatever the system appearance is.
-///
-/// A theme is six colors, not eight roles: the palettes below are the ones their own authors
-/// publish, and `AeroControlPalette` derives what the overview draws from them. Adding a theme
-/// is one entry in `all`, and the tests check every one of them for readable contrast.
+/// The overview's colors.
 public struct AeroControlTheme: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
@@ -34,16 +29,14 @@ public struct AeroControlTheme: Identifiable, Equatable, Sendable {
             text: 0xEBDBB2, muted: 0xA89984, accent: 0x83A598)),
         AeroControlTheme(id: "dracula", name: "Dracula", base: .init(
             background: 0x282A36, surface: 0x44475A, border: 0x6272A4,
-            // Dracula's own "comment" is the muted color by name, but it is 3.0:1 on the
-            // background; lifted along the same hue to clear the floor.
+            // Dracula's own "comment" is 3.0:1 on the background; lifted along the hue to clear the floor.
             text: 0xF8F8F2, muted: 0xA3ABD8, accent: 0xBD93F9)),
         AeroControlTheme(id: "rosePine", name: "Rosé Pine", base: .init(
             background: 0x191724, surface: 0x26233A, border: 0x403D52,
             text: 0xE0DEF4, muted: 0x908CAA, accent: 0xC4A7E7)),
         AeroControlTheme(id: "solarizedDark", name: "Solarized Dark", base: .init(
             background: 0x002B36, surface: 0x073642, border: 0x586E75,
-            // base2 rather than base1: Solarized's own body text is 5.6:1, readable in a
-            // terminal but dim for 11pt labels over a blurred desktop.
+            // base2 rather than base1: Solarized's own body text is dim for 11pt labels over a blur.
             text: 0xEEE8D5, muted: 0x93A1A1, accent: 0x268BD2)),
     ]
 
@@ -51,8 +44,8 @@ public struct AeroControlTheme: Identifiable, Equatable, Sendable {
         all.first { $0.id == id }
     }
 
-    /// The appearance a fixed palette needs macOS to draw its own parts (the backdrop blur,
-    /// system materials) in; nil means "follow the system", which is what `system` wants.
+    /// The appearance a fixed palette needs macOS to draw its own parts (the backdrop blur, system
+    /// materials) in; nil means "follow the system", which is what `system` wants.
     public var enforcedAppearance: ColorScheme? {
         base.map { $0.isDark ? .dark : .light }
     }
@@ -73,8 +66,7 @@ struct BasePalette: Equatable, Sendable {
     var isDark = true
 }
 
-/// Every color the overview draws. `cardFill` is nil when the card should use the platform's
-/// frosted material instead of a solid color.
+/// Every color the overview draws.
 public struct AeroControlPalette: Sendable {
     public let accent: Color
     public let cardFill: Color?
@@ -85,8 +77,8 @@ public struct AeroControlPalette: Sendable {
     public let closeButtonFill: Color
     public let backdrop: Color
 
-    /// A factory rather than an `init`, so the struct keeps its synthesized memberwise
-    /// initializer and `system(_:)` below needs no hand-written one.
+    /// A factory rather than an `init`, so the struct keeps its synthesized memberwise initializer
+    /// and `system(_:)` below needs no hand-written one.
     static func derived(from base: BasePalette) -> AeroControlPalette {
         AeroControlPalette(
             accent: Color(hex: base.accent),
@@ -96,8 +88,7 @@ public struct AeroControlPalette: Sendable {
             badgeText: Color(hex: base.muted),
             focusedBadgeText: Color(hex: base.background),
             closeButtonFill: Color(hex: base.border),
-            // The backdrop lies behind every card, so it is the palette's own background,
-            // kept translucent enough for the blur to read through it.
+            // The palette's own background, translucent enough for the blur to read through.
             backdrop: Color(hex: base.background).opacity(base.isDark ? 0.62 : 0.5)
         )
     }
@@ -127,11 +118,9 @@ extension Color {
     }
 }
 
-/// What every overview view draws with, resolved once at the root: the palette for the theme
-/// and the window's appearance, and the animation scale from settings, by which every duration
-/// is multiplied, so 0 is instant and 2 is leisurely; and, set by the panel, where it is drawn.
-/// (A plain `EnvironmentKey`: SwiftUI's `@Entry` macro needs a plugin the Command Line Tools
-/// toolchain does not ship.)
+/// What every overview view draws with, resolved once at the root: the palette for the theme and
+/// the window's appearance, and the animation scale from settings, by which every duration is
+/// multiplied, so 0 is instant and 2 is leisurely; and, set by the panel, where it is drawn.
 public struct AeroLook: Sendable {
     public let palette: AeroControlPalette
     public let motion: Double
@@ -139,9 +128,8 @@ public struct AeroLook: Sendable {
     public init(palette: AeroControlPalette, motion: Double, surface: AeroSurface = .map) { (self.palette, self.motion, self.surface) = (palette, motion, surface) }
 }
 
-/// Where a card or a tile is drawn: on the map, where a tile is dragged and closed and a card
-/// lies on the dimmed desktop; or in the strip, which only chooses, over the bare desktop. The
-/// leaves draw by this, not by asking the store what is up.
+/// Where a card or a tile is drawn: on the map, where a tile is dragged and closed and a card lies
+/// on the dimmed desktop; or in the strip, which only chooses, over the bare desktop.
 public enum AeroSurface: Sendable { case map, strip }
 
 private struct AeroLookKey: EnvironmentKey {

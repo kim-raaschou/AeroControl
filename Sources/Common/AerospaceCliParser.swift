@@ -28,8 +28,8 @@ public struct DecodedWindow: Decodable, Equatable {
     /// `x,y,width,height`; only asked for from an AeroSpace that knows it, empty for a float.
     public let windowLayoutRect: String?
 
-    /// Also the requested `--format`: `AerospaceCommand` builds the token list from these
-    /// keys, so a field can never be asked for under one spelling and decoded under another.
+    /// Also the requested `--format`: `AerospaceCommand` builds the token list from these keys, so
+    /// a field can never be asked for under one spelling and decoded under another.
     enum CodingKeys: String, CodingKey, CaseIterable {
         case windowId = "window-id"
         case appName = "app-name"
@@ -51,13 +51,13 @@ public func parseLayoutRect(_ text: String?) -> CGRect? {
 public struct WorkspaceMonitor: Decodable, Equatable {
     public let workspace: String
     @TolerantInt public var monitorId: Int
-    /// Optional so a missing field never fails the whole load: an AeroSpace that does not
-    /// emit it just leaves the display unnamed.
+    /// Optional so a missing field never fails the whole load: an AeroSpace that does not emit it
+    /// just leaves the display unnamed.
     public let monitorName: String?
     /// 1-based into `NSScreen.screens`; 0 when absent.
     @TolerantInt public var screenIndex: Int
     /// How the workspace's root container is laid out: `h_tiles`, `v_tiles`, `h_accordion`,
-    /// `v_accordion`. Optional for the same reason: an older AeroSpace leaves it out.
+    /// `v_accordion`.
     public let rootLayout: String?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
@@ -121,10 +121,8 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
     return OverviewResult(workspaces: workspaces, focus: focus)
 }
 
-/// A workspace's windows in the layout's order when AeroSpace said where each tiled one is
-/// (`WorkspaceTree.order`), so the ring, the keys and the strip follow what the eye sees, not
-/// AeroSpace's listing by app name; windows without a rect — floats, a fullscreen window in
-/// front — come after them in the listing's order. Without rects the listing's order stands.
+/// A workspace's windows in the layout's order (`WorkspaceTree.order`) when AeroSpace said where
+/// each tiled one is; windows without a rect come after, in the listing's order.
 func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     let placed = windows.compactMap { w in w.layoutRect.map { (w.windowId, $0) } }
     guard placed.count > 1 else { return windows }
@@ -134,8 +132,7 @@ func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     }.map(\.element)
 }
 
-/// Focus from the two `--focused` reads. `nil` when neither answered, so a load during an
-/// AeroSpace restart leaves the focus ring alone instead of clearing it on every reload.
+/// Focus from the two `--focused` reads.
 public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
     guard windowJson != nil || workspaceJson != nil else { return nil }
     let windowId = (try? parseWindows(json: windowJson ?? ""))?.first?.window.windowId ?? 0
@@ -143,24 +140,13 @@ public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
     return Focus(windowId: windowId, workspace: workspace)
 }
 
-/// The window AeroSpace has focused, read when asked: for the menu, and for the check that a
-/// focus took. Nil with nothing focused, or when AeroSpace does not answer.
+/// The window AeroSpace has focused, read when asked: for the menu, and for the check that a focus
+/// took.
 public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
     (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
 }
 
-/// Reads AeroSpace's whole state. The reads are **sequential on purpose**: AeroSpace
-/// serialises command execution, so two different commands issued concurrently contend and
-/// cost more than twice their sequential total — measured 12.8 ms concurrent against 6.4 ms
-/// sequential for the two list reads on this machine. Do not reintroduce `async let` here.
-///
-/// A read issued in reaction to an AeroSpace event cannot see stale state: the daemon
-/// queues it behind its own work, so there is no read-too-early race to guard against.
-///
-/// Every load asks for `%{window-layout-rect}` (the owner's AeroSpace branch). A release AeroSpace
-/// answers that it cannot parse the variable, and the plain read follows in the same load: one
-/// failed call, about 2 ms, per load, and nothing remembered that could drift when the AeroSpace
-/// is swapped. Any other failure is a failure.
+/// Reads AeroSpace's whole state.
 public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
     let windowsJson: String
     do {

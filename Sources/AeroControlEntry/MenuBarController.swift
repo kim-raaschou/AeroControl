@@ -1,8 +1,7 @@
 import AppKit
 import AeroControlKit
 
-/// The menu under the status item. Every item carries what it does, so there is one handler;
-/// the menu is rebuilt each time it opens, so it always shows the current settings.
+/// The menu under the status item.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     /// Any setting changed: the host redraws the overview with it.
@@ -34,7 +33,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
-        // Submenus, not thirty items: each parent names the current choice, the theme with its swatch.
         let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
             (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
         theme.image = swatch(for: settings.theme)
@@ -62,8 +60,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    /// A submenu of exclusive choices; the parent names the current one. Choosing one applies
-    /// the setting and redraws the overview.
+    /// A submenu of exclusive choices; the parent names the current one.
     private func choice(_ label: String, current: String,
                         options: [(name: String, image: NSImage?, isOn: Bool, select: () -> Void)]) -> NSMenuItem {
         let parent = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")

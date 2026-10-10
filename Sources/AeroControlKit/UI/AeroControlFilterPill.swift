@@ -1,13 +1,7 @@
 import SwiftUI
 import Common
 
-/// What the user has typed, over the grid the query is drawing. The grid is the answer; the
-/// pill only says the keystrokes are arriving, and — when nothing matched and the full grid
-/// is back — why nothing moved.
-///
-/// Over the app strip it names the app and the marked window instead, on the same one line,
-/// so the strip's cards keep the map's height. A window too small to read is read here by
-/// pointing at it, which marks it.
+/// What the user has typed, over the grid the query is drawing.
 struct AeroControlFilterPill: View {
     /// The app the strip shows, its icon, and its line: how many windows, and the marked one's title.
     private struct StripApp {
@@ -24,10 +18,9 @@ struct AeroControlFilterPill: View {
 
     private var query: String { state.filter }
 
-    /// The strip's app and its line; or an app `open` could not find, named as the link named
-    /// it, with why nothing came; or, on the map once a key or the pointer has moved the ring,
-    /// the window under it and its title, so a picture too small to read is read here; nil
-    /// otherwise.
+    /// The strip's app and its line; or an app `open` could not find, named as the link named it,
+    /// with why nothing came; or, on the map once a key or the pointer has moved the ring, the
+    /// window under it and its title, so a picture too small to read is read here; nil otherwise.
     private var app: StripApp? {
         if let missing = state.missingApp?.notFound { return StripApp(name: missing.name, icon: nil, summary: missing.reason, keys: "esc  close") }
         if let strip = state.strip, let first = state.stripWindows.first?.window {
@@ -37,13 +30,11 @@ struct AeroControlFilterPill: View {
         guard let marked = state.marking?.marked, let ringed = state.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) else { return nil }
         return StripApp(name: ringed.window.appName, icon: state.pictures.icon(for: ringed.window.bundleId), summary: ringed.window.caption + " · ws " + ringed.workspace, keys: Self.mapKeys)
     }
-    /// The arrows and Enter only: the keys the cards do not show themselves (⌘1–⌘f, the
-    /// workspaces' names) and the ones macOS makes standard (⌘W, ⌘Q, Escape) are left out.
+    /// The arrows and Enter only: the keys the cards do not show themselves (⌘1–⌘f, the workspaces'
+    /// names) and the ones macOS makes standard (⌘W, ⌘Q, Escape) are left out.
     private static let mapKeys = "type to filter  ·  ← → ↑ ↓ move  ·  ⌘← ⌘→ ⌘↑ ⌘↓ workspace  ·  ⏎ focus"
 
-    /// The lane is there whether or not anything has been typed. The pill is the only thing
-    /// on screen that appears mid-gesture, and a view that appears must not move the grid it
-    /// is describing.
+    /// The lane is there whether or not anything has been typed.
     var body: some View {
         Group {
             if let app { appPill(app) } else if query.isEmpty { hint } else { pill }
@@ -52,8 +43,6 @@ struct AeroControlFilterPill: View {
     }
 
     /// The lane's idle content: the keys the overview answers to, faint enough to be furniture.
-    /// Nothing else on screen says the keyboard works, and a key nobody can find is a key
-    /// nobody uses.
     private var hint: some View { keys(Self.mapKeys) }
 
     private func keys(_ text: String) -> some View {
@@ -62,8 +51,8 @@ struct AeroControlFilterPill: View {
             .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }
 
-    /// The strip has no typing: one line, as high as the map's, so the cards keep their height
-    /// and nothing moves as the marking does — the app, its line, and its keys after them.
+    /// The strip has no typing: one line, as high as the map's, so the cards keep their height and
+    /// nothing moves as the marking does — the app, its line, and its keys after them.
     private func appPill(_ app: StripApp) -> some View {
         HStack(spacing: 8) {
             if let icon = app.icon {
@@ -84,14 +73,11 @@ struct AeroControlFilterPill: View {
         .capsule(look.palette)
     }
 
-    /// Tall enough for the capsule and its shadow. The panel subtracts it from the grid's height,
-    /// so the lane is reserved rather than added: typing never moves a card.
-    /// A caption is read, not studied: long paths and titles are cut in the middle past this.
+    /// Tall enough for the capsule and its shadow.
     private static let titleWidth: CGFloat = 560
 
-    /// Shown for any non-empty query, a miss included: otherwise one letter too many looks
-    /// like the keystrokes stopped arriving. A miss has to say so — the grid it leaves
-    /// standing is the same grid a query matching everything would leave.
+    /// Shown for any non-empty query, a miss included: otherwise one letter too many looks like the
+    /// keystrokes stopped arriving.
     private var pill: some View {
         HStack(spacing: 8) {
             Text(query)

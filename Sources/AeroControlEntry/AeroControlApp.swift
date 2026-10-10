@@ -28,8 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // One instance: Launch Services never starts a second from a link or a reopen, both reach
-        // the running one, and `make run` quits the installed app before it starts.
+        // One instance: a link or a reopen reaches the running app.
         NSApp.setActivationPolicy(.accessory)
 
         let runner = AerospaceSocketRunner()
@@ -71,14 +70,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// `open -a AeroControl` (or a Dock/Spotlight launch) while running: toggle the overview.
-    /// No second process, no signal; Launch Services delivers a reopen to this instance.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         overlayManager.toggleVisibility()
         return false
     }
 
     /// `open aerocontrol://app-id=<bundle id>` or `app-name=<name>`: that app's key.
-    /// `aerocontrol://workspaces` toggles the map.
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")

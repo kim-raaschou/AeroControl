@@ -1,14 +1,8 @@
 import SwiftUI
 import Common
 
-/// The picker for "which of this app's windows", as krn.overview lays it out and as the map
-/// draws it: one row of the map's own cards, one per workspace holding the app, each in its
-/// screen's shape at one height — the app's windows where AeroSpace put them, the other
-/// apps' grey, half there, framed and out of reach. The app's name and the marked window's title
-/// stand in the map's pill under the row. A row that fits stands still; one that does not slides
-/// to keep the marked card in the middle, up to its ends, the cards the edges cut dimmed.
-/// The marking only chooses: Enter, a window's key (⌘1–⌘f, on its corner) or a click
-/// focuses; the summon key again steps, as Cmd-` does; Escape goes back.
+/// The picker for which of this app's windows: one row of the map's cards, one per workspace
+/// holding the app, the other apps' windows faint and out of reach.
 struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
@@ -17,8 +11,8 @@ struct AeroControlAppStrip: View {
 
     /// How long the row takes to slide a card along.
     private static let turn: Double = 0.4
-    /// How much shows of a card the view's edge cuts: the whole card dimmed, its border with it,
-    /// so the row reads as going on to that side and the workspace in the middle stands out.
+    /// How much shows of a card the view's edge cuts: the whole card dimmed, its border with it, so
+    /// the row reads as going on to that side and the workspace in the middle stands out.
     private static let cutCard: Double = 0.5
 
     var body: some View {
@@ -39,15 +33,14 @@ struct AeroControlAppStrip: View {
         }
         .frame(width: usable.width, height: layout.height, alignment: .topLeading)
         .clipped()
-        // The row slides a card along when the keys take the marking to another workspace;
-        // stepping within a card, or pointing, leaves it.
+        // The row slides when the keys take the marking to another workspace; pointing leaves it.
         .animation(.smooth(duration: Self.turn * look.motion), value: held ?? -1)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
     }
 
-    /// Every window of the workspace at its place, the other apps' faint and taking no input:
-    /// the rest of the workspace, so the card reads as the whole of it, framed with its app's
-    /// icon, and out of reach. The app's own carry their key, and pointing at one marks it.
+    /// Every window of the workspace at its place, the other apps' faint and taking no input: the
+    /// rest of the workspace, so the card reads as the whole of it, framed with its app's icon, and
+    /// out of reach.
     private func windowsOf(_ workspace: WorkspaceInfo, _ laid: AeroControlLayout.StripCard, ids: [Int]) -> some View {
         ZStack(alignment: .topLeading) {
             ForEach(workspace.windows.filter { laid.frames[$0.windowId] != nil }, id: \.windowId) { window in
