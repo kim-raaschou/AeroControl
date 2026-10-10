@@ -7,8 +7,7 @@ public class OverviewStore {
     public private(set) var model = OverviewModel() {
         didSet {
             if let marking {    // the strip's windows, or the map's: all of them
-                let ours = { (w: ParsedWindow) in w.window.bundleId == (marking.app ?? w.window.bundleId) }
-                self.marking = marking.kept(before: oldValue.windowsInGridOrder.filter(ours).map(\.window.windowId), after: model.windowsInGridOrder.filter(ours).map(\.window.windowId))
+                self.marking = marking.kept(before: oldValue.windows(of: marking).map(\.window.windowId), after: model.windows(of: marking).map(\.window.windowId))
             }
             filterMatches = model.matching(filter)
         }
@@ -69,17 +68,11 @@ public class OverviewStore {
 
 
     /// The strip's windows, in the order the map draws them.
-    public var stripWindows: [ParsedWindow] {
-        guard let strip else { return [] }
-        return model.windowsInGridOrder.filter { $0.window.bundleId == strip.app }
-    }
+    public var stripWindows: [ParsedWindow] { strip.map(model.windows(of:)) ?? [] }
 
     /// The workspaces that hold the strip's app, whole: a card mirrors all of a workspace, the
     /// other apps' windows drawn grey behind the app's, not only the app's windows.
-    public var stripWorkspaces: [WorkspaceInfo] {
-        guard let strip else { return [] }
-        return model.workspaces.filter { $0.windows.contains { $0.bundleId == strip.app } }
-    }
+    public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
 
     /// A key moves the marking, the map's or the strip's, through the cards as drawn
     /// (`Strip.moved`): ← and → through a card's windows in reading order and on to the next, an
@@ -102,7 +95,7 @@ public class OverviewStore {
     /// also fires when the row slides, or the overview opens, under a hand that is still, and
     /// that must not take the marking away from the keys.
     public func point(_ windowId: Int, at location: CGPoint) {
-        guard location != pointer, marking?.app.map({ _ in stripWindows.contains { $0.window.windowId == windowId } }) ?? true else { return }
+        guard location != pointer, model.windows(of: marking).contains(where: { $0.window.windowId == windowId }) else { return }
         pointer = location
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
@@ -325,7 +318,7 @@ public class OverviewStore {
     static let readAfter: Duration = .milliseconds(20)
     /// What `PictureStore.settled` says for the windows drawn: in a strip only its app's workspaces.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
-        let shown = result.workspaces.filter { ws in strip.map { strip in ws.windows.contains { $0.bundleId == strip.app } } ?? true }
+        let shown = result.workspaces.filter { ws in strip.map { ws.windows.contains(where: $0.owns) } ?? true }
         return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)
     }
 

@@ -52,6 +52,12 @@ public extension OverviewModel {
         workspaces.flatMap { workspace in workspace.windows.map { ParsedWindow(window: $0, workspace: workspace.name) } }
     }
 
+    /// The windows a marking is of (`Strip.owns`), in the order the grid draws them: every one for
+    /// the map's, or none yet.
+    func windows(of marking: Strip?) -> [ParsedWindow] {
+        windowsInGridOrder.filter { marking?.owns($0.window) ?? true }
+    }
+
     /// The focused window, nil when nothing is focused.
     var focusedWindow: WindowInfo? {
         workspaces.lazy.flatMap(\.windows).first { $0.windowId == focusedWindowId }
@@ -65,9 +71,7 @@ public extension OverviewModel {
         guard !ids.isEmpty else { return [] }
         return workspaces.compactMap { workspace in
             let kept = workspace.windows.filter { ids.contains($0.windowId) }
-            return kept.isEmpty ? nil : WorkspaceInfo(name: workspace.name, windows: kept, monitorId: workspace.monitorId,
-                                                      monitorName: workspace.monitorName, screenIndex: workspace.screenIndex,
-                                                      rootLayout: workspace.rootLayout)
+            return kept.isEmpty ? nil : workspace.with(windows: kept)
         }
     }
 }
@@ -107,13 +111,23 @@ public extension FilterKey {
         }
     }
 
+    /// The keys the strip's windows carry, in order: ⌘1–⌘9 as macOS numbers tabs, then ⌘a–⌘f, fifteen in all.
+    public static let windowKeys: [Character] = Array("123456789abcdef")
+
+    /// The workspace a key names: its own character, 0 the tenth, as the keys count; nil for a key
+    /// that types no text (an arrow), or more than one character.
+    public static func workspaceNamed(_ key: String) -> String? {
+        guard key.count == 1, let c = key.first, typed(c) != nil else { return nil }
+        return ["0": "10"][key] ?? key
+    }
+
     /// ⌘ with 1–9 or a–f is a window's key, the fifteen in that order, ⌘ with an arrow a
     /// workspace along or the one above or below; ⌘ with anything else is somebody else's (⌘Q, ⌘W).
-    private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: AppStripModel.keys.enumerated().map { (String($1), .commandKey($0 + 1)) })
+    private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: windowKeys.enumerated().map { (String($1), .commandKey($0 + 1)) })
         .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1))]) { a, _ in a }
 
     init?(command characters: String, shift: Bool) {
-        guard let key = shift ? AppStripModel.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] else { return nil }
+        guard let key = shift ? Self.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] else { return nil }
         self = key
     }
 

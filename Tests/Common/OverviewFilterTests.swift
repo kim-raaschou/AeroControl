@@ -87,11 +87,37 @@ struct OverviewMatchingTests {
     }
 }
 
+@Suite("FilterKey: what a key names")
+struct FilterKeyNamesTests {
+    @Test("the windows' keys are 1–9 then a–f; a workspace is named by its own character, 0 the tenth, and an arrow names none")
+    func names() {
+        #expect(String(FilterKey.windowKeys) == "123456789abcdef")
+        #expect(FilterKey.workspaceNamed("4") == "4" && FilterKey.workspaceNamed("0") == "10")
+        #expect(FilterKey.workspaceNamed("\u{F703}") == nil && FilterKey.workspaceNamed("ab") == nil)
+    }
+}
+
 @Suite("the filtered grid")
 struct FilteredWorkspacesTests {
     private func grid(_ query: String) -> [(String, [Int])] {
         model.workspaces(holding: model.matching(query))
             .map { ($0.name, $0.windows.map(\.windowId)) }
+    }
+
+    @Test("a workspace kept for its matches is the same workspace: hidden stays hidden, its layout its own")
+    func keepsTheWorkspace() {
+        let hidden = WorkspaceInfo(name: "9", windows: [window(1, "Teams"), window(2, "Mail")], monitorId: 2, monitorName: "BenQ", screenIndex: 2, rootLayout: "v_tiles", isVisible: false)
+        let kept = OverviewModel(workspaces: [hidden]).workspaces(holding: [ParsedWindow(window: window(1, "Teams"), workspace: "9")])
+        #expect(kept == [hidden.with(windows: [window(1, "Teams")])])
+        #expect(kept.first?.isVisible == false && kept.first?.rootLayout == "v_tiles" && kept.first?.monitorName == "BenQ")
+    }
+
+    @Test("the marking's windows: a strip's app's, or every one for the map's or none")
+    func windowsOfMarking() {
+        let model = OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: [window(1, "Teams"), window(2, "Mail")])])
+        #expect(model.windows(of: nil).map(\.window.windowId) == [1, 2])
+        #expect(model.windows(of: Strip(app: nil, marked: 2, centre: nil)).map(\.window.windowId) == [1, 2])
+        #expect(model.windows(of: Strip(app: "com.Mail", marked: nil, centre: nil)).map(\.window.windowId) == [2])
     }
 
     @Test("a workspace with no match is gone, and the rest keep only their matches")

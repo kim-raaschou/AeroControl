@@ -77,7 +77,7 @@ func describe(_ k: FilterKey?) -> String {
     guard let k else { return "—" }
     switch k {
     case .character(let c): return "character \(code(String(c)))"
-    case .commandKey(let n): return "⌘\(AppStripModel.keys[n - 1])"
+    case .commandKey(let n): return "⌘\(FilterKey.windowKeys[n - 1])"
     default: return "\(k)"
     }
 }

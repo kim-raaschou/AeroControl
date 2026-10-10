@@ -25,6 +25,9 @@ public struct Strip: Equatable, Sendable {
         return Strip(app: app, marked: first, centre: first)
     }
 
+    /// Whether `window` is one of this marking's: a strip's app's, or any at all for the map's.
+    public func owns(_ window: WindowInfo) -> Bool { app.map { $0 == window.bundleId } ?? true }
+
     /// The pointer marks; the centre stays where the keys left it.
     public func marking(_ id: Int) -> Strip { Strip(app: app, marked: id, centre: centre) }
 

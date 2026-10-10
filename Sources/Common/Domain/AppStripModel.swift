@@ -7,12 +7,9 @@ import Foundation
 /// difference by decision: the marking only chooses — Enter, a key or a click focuses —
 /// so stepping never switches AeroSpace's workspace behind the strip.
 public enum AppStripModel {
-    /// The keys windows carry, in order: ⌘1–⌘9 as macOS numbers tabs, then ⌘a–⌘f, fifteen in all.
-    public static let keys: [Character] = Array("123456789abcdef")
-
-    /// The key on the window at `index`, nil past the fifteenth.
+    /// The key on the window at `index` (`FilterKey.windowKeys`), nil past the fifteenth.
     public static func keyLabel(_ index: Int) -> String? {
-        keys.indices.contains(index) ? "⌘\(keys[index])" : nil
+        FilterKey.windowKeys.indices.contains(index) ? "⌘\(FilterKey.windowKeys[index])" : nil
     }
 
     /// What the strip's one line says after the app's name: how many windows, on how many
@@ -39,13 +36,6 @@ public enum AppStripModel {
     public static func start(origin: Int?, ids: [Int], recent: [Int] = []) -> Int? {
         if let last = recent.first(where: { ids.contains($0) && $0 != origin }) { return last }
         return stepIndex(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, direction: 1).map { ids[$0] }
-    }
-
-    /// The workspace a key names: its own character, 0 the tenth, as the keys count; nil for a key
-    /// that types no text (an arrow), or more than one character.
-    public static func workspaceNamed(_ key: String) -> String? {
-        guard key.count == 1, let c = key.first, FilterKey.typed(c) != nil else { return nil }
-        return ["0": "10"][key] ?? key
     }
 
     /// The most of the panel's height a strip card takes: one card, an app all on one workspace,
@@ -91,8 +81,8 @@ public enum AppStripModel {
         case .enter: return marked.map { .commit($0) } ?? .none
         case .move(let move): return .move(move)
         case .commandKey(let n):
-            return ids.prefix(keys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
-        case .character(let c): return workspaceNamed(String(c)).flatMap(workspaces.firstIndex).map { .move(.card($0)) } ?? .none
+            return ids.prefix(FilterKey.windowKeys.count).indices.contains(n - 1) ? .commit(ids[n - 1]) : .none
+        case .character(let c): return FilterKey.workspaceNamed(String(c)).flatMap(workspaces.firstIndex).map { .move(.card($0)) } ?? .none
         case .backspace, .moveToWorkspace: return .none
         }
     }

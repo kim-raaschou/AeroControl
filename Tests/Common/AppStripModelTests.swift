@@ -54,6 +54,13 @@ struct StripValueTests {
         #expect(Strip.opened("com.app", origin: nil, ids: [1, 2], recent: [2]).marked == 2)
     }
 
+    @Test("a strip owns its app's windows; the map's marking owns them all")
+    func owns() {
+        let mail = WindowInfo(windowId: 1, appName: "Mail", bundleId: "mail"), teams = WindowInfo(windowId: 2, appName: "Teams", bundleId: "teams")
+        #expect(Strip(app: "mail", marked: nil, centre: nil).owns(mail) && !Strip(app: "mail", marked: nil, centre: nil).owns(teams))
+        #expect(Strip(app: nil, marked: 2, centre: nil).owns(mail) && Strip(app: nil, marked: 2, centre: nil).owns(teams))
+    }
+
     @Test("the pointer marks: the marking moves, the centre stays")
     func marking() {
         let s = Strip(app: "a", marked: 1, centre: 1)

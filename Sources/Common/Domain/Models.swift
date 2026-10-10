@@ -79,6 +79,12 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
         self.rootLayout = rootLayout
         self.isVisible = isVisible
     }
+
+    /// The same workspace holding only `windows`: a filter's view of it.
+    public func with(windows: [WindowInfo]) -> WorkspaceInfo {
+        WorkspaceInfo(name: name, windows: windows, monitorId: monitorId, monitorName: monitorName, screenIndex: screenIndex,
+                      rootLayout: rootLayout, isVisible: isVisible)
+    }
 }
 
 /// What AeroSpace considers focused. Asked for separately from the window list because a
