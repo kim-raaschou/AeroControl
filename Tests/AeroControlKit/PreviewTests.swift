@@ -285,6 +285,14 @@ struct StripLayoutTests {
         (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 842, 1052), rected($0 + 100, "Ghostty", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
     }
 
+    @Test("the cards for the keys: each card's span on the unrolled row, and in it the app's own windows where they are drawn; the other apps' are not stops")
+    func gridForTheKeys() throws {
+        let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
+        let l = layout(groups(2) + [ws]), grid = l.grid, card = try #require(grid.last), laid = try #require(l.cards.last)
+        #expect(grid.count == 3 && card.frame == CGRect(x: laid.span.x, y: 0, width: laid.span.width, height: l.height))
+        #expect(card.windows.keys.sorted() == [1] && card.windows[1] == laid.frames[1]?.offsetBy(dx: laid.span.x + AeroControlLayout.cardPadding, dy: 0))
+    }
+
     @Test("workspaces that do not fit slide: the marked one whole in the middle, the next cut by the edge, up to the row's ends")
     func slidingRow() throws {
         let l = layout(groups(5), view: 1600, panel: 1000), w = l.cards[0].span.width

@@ -208,9 +208,10 @@ final class OverlayWindowManager {
         window.onQuitApp = { [weak self] in self?.quitRingedApp() }
         window.onCloseWindow = { [weak self] in self?.closeRingedWindow() }
         window.onKey = { [weak self] in self?.handleKey($0) ?? false }
+        state.screen = (screen.frame.size, screenFrames)
         let root = OverviewRoot(
             state: state,
-            panel: AeroControlPanel(state: state, available: screen.frame.size, screenFrames: screenFrames),
+            panel: AeroControlPanel(state: state),
             theme: settings.theme,
             motion: motion,
             onDismiss: { [weak self] in self?.hide(restoreFocus: true) }

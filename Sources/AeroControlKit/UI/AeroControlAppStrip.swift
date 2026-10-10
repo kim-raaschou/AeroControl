@@ -13,10 +13,6 @@ struct AeroControlAppStrip: View {
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
 
-    let usable: CGSize
-    let screens: [Int: CGRect]
-    let fallbackScreen: CGRect
-
     /// How long the row takes to slide a card along.
     private static let turn: Double = 0.4
     /// How much shows of a card the view's edge cuts: the whole card dimmed, its border with it,
@@ -24,10 +20,7 @@ struct AeroControlAppStrip: View {
     private static let cutCard: Double = 0.5
 
     var body: some View {
-        let groups = state.stripWorkspaces
-        let bundleId = state.strip?.app ?? ""
-        let layout = AeroControlLayout.stripLayout(groups: groups, bundleId: bundleId, sizes: state.pictures.sizes, screens: screens,
-                                                   fallbackScreen: fallbackScreen, viewWidth: usable.width, panelHeight: usable.height)
+        let groups = state.stripWorkspaces, usable = state.usable, layout = state.stripLayout
         let ids = state.stripWindows.map(\.window.windowId)
         let centre = state.strip?.centre
         let placements = AeroControlLayout.stripPlacements(layout, centre: centre, viewWidth: usable.width)
@@ -48,10 +41,6 @@ struct AeroControlAppStrip: View {
         // stepping within a card, or pointing, leaves it.
         .animation(.smooth(duration: Self.turn * look.motion), value: held ?? -1)
         .onAppear { state.notePointer(NSEvent.mouseLocation) }
-        .onChange(of: layout.cards, initial: true) { _, cards in
-            state.drawn = cards.map { c in (frame: CGRect(x: c.span.x, y: 0, width: c.span.width, height: layout.height),
-                                                 windows: c.frames.filter { !c.others.contains($0.key) }.mapValues { $0.offsetBy(dx: c.span.x + AeroControlLayout.cardPadding, dy: 0) }) }   // the app's own: the others are not stops
-        }
     }
 
     /// Every window of the workspace at its place, the other apps' faint and taking no input:

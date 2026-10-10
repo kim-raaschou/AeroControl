@@ -169,6 +169,13 @@ public enum AeroControlLayout {
         /// Whether the row slides in a view this wide: only when it does not fit. A row that fits
         /// stands still, so the keys on its cards stay where they are read (krn.overview's rule).
         public func slides(in viewWidth: CGFloat) -> Bool { width > viewWidth }
+
+        /// The cards for the keys (`GridWalk`): each card's span on the unrolled row, and in it the
+        /// app's own windows where they are drawn; the other apps' are not stops.
+        public var grid: [GridWalk.Card] {
+            cards.map { c in (CGRect(x: c.span.x, y: 0, width: c.span.width, height: height),
+                              c.frames.filter { !c.others.contains($0.key) }.mapValues { $0.offsetBy(dx: c.span.x + cardPadding, dy: 0) }) }
+        }
     }
 
     /// The strip as krn.overview lays it out, in the map's cards: one card per workspace holding

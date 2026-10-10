@@ -30,9 +30,29 @@ public class OverviewStore {
     public private(set) var marking: Strip?
     /// The strip that is up, if the marking is one's.
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
-    /// The cards as the map or the strip last laid them out, every window where it is drawn: the
-    /// keys and the pointer go by these. An empty workspace's card holds its stand-in.
-    @ObservationIgnored public var drawn: [GridWalk.Card] = []
+    /// The screen the overview is drawn on, from the host at each summon: its size, and every
+    /// screen's visible frame in AeroSpace's coordinates by AeroSpace's 1-based index — the area a
+    /// workspace's layout fills, and the shape a window nothing is known about gets.
+    public var screen: (available: CGSize, frames: [Int: CGRect]) = (.zero, [:])
+    /// The cards' box on the screen (`AeroControlLayout.usable`).
+    public var usable: CGSize { AeroControlLayout.usable(screen.available) }
+
+    /// Whether the map is a query's result: the workspaces holding a match, with only those windows.
+    /// A query that found nothing leaves the whole map standing, so there is always something to
+    /// read your way out of.
+    public var filtering: Bool { strip == nil && !model.workspaces(holding: filterMatches).isEmpty }
+    /// The workspaces drawn: the strip's, a query's, or all of them.
+    public var shown: [WorkspaceInfo] { strip != nil ? stripWorkspaces : filtering ? model.workspaces(holding: filterMatches) : model.workspaces }
+    /// The map as drawn (`AeroControlLayout.mapLayout`): a card per workspace shown, in the lattice.
+    public var cards: [AeroControlLayout.MapCard] {
+        AeroControlLayout.mapLayout(workspaces: shown, sizes: pictures.sizes, screens: screen.frames, available: screen.available, usable: usable, filtering: filtering)
+    }
+    /// The strip as drawn (`AeroControlLayout.stripLayout`): a card per workspace holding the app, on one row.
+    public var stripLayout: AeroControlLayout.StripLayout { AeroControlLayout.stripLayout(groups: stripWorkspaces, bundleId: strip?.app ?? "", sizes: pictures.sizes,
+        screens: screen.frames, fallbackScreen: CGRect(origin: .zero, size: screen.available), viewWidth: usable.width, panelHeight: usable.height) }
+    /// The cards as the map or the strip draws them, every window where it is: the keys and the
+    /// pointer go by these. An empty workspace's card holds its stand-in.
+    var drawn: [GridWalk.Card] { strip != nil ? stripLayout.grid : cards.map(\.grid) }
 
     /// An app `open` could not start, told on the strip's lane until the visit ends: a typo in a
     /// key's link is otherwise a key that does nothing.
@@ -46,7 +66,6 @@ public class OverviewStore {
         refreshTask = nil
         filter = ""
         marking = nil
-        drawn = []
         missingApp = nil
         pictures.clear()
     }
@@ -156,10 +175,11 @@ public class OverviewStore {
     /// Reads every window's size before any picture is taken (`PictureStore.measure`).
     public func measurePreviews() async { await pictures.measure(windowIds) }
 
-    /// Captures a preview of every window drawn — the model's, or in the strip every window of
-    /// its workspaces — once, at `maxSize`; returns when all are in (`PictureStore.take`).
+    /// Captures a preview of every window with a picture — the strip's workspaces', else all: a query
+    /// is a view of the map, and its pictures are the map's — once, at `maxSize`; returns when all
+    /// are in (`PictureStore.take`).
     public func capturePreviews(maxSize: CGSize) async {
-        await pictures.take(strip == nil ? windowIds : stripWorkspaces.flatMap { $0.windows.map(\.windowId) },
+        await pictures.take((strip != nil ? stripWorkspaces : model.workspaces).flatMap { $0.windows.map(\.windowId) },
                             cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: maxSize)
     }
 
@@ -316,7 +336,7 @@ public class OverviewStore {
     /// A refresh reads AeroSpace this long after the event: a key's `binding-triggered` comes before
     /// its commands run, and nothing after them, so a read at once was of the state before them.
     static let readAfter: Duration = .milliseconds(20)
-    /// What `PictureStore.settled` says for the windows drawn: in a strip only its app's workspaces.
+    /// What `PictureStore.settled` says for the windows `pictured` as `result` will have them.
     private func settled(_ result: OverviewResult) async -> ([Int: CGSize]?, [Int: NSImage]) {
         let shown = result.workspaces.filter { ws in strip.map { ws.windows.contains(where: $0.owns) } ?? true }
         return await pictures.settled(result.workspaces.flatMap(\.windows).map(\.windowId), shown: shown)
