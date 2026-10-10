@@ -42,14 +42,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(
             onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
             onSummon: { [weak self] in self?.overlayManager.toggleVisibility($0) },
-            state: state,
+            focusedWindow: state.focusedWindow,
+            bridge: nativeSystem,
             settings: settings
         )
 
-        overlayManager = OverlayWindowManager(
-            state: state,
-            settings: settings
-        )
+        overlayManager = OverlayWindowManager(state: state, bridge: nativeSystem, settings: settings)
 
         installStatusItem()
 

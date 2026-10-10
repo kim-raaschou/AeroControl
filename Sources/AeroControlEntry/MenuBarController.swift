@@ -10,13 +10,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onSettingsChanged: () -> Void
     /// Show overview, show the focused app's strip: the host summons, as the keys do.
     private let onSummon: (Summon) -> Void
-    private let state: OverviewStore
+    /// The window AeroSpace has focused, read when an item about it is chosen.
+    private let focusedWindow: () async -> WindowInfo?
+    /// Screen Recording: whether macOS lets us take the pictures, and how to ask.
+    private let bridge: NativeApiBridge
     private let settings: SettingsStore
 
-    init(onSettingsChanged: @escaping () -> Void, onSummon: @escaping (Summon) -> Void, state: OverviewStore, settings: SettingsStore) {
+    init(onSettingsChanged: @escaping () -> Void, onSummon: @escaping (Summon) -> Void,
+         focusedWindow: @escaping () async -> WindowInfo?, bridge: NativeApiBridge, settings: SettingsStore) {
         self.onSettingsChanged = onSettingsChanged
         self.onSummon = onSummon
-        self.state = state
+        self.focusedWindow = focusedWindow
+        self.bridge = bridge
         self.settings = settings
     }
 
@@ -48,10 +53,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
-        if state.pictures.available {
+        if bridge.canCapturePreviews {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
         } else {
-            let grant = item("Enable window previews (Screen Recording)…") { self.state.pictures.requestAccess() }
+            let grant = item("Enable window previews (Screen Recording)…") { self.bridge.requestPreviewAccess() }
             grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
             menu.addItem(grant)
         }
@@ -66,9 +71,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private func copy(_ line: String) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(line, forType: .string) }
 
-    /// `run` with the window AeroSpace has focused, read when the item is chosen; nothing with none.
+    /// `run` with the window AeroSpace has focused; nothing with none.
     private func withFocusedWindow(_ run: @escaping (WindowInfo) -> Void) {
-        Task { await self.state.focusedWindow().map(run) }
+        Task { await self.focusedWindow().map(run) }
     }
 
     /// An item that does `run` when chosen.

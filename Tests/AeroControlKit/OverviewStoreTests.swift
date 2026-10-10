@@ -777,7 +777,6 @@ struct OverviewStorePreviewTests {
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
         await store.reload()
 
-        #expect(store.pictures.available)
         await store.measurePreviews()
         #expect(store.pictures.sizes.count == 2)                 // the grid's shape, before any picture
         await store.capturePreviews(maxSize: CGSize(width: 100, height: 100))
@@ -788,15 +787,12 @@ struct OverviewStorePreviewTests {
         #expect(store.pictures.previews.isEmpty && store.pictures.sizes.isEmpty)
     }
 
-    @Test("without Screen Recording the store reports previews unavailable and asks on request")
+    @Test("without Screen Recording a capture stores nothing")
     func permission() async {
         let runner = ScriptRunner(windows: windowsJSON([(1, "1")]), workspaces: workspacesJSON(["1"]))
         let bridge = FakeBridge()
         let store = OverviewStore(runner: runner, nativeSystem: bridge)
 
-        #expect(!store.pictures.available)
-        store.pictures.requestAccess()
-        #expect(bridge.accessRequests == 1)
         await store.capturePreviews(maxSize: CGSize(width: 10, height: 10))
         #expect(store.pictures.previews.isEmpty)
     }

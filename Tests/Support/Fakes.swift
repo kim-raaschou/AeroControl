@@ -95,14 +95,13 @@ final class ScriptRunner: AerospaceProcessRunner, @unchecked Sendable {
 final class FakeBridge: NativeApiBridge {
     /// Screen Recording granted? Drives `PictureStore.available`.
     var granted = false
-    var accessRequests = 0
     /// Every window-id list the store has asked to capture.
     var captured: [[Int]] = []
     /// Bundle ids of apps macOS reports hidden.
 
     func appIcon(bundleId: String) -> NSImage { NSImage() }
     var canCapturePreviews: Bool { granted }
-    func requestPreviewAccess() { accessRequests += 1 }
+    func requestPreviewAccess() {}
     func prepareCapture() {}
     /// What the window server reports per window; 300 × 200 for any not listed.
     var sizes: [Int: CGSize] = [:]

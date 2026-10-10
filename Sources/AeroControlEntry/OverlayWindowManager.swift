@@ -5,6 +5,8 @@ import Common
 @MainActor
 final class OverlayWindowManager {
     private let state: OverviewStore
+    /// Screen Recording: whether the pictures can be taken, and how to ask; and the capture's warm-up.
+    private let bridge: NativeApiBridge
     private let settings: SettingsStore
 
     /// The overview is one window on one screen: the one under the mouse at summon time,
@@ -18,11 +20,9 @@ final class OverlayWindowManager {
     /// The overview is shown this long after its pictures start being taken, so the first cards
     /// are about to land: shown at once, its plates stood empty for 230 ms.
     private static let revealAfter: Duration = .milliseconds(120)
-    init(
-        state: OverviewStore,
-        settings: SettingsStore
-    ) {
+    init(state: OverviewStore, bridge: NativeApiBridge, settings: SettingsStore) {
         self.state = state
+        self.bridge = bridge
         self.settings = settings
         // The overview took the keyboard back when AeroSpace focused the app: give it to the app.
         state.onShotDone = { [weak self] in self?.hide(restoreFocus: $0) }
@@ -94,7 +94,7 @@ final class OverlayWindowManager {
         // waiting for all of them was most of the time between keystroke and overview.
         Task { [weak self] in
             guard let self else { return }
-            self.state.pictures.prepare()
+            self.bridge.prepareCapture()
             await self.state.reload()
             self.loading = false
             guard self.requestedVisible else { return }   // toggled away while loading
@@ -102,14 +102,14 @@ final class OverlayWindowManager {
             case .map: break
             case .app(let ref): guard self.carryOut(self.state.summonApp(ref)) else { return }
             }
-            if self.state.pictures.available {
+            if self.bridge.canCapturePreviews {
                 await self.state.measurePreviews()
                 guard self.requestedVisible else { return }
             } else {
                 // Ask macOS for Screen Recording on the first summon without it. The system
                 // shows its dialog once per app; afterwards this is a silent no-op and the
                 // menu item / System Settings is the way in. The tiles stay plates meanwhile.
-                self.state.pictures.requestAccess()
+                self.bridge.requestPreviewAccess()
             }
             self.state.following = true
             self.window?.orderOut(nil)
@@ -117,7 +117,7 @@ final class OverlayWindowManager {
             let window = self.makeWindow(for: screen, hidden: true)
             self.window = window
             Task { [weak self] in
-                if self?.state.pictures.available == true { try? await Task.sleep(for: Self.revealAfter) }
+                if self?.bridge.canCapturePreviews == true { try? await Task.sleep(for: Self.revealAfter) }
                 guard let self, self.requestedVisible, self.window === window else { return }
                 window.reveal()
             }

@@ -18,14 +18,6 @@ public final class PictureStore {
     private let bridge: NativeApiBridge
     init(bridge: NativeApiBridge) { self.bridge = bridge }
 
-    /// True when macOS lets us capture windows; decides the tile layout up front so the
-    /// overview does not jump when the images arrive. Asked a few times a summon, by the host.
-    public var available: Bool { bridge.canCapturePreviews }
-    /// Warms the capture path before the store reads AeroSpace, so the system's window
-    /// enumeration and AeroSpace's answer arrive together rather than one after the other.
-    public func prepare() { bridge.prepareCapture() }
-    public func requestAccess() { bridge.requestPreviewAccess() }
-
     /// Bumped by every capture and clear so a stale capture cannot overwrite newer state.
     private(set) var generation = 0
 
