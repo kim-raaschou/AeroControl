@@ -56,6 +56,16 @@ LAYERS = [
     ("Sources/AeroControlEntry/", "App / Entry"),
 ]
 RANK = {name: i for i, (_, name) in enumerate(LAYERS)}
+# The rings of the onion, innermost first. AeroSpace is not a port but the heart of the app, which
+# cannot exist without it: its model — the values and how they are read — is one core, the two
+# Common folders together; the folders are values against parsing, not two layers.
+RINGS = [
+    ("AeroSpace's model", ["Common · Domain", "Common · Aerospace"]),
+    ("Adapters", ["Kit · Adapters"]),
+    ("State", ["Kit · State"]),
+    ("UI", ["Kit · UI"]),
+    ("Entry", ["App / Entry"]),
+]
 # The functions whose calls are drawn: the host and the stores, where the flow lives.
 FLOW_TYPES = {"AeroControlApp", "OverlayWindowManager", "OverviewWindow", "MenuBarController", "OverviewStore", "PictureStore"}
 COMPLEX_FUNCTION = 8
@@ -328,22 +338,24 @@ def smells(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[
     return rows
 
 
-def coupling(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[tuple[str, int, int, int, float, float, float, int, int]]:
-    """Robert C. Martin's package metrics, a layer being the package: Ca, the types outside that name
-    a type in it; Ce, the types outside that its types name; I = Ce / (Ca + Ce), 0 for a layer all
-    lean on, 1 for one that leans on all; A, the share of its types that are protocols; D = |A + I − 1|,
-    how far from the line where a stable layer is abstract and a concrete one unstable. With them the
-    arrows that point up out of the layer, and the pairs in it that name each other."""
+def coupling(by_name: dict[str, Type], edges: dict[tuple[str, str], int],
+             groups: list[tuple[str, list[str]]] | None = None) -> list[tuple[str, int, int, int, float, float, float, int, int]]:
+    """Robert C. Martin's package metrics, a package being a layer, or a group of them (`RINGS`): Ca, the
+    types outside that name a type in it; Ce, the types outside that its types name; I = Ce / (Ca + Ce),
+    0 for a package all lean on, 1 for one that leans on all; A, the share of its types that are
+    protocols; D = |A + I − 1|, how far from the line where a stable package is abstract and a concrete
+    one unstable. With them the arrows that point up out of it, and the pairs in it that name each other."""
     rows = []
-    for _, layer in LAYERS:
-        mine = {n for n, t in by_name.items() if t.layer == layer}
+    for name, layers in groups or [(layer, [layer]) for _, layer in LAYERS]:
+        mine = {n for n, t in by_name.items() if t.layer in layers}
+        top = max(RANK[l] for l in layers)
         ca = {a for (a, b) in edges if b in mine and a not in mine}
         ce = {b for (a, b) in edges if a in mine and b not in mine}
         i = len(ce) / (len(ca) + len(ce)) if ca or ce else 0.0
         a = sum(1 for n in mine if by_name[n].kind == "protocol") / len(mine) if mine else 0.0
-        ups = sum(1 for (x, y) in edges if x in mine and RANK.get(by_name[y].layer, 0) > RANK[layer])
+        ups = sum(1 for (x, y) in edges if x in mine and RANK.get(by_name[y].layer, 0) > top)
         cycles = sum(1 for (x, y) in edges if x in mine and (y, x) in edges and x < y)
-        rows.append((layer, len(mine), len(ca), len(ce), i, a, abs(a + i - 1), ups, cycles))
+        rows.append((name, len(mine), len(ca), len(ce), i, a, abs(a + i - 1), ups, cycles))
     return rows
 
 
@@ -365,7 +377,7 @@ def onion(rows) -> str:
         out.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="currentColor" fill-opacity="{0.06 + 0.26 * (1 - inst):.2f}" stroke="currentColor" stroke-opacity="0.35"/>')
     for i, (layer, n, ca, ce, inst, a, d, ups, cycles) in enumerate(rows):
         mid = inner + width * i + width / 2 + (0 if i else -inner / 2 + 4)
-        short = layer.split(" · ")[-1].replace("App / ", "")
+        short = layer
         out.append(f'<text x="{cx}" y="{cy - mid + 5}" text-anchor="middle" fill="currentColor">{esc(short)}'
                    f'<tspan font-size="11" fill-opacity="0.75"> · {n} · I {inst:.2f}</tspan></text>')
         if ups:
@@ -427,8 +439,8 @@ def render(by_name: dict[str, Type], edges: dict[tuple[str, str], int], head: st
 <table>{table}</table>
 <h2>5. Coupling, by layer</h2>
 <p>Robert C. Martin's package metrics, a layer being the package. <b>Ca</b>: the types outside the layer that name a type in it (afferent: who leans on it). <b>Ce</b>: the types outside that its types name (efferent: what it leans on). <b>I</b> = Ce / (Ca + Ce): 0 is a layer everything leans on and that leans on nothing, as Domain should be; 1 is one nothing leans on, as the host should be; I should rise down the table. <b>A</b>: the share of its types that are protocols. <b>D</b> = |A + I − 1|: the distance from the line where what is stable is abstract and what is concrete is free to change; a concrete layer all lean on is far from it, and that is the cost of a domain of values. <b>↑ out</b>: arrows from the layer that point up; <b>⟲</b>: pairs in it that name each other. Both should be 0.</p>
-<p>As rings: Domain at the heart, the host at the rim, each darker the more stable. A sound build is dark in the middle and pale at the edge, with no red spoke.</p>
-{onion(coupling(by_name, edges))}
+<p>As rings: AeroSpace's model at the heart — the app is an AeroSpace client and cannot exist without it, so its model is the core, not a port; the two Common folders are values against parsing, one ring — and the host at the rim, each darker the more stable. A sound build is dark in the middle and pale at the edge, with no red spoke.</p>
+{onion(coupling(by_name, edges, RINGS))}
 <table>{coupling_table(coupling(by_name, edges))}</table>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.15.0/mermaid.min.js"></script>
 <script>mermaid.initialize({{ startOnLoad: true, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral', securityLevel: 'loose', maxTextSize: 200000, flowchart: {{ useMaxWidth: true }}, class: {{ useMaxWidth: true }} }});</script>
