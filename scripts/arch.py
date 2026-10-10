@@ -51,8 +51,8 @@ OUT = ROOT / "docs" / "arch.html"
 # keys, the reducer, and the reading of AeroSpace's answers — the functional core the rest is a shell around.
 LAYERS = [
     ("Sources/Common/", "Common"),
-    ("Sources/AeroControlKit/Adapters/", "Kit · Adapters"),
     ("Sources/AeroControlKit/State/", "Kit · State"),
+    ("Sources/AeroControlKit/Adapters/", "Kit · Adapters"),
     ("Sources/AeroControlKit/UI/", "Kit · UI"),
     ("Sources/AeroControlEntry/", "App / Entry"),
 ]
@@ -186,7 +186,9 @@ def fold_private(by_name: dict[str, Type]) -> dict[str, Type]:
         in_file = [h for h in hosts.values() if h.path == t.path]
         if not in_file:
             continue
-        host = max(in_file, key=lambda h: len(re.findall(rf"\b{re.escape(name)}\b", h.body)))
+        # Its host: the type it is named after (`AeroLookKey` is `AeroLook`'s), else the one naming it most.
+        named_after = [h for h in in_file if name.startswith(h.name)]
+        host = max(named_after, key=lambda h: len(h.name)) if named_after else max(in_file, key=lambda h: len(re.findall(rf"\b{re.escape(name)}\b", h.body)))
         host.nested.append(f"{name} · {t.nloc} loc")
         host.nloc += t.nloc
         host.cx += t.cx
