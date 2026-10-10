@@ -77,6 +77,15 @@ def layer_for(path: str) -> str | None:
     return None
 
 
+def area_for(path: str) -> str | None:
+    """A folder inside a layer's: an area of the layer, drawn as its own namespace; none for a file at the layer's root."""
+    for prefix, _ in LAYERS:
+        if path.startswith(prefix):
+            rest = path[len(prefix):]
+            return rest.split("/")[0] if "/" in rest else None
+    return None
+
+
 def tracked_sources() -> list[str]:
     out = subprocess.run(["git", "ls-files", "Sources/*.swift", "Sources/**/*.swift"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     return sorted(set(line for line in out.split("\n") if line.endswith(".swift") and layer_for(line)))
@@ -94,6 +103,7 @@ class Type:
         self.name, self.kind, self.access, self.path, self.start = name, kind, access, path, start
         self.end = start
         self.layer = layer_for(path) or "?"
+        self.area = area_for(path)
         self.members: list[tuple[str, str, str, bool]] = []  # (access, kind, name, stored)
         self.nested: list[str] = []
         self.nloc = 0
@@ -247,11 +257,10 @@ def mermaid_id(name: str) -> str:
 
 def class_diagram(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> str:
     out = ["classDiagram", "  direction LR"]
-    for layer in [name for _, name in LAYERS]:
-        members = [t for t in by_name.values() if t.layer == layer]
-        if not members:
-            continue
-        out.append(f"  namespace {mermaid_id(layer)} {{")
+    boxes = sorted({(t.layer, t.area) for t in by_name.values()}, key=lambda la: (RANK.get(la[0], 0), la[1] or ""))
+    for layer, area in boxes:
+        members = [t for t in by_name.values() if (t.layer, t.area) == (layer, area)]
+        out.append(f"  namespace {mermaid_id(layer + (' · ' + area if area else ''))} {{")
         for t in sorted(members, key=lambda t: -t.nloc):
             out.append(f"    class {t.name} {{")
             out.append(f"      <<{t.kind} · {t.nloc} loc · cx {t.cx} · {t.stored} stored>>")
@@ -389,6 +398,27 @@ def rings(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[t
     return out
 
 
+def check_areas(by_name: dict[str, Type], edges: dict[tuple[str, str], int]) -> list[str]:
+    """The areas of one layer must not name each other both ways: an area is a step down the layer, and a
+    pair naming each other is one area in two folders. Counted by file, not by type: an extension written
+    in one area is that area's code, whichever area declared the type."""
+    between: dict[tuple[str, str, str], int] = defaultdict(int)
+    names = sorted(by_name, key=len, reverse=True)
+    for path in tracked_sources():
+        layer, area = layer_for(path), area_for(path)
+        if not area:
+            continue
+        body = re.sub(r"///.*|//.*", "", (ROOT / path).read_text())
+        for other in names:
+            t = by_name[other]
+            if t.layer == layer and t.area and t.area != area:
+                n = len(re.findall(rf"\b{re.escape(other)}\b", body))
+                if n:
+                    between[(layer, area, t.area)] += n
+    return [f"{layer}: the areas {x} and {y} name each other ({n} / {between[(layer, y, x)]})"
+            for (layer, x, y), n in sorted(between.items()) if (layer, y, x) in between and x < y]
+
+
 def coupling_table(rows) -> str:
     head = "<tr><th>Layer</th><th>Types</th><th>Ca</th><th>Ce</th><th>I</th><th>A</th><th>D</th><th>↑ out</th><th>⟲</th></tr>"
     return head + "".join(f"<tr><th>{esc(l)}</th><td>{n}</td><td>{ca}</td><td>{ce}</td><td>{i:.2f}</td><td>{a:.2f}</td><td>{d:.2f}</td><td>{u}</td><td>{c}</td></tr>"
@@ -465,7 +495,8 @@ def check_layer_docs(by_name: dict[str, Type]) -> list[str]:
     """What is wrong with the layer docs: one missing, one over `DOC_WORDS` words, or a name in
     backticks that the code no longer has — a type, a function, a framework's name, any word of it."""
     wrong = []
-    known = set(re.findall(r"\b[A-Za-z_]\w*\b", "\n".join((ROOT / p).read_text() for p in tracked_sources())))
+    sources = tracked_sources()
+    known = set(re.findall(r"\b[A-Za-z_]\w*\b", "\n".join((ROOT / p).read_text() for p in sources))) | {part for p in sources for part in p.split("/")}
     for _, layer in LAYERS:
         path = DOCS / f"{doc_slug(layer)}.md"
         if not path.exists():
@@ -617,7 +648,7 @@ def main() -> int:
             print(f"Wrote {path}")
         return 0
     edges = dependencies(by_name)
-    for line in check_layer_docs(by_name) + check_doc_comments():
+    for line in check_layer_docs(by_name) + check_doc_comments() + check_areas(by_name, edges):
         print(f"arch: {line}", file=sys.stderr)
         if check:
             return 1

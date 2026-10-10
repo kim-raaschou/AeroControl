@@ -130,7 +130,7 @@ public enum AeroControlLayout {
     /// the card's picture area, and which of those belong to other apps.
     public struct StripCard: Equatable, Sendable {
         public let workspace: String
-        public let span: AppStripModel.Span
+        public let span: StripGeometry.Span
         public let frames: [Int: CGRect]
         public let others: Set<Int>
     }
@@ -154,13 +154,13 @@ public enum AeroControlLayout {
     }
 
     /// The strip as drawn: one map card per workspace holding the app, at one height
-    /// (`AppStripModel.cardHeight`), mirrored from AeroSpace's rects, the other apps' windows
+    /// (`StripGeometry.cardHeight`), mirrored from AeroSpace's rects, the other apps' windows
     /// marked faint.
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
                                    fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
         let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
         let aspects = areas.map { $0.width / max(1, $0.height) }
-        let full = AppStripModel.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
+        let full = StripGeometry.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
                                             chrome: 2 * cardPadding + cardGap, panelHeight: panelHeight)
         let widths = aspects.map { (full * $0).rounded() }
         let ours = groups.map { ws in ws.windows.filter { $0.bundleId == bundleId } }
@@ -183,7 +183,7 @@ public enum AeroControlLayout {
                 frames = Dictionary(uniqueKeysWithValues: zip(ours[g].map(\.windowId), packed.tiles.map {
                     CGRect(x: at.x + $0.x, y: at.y + $0.y, width: $0.width, height: $0.height) }))
             }
-            cards.append(StripCard(workspace: groups[g].name, span: AppStripModel.Span(x: x, width: widths[g] + 2 * cardPadding), frames: frames, others: others))
+            cards.append(StripCard(workspace: groups[g].name, span: StripGeometry.Span(x: x, width: widths[g] + 2 * cardPadding), frames: frames, others: others))
             x += widths[g] + 2 * cardPadding
         }
         return StripLayout(height: full + cardChrome, width: x, cards: cards)
@@ -206,7 +206,7 @@ public enum AeroControlLayout {
 
     /// The box pictures are first taken to fit, in pixels.
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
-        let height = (available.height * usableScreenFraction * AppStripModel.tallest).rounded(.up)
+        let height = (available.height * usableScreenFraction * StripGeometry.tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
         let usable = usable(available)
         let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,

@@ -88,7 +88,9 @@ fails on any violation.
 
 ## Architecture
 
-- `Sources/Common/` — **the functional core: AeroSpace's world, pure**. One folder, one layer:
+- `Sources/Common/` — **the functional core: AeroSpace's world, pure**. One layer, in four areas, each a step
+  down: `Keys/` (what a key and a summon do) over `Layout/` (geometry) over `AeroSpace/` (the model, the
+  reducer, the reading of AeroSpace), and `Theme/` apart; `make arch-check` fails if two areas name each other.
   `OverviewModel`, the reducer `updateOverview(_:_:) -> (model, [effect])` (`OverviewUpdate.swift`),
   the layout, the keys, type-to-filter (`OverviewFilter.swift`: matching, `FilterKey`,
   `filterKeyAction`), and the reading of AeroSpace — command argv and response decoding

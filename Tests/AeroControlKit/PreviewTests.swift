@@ -15,7 +15,7 @@ struct LayoutTests {
     func captureSize() {
         let wide = CGSize(width: 3440, height: 1440)
         let size = AeroControlLayout.captureSize(available: wide, backingScale: 1, workspaces: 5, strip: true)
-        let half = (1440 * AeroControlLayout.usableScreenFraction * AppStripModel.tallest).rounded(.up)
+        let half = (1440 * AeroControlLayout.usableScreenFraction * StripGeometry.tallest).rounded(.up)
         #expect(size.height == half && abs(size.width - (half * 3440 / 1440).rounded(.up)) <= 1)
         #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2, workspaces: 5, strip: true).width - 2 * size.width) <= 2)
     }
@@ -254,7 +254,7 @@ struct StripLayoutTests {
         let b = WorkspaceInfo(name: "4", windows: [rected(3, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let l = layout([a, b])
         let ratio = screen.width / screen.height, pad = AeroControlLayout.cardPadding
-        #expect((l.height - AeroControlLayout.cardChrome) == AppStripModel.cardHeight(view: 1600, cards: 2, aspect: ratio, chrome: 2 * pad + AeroControlLayout.cardGap, panelHeight: 1000))
+        #expect((l.height - AeroControlLayout.cardChrome) == StripGeometry.cardHeight(view: 1600, cards: 2, aspect: ratio, chrome: 2 * pad + AeroControlLayout.cardGap, panelHeight: 1000))
         // The mirrored card is the screen's shape exactly; the lone window, packed at the full height, within the packer's rounding.
         #expect(l.cards.count == 2 && l.cards.allSatisfy { abs($0.span.width - ((l.height - AeroControlLayout.cardChrome) * ratio).rounded() - 2 * pad) <= 2 })
         #expect(l.cards[1].span.x == l.cards[0].span.width + AeroControlLayout.cardGap && l.width == l.cards[1].span.x + l.cards[1].span.width && !l.slides(in: 1600))

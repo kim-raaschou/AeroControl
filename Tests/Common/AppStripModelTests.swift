@@ -97,8 +97,9 @@ struct StripValueTests {
     }
 }
 
-@Suite("AppStripModel: geometry")
-struct AppStripGeometryTests {
+@Suite("StripGeometry")
+struct StripGeometryTests {
+    private typealias M = StripGeometry
     @Test("one card fills the view's width, up to most of the panel; more each take a 3.5th of it, up to a third of the panel")
     func cardHeight() {
         // A 1728 x 1085 screen (1.6), 24 of chrome round each card.
