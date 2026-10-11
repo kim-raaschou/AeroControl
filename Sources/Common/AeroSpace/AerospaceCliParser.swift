@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 @propertyWrapper
 public struct TolerantInt: Decodable, Equatable {
@@ -70,21 +71,19 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     }
 }
 
-public func parseWindows(json: String) throws -> [ParsedWindow] {
+public func parseWindows(json: String) throws -> [WindowInfo] {
     guard let data = json.data(using: .utf8), !json.isEmpty else { return [] }
     let decoded = try JSONDecoder().decode([DecodedWindow].self, from: data)
     return decoded.map { dw in
-        ParsedWindow(
-            window: WindowInfo(
-                windowId: dw.windowId,
-                appName: dw.appName,
-                bundleId: dw.appBundleId,
-                isFloating: dw.parentLayout == "floating",
-                isFullscreen: dw.windowIsFullscreen ?? false || dw.parentLayout == "macos_native_fullscreen",
-                isHidden: ["macos_native_minimized", "macos_native_window_of_hidden_app"].contains(dw.parentLayout),
-                title: dw.windowTitle ?? "",
-                layoutRect: parseLayoutRect(dw.windowLayoutRect)
-            ),
+        WindowInfo(
+            windowId: dw.windowId,
+            appName: dw.appName,
+            bundleId: dw.appBundleId,
+            isFloating: dw.parentLayout == "floating",
+            isFullscreen: dw.windowIsFullscreen ?? false || dw.parentLayout == "macos_native_fullscreen",
+            isHidden: ["macos_native_minimized", "macos_native_window_of_hidden_app"].contains(dw.parentLayout),
+            title: dw.windowTitle ?? "",
+            layoutRect: parseLayoutRect(dw.windowLayoutRect),
             workspace: dw.workspace
         )
     }
@@ -95,13 +94,13 @@ public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
     return try JSONDecoder().decode([WorkspaceMonitor].self, from: data)
 }
 
-public func buildOverview(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor], focusedWindowId: Int = 0) -> OverviewModel {
+public func buildOverview(windows: [WindowInfo], workspaceMonitors: [WorkspaceMonitor], focusedWindowId: Int = 0) -> OverviewModel {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
     let workspaces = workspaceMonitors.map { wm in
         WorkspaceInfo(
             name: wm.workspace,
-            windows: layoutOrdered(byWorkspace[wm.workspace]?.map(\.window) ?? []),
+            windows: layoutOrdered(byWorkspace[wm.workspace] ?? []),
             monitorId: wm.monitorId,
             monitorName: wm.monitorName ?? "",
             screenIndex: wm.screenIndex,
@@ -122,7 +121,7 @@ func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
 }
 
 public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
-    (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
+    (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first }
 }
 
 public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewModel {
@@ -137,4 +136,26 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
     let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces))
     let focused = await loadFocusedWindow(using: runner)?.windowId ?? 0
     return buildOverview(windows: windows, workspaceMonitors: workspaceMonitors, focusedWindowId: focused)
+}
+
+public enum WorkspaceTree {
+    public static func order(_ rects: [(Int, CGRect)]) -> [Int] {
+        guard rects.count > 1 else { return rects.map(\.0) }
+        for (lo, hi) in [(\CGRect.minX, \CGRect.maxX), (\.minY, \.maxY)] {
+            if let parts = cut(rects, lo, hi) { return parts.flatMap { order($0) } }
+        }
+        return rects.map(\.0)
+    }
+
+    private static func cut(_ rects: [(Int, CGRect)], _ lo: KeyPath<CGRect, CGFloat>, _ hi: KeyPath<CGRect, CGFloat>) -> [[(Int, CGRect)]]? {
+        let indexed = rects.enumerated().sorted { $0.element.1[keyPath: lo] < $1.element.1[keyPath: lo] }
+        var runs: [[(offset: Int, element: (Int, CGRect))]] = [[indexed[0]]]
+        var end = indexed[0].element.1[keyPath: hi]
+        for item in indexed.dropFirst() {
+            if item.element.1[keyPath: lo] >= end - 2 { runs.append([item]) } else { runs[runs.count - 1].append(item) }
+            end = max(end, item.element.1[keyPath: hi])
+        }
+        guard runs.count > 1 else { return nil }
+        return runs.map { run in run.sorted { $0.offset < $1.offset }.map(\.element) }
+    }
 }

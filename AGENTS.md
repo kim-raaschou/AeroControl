@@ -48,7 +48,7 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   it only as a deliberate, explained exception — in the commit that earns it (a feature and
   its cost are one reviewable change), with the cost stated in the message.
 
-### Rule: `docs/flow.html` is written by running the rules — `make flow`
+### Rule: `docs/arch.html` is drawn from the code — `make arch`
 - `make arch` draws the architecture and the metrics from the code into `docs/arch.html`
   (`scripts/arch.py`, reading the gate's numbers from `scripts/code_metrics.py`): the layers as rings
   read from the arrows, with Robert C. Martin's coupling per layer; the rules the build holds itself
@@ -60,15 +60,6 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   why, the commit that did it, and the tests' titles, which say it as a sentence the code holds true.
   The one exception is a `WORKAROUND` block, which names the issue it waits on; `make arch-check`
   fails on any other comment.
-
-- `Tools/flowdoc/main.swift` runs the pure code in `Common` (`Summon`, `FilterKey`, `Visit`'s
-  transitions, `AerospaceEvent.parse`, `Strip`'s transitions, `OverviewScene.summary`) against a
-  fixture and writes what they answered as tables and decision trees. Nothing in a table is written by
-  hand; the prose says only what cannot be run there (the host's order of operations) and
-  where to look for it.
-- `make flow` regenerates; `make flow-check` (CI) fails when the committed page is stale. A
-  rule that moves into `Common` becomes part of the page; one that stays in the store or the
-  host does not — that is a reason to move it.
 
 ### Rule: `Sources/Common/` stays UI-framework-free — enforced
 
@@ -90,7 +81,7 @@ fails on any violation.
   two areas name each other. `Visit` is one visit of the overview as a value: every key, link, read and event
   goes in through a transition that returns the new value and its effects (`Visit.Effect`: commands to run,
   a read, and `Visit.Host` for the host). `OverviewScene` is what is drawn, derived from a `Visit`. Then
-  `OverviewModel`, the layout, type-to-filter (`OverviewFilter.swift`: matching, `FilterKey`), and the reading of AeroSpace — command argv and response decoding
+  `OverviewModel` with its queries and type-to-filter matching, the layout, the keys (`FilterKey.swift`), and the reading of AeroSpace — command argv and response decoding
   (`AerospaceCliParser.swift`, `AerospaceCommands.swift`), the `AerospaceProcessRunner` port. The app
   is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
 - `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the

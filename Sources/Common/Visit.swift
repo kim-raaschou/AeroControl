@@ -2,6 +2,7 @@ public struct Visit: Equatable {
     public enum Effect: Sendable {
         case run([AeroControlAction], thenRead: Bool)
         case refresh
+        case capture
         case host(Host)
     }
 
@@ -19,13 +20,12 @@ public struct Visit: Equatable {
         case quit(bundleId: String)
         case launch(AppRef)
         case rebuild
-        case capture
     }
 
     public private(set) var model = OverviewModel()
     public private(set) var marking: Strip?
     public private(set) var query = ""
-    public private(set) var matches: [ParsedWindow] = []
+    public private(set) var matches: [WindowInfo] = []
     public private(set) var missingApp: AppRef?
     public private(set) var recent: [Int] = []
     public private(set) var visible = false
@@ -34,10 +34,10 @@ public struct Visit: Equatable {
     public init() {}
 
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
-    public var stripWindows: [ParsedWindow] { strip.map(model.windows(of:)) ?? [] }
+    public var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
     public var shownWorkspaces: [WorkspaceInfo] { strip == nil ? model.workspaces : stripWorkspaces }
-    public var ringWindowId: Int? { marking?.marked ?? matches.first?.window.windowId ?? model.focusedWindow?.windowId }
+    public var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
     public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
 
     public mutating func apply(_ input: Input) -> [Effect] {
@@ -51,7 +51,7 @@ public struct Visit: Equatable {
         }
         let focusMoved = new.focusedWindowId != model.focusedWindowId, hadStrip = strip != nil
         if new != model {
-            if let marking { self.marking = marking.kept(before: model.windows(of: marking).map(\.window.windowId), after: new.windows(of: marking).map(\.window.windowId)) }
+            if let marking { self.marking = marking.kept(before: model.windows(of: marking).map(\.windowId), after: new.windows(of: marking).map(\.windowId)) }
             model = new
             matches = model.matching(query)
         }
@@ -114,7 +114,7 @@ public struct Visit: Equatable {
         guard visible else { (visible, loading) = (true, true); return [.host(.show(summon))] }
         guard !loading else { return [] }
         guard case .app(let ref) = summon else { return hide(restoreFocus: true) }
-        if strip != nil, stripWindows.contains(where: { ref.matches($0.window) }) { return move(.window(1), drawn: drawn) }
+        if strip != nil, stripWindows.contains(where: ref.matches) { return move(.window(1), drawn: drawn) }
         return open(ref, takingOver: true)
     }
 
@@ -126,7 +126,7 @@ public struct Visit: Equatable {
 
     private mutating func open(_ ref: AppRef, takingOver: Bool) -> [Effect] {
         missingApp = nil
-        let windows = model.windowsInGridOrder.map(\.window).filter(ref.matches)
+        let windows = model.windowsInGridOrder.filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
         switch (windows.count, focusedAt) {
         case (0, _): return hide(restoreFocus: false) + [.host(.launch(ref))]
@@ -134,7 +134,7 @@ public struct Visit: Equatable {
         case (2, let at?): return apply(.action(.focusWindow(windows[1 - at].windowId)))
         default:
             marking = .opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent)
-            return takingOver ? [.host(.capture)] : []
+            return takingOver ? [.capture] : []
         }
     }
 
@@ -151,7 +151,7 @@ public struct Visit: Equatable {
     }
 
     public mutating func point(_ windowId: Int) {
-        guard model.windows(of: marking).contains(where: { $0.window.windowId == windowId }) else { return }
+        guard model.windows(of: marking).contains(where: { $0.windowId == windowId }) else { return }
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 

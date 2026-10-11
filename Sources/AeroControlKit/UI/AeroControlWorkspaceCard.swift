@@ -1,5 +1,6 @@
 import SwiftUI
 import Common
+import Foundation
 
 private let cardShape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
 
@@ -134,4 +135,13 @@ struct AeroControlCardFace<Content: View>: View {
                   : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
     }
 
+}
+
+public enum OverviewDragPayload: Codable, Transferable {
+    case window(id: Int)
+    case workspace(name: String)
+
+    public static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .json)
+    }
 }

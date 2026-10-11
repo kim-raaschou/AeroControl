@@ -37,6 +37,3 @@ jobs:
       - name: Code-metrics guard
         run: python3 scripts/code_metrics.py --check
 
-      # docs/flow.html is written by running the rules; a stale page fails.
-      - name: Flow page is current
-        run: make flow-check

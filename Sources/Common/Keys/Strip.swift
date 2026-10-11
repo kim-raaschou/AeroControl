@@ -44,3 +44,9 @@ public struct Strip: Equatable, Sendable {
         return after.dropFirst(max(0, min(after.count - 1, at))).first.map { Strip(app: app, marked: $0, centre: $0) }
     }
 }
+
+public extension OverviewModel {
+    func windows(of marking: Strip?) -> [WindowInfo] {
+        windowsInGridOrder.filter { marking?.owns($0) ?? true }
+    }
+}

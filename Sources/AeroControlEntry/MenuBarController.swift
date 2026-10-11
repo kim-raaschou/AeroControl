@@ -6,13 +6,11 @@ import Common
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let onSettingsChanged: () -> Void
     private let bridge: NativeApiBridge
-    private let settings: SettingsStore
     let menu = NSMenu()
 
-    init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge, settings: SettingsStore) {
+    init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge) {
         self.onSettingsChanged = onSettingsChanged
         self.bridge = bridge
-        self.settings = settings
         super.init()
         menu.delegate = self
     }
@@ -24,11 +22,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
         menu.addItem(keys())
-        let theme = NSMenuItem(title: "Theme: \(settings.theme.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
-        theme.image = swatch(for: settings.theme)
+        let theme = NSMenuItem(title: "Theme: \(AeroControlTheme.chosen.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
+        theme.image = swatch(for: AeroControlTheme.chosen)
         for t in AeroControlTheme.all {
-            let entry = item(t.name) { self.settings.theme = t; self.onSettingsChanged() }
-            (entry.state, entry.image) = (settings.theme == t ? .on : .off, swatch(for: t))
+            let entry = item(t.name) { AeroControlTheme.chosen = t; self.onSettingsChanged() }
+            (entry.state, entry.image) = (AeroControlTheme.chosen == t ? .on : .off, swatch(for: t))
             themes.addItem(entry)
         }
         theme.submenu = themes
@@ -107,5 +105,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             ring.stroke()
             return true
         }
+    }
+}
+
+extension AeroControlTheme {
+    static var chosen: AeroControlTheme {
+        get { UserDefaults.standard.string(forKey: "settings.theme").flatMap(named) ?? .system }
+        set { UserDefaults.standard.set(newValue.id, forKey: "settings.theme") }
     }
 }

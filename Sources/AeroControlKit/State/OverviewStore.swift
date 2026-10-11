@@ -5,13 +5,11 @@ import Observation
 @MainActor @Observable
 public class OverviewStore {
     public private(set) var visit = Visit()
-    public var model: OverviewModel { visit.model }
-    public var strip: Strip? { visit.strip }
 
     private let sync: AerospaceSync
     public let pictures: PictureStore
     public private(set) var error: String?
-    public var screen: (available: CGSize, frames: [Int: CGRect]) = (.zero, [:])
+    public var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
     private var following = false
     public var onEffect: ((Visit.Host) -> Void)?
 
@@ -29,6 +27,7 @@ public class OverviewStore {
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()
+            case .capture: Task { await capturePreviews() }
             case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead { requestRefresh() } }
             case .host(let effect): onEffect?(effect)
             }
@@ -74,14 +73,14 @@ public class OverviewStore {
         pictures.prepare()
         await reload()
         update { $0.summoned(summon) }
-        if visit.visible { await pictures.measure(model.workspaces.flatMap(\.windows).map(\.windowId)) }
+        if visit.visible { await pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId)) }
         following = visit.visible
         return visit.visible
     }
 
-    public func capturePreviews(backingScale: CGFloat) async {
-        let size = AeroControlLayout.captureSize(available: screen.available, backingScale: backingScale, workspaces: model.workspaces.count, strip: strip != nil)
-        await pictures.take(visit.shownWorkspaces.flatMap { $0.windows.map(\.windowId) }, cards: model.workspaces.map { $0.windows.map(\.windowId) }, at: size)
+    public func capturePreviews() async {
+        let size = AeroControlLayout.captureSize(available: screen.available, backingScale: screen.scale, workspaces: visit.model.workspaces.count, strip: visit.strip != nil)
+        await pictures.take(visit.shownWorkspaces.flatMap { $0.windows.map(\.windowId) }, cards: visit.model.workspaces.map { $0.windows.map(\.windowId) }, at: size)
     }
 
     public func startListening() {

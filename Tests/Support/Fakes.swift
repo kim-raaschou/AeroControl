@@ -70,7 +70,7 @@ final class ModelInvalidationCounter {
 
     private func register() {
         withObservationTracking {
-            _ = store.model
+            _ = store.visit.model
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.count += 1

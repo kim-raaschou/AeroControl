@@ -9,9 +9,10 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
     public let isHidden: Bool
     public let title: String
     public let layoutRect: CGRect?
+    public let workspace: String
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
-                isFullscreen: Bool = false, isHidden: Bool = false, title: String = "", layoutRect: CGRect? = nil) {
+                isFullscreen: Bool = false, isHidden: Bool = false, title: String = "", layoutRect: CGRect? = nil, workspace: String = "") {
         self.windowId = windowId
         self.appName = appName
         self.bundleId = bundleId
@@ -20,6 +21,12 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.isHidden = isHidden
         self.layoutRect = layoutRect
         self.title = title
+        self.workspace = workspace
+    }
+
+    func on(_ workspace: String) -> WindowInfo {
+        WindowInfo(windowId: windowId, appName: appName, bundleId: bundleId, isFloating: isFloating, isFullscreen: isFullscreen, isHidden: isHidden,
+                   title: title, layoutRect: layoutRect, workspace: workspace)
     }
 
     public var isTiled: Bool { !isFloating && !isFullscreen && !isHidden }
@@ -57,7 +64,7 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
 
     public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0, rootLayout: String = "") {
         self.name = name
-        self.windows = windows
+        self.windows = windows.map { $0.on(name) }
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
@@ -66,15 +73,5 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
 
     public func with(windows: [WindowInfo]) -> WorkspaceInfo {
         WorkspaceInfo(name: name, windows: windows, monitorId: monitorId, monitorName: monitorName, screenIndex: screenIndex, rootLayout: rootLayout)
-    }
-}
-
-public struct ParsedWindow: Equatable {
-    public let window: WindowInfo
-    public let workspace: String
-
-    public init(window: WindowInfo, workspace: String) {
-        self.window = window
-        self.workspace = workspace
     }
 }

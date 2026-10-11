@@ -38,7 +38,7 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(3, "Code")]], focused: 3)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-name=Teams")
-        await app.until { aero.focused == 1 && app.store.strip == nil }
+        await app.until { aero.focused == 1 && app.store.visit.strip == nil }
     }
 
     @Test("⇧⌘ and a workspace's name moves the window under the ring there, and the map shows it moved; a new name makes the workspace")
@@ -90,7 +90,7 @@ struct ScenarioTests {
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.store.pictures.previews[9] == nil)
         await app.open("aerocontrol://app-id=com.slack")
-        await app.until { app.store.strip?.app == "com.slack" && app.store.pictures.previews[9] != nil }
+        await app.until { app.store.visit.strip?.app == "com.slack" && app.store.pictures.previews[9] != nil }
     }
 
     @Test("a workspace dropped on another moves its windows there in their order and goes along; into an empty one a stack arrives as a stack, set on a tiled window, never a float or a fullscreen one; into one with windows, or from floats alone, no layout comes; onto itself, nothing")
@@ -99,7 +99,7 @@ struct ScenarioTests {
                                   "5": [win(5, "Note", floating: true)], "6": []], focused: 3, layouts: ["1": "h_accordion", "5": "h_accordion"])
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
-        let held = { (name: String) in app.store.model.workspaces.first { $0.name == name }?.windows.count ?? 0 }
+        let held = { (name: String) in app.store.visit.model.workspaces.first { $0.name == name }?.windows.count ?? 0 }
         app.store.send(.merge("1", into: "1"))
         app.store.send(.merge("1", into: "2"))
         await app.until { aero.windows(on: "2") == [9, 8, 1, 2] && aero.layout(of: "2") == "h_accordion" && aero.focusedWorkspace == "2" && held("2") == 4 }
@@ -124,14 +124,14 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(4, "Slack")], "2": [win(2, "Teams"), win(5, "Slack")], "3": [win(3, "Code")]], focused: 3)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        let first = app.store.strip?.marked
+        let first = app.store.visit.strip?.marked
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.store.strip?.marked != first && app.store.strip?.app == "com.teams")
+        #expect(app.store.visit.strip?.marked != first && app.store.visit.strip?.app == "com.teams")
         await app.open("aerocontrol://app-name=Slack")
-        #expect(app.store.strip?.app == "com.slack" && app.store.visit.visible)
-        let slack = app.store.strip?.marked
+        #expect(app.store.visit.strip?.app == "com.slack" && app.store.visit.visible)
+        let slack = app.store.visit.strip?.marked
         await app.open("aerocontrol://app-name=Slack")
-        #expect(app.store.strip?.marked != slack && app.store.strip?.app == "com.slack")
+        #expect(app.store.visit.strip?.marked != slack && app.store.visit.strip?.app == "com.slack")
         await app.open("aerocontrol://workspaces")
         #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
     }
@@ -265,7 +265,7 @@ struct ScenarioTests {
         await app.past(AerospaceSync.readAfter)
         #expect(app.scene.ringed == 2 && aero.focused == 1)
         app.key(.move(.window(1)))
-        await app.until { aero.focusedWorkspace == "2" && app.store.model.focusedWorkspace == "2" }
+        await app.until { aero.focusedWorkspace == "2" && app.store.visit.model.focusedWorkspace == "2" }
         #expect(app.scene.ringed == 3 && app.store.visit.visible && app.scene.cards.map(\.focused) == [false, true])
     }
 
@@ -316,7 +316,7 @@ struct ScenarioTests {
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
         aero.userFocus(2)
-        await app.until { app.store.model.focusedWindowId == 2 }
+        await app.until { app.store.visit.model.focusedWindowId == 2 }
         #expect(app.store.visit.visible && app.scene.body == .strip)
         aero.userFocus(9)
         await app.until { !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack") }

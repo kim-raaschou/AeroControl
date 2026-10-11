@@ -27,7 +27,7 @@ private var words: OverviewModel { OverviewModel(workspaces: [
 ]) }
 
 private func ids(_ query: String, in model: OverviewModel = model) -> [Int] {
-    model.matching(query).map(\.window.windowId)
+    model.matching(query).map(\.windowId)
 }
 
 @Suite("matching")
@@ -81,7 +81,7 @@ struct OverviewMatchingTests {
             WorkspaceInfo(name: "2", windows: [window(3, "Slack", "Teams migration"), window(4, "Teams")]),
         ])
         let matches = spread.matching("teams")
-        #expect(matches.map(\.window.windowId) == [1, 2, 3, 4])
+        #expect(matches.map(\.windowId) == [1, 2, 3, 4])
     }
 }
 

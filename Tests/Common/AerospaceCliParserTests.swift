@@ -4,7 +4,7 @@ import Testing
 
 @Suite("parseWindows")
 struct ParseWindowsTests {
-    @Test("parses valid JSON into ParsedWindow array, a missing title as empty; nothing, or an empty list, is no window")
+    @Test("parses valid JSON into windows, a missing title as empty; nothing, or an empty list, is no window")
     func parsesValidJson() throws {
         let json = """
         [
@@ -13,9 +13,9 @@ struct ParseWindowsTests {
         ]
         """
         let result = try parseWindows(json: json)
-        #expect(result.map(\.window.windowId) == [1, 2] && result.map(\.workspace) == ["1", "2"])
-        #expect(result[0].window.appName == "Firefox" && result[0].window.bundleId == "org.mozilla.firefox")
-        #expect(result.map(\.window.title) == ["Inbox", ""])
+        #expect(result.map(\.windowId) == [1, 2] && result.map(\.workspace) == ["1", "2"])
+        #expect(result[0].appName == "Firefox" && result[0].bundleId == "org.mozilla.firefox")
+        #expect(result.map(\.title) == ["Inbox", ""])
         #expect(try parseWindows(json: "").isEmpty && parseWindows(json: "[]").isEmpty)
     }
 
@@ -42,7 +42,7 @@ struct ParseWindowStateTests {
          {"window-id": 2, "app-name": "Arc", "app-bundle-id": "company.thebrowser.Browser", "workspace": "1",
           "window-parent-container-layout": "h_tiles"}]
         """
-        let windows = try parseWindows(json: json).map(\.window)
+        let windows = try parseWindows(json: json)
         #expect(windows.map(\.isFullscreen) == [true, false])
     }
 
@@ -52,7 +52,7 @@ struct ParseWindowStateTests {
         let json = "[" + layouts.enumerated().map { i, layout in
             #"{"window-id": \#(i), "app-name": "A", "app-bundle-id": "a", "workspace": "1", "window-parent-container-layout": "\#(layout)"}"#
         }.joined(separator: ",") + "]"
-        let windows = try parseWindows(json: json).map(\.window)
+        let windows = try parseWindows(json: json)
         #expect(windows.map(\.isFloating) == [false, true, false, false, false])
         #expect(windows.map(\.isFullscreen) == [false, false, true, false, false])
         #expect(windows.map(\.isHidden) == [false, false, false, true, true])
@@ -115,9 +115,9 @@ struct BuildOverviewTests {
     @Test("groups windows by workspace and sorts numerically")
     func groupsAndSorts() {
         let windows = [
-            ParsedWindow(window: WindowInfo(windowId: 1, appName: "A", bundleId: "a"), workspace: "2"),
-            ParsedWindow(window: WindowInfo(windowId: 2, appName: "B", bundleId: "b"), workspace: "1"),
-            ParsedWindow(window: WindowInfo(windowId: 3, appName: "C", bundleId: "c"), workspace: "2"),
+            WindowInfo(windowId: 1, appName: "A", bundleId: "a", workspace: "2"),
+            WindowInfo(windowId: 2, appName: "B", bundleId: "b", workspace: "1"),
+            WindowInfo(windowId: 3, appName: "C", bundleId: "c", workspace: "2"),
         ]
         let monitors = [
             WorkspaceMonitor(workspace: "1", monitorId: 1),
@@ -181,16 +181,16 @@ struct LayoutRectTests {
 
     @Test("x,y,width,height in points becomes the window's layout rect")
     func parsed() throws {
-        let w = try parseWindows(json: window("16,48,842,1052"))[0].window
+        let w = try parseWindows(json: window("16,48,842,1052"))[0]
         #expect(w.layoutRect == CGRect(x: 16, y: 48, width: 842, height: 1052))
     }
 
     @Test("empty (a float, a fullscreen window in front), absent (a release AeroSpace) or malformed is no rect")
     func absent() throws {
-        #expect(try parseWindows(json: window(""))[0].window.layoutRect == nil)
-        #expect(try parseWindows(json: window(nil))[0].window.layoutRect == nil)
-        #expect(try parseWindows(json: window("16,48"))[0].window.layoutRect == nil)
-        #expect(try parseWindows(json: window("a,b,c,d"))[0].window.layoutRect == nil)
+        #expect(try parseWindows(json: window(""))[0].layoutRect == nil)
+        #expect(try parseWindows(json: window(nil))[0].layoutRect == nil)
+        #expect(try parseWindows(json: window("16,48"))[0].layoutRect == nil)
+        #expect(try parseWindows(json: window("a,b,c,d"))[0].layoutRect == nil)
     }
 }
 

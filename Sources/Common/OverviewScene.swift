@@ -84,20 +84,20 @@ public struct OverviewScene: Sendable {
         }
     }
 
-    public static func summary(_ windows: [ParsedWindow], marked: Int?) -> String {
+    private static func summary(_ windows: [WindowInfo], marked: Int?) -> String {
         let workspaces = Set(windows.map(\.workspace)).count
         let count = "\(windows.count) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
-        guard let window = windows.first(where: { $0.window.windowId == marked }) else { return count }
-        return count + " · " + window.window.caption + (workspaces > 1 ? " · ws \(window.workspace)" : "")
+        guard let window = windows.first(where: { $0.windowId == marked }) else { return count }
+        return count + " · " + window.caption + (workspaces > 1 ? " · ws \(window.workspace)" : "")
     }
 
     private static func lane(_ visit: Visit) -> Lane {
         if let missing = visit.missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
-        if let strip = visit.strip, let first = visit.stripWindows.first?.window {
+        if let strip = visit.strip, let first = visit.stripWindows.first {
             return .app(name: first.appName, bundleId: strip.app ?? "", summary: Self.summary(visit.stripWindows, marked: strip.marked))
         }
-        if let marked = visit.marking?.marked, let ringed = visit.model.windowsInGridOrder.first(where: { $0.window.windowId == marked }) {
-            return .app(name: ringed.window.appName, bundleId: ringed.window.bundleId, summary: ringed.window.caption + " · ws " + ringed.workspace)
+        if let marked = visit.marking?.marked, let ringed = visit.model.windowsInGridOrder.first(where: { $0.windowId == marked }) {
+            return .app(name: ringed.appName, bundleId: ringed.bundleId, summary: ringed.caption + " · ws " + ringed.workspace)
         }
         if visit.query.isEmpty { return .keys }
         return .query(visit.query, miss: visit.matches.isEmpty && visit.query.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength)

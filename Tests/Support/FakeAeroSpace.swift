@@ -158,13 +158,12 @@ final class TestApp {
     init(aerospace: FakeAeroSpace) {
         bridge.granted = true
         store = OverviewStore(runner: aerospace, nativeSystem: bridge)
-        store.screen = (available: CGSize(width: 1600, height: 1000), frames: [:])
+        store.screen = (available: CGSize(width: 1600, height: 1000), frames: [:], scale: 2)
         store.startListening()
         store.onEffect = { [unowned self] effect in
             self.host.append(effect)
             if case .show(let summon) = effect { self.pending = summon }
             if case .hide = effect { self.store.endVisit() }
-            if case .capture = effect { Task { [weak self] in await self?.capture() } }
         }
     }
 
@@ -174,10 +173,8 @@ final class TestApp {
         store.summon(Summon(URL(string: link)!))
         guard let summon = pending else { return }
         pending = nil
-        if await store.open(summon) { await capture() }
+        if await store.open(summon) { await store.capturePreviews() }
     }
-
-    private func capture() async { await store.capturePreviews(backingScale: 2) }
 
     func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }
 

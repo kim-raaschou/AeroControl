@@ -5,13 +5,11 @@ import Common
 @MainActor
 final class OverlayWindowManager {
     private let state: OverviewStore
-    private let settings: SettingsStore
 
     private var window: OverviewWindow?
     private static let revealAfter: Duration = .milliseconds(120)
-    init(state: OverviewStore, settings: SettingsStore) {
+    init(state: OverviewStore) {
         self.state = state
-        self.settings = settings
         state.onEffect = { [weak self] in self?.perform($0) }
     }
 
@@ -23,7 +21,6 @@ final class OverlayWindowManager {
         case .quit(let bundleId): app(bundleId)?.terminate()
         case .launch(let ref): launch(ref)
         case .rebuild: rebuild()
-        case .capture: if let window { Task { await state.capturePreviews(backingScale: window.targetScreen.backingScaleFactor) } }
         }
     }
 
@@ -51,7 +48,7 @@ final class OverlayWindowManager {
                 guard let self, self.state.visit.visible, self.window === window else { return }
                 window.reveal()
             }
-            await self.state.capturePreviews(backingScale: window.targetScreen.backingScaleFactor)
+            await self.state.capturePreviews()
         }
     }
 
@@ -90,7 +87,7 @@ final class OverlayWindowManager {
 
     private func makeWindow(for screen: NSScreen) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
-        window.appearance = settings.theme.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
+        window.appearance = AeroControlTheme.chosen.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
         let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
             let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
             let visible = screen.visibleFrame
@@ -99,8 +96,8 @@ final class OverlayWindowManager {
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
         window.onKey = { [weak self] in self?.state.handle($0) ?? false }
-        state.screen = (screen.frame.size, screenFrames)
-        let root = OverviewRoot(state: state, theme: settings.theme, motion: motion)
+        state.screen = (screen.frame.size, screenFrames, screen.backingScaleFactor)
+        let root = OverviewRoot(state: state, theme: AeroControlTheme.chosen, motion: motion)
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []
         window.contentView = hostingView

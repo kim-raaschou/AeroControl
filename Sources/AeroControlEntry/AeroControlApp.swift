@@ -21,7 +21,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: OverviewStore!
     private var overlayManager: OverlayWindowManager!
     private var menuBarController: MenuBarController!
-    private var settings: SettingsStore!
     private var statusItem: NSStatusItem?
     private var pendingSummon: Summon?
 
@@ -33,12 +32,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         state = OverviewStore(runner: runner, nativeSystem: nativeSystem)
 
-        settings = SettingsStore()
 
         menuBarController = MenuBarController(onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
-                                              bridge: nativeSystem, settings: settings)
+                                              bridge: nativeSystem)
 
-        overlayManager = OverlayWindowManager(state: state, settings: settings)
+        overlayManager = OverlayWindowManager(state: state)
 
         installStatusItem()
 
