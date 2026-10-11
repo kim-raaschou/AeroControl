@@ -16,7 +16,7 @@ class OverviewWindow: NSPanel {
     var motion: Double = 1
     private var fade: TimeInterval { Self.fadeDuration * motion }
     let targetScreen: NSScreen
-    var onKey: ((FilterKey) -> Bool)?
+    var onKey: ((FilterKey) -> Void)?
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -39,21 +39,21 @@ class OverviewWindow: NSPanel {
 
     override func cancelOperation(_ sender: Any?) {
         log.debug("overview: cancelOperation")
-        _ = onKey?(.escape)
+        onKey?(.escape)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let key = event.charactersIgnoringModifiers ?? ""
         let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
-        _ = FilterKey(command: key, shift: modifiers.contains(.shift)).map { onKey?($0) }
+        FilterKey(command: key, shift: modifiers.contains(.shift)).map { onKey?($0) }
         return true
     }
 
     override func keyDown(with event: NSEvent) {
         log.debug("overview: keyDown \(event.keyCode)")
-        if let key = FilterKey(event: event), onKey?(key) == true { return }
-        super.keyDown(with: event)
+        guard let key = FilterKey(event: event) else { return super.keyDown(with: event) }
+        onKey?(key)
     }
 
     override func resignKey() {

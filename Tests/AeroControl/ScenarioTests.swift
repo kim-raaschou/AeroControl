@@ -140,14 +140,16 @@ struct ScenarioTests {
     func queryEditing() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 2))
         await app.open("aerocontrol://workspaces")
-        #expect(!app.key(.character(" ")) && app.store.visit.query.isEmpty)
+        app.key(.character(" "))
+        #expect(app.store.visit.query.isEmpty)
         app.type("te2 ")
         #expect(app.store.visit.query == "te2 ")
         app.key(.backspace); app.key(.backspace)
         #expect(app.store.visit.query == "te")
-        #expect(app.store.visit.query == "te")
-        #expect(app.key(.escape) && app.store.visit.query.isEmpty)
-        #expect(!app.key(.backspace) && app.key(.escape) && !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack"))
+        app.key(.escape)
+        #expect(app.store.visit.query.isEmpty && app.store.visit.visible)
+        app.key(.backspace); app.key(.escape)
+        #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack"))
     }
 
     @Test("two windows and you are in one: the app's key goes to the other, and back at once; from elsewhere it opens the strip")
@@ -179,7 +181,8 @@ struct ScenarioTests {
         aero.userFocus(20)
         await app.until { app.store.visit.recent.first == 20 }
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.key(.escape) && !app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
+        app.key(.escape)
+        #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
     }
 
     @Test("an app with no window is started, and the overview closes; one that will not start is said on the lane")
@@ -190,7 +193,9 @@ struct ScenarioTests {
         app.launchFails(.name("Typo"))
         #expect(app.store.visit.visible && app.scene.body == .nothing && app.scene.lane == .notice(name: "Typo", reason: "no app has this name"))
         app.key(.character("x"))
-        #expect(app.scene.lane == .notice(name: "Typo", reason: "no app has this name") && app.key(.escape) && !app.store.visit.visible)
+        #expect(app.scene.lane == .notice(name: "Typo", reason: "no app has this name"))
+        app.key(.escape)
+        #expect(!app.store.visit.visible)
         await app.open("aerocontrol://workspaces")
         #expect(app.store.visit.visible && app.scene.lane == .keys)                                                      // the next visit forgets it
     }

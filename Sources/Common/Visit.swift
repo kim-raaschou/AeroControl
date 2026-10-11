@@ -25,7 +25,6 @@ public struct Visit: Equatable {
     public private(set) var model = OverviewModel()
     public private(set) var marking: Strip?
     public private(set) var query = ""
-    public private(set) var matches: [WindowInfo] = []
     public private(set) var missingApp: AppRef?
     public private(set) var recent: [Int] = []
     public private(set) var visible = false
@@ -33,6 +32,7 @@ public struct Visit: Equatable {
 
     public init() {}
 
+    public var matches: [WindowInfo] { model.matching(query) }
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
     public var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
@@ -53,7 +53,6 @@ public struct Visit: Equatable {
         if new != model {
             if let marking { self.marking = marking.kept(before: model.windows(of: marking).map(\.windowId), after: new.windows(of: marking).map(\.windowId)) }
             model = new
-            matches = model.matching(query)
         }
         if focusMoved, let strip { marking = strip.following(model.focusedWindow) }
         var out = hadStrip && strip == nil ? hide(restoreFocus: true) : []
@@ -69,38 +68,31 @@ public struct Visit: Equatable {
         return [.run(moves + [.focusWindow(tiled.windowId), .setLayout(from.rootLayout)], thenRead: true)]
     }
 
-    public mutating func key(_ key: FilterKey, drawn: [GridWalk.Card]) -> (Bool, [Effect]) {
+    public mutating func key(_ key: FilterKey, drawn: [GridWalk.Card]) -> [Effect] {
+        guard visible else { return [] }
+        let aside = strip != nil || missingApp != nil
         switch key {
-        case _ where !visible: return (false, [])
-        case .move(let step): return (true, move(step, drawn: drawn))
-        case .moveToWorkspace(let name) where commandTarget != nil: return (true, apply(.action(.moveWindow(windowId: commandTarget!.windowId, toWorkspace: name))))
-        case .close: return (true, commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? [])
-        case .quit: return (true, commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? [])
-        case .enter where missingApp == nil: return (true, enter())
-        case _ where strip != nil || missingApp != nil: return stripKey(key, drawn: drawn)
-        case .escape where !query.isEmpty: setQuery("")
-        case .escape: return (true, hide(restoreFocus: true))
+        case .move(let step): return move(step, drawn: drawn)
+        case .moveToWorkspace(let name): return commandTarget.map { apply(.action(.moveWindow(windowId: $0.windowId, toWorkspace: name))) } ?? []
+        case .close: return commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? []
+        case .quit: return commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? []
+        case .enter where missingApp == nil: return enter()
+        case .escape where aside || query.isEmpty: return hide(restoreFocus: true)
+        case .character(let c) where strip != nil:
+            return FilterKey.workspaceNamed(String(c)).flatMap(stripWorkspaces.map(\.name).firstIndex).map { move(.card($0), drawn: drawn) } ?? []
+        case _ where aside: break
+        case .escape: setQuery("")
         case .backspace where !query.isEmpty: setQuery(String(query.dropLast()))
         case .character(let c) where !query.isEmpty || !c.isWhitespace: setQuery(query + String(c))
-        default: return (false, [])
+        default: break
         }
-        return (true, [])
+        return []
     }
 
     private mutating func enter() -> [Effect] {
         let workspace = marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name }
         guard let ring = workspace.map(AeroControlAction.focusWorkspace) ?? ringWindowId.map(AeroControlAction.focusWindow) else { return hide(restoreFocus: true) }
         return apply(.action(ring))
-    }
-
-    private mutating func stripKey(_ key: FilterKey, drawn: [GridWalk.Card]) -> (Bool, [Effect]) {
-        let names = stripWorkspaces.map(\.name), card = { (c: Character) in FilterKey.workspaceNamed(String(c)).flatMap(names.firstIndex) }
-        switch key {
-        case .escape: return (true, hide(restoreFocus: true))
-        case .character(let c) where card(c) != nil: _ = move(.card(card(c)!), drawn: drawn)
-        default: break
-        }
-        return (true, [])
     }
 
     private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) -> [Effect] {
@@ -163,6 +155,6 @@ public struct Visit: Equatable {
     }
 
     private mutating func setQuery(_ text: String) {
-        (query, matches, marking) = (text, model.matching(text), nil)
+        (query, marking) = (text, nil)
     }
 }

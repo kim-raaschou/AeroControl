@@ -36,11 +36,9 @@ class OverviewStore {
 
     func send(_ input: Visit.Input) { update { $0.apply(input) } }
 
-    @discardableResult func handle(_ key: FilterKey) -> Bool {
+    func handle(_ key: FilterKey) {
         let drawn = scene.grid
-        var taken = false
-        update { visit in let (handled, effects) = visit.key(key, drawn: drawn); taken = handled; return effects }
-        return taken
+        update { $0.key(key, drawn: drawn) }
     }
 
     func summon(_ summon: Summon) { let drawn = scene.grid; update { $0.summon(summon, drawn: drawn) } }

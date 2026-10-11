@@ -185,7 +185,7 @@ final class TestApp {
 
     func type(_ text: String) { for c in text { key(.character(c)) } }
 
-    @discardableResult func key(_ key: FilterKey) -> Bool { store.handle(key) }
+    func key(_ key: FilterKey) { store.handle(key) }
 
     func hover(_ windowId: Int, at point: CGPoint) { store.point(windowId, at: point) }
 
