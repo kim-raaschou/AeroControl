@@ -16,9 +16,8 @@ struct AeroControlWorkspaceCard: View {
 
     var body: some View {
         let shape = cardShape
-        AeroControlCardFace(card: card) {
-            grid()
-        }
+        AeroControlCardFace(card: card, tiles: tiles)
+        .animation(.easeInOut(duration: 0.15 * look.motion), value: card)
         .overlay(dropTargetHint.allowsHitTesting(false))
         .overlay(shape.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale)).opacity(card.ringed ? 1 : 0))
         .contentShape(shape)
@@ -48,18 +47,6 @@ struct AeroControlWorkspaceCard: View {
             .padding(6)
     }
 
-    private func grid() -> some View {
-        ZStack(alignment: .topLeading) {
-            ForEach(card.tiles, id: \.window.windowId) { tile in
-                AeroControlAppTile(tile: tile, tiles: tiles)
-                    .offset(x: tile.frame.minX, y: tile.frame.minY)
-                    .opacity(tile.ghost ? 0.7 : 1)
-                    .zIndex(tile.stacking)
-            }
-        }
-        .animation(.easeInOut(duration: 0.15 * look.motion), value: card)
-    }
-
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
             cardShape
@@ -69,9 +56,9 @@ struct AeroControlWorkspaceCard: View {
     }
 }
 
-struct AeroControlCardFace<Content: View>: View {
+struct AeroControlCardFace: View {
     let card: OverviewScene.Card
-    @ViewBuilder let content: () -> Content
+    let tiles: Namespace.ID
 
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
@@ -86,7 +73,16 @@ struct AeroControlCardFace<Content: View>: View {
         VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
             let inner = AeroControlLayout.inner(of: size)
-            content().frame(width: inner.width, height: inner.height, alignment: .topLeading)
+            ZStack(alignment: .topLeading) {
+                ForEach(card.tiles, id: \.window.windowId) { tile in
+                    AeroControlAppTile(tile: tile, tiles: tiles)
+                        .allowsHitTesting(!tile.faded)
+                        .offset(x: tile.frame.minX, y: tile.frame.minY)
+                        .opacity(tile.ghost ? 0.7 : 1)
+                        .zIndex(tile.faded ? 0 : 1 + tile.stacking)
+                }
+            }
+            .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         }
         .padding(AeroControlLayout.cardPadding)
         .frame(width: size.width, height: size.height)
