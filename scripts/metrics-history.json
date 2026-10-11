@@ -2302,5 +2302,14 @@
     "complexity": 822,
     "prodComplexity": 453,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-11T19:51:01+02:00",
+    "commit": "0a6e88e",
+    "subject": "One backdrop for the map and the strip, at 60 %",
+    "code": 4468,
+    "complexity": 823,
+    "prodComplexity": 454,
+    "files": 56
   }
 ]

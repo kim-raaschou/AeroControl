@@ -248,11 +248,14 @@ struct StripLayoutTests {
         #expect(l[1].frame.minX == l[0].frame.maxX + L.cardGap && l[1].frame.maxX <= view.width)
     }
 
-    @Test("two windows AeroSpace stacks stand in one row in the strip, packed; two side by side keep AeroSpace's geometry")
+    @Test("two windows AeroSpace stacks stand in one row in the strip, packed; a tiled window and a float keep AeroSpace's geometry")
     func twoStackedInOneRow() {
         let stacked = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Code", 16, 581, 1696, 520)], screenIndex: 1, rootLayout: "v_tiles")
         let l = layout([stacked])
         #expect(l.count == 1 && l[0].frames[1]!.minY == l[0].frames[2]!.minY && l[0].frames[1]!.maxX <= l[0].frames[2]!.minX)
+        let float = WindowInfo(windowId: 3, appName: "Notes", bundleId: "com.Notes", isFloating: true)
+        let withFloat = layout([WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 1696, 1052), float], screenIndex: 1, rootLayout: "v_tiles")])
+        #expect(withFloat[0].frames[1]!.intersects(withFloat[0].frames[3]!))          // one tiled and a float: the float lies over it, not packed beside
     }
 
     @Test("a floating window in the strip lies where it stands, over the tiles, as on the map")
