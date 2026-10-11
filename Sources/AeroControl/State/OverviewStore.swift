@@ -25,12 +25,11 @@ class OverviewStore {
         let effects = body(&next)
         if next != visit {
             visit = next
-            Task { await pictures.grow(scene.pictureSizes(scale: screen.scale)) }
+            if visit.visible { Task { await pictures.grow(scene.pictureSizes(scale: screen.scale)) } }
         }
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()
-            case .capture: Task { await capturePreviews() }
             case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead { requestRefresh() } }
             case .host(let effect): onEffect?(effect)
             }

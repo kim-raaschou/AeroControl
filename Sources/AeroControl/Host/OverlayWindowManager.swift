@@ -38,6 +38,7 @@ final class OverlayWindowManager {
     }
 
     private func show(_ summon: Summon) {
+        window?.orderOut(nil)
         Task { [weak self] in
             guard let self, await self.state.open(summon) else { return }
             self.replaceWindow().reveal()

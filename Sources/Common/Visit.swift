@@ -2,7 +2,6 @@ public struct Visit: Equatable {
     public enum Effect: Sendable {
         case run([AeroControlAction], thenRead: Bool)
         case refresh
-        case capture
         case host(Host)
     }
 
@@ -103,20 +102,24 @@ public struct Visit: Equatable {
     }
 
     public mutating func summon(_ summon: Summon, drawn: [GridWalk.Card]) -> [Effect] {
-        guard visible else { (visible, loading) = (true, true); return [.host(.show(summon))] }
         guard !loading else { return [] }
-        guard case .app(let ref) = summon else { return hide(restoreFocus: true) }
-        if strip != nil, stripWindows.contains(where: ref.matches) { return move(.window(1), drawn: drawn) }
-        return open(ref, takingOver: true)
+        switch summon {
+        case _ where !visible: break
+        case .map where strip == nil && missingApp == nil: return hide(restoreFocus: true)
+        case .app(let ref) where strip != nil && stripWindows.contains(where: ref.matches): return move(.window(1), drawn: drawn)
+        default: break
+        }
+        (visible, loading) = (true, true)
+        return [.host(.show(summon))]
     }
 
     public mutating func summoned(_ summon: Summon) -> [Effect] {
         loading = false
         guard visible, case .app(let ref) = summon else { return [] }
-        return open(ref, takingOver: false)
+        return open(ref)
     }
 
-    private mutating func open(_ ref: AppRef, takingOver: Bool) -> [Effect] {
+    private mutating func open(_ ref: AppRef) -> [Effect] {
         missingApp = nil
         let windows = model.windowsInGridOrder.filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
@@ -126,7 +129,7 @@ public struct Visit: Equatable {
         case (2, let at?): return apply(.action(.focusWindow(windows[1 - at].windowId)))
         default:
             marking = .opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent)
-            return takingOver ? [.capture] : []
+            return []
         }
     }
 

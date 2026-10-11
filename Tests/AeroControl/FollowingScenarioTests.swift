@@ -80,13 +80,15 @@ struct FollowingScenarioTests {
         await app.until { redraws.count > 0 }
     }
 
-    @Test("the strip takes its pictures once: every window of its workspaces and nothing else; closing drops them")
+    @Test("the strip takes its pictures once: every window of its workspaces and nothing else; the map's key opens the map afresh with its own; closing drops them")
     func stripPictures() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams"), win(3, "Teams")], "3": [win(7, "Slack")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.bridge.captured == [[1, 9, 2, 3]] && app.store.pictures.previews[9] != nil && app.store.pictures.previews[7] == nil)
         await app.open("aerocontrol://workspaces")
+        #expect(app.scene.body == .map && app.bridge.captured.last == [1, 9, 2, 3, 7, 5])
+        app.key(.escape)
         #expect(!app.store.visit.visible && app.store.pictures.previews.isEmpty && app.store.pictures.frames.isEmpty)
     }
 
