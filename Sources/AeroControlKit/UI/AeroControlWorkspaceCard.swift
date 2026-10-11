@@ -1,11 +1,12 @@
 import SwiftUI
 import Common
 
+private let cardShape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
+
 struct AeroControlWorkspaceCard: View {
     let card: OverviewScene.Card
     let tiles: Namespace.ID
     private var workspace: WorkspaceInfo { card.workspace }
-    private var size: CGSize { card.frame.size }
 
     @State private var isDropTarget = false
     @Environment(OverviewStore.self) private var state
@@ -13,7 +14,7 @@ struct AeroControlWorkspaceCard: View {
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
+        let shape = cardShape
         AeroControlCardFace(card: card) {
             grid()
         }
@@ -31,7 +32,7 @@ struct AeroControlWorkspaceCard: View {
                 state.send(.action(.moveWindow(windowId: id, toWorkspace: workspace.name)))
             case .workspace(let source):
                 guard source != workspace.name else { return false }
-                state.send(.action(.mergeWorkspace(source: source, into: workspace.name)))
+                state.send(.merge(source, into: workspace.name))
             }
             return true
         } isTargeted: { isDropTarget = $0 }
@@ -47,23 +48,20 @@ struct AeroControlWorkspaceCard: View {
     }
 
     private func grid() -> some View {
-        let inner = AeroControlLayout.inner(of: size)
-        return ZStack(alignment: .topLeading) {
+        ZStack(alignment: .topLeading) {
             ForEach(card.tiles, id: \.window.windowId) { tile in
                 AeroControlAppTile(tile: tile, tiles: tiles)
-                    .onHover { if $0 { state.point(tile.window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: tile.frame.minX, y: tile.frame.minY)
                     .opacity(tile.ghost ? 0.7 : 1)
                     .zIndex(tile.stacking)
             }
         }
-        .frame(width: inner.width, height: inner.height, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15 * look.motion), value: card)
     }
 
     @ViewBuilder private var dropTargetHint: some View {
         if isDropTarget {
-            RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
+            cardShape
                 .fill(look.palette.accent.opacity(0.12))
                 .strokeBorder(look.palette.accent.opacity(0.9), lineWidth: 3)
         }
@@ -83,7 +81,7 @@ struct AeroControlCardFace<Content: View>: View {
     private var monitorName: String? { card.monitor }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous)
+        let shape = cardShape
         VStack(alignment: .leading, spacing: AeroControlLayout.tileSpacing) {
             header.frame(height: AeroControlLayout.badgeLane - AeroControlLayout.cardPadding)
             let inner = AeroControlLayout.inner(of: size)

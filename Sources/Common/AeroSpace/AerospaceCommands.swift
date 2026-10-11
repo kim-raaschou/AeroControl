@@ -16,13 +16,12 @@ public enum AerospaceCommand {
     public static let listWorkspaces = ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
 
     public static let listFocusedWindow = ["list-windows", "--focused", "--json", "--format", listWindowsFields]
-    public static let listFocusedWorkspace = ["list-workspaces", "--focused", "--json", "--format", listWorkspacesFields]
 
     public static let subscribe = ["subscribe", "--all", "--no-send-initial"]
 
     public static func argv(for action: AeroControlAction) -> [String] {
         switch action {
-        case .focusWorkspace(let name), .mergeWorkspace(_, let name): ["workspace", name]
+        case .focusWorkspace(let name): ["workspace", name]
         case .focusWindow(let id): ["focus", "--window-id", String(id)]
         case .moveWindow(let id, let workspace): ["move-node-to-workspace", "--window-id", String(id), "--focus-follows-window", workspace]
         case .moveWindowQuietly(let id, let workspace): ["move-node-to-workspace", "--window-id", String(id), workspace]

@@ -5,14 +5,12 @@ import Common
 @MainActor
 final class OverlayWindowManager {
     private let state: OverviewStore
-    private let bridge: NativeApiBridge
     private let settings: SettingsStore
 
     private var window: OverviewWindow?
     private static let revealAfter: Duration = .milliseconds(120)
-    init(state: OverviewStore, bridge: NativeApiBridge, settings: SettingsStore) {
+    init(state: OverviewStore, settings: SettingsStore) {
         self.state = state
-        self.bridge = bridge
         self.settings = settings
         state.onEffect = { [weak self] in self?.perform($0) }
     }
@@ -25,7 +23,7 @@ final class OverlayWindowManager {
         case .quit(let bundleId): app(bundleId)?.terminate()
         case .launch(let ref): launch(ref)
         case .rebuild: rebuild()
-        case .capture: if let screen = window?.targetScreen { Task { await capture(on: screen) } }
+        case .capture: if let window { Task { await state.capturePreviews(backingScale: window.targetScreen.backingScaleFactor) } }
         }
     }
 
@@ -45,33 +43,16 @@ final class OverlayWindowManager {
     }
 
     private func show(_ summon: Summon) {
-        state.endVisit()
         Task { [weak self] in
-            guard let self else { return }
-            self.bridge.prepareCapture()
-            await self.state.reload()
-            self.state.update { $0.summoned(summon) }
-            guard self.state.visit.visible else { return }
-            await self.state.measurePreviews()
-            guard self.state.visit.visible else { return }
-            self.state.following = true
-            self.window?.contentView = nil
-            self.window?.orderOut(nil)
-            let screen = self.targetScreen()
-            let window = self.makeWindow(for: screen, hidden: true)
-            self.window = window
+            guard let self, await self.state.open(summon) else { return }
+            let window = self.replaceWindow()
             Task { [weak self] in
                 try? await Task.sleep(for: Self.revealAfter)
                 guard let self, self.state.visit.visible, self.window === window else { return }
                 window.reveal()
             }
-            await self.capture(on: screen)
+            await self.state.capturePreviews(backingScale: window.targetScreen.backingScaleFactor)
         }
-    }
-
-    private func capture(on screen: NSScreen) async {
-        await state.capturePreviews(maxSize: AeroControlLayout.captureSize(available: screen.frame.size, backingScale: screen.backingScaleFactor,
-                                                                           workspaces: state.model.workspaces.count, strip: state.strip != nil))
     }
 
     private func targetScreen() -> NSScreen {
@@ -82,9 +63,15 @@ final class OverlayWindowManager {
 
     func rebuild() {
         guard state.visit.visible else { return }
+        replaceWindow().reveal()
+    }
+
+    private func replaceWindow() -> OverviewWindow {
         window?.contentView = nil
         window?.orderOut(nil)
-        window = makeWindow(for: targetScreen(), hidden: false)
+        let window = makeWindow(for: targetScreen())
+        self.window = window
+        return window
     }
 
     private func launch(_ ref: AppRef) {
@@ -101,7 +88,7 @@ final class OverlayWindowManager {
         try? open.run()
     }
 
-    private func makeWindow(for screen: NSScreen, hidden: Bool) -> OverviewWindow {
+    private func makeWindow(for screen: NSScreen) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
         window.appearance = settings.theme.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
         let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
@@ -111,20 +98,12 @@ final class OverlayWindowManager {
         })
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
-        window.onDismiss = { [weak self] in self?.state.update { $0.hide(restoreFocus: true) } }
         window.onKey = { [weak self] in self?.state.handle($0) ?? false }
         state.screen = (screen.frame.size, screenFrames)
-        let root = OverviewRoot(
-            state: state,
-            panel: AeroControlPanel(state: state),
-            theme: settings.theme,
-            motion: motion,
-            onDismiss: { [weak self] in self?.state.update { $0.hide(restoreFocus: true) } }
-        )
+        let root = OverviewRoot(state: state, theme: settings.theme, motion: motion)
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []
         window.contentView = hostingView
-        if !hidden { window.reveal() }
         return window
     }
 }

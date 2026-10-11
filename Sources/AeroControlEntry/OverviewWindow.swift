@@ -17,7 +17,6 @@ class OverviewWindow: NSPanel {
     var motion: Double = 1
     private var fade: TimeInterval { Self.fadeDuration * motion }
     let targetScreen: NSScreen
-    var onDismiss: (() -> Void)?
     var onKey: ((FilterKey) -> Bool)?
     private var isDismissing = false
 
@@ -41,8 +40,7 @@ class OverviewWindow: NSPanel {
 
     override func cancelOperation(_ sender: Any?) {
         log.debug("overview: cancelOperation")
-        if onKey?(.escape) == true { return }
-        onDismiss?()
+        _ = onKey?(.escape)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -56,7 +54,7 @@ class OverviewWindow: NSPanel {
     override func keyDown(with event: NSEvent) {
         log.debug("overview: keyDown \(event.keyCode)")
         if let key = FilterKey(event: event), onKey?(key) == true { return }
-        if event.keyCode == 53 { onDismiss?() } else { super.keyDown(with: event) }
+        super.keyDown(with: event)
     }
 
     override func resignKey() {
@@ -70,9 +68,7 @@ class OverviewWindow: NSPanel {
     }
 
     func reveal() {
-        isDismissing = false
         setFrame(targetScreen.frame, display: true)
-        alphaValue = 1
         makeKeyAndOrderFront(nil)
         log.notice("overview: revealed, isKeyWindow=\(self.isKeyWindow), appActive=\(NSApp.isActive)")
     }
@@ -88,7 +84,6 @@ class OverviewWindow: NSPanel {
             DispatchQueue.main.async {
                 guard let self else { return gone() }
                 self.orderOut(nil)
-                self.alphaValue = 1
                 gone()
             }
         }
@@ -105,10 +100,8 @@ private extension FilterKey {
 
 struct OverviewRoot: View {
     let state: OverviewStore
-    let panel: AeroControlPanel
     let theme: AeroControlTheme
     let motion: Double
-    let onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -122,8 +115,8 @@ struct OverviewRoot: View {
             .opacity(state.strip != nil || state.visit.missingApp != nil ? 0.002 : 1)
             .ignoresSafeArea()
             .contentShape(Rectangle())
-            .onTapGesture(perform: onDismiss)
-            panel
+            .onTapGesture { state.update { $0.hide(restoreFocus: true) } }
+            AeroControlPanel(state: state)
         }
         .environment(\.aeroLook, AeroLook(palette: palette, motion: motion))
     }

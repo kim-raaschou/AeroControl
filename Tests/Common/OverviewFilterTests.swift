@@ -87,9 +87,8 @@ struct OverviewMatchingTests {
 
 @Suite("FilterKey: what a key names")
 struct FilterKeyNamesTests {
-    @Test("the windows' keys are 1–9 then a–f; a workspace is named by its own character, 0 the tenth, and an arrow names none")
+    @Test("a workspace is named by its own character, 0 the tenth, and an arrow names none")
     func names() {
-        #expect(String(FilterKey.windowKeys) == "123456789abcdef")
         #expect(FilterKey.workspaceNamed("4") == "4" && FilterKey.workspaceNamed("0") == "10")
         #expect(FilterKey.workspaceNamed("\u{F703}") == nil && FilterKey.workspaceNamed("ab") == nil)
     }
@@ -119,11 +118,9 @@ struct FilterKeyCodeTests {
 
 @Suite("FilterKey(command:)")
 struct FilterKeyCommandTests {
-    @Test("⌘ with 1–9 or a–f is a window's key, the fifteen in order, ⌘ with an arrow a workspace along; ⌘W closes and ⌘Q quits; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
-        ("1", false, FilterKey?.some(.commandKey(1))),
-        ("9", false, .commandKey(9)),
-        ("a", false, .commandKey(10)),
-        ("f", false, .commandKey(15)),
+    @Test("⌘ with an arrow is a workspace along; ⌘W closes and ⌘Q quits; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
+        ("1", false, FilterKey?.none),
+        ("a", false, nil),
         ("0", false, nil),
         ("g", false, nil),
         ("q", false, .quit),

@@ -22,9 +22,9 @@ final class FakeBridge: NativeApiBridge {
     var sizes: [Int: CGSize] = [:]
     /// How many times sizes were read.
     var measured = 0
-    func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {
+    func windowFrames(windowIds: [Int]) async -> [Int: CGRect] {
         measured += 1
-        return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, sizes[$0] ?? CGSize(width: 300, height: 200)) })
+        return Dictionary(uniqueKeysWithValues: windowIds.map { ($0, CGRect(origin: .zero, size: sizes[$0] ?? CGSize(width: 300, height: 200))) })
     }
     /// Windows that give no picture, as one the window server cannot capture.
     var blank: Set<Int> = []

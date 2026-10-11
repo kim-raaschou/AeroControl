@@ -11,8 +11,8 @@ struct LoadedTests {
     @Test("a load that says nothing is focused clears the ring")
     func loadedCanClearFocus() {
         var visit = Visit()
-        _ = visit.apply(.loaded(OverviewResult(workspaces: [ws("1")], focus: Focus(windowId: 9, workspace: "1"))))
-        _ = visit.apply(.loaded(OverviewResult(workspaces: [ws("1")], focus: Focus(workspace: "4"))))
+        _ = visit.apply(.loaded(OverviewModel(workspaces: [ws("1")], focusedWindowId: 9, focusedWorkspace: "1")))
+        _ = visit.apply(.loaded(OverviewModel(workspaces: [ws("1")], focusedWorkspace: "4")))
         #expect(visit.model.focusedWindowId == 0 && visit.model.focusedWorkspace == "4")
     }
 }

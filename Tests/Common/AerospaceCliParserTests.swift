@@ -91,7 +91,7 @@ struct ParseWorkspacesTests {
          {"workspace": "3", "monitor-id": 1}]
         """
         #expect(try parseWorkspaces(json: json).map(\.screenIndex) == [1, 2, 0])
-        let built = buildOverviewResult(windows: [], workspaceMonitors: try parseWorkspaces(json: json))
+        let built = buildOverview(windows: [], workspaceMonitors: try parseWorkspaces(json: json))
         #expect(built.workspaces.map(\.screenIndex) == [1, 2, 0])
     }
 
@@ -110,8 +110,8 @@ struct ParseWorkspacesTests {
     }
 }
 
-@Suite("buildOverviewResult")
-struct BuildOverviewResultTests {
+@Suite("buildOverview")
+struct BuildOverviewTests {
     @Test("groups windows by workspace and sorts numerically")
     func groupsAndSorts() {
         let windows = [
@@ -123,7 +123,7 @@ struct BuildOverviewResultTests {
             WorkspaceMonitor(workspace: "1", monitorId: 1),
             WorkspaceMonitor(workspace: "2", monitorId: 1),
         ]
-        let result = buildOverviewResult(windows: windows, workspaceMonitors: monitors)
+        let result = buildOverview(windows: windows, workspaceMonitors: monitors)
 
         #expect(result.workspaces.count == 2)
         #expect(result.workspaces[0].name == "1")
@@ -135,7 +135,7 @@ struct BuildOverviewResultTests {
     @Test("workspace with no windows gets empty array")
     func emptyWorkspace() {
         let monitors = [WorkspaceMonitor(workspace: "5", monitorId: 1)]
-        let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
+        let result = buildOverview(windows: [], workspaceMonitors: monitors)
         #expect(result.workspaces[0].windows.isEmpty)
     }
 
@@ -145,7 +145,7 @@ struct BuildOverviewResultTests {
             WorkspaceMonitor(workspace: "1", monitorId: 1),
             WorkspaceMonitor(workspace: "2", monitorId: 2),
         ]
-        let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
+        let result = buildOverview(windows: [], workspaceMonitors: monitors)
         #expect(Set(result.workspaces.map(\.monitorId)) == [1, 2])
     }
 }
@@ -165,7 +165,7 @@ struct RootLayoutTests {
     @Test("the overview result carries it on the workspace")
     func carried() {
         let monitors = [WorkspaceMonitor(workspace: "2", monitorId: 1, rootLayout: "v_accordion"), WorkspaceMonitor(workspace: "3", monitorId: 1)]
-        let result = buildOverviewResult(windows: [], workspaceMonitors: monitors)
+        let result = buildOverview(windows: [], workspaceMonitors: monitors)
         #expect(result.workspaces[0].rootLayout == "v_accordion" && result.workspaces[1].rootLayout == "")
     }
 }
@@ -204,14 +204,14 @@ struct LayoutOrderTests {
     @Test("with AeroSpace's rects a workspace's windows come in the layout's order, floats and windows without a rect after them")
     func ordered() throws {
         let json = "[" + [w(10916, "Ghostty", "1726,48,1698,1375"), w(10776, "Mail", "16,48,1698,1375"), w(5, "Finder", "")].joined(separator: ",") + "]"
-        let result = buildOverviewResult(windows: try parseWindows(json: json), workspaceMonitors: [WorkspaceMonitor(workspace: "4", monitorId: 1)])
+        let result = buildOverview(windows: try parseWindows(json: json), workspaceMonitors: [WorkspaceMonitor(workspace: "4", monitorId: 1)])
         #expect(result.workspaces[0].windows.map(\.windowId) == [10776, 10916, 5])
     }
 
     @Test("without rects the listing's order stands")
     func listingOrder() throws {
         let json = "[" + [w(10916, "Ghostty", nil), w(10776, "Mail", nil)].joined(separator: ",") + "]"
-        let result = buildOverviewResult(windows: try parseWindows(json: json), workspaceMonitors: [WorkspaceMonitor(workspace: "4", monitorId: 1)])
+        let result = buildOverview(windows: try parseWindows(json: json), workspaceMonitors: [WorkspaceMonitor(workspace: "4", monitorId: 1)])
         #expect(result.workspaces[0].windows.map(\.windowId) == [10916, 10776])
     }
 }

@@ -185,13 +185,12 @@ a hidden one at its slot, since in the corner it still has the size it last had.
 packed in the card as on the map. One workspace all but fills the screen; several are each at
 most a third of it high. One line under the cards, as high as the map's, names
 the app, how many windows, and the marked window's title, with its workspace when the app spans
-more than one. Every window's key is on its card; pointing at a window marks it, so a sliver is
-read by pointing at it.
+more than one. Pointing at a window marks it, so a sliver is read by pointing at it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 the arrows are the exception. It handles more — a row that does not fit slides to keep the marked
 workspace whole in the middle, up to its ends, the workspaces the edges cut dimmed; ⌘→ and ⌘← a
-workspace along, ⌘1–⌘9 and ⌘a–⌘f reach the first fifteen, the arrows the rest.
+workspace along, a workspace's name straight to it.
 
 ## Keyboard
 
@@ -222,7 +221,6 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | ← → ↑ ↓ | move the marking through the app's windows, on to the next workspace |
 | ⌘← ⌘→ | the previous / next workspace, the row sliding with it |
 | a workspace's name | move the marking to that workspace: 3 for 3, 0 for 10 |
-| ⌘1 – ⌘9, ⌘a – ⌘f | focus the window carrying that key |
 | ⇧⌘ + a key | move the marked window to the workspace of that name; a new name creates it |
 | ⌘W / ⌘Q | close the marked window / quit its app; the marking moves on |
 | the app's key again | move the marking on, as ⌘` does |

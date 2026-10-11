@@ -61,10 +61,9 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
   The one exception is a `WORKAROUND` block, which names the issue it waits on; `make arch-check`
   fails on any other comment.
 
-- `Tools/flowdoc/main.swift` runs the pure functions in `Common` (`Summon`, `AppSummon.decide`,
-  `Summon.again`, `FilterKey`, `filterKeyAction`, `updateOverview`, `AerospaceEvent.parse`,
-  `AppStripModel.action`/`start`/`summary`, the `Strip` transitions) against a fixture and
-  writes what they answered as tables and decision trees. Nothing in a table is written by
+- `Tools/flowdoc/main.swift` runs the pure code in `Common` (`Summon`, `FilterKey`, `Visit`'s
+  transitions, `AerospaceEvent.parse`, `Strip`'s transitions, `OverviewScene.summary`) against a
+  fixture and writes what they answered as tables and decision trees. Nothing in a table is written by
   hand; the prose says only what cannot be run there (the host's order of operations) and
   where to look for it.
 - `make flow` regenerates; `make flow-check` (CI) fails when the committed page is stale. A

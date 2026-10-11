@@ -33,7 +33,7 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
     )
 
     public init(socketPath: String? = nil) {
-        self.socketPath = socketPath ?? AerospaceSocket.defaultSocketPath()
+        self.socketPath = socketPath ?? "/tmp/bobko.aerospace-\(NSUserName()).sock"
     }
 
     public func run(_ args: [String]) async throws -> String {
@@ -74,10 +74,6 @@ enum AerospaceSocket {
         }
     }
 
-    static func defaultSocketPath() -> String {
-        "/tmp/bobko.aerospace-\(NSUserName()).sock"
-    }
-
     static func encodeRequest(_ args: [String]) throws -> [UInt8] {
         let object: [String: Any] = [
             "args": args, "stdin": "", "windowId": NSNull(), "workspace": NSNull(),
@@ -97,33 +93,23 @@ enum AerospaceSocket {
         AsyncThrowingStream { continuation in
             let handle = SocketHandle()
             let thread = Thread {
-                let fd: Int32
                 do {
-                    fd = try connectAndHandshake(socketPath)
-                } catch {
-                    continuation.finish(throwing: handle.isCancelled ? nil : error)
-                    return
-                }
-                defer { handle.closeOwned(fd) }
-                do {
-                    if handle.register(fd) {
-                        try writeFrame(fd, encodeRequest(args))
-                        var first = true
-                        while !handle.isCancelled {
-                            let body = try readFrame(fd)
-                            if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
-                            first = false
-                            if let line = String(data: body, encoding: .utf8) {
-                                continuation.yield(line)
-                            }
-                        }
+                    let fd = try connectAndHandshake(socketPath)
+                    defer { handle.closeOwned(fd) }
+                    guard handle.register(fd) else { return continuation.finish() }
+                    try writeFrame(fd, encodeRequest(args))
+                    var first = true
+                    while !handle.isCancelled {
+                        let body = try readFrame(fd)
+                        if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
+                        first = false
+                        if let line = String(data: body, encoding: .utf8) { continuation.yield(line) }
                     }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: handle.isCancelled ? nil : error)
                 }
             }
-            thread.stackSize = 512 * 1024
             thread.start()
             continuation.onTermination = { _ in handle.cancel() }
         }
@@ -191,7 +177,6 @@ enum AerospaceSocket {
     }
 
     private static func readExactly(_ fd: Int32, _ count: Int) throws -> [UInt8] {
-        if count == 0 { return [] }
         var buffer = [UInt8](repeating: 0, count: count)
         var offset = 0
         while offset < count {

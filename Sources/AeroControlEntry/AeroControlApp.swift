@@ -38,7 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController(onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
                                               bridge: nativeSystem, settings: settings)
 
-        overlayManager = OverlayWindowManager(state: state, bridge: nativeSystem, settings: settings)
+        overlayManager = OverlayWindowManager(state: state, settings: settings)
 
         installStatusItem()
 

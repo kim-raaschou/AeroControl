@@ -22,7 +22,6 @@ public enum KeyHelp {
         Row(keys: "← → ↑ ↓", does: "move the marking through the app's windows, on to the next workspace"),
         Row(keys: "⌘← ⌘→", does: "the previous / next workspace, the row sliding with it"),
         Row(keys: "a workspace's name", does: "move the marking to that workspace: 3 for 3, 0 for 10"),
-        Row(keys: "⌘1 – ⌘9, ⌘a – ⌘f", does: "focus the window carrying that key"),
         Row(keys: "⇧⌘ + a key", does: "move the marked window to the workspace of that name; a new name creates it"),
         Row(keys: "⌘W / ⌘Q", does: "close the marked window / quit its app; the marking moves on"),
         Row(keys: "the app's key again", does: "move the marking on, as ⌘` does"),

@@ -26,14 +26,11 @@ struct SummonTests {
         #expect(summon("aerocontrol://open?url=https://example.com") == .map)
     }
 
-    @Test("an app reference picks the app's windows by bundle id or by name, and says whether a strip is its")
+    @Test("an app reference picks the app's windows by bundle id or by name")
     func appRef() {
         let windows = [w(1, "Arc", "com.arc"), w(2, "Mail", "com.mail"), w(3, "Arc", "com.arc")]
         #expect(windows.filter(AppRef.bundleId("com.arc").matches).map(\.windowId) == [1, 3])
         #expect(windows.filter(AppRef.name("Mail").matches).map(\.windowId) == [2])
-        #expect(AppRef.name("Arc").identifies(bundleId: "com.arc", among: windows))
-        #expect(!AppRef.name("Arc").identifies(bundleId: "com.mail", among: windows))
-        #expect(AppRef.bundleId("com.mail").identifies(bundleId: "com.mail", among: windows))
     }
 
     @Test("an app nothing answers to is told by the name the link gave, and why nothing came")

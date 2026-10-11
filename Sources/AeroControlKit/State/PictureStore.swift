@@ -4,7 +4,7 @@ import Common
 @MainActor @Observable
 public final class PictureStore {
     public private(set) var previews: [Int: NSImage] = [:]
-    public internal(set) var sizes: [Int: CGSize] = [:]
+    public private(set) var frames: [Int: CGRect] = [:]
 
     private let bridge: NativeApiBridge
     init(bridge: NativeApiBridge) { self.bridge = bridge }
@@ -12,14 +12,16 @@ public final class PictureStore {
     public func icon(for bundleId: String) -> NSImage { bridge.appIcon(bundleId: bundleId) }
     public func live(_ id: Int, pixels: CGSize) -> NSView { bridge.liveWindow(id, pixels: pixels) }
 
-    private(set) var generation = 0
+    private var generation = 0
+
+    func prepare() { bridge.prepareCapture() }
 
     func measure(_ ids: [Int]) async {
         generation += 1
         let generation = generation
-        let sizes = await bridge.previewSizes(windowIds: ids)
+        let frames = await bridge.windowFrames(windowIds: ids)
         guard generation == self.generation else { return }
-        self.sizes = sizes
+        self.frames = frames
     }
 
     private var captureSize: CGSize?
@@ -41,26 +43,26 @@ public final class PictureStore {
         replace(arrived.filter { id, _ in waiting.contains { $0.contains(id) } })
     }
 
-    func replace(_ pictures: [Int: NSImage]) {
+    private func replace(_ pictures: [Int: NSImage]) {
         pictures.keys.forEach { PictureResampler.forget(previews[$0]) }
         previews.merge(pictures) { $1 }
     }
 
     func clear() {
         generation += 1
-        (captureSize, previews, sizes) = (nil, [:], [:])
+        (captureSize, previews, frames) = (nil, [:], [:])
         PictureResampler.forget()
     }
 
     func settle(_ ids: [Int], shown: [WorkspaceInfo], retake: Bool, current: @MainActor () -> Bool) async {
         guard let size = captureSize else { return }
         let generation = generation
-        let sizes = await bridge.previewSizes(windowIds: ids)
-        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: sizes) : []
+        let frames = await bridge.windowFrames(windowIds: ids)
+        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: frames.mapValues(\.size)) : []
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await bridge.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
         guard current(), generation == self.generation else { return }
-        self.sizes = sizes
+        self.frames = frames
         replace(pictures)
     }
 }

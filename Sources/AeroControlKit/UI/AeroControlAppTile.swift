@@ -7,32 +7,25 @@ struct AeroControlAppTile: View {
 
     let tile: OverviewScene.Tile
     let tiles: Namespace.ID
-    private var window: WindowInfo { tile.window }
-    private var size: CGSize { tile.frame.size }
-    private var key: (label: String, marked: Bool)? { tile.key.map { ($0, tile.keyMarked) } }
-    private var faded: Bool { tile.faded }
 
     @State private var isHovering = false
     @Environment(\.displayScale) private var displayScale
 
-    private var preview: NSImage? { state.pictures.previews[window.windowId] }
-    private var isFocused: Bool { tile.ringed }
-    private var isOrigin: Bool { tile.origin }
-    private var showsCaption: Bool { tile.captioned }
-
-    private func hoverChanged(_ hovering: Bool) { isHovering = hovering }
-    private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
-    private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: size.width) }
-
-    private var pictureBox: CGSize {
-        CGSize(width: size.width, height: size.height - (showsCaption ? AeroControlLayout.captionLane : 0))
+    private var preview: NSImage? { state.pictures.previews[tile.window.windowId] }
+    private func hoverChanged(_ hovering: Bool) {
+        isHovering = hovering
+        if hovering { state.point(tile.window.windowId, at: NSEvent.mouseLocation) }
     }
+    private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
+    private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: tile.frame.width) }
 
-    private var contentSize: CGSize { AeroControlMetrics.pixelSnapped(pictureBox, scale: displayScale) }
+    private var contentSize: CGSize {
+        AeroControlMetrics.pixelSnapped(CGSize(width: tile.frame.width, height: tile.frame.height - (tile.captioned ? AeroControlLayout.captionLane : 0)), scale: displayScale)
+    }
 
     var body: some View {
         if look.surface == .map {
-            face.draggable(OverviewDragPayload.window(id: window.windowId)) {
+            face.draggable(OverviewDragPayload.window(id: tile.window.windowId)) {
                 stack
                     .frame(width: contentSize.width, height: contentSize.height)
                     .onAppear { hoverChanged(false) }
@@ -44,34 +37,19 @@ struct AeroControlAppTile: View {
 
     private var face: some View {
         VStack(spacing: AeroControlLayout.captionGap) {
-            if showsCaption { caption }
+            if tile.captioned { caption }
             artwork
         }
-            .frame(width: size.width, height: size.height)
-            .matchedGeometryEffect(id: window.windowId, in: tiles)
+            .frame(width: tile.frame.width, height: tile.frame.height)
+            .matchedGeometryEffect(id: tile.window.windowId, in: tiles)
             .contentShape(Rectangle())
-            .onTapGesture { state.send(.action(.focusWindow(window.windowId))) }
+            .onTapGesture { state.send(.action(.focusWindow(tile.window.windowId))) }
             .onHover(perform: hoverChanged)
-            .help(window.title.isEmpty ? window.appName : "\(window.appName) — \(window.title)")
+            .help(tile.window.title.isEmpty ? tile.window.appName : "\(tile.window.appName) — \(tile.window.title)")
     }
-
-    private func keyCap(_ label: String, marked: Bool) -> some View {
-        let cap = RoundedRectangle(cornerRadius: 5, style: .continuous)
-        return Text(label)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(marked ? look.palette.focusedBadgeText : look.palette.badgeText)
-            .padding(.horizontal, 7)
-            .frame(minWidth: AeroControlLayout.badgeSize, minHeight: AeroControlLayout.badgeSize)
-            .background(cap.fill(marked ? look.palette.accent : look.palette.cardFill ?? Color(nsColor: .controlBackgroundColor)))
-            .overlay(cap.strokeBorder(look.palette.cardBorder, lineWidth: 1))
-            .shadow(color: .black.opacity(0.5), radius: 0, y: 1.5)
-            .padding(badgeSize * 0.2)
-    }
-
-    private var drawnPixels: CGSize { CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale) }
 
     private var caption: some View {
-        Text(window.caption)
+        Text(tile.window.caption)
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(look.palette.badgeText)
             .lineLimit(2)
@@ -82,11 +60,11 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         stack
             .frame(width: contentSize.width, height: contentSize.height)
-            .overlay { if faded { outline } }
-            .saturation(faded ? 0 : 1)
-            .opacity(faded ? Self.fadedOpacity : 1)
+            .overlay { if tile.faded { outline } }
+            .saturation(tile.faded ? 0 : 1)
+            .opacity(tile.faded ? Self.fadedOpacity : 1)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
-            .opacity(window.isHidden ? 0.45 : 1)
+            .opacity(tile.window.isHidden ? 0.45 : 1)
             .overlay(selectionPlate.allowsHitTesting(false))
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(alignment: .topLeading) { stateBadge }
@@ -101,21 +79,17 @@ struct AeroControlAppTile: View {
                     .clipShape(plate)
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
-            if isFocused {
-                LivePicture { state.pictures.live(window.windowId, pixels: drawnPixels) }
+            if tile.ringed {
+                LivePicture { state.pictures.live(tile.window.windowId, pixels: CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale)) }
                     .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(plate)
                     .allowsHitTesting(false)
             }
         }
         .overlay(alignment: .bottomLeading) {
-            if let key {
-                keyCap(key.label, marked: key.marked)
-            } else {
-                PixelImage(image: state.pictures.icon(for: window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
-                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-                    .padding(badgeSize * 0.2)
-            }
+            PixelImage(image: state.pictures.icon(for: tile.window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
+                .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                .padding(badgeSize * 0.2)
         }
     }
 
@@ -123,8 +97,8 @@ struct AeroControlAppTile: View {
     private static let fade: Double = 0.6
 
     private var shadow: (opacity: Double, radius: CGFloat, offset: CGFloat) {
-        if window.isFloating { return (0.5, 12, 5) }
-        return (isFocused || faded ? 0 : 0.12, 2, 1)
+        if tile.window.isFloating { return (0.5, 12, 5) }
+        return (tile.ringed || tile.faded ? 0 : 0.12, 2, 1)
     }
 
     private var outline: some View {
@@ -132,15 +106,15 @@ struct AeroControlAppTile: View {
     }
 
     @ViewBuilder private var selectionPlate: some View {
-        if isFocused {
+        if tile.ringed {
             plate.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
-        } else if isOrigin {
+        } else if tile.origin {
             outline
         }
     }
 
     @ViewBuilder private var stateBadge: some View {
-        if window.isFullscreen, preview != nil {
+        if tile.window.isFullscreen, preview != nil {
             Image(systemName: "arrow.up.left.and.arrow.down.right")
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(look.palette.badgeText)
@@ -153,7 +127,7 @@ struct AeroControlAppTile: View {
     @ViewBuilder private var closeButton: some View {
         if isHovering, look.surface == .map {
             let diameter: CGFloat = 18
-            Button { state.send(.action(.closeWindow(window.windowId))) } label: {
+            Button { state.send(.action(.closeWindow(tile.window.windowId))) } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: diameter * 0.45, weight: .bold))
                     .foregroundStyle(.primary)

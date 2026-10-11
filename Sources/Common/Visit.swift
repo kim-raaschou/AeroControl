@@ -6,9 +6,10 @@ public struct Visit: Equatable {
     }
 
     public enum Input: Sendable {
-        case loaded(OverviewResult)
+        case loaded(OverviewModel)
         case event(AerospaceEvent)
         case action(AeroControlAction)
+        case merge(String, into: String)
     }
 
     public enum Host: Equatable, Sendable {
@@ -37,18 +38,15 @@ public struct Visit: Equatable {
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
     public var shownWorkspaces: [WorkspaceInfo] { strip == nil ? model.workspaces : stripWorkspaces }
     public var ringWindowId: Int? { marking?.marked ?? matches.first?.window.windowId ?? model.focusedWindow?.windowId }
-    public var markedWorkspace: String? { marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name } }
     public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
 
     public mutating func apply(_ input: Input) -> [Effect] {
         var new = model, effects: [Effect] = []
         switch input {
-        case .loaded(let result):
-            new.workspaces = result.workspaces
-            if let focus = result.focus { (new.focusedWindowId, new.focusedWorkspace) = (focus.windowId, focus.workspace) }
+        case .loaded(let read): new = read
         case .event(.focusChanged(let windowId, let workspace)): (new.focusedWindowId, new.focusedWorkspace, effects) = (windowId ?? 0, workspace, [.refresh])
         case .event(.changed): effects = [.refresh]
-        case .action(.mergeWorkspace(let source, let target)): effects = merge(source, into: target)
+        case .merge(let source, let target): effects = merge(source, into: target)
         case .action(let action): effects = [.run([action], thenRead: !action.isFocus)]
         }
         let focusMoved = new.focusedWindowId != model.focusedWindowId, hadStrip = strip != nil
@@ -76,11 +74,12 @@ public struct Visit: Equatable {
         case _ where !visible: return (false, [])
         case .move(let step): return (true, move(step, drawn: drawn))
         case .moveToWorkspace(let name) where commandTarget != nil: return (true, apply(.action(.moveWindow(windowId: commandTarget!.windowId, toWorkspace: name))))
-        case .close: return (true, closeRinged())
-        case .quit: return (true, quitRinged())
+        case .close: return (true, commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? [])
+        case .quit: return (true, commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? [])
         case .enter where missingApp == nil: return (true, enter())
         case _ where strip != nil || missingApp != nil: return stripKey(key, drawn: drawn)
         case .escape where !query.isEmpty: setQuery("")
+        case .escape: return (true, hide(restoreFocus: true))
         case .backspace where !query.isEmpty: setQuery(String(query.dropLast()))
         case .character(let c) where !query.isEmpty || !c.isWhitespace: setQuery(query + String(c))
         default: return (false, [])
@@ -89,16 +88,15 @@ public struct Visit: Equatable {
     }
 
     private mutating func enter() -> [Effect] {
-        guard let ring = markedWorkspace.map(AeroControlAction.focusWorkspace) ?? ringWindowId.map(AeroControlAction.focusWindow) else { return hide(restoreFocus: true) }
+        let workspace = marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name }
+        guard let ring = workspace.map(AeroControlAction.focusWorkspace) ?? ringWindowId.map(AeroControlAction.focusWindow) else { return hide(restoreFocus: true) }
         return apply(.action(ring))
     }
 
     private mutating func stripKey(_ key: FilterKey, drawn: [GridWalk.Card]) -> (Bool, [Effect]) {
-        let ids = stripWindows.map(\.window.windowId).prefix(FilterKey.windowKeys.count)
         let names = stripWorkspaces.map(\.name), card = { (c: Character) in FilterKey.workspaceNamed(String(c)).flatMap(names.firstIndex) }
         switch key {
-        case .escape: return (false, [])
-        case .commandKey(let n) where ids.indices.contains(n - 1): return (true, apply(.action(.focusWindow(ids[n - 1]))))
+        case .escape: return (true, hide(restoreFocus: true))
         case .character(let c) where card(c) != nil: _ = move(.card(card(c)!), drawn: drawn)
         default: break
         }
@@ -106,8 +104,7 @@ public struct Visit: Equatable {
     }
 
     private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) -> [Effect] {
-        let order = drawn.flatMap { GridWalk.rows(of: $0).joined() }, cardOf = { (id: Int) in drawn.firstIndex { $0.windows[id] != nil } }
-        marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(step, ids: order, card: cardOf, cards: drawn)
+        marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(step, cards: drawn)
         let ringed = model.workspaces.first { ws in ws.standIn == ringWindowId || ws.windows.contains { $0.windowId == ringWindowId } }?.name
         guard strip == nil, let ringed, ringed != model.focusedWorkspace else { return [] }
         return [.run([.focusWorkspace(ringed)], thenRead: false)]
@@ -117,7 +114,7 @@ public struct Visit: Equatable {
         guard visible else { (visible, loading) = (true, true); return [.host(.show(summon))] }
         guard !loading else { return [] }
         guard case .app(let ref) = summon else { return hide(restoreFocus: true) }
-        if let app = strip?.app, ref.identifies(bundleId: app, among: model.workspaces.flatMap(\.windows)) { return move(.window(1), drawn: drawn) }
+        if strip != nil, stripWindows.contains(where: { ref.matches($0.window) }) { return move(.window(1), drawn: drawn) }
         return open(ref, takingOver: true)
     }
 
@@ -146,10 +143,6 @@ public struct Visit: Equatable {
         visible = false
         return [.host(.hide)] + (restoreFocus ? model.focusedWindow.map { [.host(.activate(bundleId: $0.bundleId))] } ?? [] : [])
     }
-
-    private mutating func closeRinged() -> [Effect] { commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? [] }
-
-    private func quitRinged() -> [Effect] { commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? [] }
 
     public mutating func launchFailed(_ ref: AppRef) -> [Effect] {
         guard !visible else { return [] }

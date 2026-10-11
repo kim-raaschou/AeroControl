@@ -43,7 +43,6 @@ func describe(_ k: FilterKey?) -> String {
     guard let k else { return "—" }
     switch k {
     case .character(let c): return "character \(code(String(c)))"
-    case .commandKey(let n): return "⌘\(FilterKey.windowKeys[n - 1])"
     default: return "\(k)"
     }
 }
@@ -74,10 +73,10 @@ func describe(_ s: Strip?) -> String {
 
 @MainActor func visit(_ m: OverviewModel) -> Visit {
     var v = Visit()
-    _ = v.apply(.loaded(OverviewResult(workspaces: m.workspaces, focus: Focus(windowId: m.focusedWindowId, workspace: m.focusedWorkspace))))
+    _ = v.apply(.loaded(m))
     return v
 }
-func drawn(_ v: Visit) -> [GridWalk.Card] { OverviewScene(v, error: nil, available: CGSize(width: 1600, height: 1000), screens: [:], sizes: [:]).grid }
+func drawn(_ v: Visit) -> [GridWalk.Card] { OverviewScene(v, error: nil, available: CGSize(width: 1600, height: 1000), screens: [:], frames: [:]).grid }
 @MainActor func up(_ m: OverviewModel, _ s: Summon) -> (Visit, [Visit.Effect]) {
     var v = visit(m)
     _ = v.summon(s, drawn: [])
@@ -91,7 +90,7 @@ func outcome(_ v: Visit, _ effects: [Visit.Effect]) -> String {
 func pressed(_ start: Visit, _ k: FilterKey) -> String {
     var v = start
     let (taken, effects) = v.key(k, drawn: drawn(v))
-    guard taken else { return k == .escape ? "the window closes" : "nothing" }
+    guard taken else { return "nothing" }
     var parts = effects.map(describe)
     if v.query != start.query { parts.insert(v.query.isEmpty ? "clear the query" : "query becomes \(code(v.query))", at: 0) }
     if v.visible, v.marking != start.marking { parts.insert("mark window \(v.marking?.marked.map(String.init) ?? "–")", at: 0) }
@@ -138,13 +137,13 @@ flowchart TD
   click A4 "#strip"
 """)
 p("Two leaves continue: the map in <a href=\"#map\">section 4</a>, and the strip, the one case that needs you, in <a href=\"#strip\">section 3</a>. Everything else is settled and done here.")
-p("Where the strip opens: <code>AppStripModel.start</code>. On the app's window you used last other than the one you are in, as ⌘` goes back to it; knowing none, on the window after yours, or the first.")
+p("Where the strip opens: <code>Strip.opened</code>. On the app's window you used last other than the one you are in, as ⌘` goes back to it; knowing none, on the window after yours, or the first.")
 table(["You are in", "The app's windows", "Used last", "Opens on"], [
-    ["window 2", "[1, 2, 8]", "2, then 1", "\(AppStripModel.start(origin: 2, ids: [1, 2, 8], recent: [2, 1]) ?? 0)"],
-    ["window 2", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 2, ids: [1, 2, 8]) ?? 0)"],
-    ["window 8 (the last)", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 8, ids: [1, 2, 8]) ?? 0)"],
-    ["another app", "[1, 2, 8]", "8, then 2", "\(AppStripModel.start(origin: 6, ids: [1, 2, 8], recent: [8, 2]) ?? 0)"],
-    ["another app", "[1, 2, 8]", "none known", "\(AppStripModel.start(origin: 6, ids: [1, 2, 8]) ?? 0)"],
+    ["window 2", "[1, 2, 8]", "2, then 1", "\(Strip.opened("com.a", origin: 2, ids: [1, 2, 8], recent: [2, 1]).marked ?? 0)"],
+    ["window 2", "[1, 2, 8]", "none known", "\(Strip.opened("com.a", origin: 2, ids: [1, 2, 8], recent: []).marked ?? 0)"],
+    ["window 8 (the last)", "[1, 2, 8]", "none known", "\(Strip.opened("com.a", origin: 8, ids: [1, 2, 8], recent: []).marked ?? 0)"],
+    ["another app", "[1, 2, 8]", "8, then 2", "\(Strip.opened("com.a", origin: 6, ids: [1, 2, 8], recent: [8, 2]).marked ?? 0)"],
+    ["another app", "[1, 2, 8]", "none known", "\(Strip.opened("com.a", origin: 6, ids: [1, 2, 8], recent: []).marked ?? 0)"],
 ])
 
 h(2, "2. The link again, while the overview is up", id: "again")
@@ -160,23 +159,17 @@ p("The host carries the effects out (<code>OverlayWindowManager.perform</code>).
 h(2, "3. The strip", id: "strip")
 p("This is where the last leaf of <a href=\"#link\">section 1</a> lands: an app's key, pressed with windows to choose between. The strip is a value in Common (<code>Strip</code>) with four transitions; the store holds the current one. Keys through <code>Visit.key</code>, run against A's strip of windows [1, 2, 8], opened from window 1 and marked on 2:")
 let (stripVisit, _) = up(model, .app(.bundleId("com.a")))
-let stripKeys: [FilterKey] = [.move(.window(1)), .move(.window(-1)), .move(.row(1)), .move(.workspace(1)), .enter, .escape, .commandKey(1), .commandKey(3), .commandKey(4), .character("a"), .backspace]
+let stripKeys: [FilterKey] = [.move(.window(1)), .move(.window(-1)), .move(.row(1)), .move(.workspace(1)), .enter, .escape, .character("a"), .backspace]
 table(["Key", "Does"], stripKeys.compactMap { k in
     let does = pressed(stripVisit, k)
     return does == "nothing" ? nil : [describe(k), does]
 })
-p("Every other key does nothing in the strip: there is no typing there, and a ⌘ key past the strip's last window (⌘4 here) is nothing. The windows' keys, ⌘1–⌘9 then ⌘a–⌘f (<code>FilterKey(command:)</code>, <code>Visit.key</code>), run against a strip of fifteen windows:")
-let (fifteen, _) = up(OverviewModel(workspaces: [WorkspaceInfo(name: "1", windows: (1...15).map { w($0, "A") }), WorkspaceInfo(name: "2", windows: [w(20, "B")])], focusedWindowId: 20, focusedWorkspace: "2"), .app(.bundleId("com.a")))
-table(["⌘ + character", "In a strip of fifteen windows"], ["1", "9", "a", "f", "g", "0"].map { c in
-    ["⌘\(c)", FilterKey(command: c, shift: false).map { pressed(fifteen, $0) } ?? "nothing: not a window's key"]
-})
-p("The keys the windows carry (<code>AppStripModel.keyLabel</code>): " + (0..<17).map { AppStripModel.keyLabel($0) ?? "none" }.joined(separator: ", ") + " for the first seventeen windows.")
+p("Every other key does nothing in the strip: there is no typing there.")
 
 p("What happens to a strip of app A, opened from its window 1 (A's windows are 1, 2 and 8, on two workspaces), as each thing happens to it. Every line is the value the transition returned:")
 let opened = Strip.opened("com.a", origin: 1, ids: [1, 2, 8], recent: [])
-let card: (Int) -> Int? = { id in model.workspaces.firstIndex { $0.windows.contains { $0.windowId == id } } }
-let stepped = opened.moved(.window(1), ids: [1, 2, 8], card: card)
-let round = stepped.moved(.window(1), ids: [1, 2, 8], card: card)
+let stepped = opened.moved(.window(1), cards: drawn(stripVisit))
+let round = stepped.moved(.window(1), cards: drawn(stripVisit))
 /// What a transition did, in the strip's own terms: where the marking went, whether the
 /// row followed it, whose strip it is now, or that it is over.
 func tell(_ before: Strip, _ after: Strip?) -> String {
@@ -202,7 +195,7 @@ flowchart TD
   OPEN["opened: \(label(describe(opened)))"] --> UP(("up"))
   UP -- "← → ↑ ↓ · ⌘ and an arrow · a workspace's name · the app's key again" --> STEP["moved: marking and centre move;<br/>the row slides to keep the card in view"]
   UP -- "pointer onto a window" --> MARK["marking: marking moves, centre stays"]
-  UP -- "⌘1–⌘9, ⌘a–⌘f · Enter · click" --> COMMIT["focus that window · close"]
+  UP -- "Enter · click" --> COMMIT["focus that window · close"]
   UP -- "Escape · backdrop" --> CANCEL["close"]
   UP -- "⌘W · ⌘Q" --> GONE["the marked window closes · its app quits;<br/>the marking passes on"]
   UP -- "AeroSpace: focus moved" --> WHERE{"to a window of"}
@@ -213,8 +206,8 @@ flowchart TD
   MARK --> UP
   KEPT --> UP
 """)
-p("The line under the cards (<code>AppStripModel.summary</code>), after the app's name, for A's three windows marked on 2: "
-  + code(esc(AppStripModel.summary(model.windowsInGridOrder.filter { $0.window.bundleId == "com.a" }, marked: 2)))
+p("The line under the cards (<code>OverviewScene.summary</code>), after the app's name, for A's three windows marked on 2: "
+  + code(esc(OverviewScene.summary(model.windowsInGridOrder.filter { $0.window.bundleId == "com.a" }, marked: 2)))
   + ". The marked window's key is on its card; pointing at a window marks it, so its title is read here.")
 
 // MARK: - 4. The map
@@ -224,12 +217,12 @@ p("Hand-written, from <code>OverlayWindowManager.show</code>: read everything on
 let inputs: [(String, Visit.Input)] = [
     ("event: focus-changed to window 5 on workspace 2", .event(.focusChanged(windowId: 5, workspace: "2"))),
     ("event: anything else AeroSpace reports", .event(.changed)),
-    ("a read came back", .loaded(OverviewResult(workspaces: [model.workspaces[0]], focus: Focus(windowId: 2, workspace: "1")))),
+    ("a read came back", .loaded(OverviewModel(workspaces: [model.workspaces[0]], focusedWindowId: 2, focusedWorkspace: "1"))),
     ("action: focus window 5", .action(.focusWindow(5))),
     ("action: focus workspace 2", .action(.focusWorkspace("2"))),
     ("action: move window 3 to workspace 2", .action(.moveWindow(windowId: 3, toWorkspace: "2"))),
     ("action: close window 3", .action(.closeWindow(3))),
-    ("action: merge workspace 1 into 2", .action(.mergeWorkspace(source: "1", into: "2"))),
+    ("drop: workspace 1 onto workspace 2", .merge("1", into: "2")),
 ]
 table(["Input", "Model after", "Effects"], inputs.map { name, input in
     var v = visit(model)

@@ -92,8 +92,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "list-windows":
             return (json(args.contains("--focused") ? windows.filter { $0.id == focusedId } : ordered), nil)
         case "list-workspaces":
-            let names = args.contains("--focused") ? [focusedName] : workspaceNames
-            return ("[" + names.map { #"{"workspace":"\#($0)","monitor-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")"}"# }
+            return ("[" + workspaceNames.map { #"{"workspace":"\#($0)","monitor-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")","workspace-is-focused":\#($0 == focusedName)}"# }
                 .joined(separator: ",") + "]", nil)
         case "focus":
             return ("", focus(id))
@@ -175,19 +174,10 @@ final class TestApp {
         store.summon(Summon(URL(string: link)!))
         guard let summon = pending else { return }
         pending = nil
-        store.endVisit()
-        await store.reload()
-        store.update { $0.summoned(summon) }
-        guard store.visit.visible else { return }
-        await store.measurePreviews()
-        store.following = true
-        await capture()
+        if await store.open(summon) { await capture() }
     }
 
-    private func capture() async {
-        await store.capturePreviews(maxSize: AeroControlLayout.captureSize(available: store.screen.available, backingScale: 2,
-                                                                           workspaces: store.model.workspaces.count, strip: store.strip != nil))
-    }
+    private func capture() async { await store.capturePreviews(backingScale: 2) }
 
     func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }
 

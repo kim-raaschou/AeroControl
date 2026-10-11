@@ -60,15 +60,15 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return view
     }
 
-    public func previewSizes(windowIds: [Int]) async -> [Int: CGSize] {
+    public func windowFrames(windowIds: [Int]) async -> [Int: CGRect] {
         guard canCapturePreviews else { return [:] }
         let wanted = Set(windowIds)
         let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
-        return windows.reduce(into: [:]) { sizes, window in
+        return windows.reduce(into: [:]) { frames, window in
             guard let id = window[kCGWindowNumber as String] as? Int, wanted.contains(id),
                   let bounds = window[kCGWindowBounds as String] as? [String: Double],
                   let width = bounds["Width"], let height = bounds["Height"], width > 1, height > 1 else { return }
-            sizes[id] = CGSize(width: width, height: height)
+            frames[id] = CGRect(x: bounds["X"] ?? 0, y: bounds["Y"] ?? 0, width: width, height: height)
         }
     }
 
@@ -86,8 +86,8 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !windowIds.isEmpty, var content = await resolvedContent() else { return }
-        let sizes = await previewSizes(windowIds: windowIds)
-        if content.windows.contains(where: { sizes[Int($0.windowID)].map { [frame = $0.frame.size] in $0 != frame } ?? false }),
+        let frames = await windowFrames(windowIds: windowIds)
+        if content.windows.contains(where: { frames[Int($0.windowID)]?.size ?? $0.frame.size != $0.frame.size }),
            let fresh = await Self.shareableContent() {
             self.content = fresh
             content = fresh
@@ -97,20 +97,14 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         let started = ContinuousClock.now
         let captured = await withTaskGroup(of: (Int, NSImage)?.self, returning: Int.self) { group in
             var captured = 0
-            var inFlight = 0
-            for window in windows {
-                if inFlight == Self.parallelCaptures, let landed = await group.next() {
-                    if let (id, image) = landed { deliver(id, image); captured += 1 }
-                    inFlight -= 1
-                }
+            @MainActor func land(_ landed: (Int, NSImage)?) { if let (id, image) = landed { deliver(id, image); captured += 1 } }
+            for (index, window) in windows.enumerated() {
+                if index >= Self.parallelCaptures, let landed = await group.next() { land(landed) }
                 nonisolated(unsafe) let window = window
                 let id = unsafe Int(window.windowID)
                 group.addTask { unsafe await Self.capture(window, maxSize: maxSize).map { (id, $0) } }
-                inFlight += 1
             }
-            for await landed in group {
-                if let (id, image) = landed { deliver(id, image); captured += 1 }
-            }
+            for await landed in group { land(landed) }
             return captured
         }
         let ms = (ContinuousClock.now - started) / .milliseconds(1)

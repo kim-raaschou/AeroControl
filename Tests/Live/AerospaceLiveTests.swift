@@ -64,7 +64,7 @@ struct AerospaceLiveTests {
             try #require(try await loadOverview(using: runner).workspaces.first { $0.name == "1" })
         }
         func card(_ ws: WorkspaceInfo) -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
-            AeroControlLayout.treeLayout(ws, sizes: [:], screen: screen, inner: CGSize(width: 1000, height: 600))
+            AeroControlLayout.treeLayout(ws, frames: [:], screen: screen, inner: CGSize(width: 1000, height: 600))
         }
 
         _ = try aerospace("layout", "--workspace", "1", "--root", "h_tiles")
@@ -154,14 +154,12 @@ private final class Subscription: @unchecked Sendable {
 }
 
 extension AerospaceLiveTests {
-    /// The whole read path against the running AeroSpace: both lists and both `--focused`
-    /// reads, decoded into the model the overview draws. This is the one place that proves
-    /// AeroSpace answers `--focused` the way we parse it.
+    /// The whole read path against the running AeroSpace: both lists and the focused window,
+    /// decoded into the model the overview draws. This is the one place that proves AeroSpace
+    /// answers `workspace-is-focused` and `--focused` the way we parse them.
     @Test("the whole read, focus included, as the running AeroSpace answers it")
     func loadOverviewReadsFocus() async throws {
-        let result = try await loadOverview(using: AerospaceSocketRunner())
-        #expect(!result.workspaces.isEmpty)
-        let focus = try #require(result.focus)
-        #expect(result.workspaces.contains { $0.name == focus.workspace })
+        let model = try await loadOverview(using: AerospaceSocketRunner())
+        #expect(!model.workspaces.isEmpty && model.workspaces.contains { $0.name == model.focusedWorkspace })
     }
 }

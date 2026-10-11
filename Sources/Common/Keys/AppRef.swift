@@ -11,10 +11,6 @@ public enum AppRef: Equatable, Sendable {
         }
     }
 
-    public func identifies(bundleId: String, among windows: [WindowInfo]) -> Bool {
-        windows.contains { $0.bundleId == bundleId && matches($0) }
-    }
-
     public var notFound: (name: String, reason: String) {
         switch self {
         case .bundleId(let id): (id, "no app has this id")

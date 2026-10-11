@@ -51,7 +51,6 @@ public enum FilterKey: Equatable, Sendable {
     case enter
     case escape
     case move(StripMove)
-    case commandKey(Int)
     case moveToWorkspace(String)
     case close
     case quit
@@ -73,15 +72,14 @@ public extension FilterKey {
         }
     }
 
-    static let windowKeys: [Character] = Array("123456789abcdef")
 
     static func workspaceNamed(_ key: String) -> String? {
         guard key.count == 1, let c = key.first, typed(c) != nil else { return nil }
         return ["0": "10"][key] ?? key
     }
 
-    private static let commandKeys: [String: FilterKey] = Dictionary(uniqueKeysWithValues: windowKeys.enumerated().map { (String($1), .commandKey($0 + 1)) })
-        .merging(["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)), "\u{F701}": .move(.workspaceRow(1)), "w": .close, "q": .quit]) { a, _ in a }
+    private static let commandKeys: [String: FilterKey] = ["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)),
+                                                           "\u{F701}": .move(.workspaceRow(1)), "w": .close, "q": .quit]
 
     init?(command characters: String, shift: Bool) {
         guard let key = shift ? Self.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] else { return nil }

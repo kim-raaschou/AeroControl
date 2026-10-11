@@ -84,7 +84,7 @@ struct FollowingScenarioTests {
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.bridge.captured == [[1, 9, 2, 3]] && app.store.pictures.previews[9] != nil && app.store.pictures.previews[7] == nil)
         await app.open("aerocontrol://workspaces")
-        #expect(!app.store.visit.visible && app.store.pictures.previews.isEmpty && app.store.pictures.sizes.isEmpty)
+        #expect(!app.store.visit.visible && app.store.pictures.previews.isEmpty && app.store.pictures.frames.isEmpty)
     }
 
     @Test("a workspace's pictures land together once all of its windows are taken, in reading order: one that is in waits for those before it")
@@ -116,7 +116,7 @@ struct FollowingScenarioTests {
         #expect(app.bridge.captured == [[1, 2, 3]])
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         app.key(.moveToWorkspace("2"))
-        await app.until { app.store.pictures.sizes[2]?.width == 600 }
+        await app.until { app.store.pictures.frames[2]?.width == 600 }
         #expect(app.bridge.captured.count == 1)
         await app.until { app.bridge.captured.last == [2] }
         #expect(height(app, 2) < height(app, 1))
@@ -135,7 +135,7 @@ struct FollowingScenarioTests {
         }
         await app.until { app.bridge.captured.count == 2 }
         await app.past(AerospaceSync.readAgainAfter)
-        #expect(app.bridge.captured == [[1, 2], [2]] && app.store.pictures.sizes[2]?.width == 600)
+        #expect(app.bridge.captured == [[1, 2], [2]] && app.store.pictures.frames[2]?.width == 600)
     }
 
     @Test("a change that comes while pictures are being taken again loses nothing: the next refresh takes them")
@@ -163,7 +163,7 @@ struct FollowingScenarioTests {
             aero.announce()
             try? await Task.sleep(for: .milliseconds(100))
         }
-        #expect(app.store.pictures.sizes[2]?.width == 600)
+        #expect(app.store.pictures.frames[2]?.width == 600)
     }
 
     @Test("a window that appears while the overview is up gets a picture; a refresh that changes nothing takes none")

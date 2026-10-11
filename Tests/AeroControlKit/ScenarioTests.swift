@@ -21,14 +21,15 @@ struct ScenarioTests {
         await app.until { aero.focused == 1 }
     }
 
-    @Test("an app's key with windows on two workspaces opens its strip; ⌘2 focuses its second window")
+    @Test("an app's key with windows on two workspaces opens its strip; → and Enter focus its second window")
     func stripPicks() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams")], "3": [win(3, "Code")]], focused: 3)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.scene.body == .strip && app.scene.cards.map(\.workspace.name) == ["1", "2"])
-        #expect(app.scene.cards.flatMap(\.tiles).compactMap(\.key) == ["⌘1", "⌘2"] && app.scene.ringed == app.store.strip?.marked && app.store.visit.query.isEmpty)
-        app.key(.commandKey(2))
+        #expect(app.scene.cards.flatMap(\.tiles).map(\.window.windowId) == [1, 9, 2] && app.scene.ringed == 1 && app.store.visit.query.isEmpty)
+        app.key(.move(.window(1)))
+        app.key(.enter)
         await app.until { aero.focused == 2 }
     }
 
@@ -99,13 +100,13 @@ struct ScenarioTests {
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
         let held = { (name: String) in app.store.model.workspaces.first { $0.name == name }?.windows.count ?? 0 }
-        app.store.send(.action(.mergeWorkspace(source: "1", into: "1")))
-        app.store.send(.action(.mergeWorkspace(source: "1", into: "2")))
+        app.store.send(.merge("1", into: "1"))
+        app.store.send(.merge("1", into: "2"))
         await app.until { aero.windows(on: "2") == [9, 8, 1, 2] && aero.layout(of: "2") == "h_accordion" && aero.focusedWorkspace == "2" && held("2") == 4 }
         #expect(aero.commands.contains(["focus", "--window-id", "1"]) && !aero.commands.contains { $0.first == "move-node-to-workspace" && $0.last == "1" })
-        app.store.send(.action(.mergeWorkspace(source: "2", into: "3")))
+        app.store.send(.merge("2", into: "3"))
         await app.until { aero.windows(on: "3") == [9, 8, 1, 2, 3] && held("3") == 5 }
-        app.store.send(.action(.mergeWorkspace(source: "5", into: "6")))
+        app.store.send(.merge("5", into: "6"))
         await app.until { aero.windows(on: "6") == [5] }
         #expect(aero.layout(of: "3") == "h_tiles" && aero.layout(of: "6") == "h_tiles")
     }
@@ -135,7 +136,7 @@ struct ScenarioTests {
         #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
     }
 
-    @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then is the window's; the strip's keys leave it be")
+    @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then closes the overview, back on the focused app")
     func queryEditing() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 2))
         await app.open("aerocontrol://workspaces")
@@ -144,9 +145,9 @@ struct ScenarioTests {
         #expect(app.store.visit.query == "te2 ")
         app.key(.backspace); app.key(.backspace)
         #expect(app.store.visit.query == "te")
-        #expect(!app.key(.commandKey(2)) && app.store.visit.query == "te")
+        #expect(app.store.visit.query == "te")
         #expect(app.key(.escape) && app.store.visit.query.isEmpty)
-        #expect(!app.key(.escape) && !app.key(.backspace) && app.store.visit.visible)
+        #expect(!app.key(.backspace) && app.key(.escape) && !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack"))
     }
 
     @Test("two windows and you are in one: the app's key goes to the other, and back at once; from elsewhere it opens the strip")
@@ -165,22 +166,20 @@ struct ScenarioTests {
         #expect(app.scene.body == .strip && app.store.visit.visible)
     }
 
-    @Test("in a strip of sixteen windows ⌘f is the fifteenth and the sixteenth has no key; Enter picks the marked one; Escape is the window's")
-    func stripWindowKeys() async {
-        let aero = FakeAeroSpace(["1": (1...16).map { win($0, "Teams") }, "2": [win(20, "Code")]], focused: 20)
+    @Test("in the strip Enter picks the marked window, and Escape goes back to the window you came from")
+    func stripEnterAndEscape() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Teams"), win(3, "Teams")], "2": [win(20, "Code")]], focused: 20)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.scene.cards.flatMap(\.tiles).compactMap(\.key).count == 15 && !app.key(.escape))
-        app.key(.commandKey(16))
-        #expect(app.store.visit.visible && marked(app) == 1)
+        app.key(.move(.window(1)))
+        #expect(marked(app) == 2)
         app.key(.enter)
-        await app.until { aero.focused == 1 && !app.store.visit.visible }
+        await app.until { aero.focused == 2 && !app.store.visit.visible }
         await app.past(AerospaceSync.focusAgainAfter)
         aero.userFocus(20)
         await app.until { app.store.visit.recent.first == 20 }
         await app.open("aerocontrol://app-id=com.teams")
-        app.key(.commandKey(15))
-        await app.until { aero.focused == 15 }
+        #expect(app.key(.escape) && !app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
     }
 
     @Test("an app with no window is started, and the overview closes; one that will not start is said on the lane")
@@ -191,8 +190,7 @@ struct ScenarioTests {
         app.launchFails(.name("Typo"))
         #expect(app.store.visit.visible && app.scene.body == .nothing && app.scene.lane == .notice(name: "Typo", reason: "no app has this name"))
         app.key(.character("x"))
-        #expect(app.scene.lane == .notice(name: "Typo", reason: "no app has this name") && !app.key(.escape))   // Escape is the window's
-        await app.open("aerocontrol://workspaces")
+        #expect(app.scene.lane == .notice(name: "Typo", reason: "no app has this name") && app.key(.escape) && !app.store.visit.visible)
         await app.open("aerocontrol://workspaces")
         #expect(app.store.visit.visible && app.scene.lane == .keys)                                                      // the next visit forgets it
     }
@@ -205,7 +203,7 @@ struct ScenarioTests {
         #expect(app.host.last == .quit(bundleId: "com.slack") && app.store.visit.visible)
     }
 
-    private func marked(_ app: TestApp) -> Int? { app.scene.cards.flatMap(\.tiles).first(where: \.keyMarked)?.window.windowId }
+    private func marked(_ app: TestApp) -> Int? { app.scene.cards.flatMap(\.tiles).first(where: \.ringed)?.window.windowId }
 
     @Test("the query is the user's: typing asks AeroSpace nothing, a window that appears meanwhile joins the matches, and a miss leaves the whole map")
     func queryIsTheUsers() async {
@@ -288,7 +286,7 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(2, "Teams"), win(9, "Slack", "Teams standup notes")], "3": [win(3, "Teams")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.scene.cards.flatMap(\.tiles).compactMap { $0.key == nil ? nil : $0.window.windowId } == [1, 2, 3] && marked(app) == 1)
+        #expect(app.scene.cards.flatMap(\.tiles).filter { !$0.faded }.map(\.window.windowId) == [1, 2, 3] && marked(app) == 1)
         app.key(.move(.window(1)))
         #expect(marked(app) == 2)
         app.key(.move(.window(1))); app.key(.move(.window(1)))

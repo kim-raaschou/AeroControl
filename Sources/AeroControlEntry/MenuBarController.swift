@@ -24,9 +24,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
         menu.addItem(keys())
-        let theme = choice("Theme", current: settings.theme.name, options: AeroControlTheme.all.map { t in
-            (t.name, swatch(for: t), settings.theme == t, { self.settings.theme = t }) })
+        let theme = NSMenuItem(title: "Theme: \(settings.theme.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
         theme.image = swatch(for: settings.theme)
+        for t in AeroControlTheme.all {
+            let entry = item(t.name) { self.settings.theme = t; self.onSettingsChanged() }
+            (entry.state, entry.image) = (settings.theme == t ? .on : .off, swatch(for: t))
+            themes.addItem(entry)
+        }
+        theme.submenu = themes
         menu.addItem(theme)
 
         menu.addItem(.separator())
@@ -48,20 +53,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         item.target = self
         item.representedObject = Action(run)
         return item
-    }
-
-    private func choice(_ label: String, current: String,
-                        options: [(name: String, image: NSImage?, isOn: Bool, select: () -> Void)]) -> NSMenuItem {
-        let parent = NSMenuItem(title: "\(label): \(current)", action: nil, keyEquivalent: "")
-        let submenu = NSMenu()
-        for option in options {
-            let entry = item(option.name) { option.select(); self.onSettingsChanged() }
-            entry.state = option.isOn ? .on : .off
-            entry.image = option.image
-            submenu.addItem(entry)
-        }
-        parent.submenu = submenu
-        return parent
     }
 
     private func keys() -> NSMenuItem {

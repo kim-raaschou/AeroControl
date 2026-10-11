@@ -49,6 +49,7 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     public let monitorName: String?
     @TolerantInt public var screenIndex: Int
     public let rootLayout: String?
+    public let isFocused: Bool?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
@@ -56,14 +57,16 @@ public struct WorkspaceMonitor: Decodable, Equatable {
         case monitorName = "monitor-name"
         case screenIndex = "monitor-appkit-nsscreen-screens-id"
         case rootLayout = "workspace-root-container-layout"
+        case isFocused = "workspace-is-focused"
     }
 
-    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil) {
+    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil, isFocused: Bool? = nil) {
         self.workspace = workspace
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
         self.rootLayout = rootLayout
+        self.isFocused = isFocused
     }
 }
 
@@ -92,8 +95,7 @@ public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
     return try JSONDecoder().decode([WorkspaceMonitor].self, from: data)
 }
 
-public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor],
-                                focus: Focus? = nil) -> OverviewResult {
+public func buildOverview(windows: [ParsedWindow], workspaceMonitors: [WorkspaceMonitor], focusedWindowId: Int = 0) -> OverviewModel {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
     let workspaces = workspaceMonitors.map { wm in
@@ -107,7 +109,7 @@ public func buildOverviewResult(windows: [ParsedWindow], workspaceMonitors: [Wor
         )
     }
 
-    return OverviewResult(workspaces: workspaces, focus: focus)
+    return OverviewModel(workspaces: workspaces, focusedWindowId: focusedWindowId, focusedWorkspace: workspaceMonitors.first { $0.isFocused == true }?.workspace ?? "")
 }
 
 func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
@@ -119,18 +121,11 @@ func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     }.map(\.element)
 }
 
-public func parseFocus(windowJson: String?, workspaceJson: String?) -> Focus? {
-    guard windowJson != nil || workspaceJson != nil else { return nil }
-    let windowId = (try? parseWindows(json: windowJson ?? ""))?.first?.window.windowId ?? 0
-    let workspace = (try? parseWorkspaces(json: workspaceJson ?? ""))?.first?.workspace ?? ""
-    return Focus(windowId: windowId, workspace: workspace)
-}
-
 public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
     (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first?.window }
 }
 
-public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewResult {
+public func loadOverview(using runner: AerospaceProcessRunner) async throws -> OverviewModel {
     let windowsJson: String
     do {
         windowsJson = try await runner.run(AerospaceCommand.listWindows(layoutRects: true))
@@ -140,8 +135,6 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
     }
     let windows = try parseWindows(json: windowsJson)
     let workspaceMonitors = try parseWorkspaces(json: try await runner.run(AerospaceCommand.listWorkspaces))
-    let focusedWindow = try? await runner.run(AerospaceCommand.listFocusedWindow)
-    let focusedWorkspace = try? await runner.run(AerospaceCommand.listFocusedWorkspace)
-    let focus = parseFocus(windowJson: focusedWindow, workspaceJson: focusedWorkspace)
-    return buildOverviewResult(windows: windows, workspaceMonitors: workspaceMonitors, focus: focus)
+    let focused = await loadFocusedWindow(using: runner)?.windowId ?? 0
+    return buildOverview(windows: windows, workspaceMonitors: workspaceMonitors, focusedWindowId: focused)
 }

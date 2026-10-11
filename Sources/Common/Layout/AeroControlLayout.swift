@@ -39,7 +39,7 @@ public enum AeroControlLayout {
         return max(2, packedGapOnScreen * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
     }
 
-    public static func treeLayout(_ workspace: WorkspaceInfo, sizes: [Int: CGSize], screen: CGRect?, inner: CGSize)
+    public static func treeLayout(_ workspace: WorkspaceInfo, frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         let windows = workspace.windows
         let ghosts = windows.filter { !$0.isTiled }.map(\.windowId)
@@ -52,45 +52,45 @@ public enum AeroControlLayout {
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted)
         let scale = fitted.width / screen.width
-        var frames: [Int: CGRect] = [:]
-        for window in tiled {
-            let r = window.layoutRect!
-            frames[window.windowId] = CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale,
-                                             width: r.width * scale, height: r.height * scale)
+        func place(_ r: CGRect) -> CGRect {
+            CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale, width: r.width * scale, height: r.height * scale)
         }
-        for id in ghosts {
-            let size = sizes[id].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
-            frames[id] = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
+        var frames: [Int: CGRect] = [:]
+        for window in tiled { frames[window.windowId] = place(window.layoutRect!) }
+        for window in windows where !window.isTiled {
+            let size = measured[window.windowId].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
+            let centred = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
+            frames[window.windowId] = window.isFloating ? measured[window.windowId].map { place($0).intersection(box) } ?? centred : centred
         }
         return (frames, Set(ghosts))
     }
 
-    public struct MapCard: Equatable, Sendable {
+    public struct LaidCard: Equatable, Sendable {
         public let workspace: String
         public let frame: CGRect
         public let frames: [Int: CGRect]
-        public let ghosts: Set<Int>
+        public var ghosts: Set<Int> = []
+        public var others: Set<Int> = []
 
         public var grid: GridWalk.Card {
-            (frame, frames.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
+            (frame, frames.filter { !others.contains($0.key) }.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
         }
     }
 
-    public static func mapLayout(workspaces: [WorkspaceInfo], sizes: [Int: CGSize], screens: [Int: CGRect], available: CGSize, usable: CGSize,
-                                 filtering: Bool) -> [MapCard] {
-        let cells = CardGrid.lattice(count: workspaces.count, in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
+    public static func mapLayout(workspaces: [WorkspaceInfo], frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize, filtering: Bool) -> [LaidCard] {
+        let cells = CardGrid.lattice(count: workspaces.count, in: usable(available), cellRatio: screenRatio(for: available), gap: cardGap,
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).map { ws, cell in
             let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let laid = filtering ? nil : treeLayout(ws, sizes: sizes, screen: screen, inner: inner)
-            let placed = laid ?? packed(ws.windows, sizes: sizes, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
+            let laid = filtering ? nil : treeLayout(ws, frames: frames, screen: screen, inner: inner)
+            let placed = laid ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
-            return MapCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
+            return LaidCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
         }
     }
 
-    static func packed(_ windows: [WindowInfo], sizes: [Int: CGSize], screen: CGRect?, inner: CGSize, caption: CGFloat) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
-        let ratios = ratios(of: windows, sizes: sizes, fallback: screenRatio(for: screen?.size ?? inner))
+    static func packed(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize, caption: CGFloat) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
+        let ratios = ratios(of: windows, sizes: measured.mapValues(\.size), fallback: screenRatio(for: screen?.size ?? inner))
         let gap = packedGap(screen: screen?.size, inner: inner)
         let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
         let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
@@ -100,60 +100,38 @@ public enum AeroControlLayout {
         return (frames, [])
     }
 
-    public struct StripCard: Equatable, Sendable {
-        public let workspace: String
-        public let span: StripGeometry.Span
-        public let frames: [Int: CGRect]
-        public let others: Set<Int>
+    public static let tallest: CGFloat = 0.85
+    public static let tallestOfSeveral: CGFloat = 0.33
+    public static let seen: CGFloat = 3.5
+
+    public static func stripCardHeight(view: CGFloat, cards: Int, aspect: CGFloat, chrome: CGFloat, panelHeight: CGFloat) -> CGFloat {
+        let each = view / min(CGFloat(max(1, cards)), seen) - chrome
+        return min((panelHeight * (cards > 1 ? tallestOfSeveral : tallest)).rounded(), (each / max(0.01, aspect)).rounded(.down))
     }
 
-    public struct StripLayout: Equatable, Sendable {
-        public let height: CGFloat
-        public let width: CGFloat
-        public let cards: [StripCard]
-
-        public func slides(in viewWidth: CGFloat) -> Bool { width > viewWidth }
-
-        public var grid: [GridWalk.Card] {
-            cards.map { c in (CGRect(x: c.span.x, y: 0, width: c.span.width, height: height),
-                              c.frames.filter { !c.others.contains($0.key) }.mapValues { $0.offsetBy(dx: c.span.x + cardPadding, dy: 0) }) }
+    public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize) -> [LaidCard] {
+        let areas = groups.map { screens[$0.screenIndex] ?? CGRect(origin: .zero, size: available) }
+        let aspects = areas.map { $0.width / max(1, $0.height) }, view = usable(available)
+        let full = stripCardHeight(view: view.width, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
+                                   chrome: 2 * cardPadding + cardGap, panelHeight: view.height)
+        var x: CGFloat = 0
+        return groups.indices.map { g in
+            let inner = CGSize(width: (full * aspects[g]).rounded(), height: full)
+            let laid = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) ?? packed(groups[g].windows, frames: frames, screen: areas[g], inner: inner, caption: 0)
+            let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: inner.width + 2 * cardPadding, height: full + cardChrome), frames: laid.frames,
+                                ghosts: laid.ghosts, others: Set(groups[g].windows.filter { $0.bundleId != bundleId }.map(\.windowId)))
+            x = card.frame.maxX + cardGap
+            return card
         }
     }
 
-    public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, sizes: [Int: CGSize], screens: [Int: CGRect],
-                                   fallbackScreen: CGRect, viewWidth: CGFloat, panelHeight: CGFloat) -> StripLayout {
-        let areas = groups.map { screens[$0.screenIndex] ?? fallbackScreen }
-        let aspects = areas.map { $0.width / max(1, $0.height) }
-        let full = StripGeometry.cardHeight(view: viewWidth, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
-                                            chrome: 2 * cardPadding + cardGap, panelHeight: panelHeight)
-        let widths = aspects.map { (full * $0).rounded() }
-        var x: CGFloat = 0, cards: [StripCard] = []
-        for g in groups.indices {
-            if g > 0 { x += cardGap }
-            let inner = CGSize(width: widths[g], height: full)
-            let laid = treeLayout(groups[g], sizes: sizes, screen: areas[g], inner: inner) ?? packed(groups[g].windows, sizes: sizes, screen: areas[g], inner: inner, caption: 0)
-            let others = Set(groups[g].windows.filter { $0.bundleId != bundleId }.map(\.windowId))
-            cards.append(StripCard(workspace: groups[g].name, span: StripGeometry.Span(x: x, width: widths[g] + 2 * cardPadding), frames: laid.frames, others: others))
-            x += widths[g] + 2 * cardPadding
-        }
-        return StripLayout(height: full + cardChrome, width: x, cards: cards)
-    }
-
-    public struct StripPlacement: Hashable, Sendable {
-        public let card: Int
-        public let x: CGFloat
-    }
-
-    public static func stripPlacements(_ layout: StripLayout, centre: Int?, viewWidth: CGFloat) -> [StripPlacement] {
-        guard let first = layout.cards.first else { return [] }
-        let held = layout.cards.first { card in centre.map { card.frames[$0] != nil } ?? false } ?? first
-        let wanted = viewWidth / 2 - held.span.x - held.span.width / 2
-        let offset = layout.slides(in: viewWidth) ? min(0, max(viewWidth - layout.width, wanted)) : (viewWidth - layout.width) / 2
-        return layout.cards.indices.map { StripPlacement(card: $0, x: (layout.cards[$0].span.x + offset).rounded()) }
+    public static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {
+        let width = cards.last?.frame.maxX ?? 0, centre = cards.indices.contains(held) ? cards[held].frame.midX : 0
+        return (width > viewWidth ? min(0, max(viewWidth - width, viewWidth / 2 - centre)) : (viewWidth - width) / 2).rounded()
     }
 
     public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
-        let height = (available.height * usableScreenFraction * StripGeometry.tallest).rounded(.up)
+        let height = (available.height * usableScreenFraction * tallest).rounded(.up)
         var box = CGSize(width: height * screenRatio(for: available), height: height)
         let usable = usable(available)
         let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
@@ -169,10 +147,6 @@ public enum AeroControlLayout {
     static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
         guard let picture, picture.height > 0, window.height > 0 else { return false }
         return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
-    }
-
-    public static func stacking(windowId: Int, focused: Int, ghosts: Set<Int>) -> Double {
-        ghosts.contains(windowId) ? 2 : windowId == focused ? 1 : 0
     }
 
     public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {

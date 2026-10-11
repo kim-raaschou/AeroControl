@@ -69,25 +69,6 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     }
 }
 
-public struct Focus: Equatable, Sendable {
-    public let windowId: Int
-    public let workspace: String
-
-    public init(windowId: Int = 0, workspace: String = "") {
-        self.windowId = windowId
-        self.workspace = workspace
-    }
-}
-
-public struct OverviewResult: Equatable, Sendable {
-    public let workspaces: [WorkspaceInfo]
-    public let focus: Focus?
-    public init(workspaces: [WorkspaceInfo], focus: Focus? = nil) {
-        self.workspaces = workspaces
-        self.focus = focus
-    }
-}
-
 public struct ParsedWindow: Equatable {
     public let window: WindowInfo
     public let workspace: String

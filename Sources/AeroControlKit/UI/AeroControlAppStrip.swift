@@ -29,9 +29,9 @@ struct AeroControlAppStrip: View {
             ForEach(card.tiles, id: \.window.windowId) { tile in
                 AeroControlAppTile(tile: tile, tiles: tiles)
                     .allowsHitTesting(!tile.faded)
-                    .onHover { if !tile.faded, $0 { state.point(tile.window.windowId, at: NSEvent.mouseLocation) } }
                     .offset(x: tile.frame.minX, y: tile.frame.minY)
-                    .zIndex(tile.faded ? 0 : 1)
+                    .opacity(tile.ghost ? 0.7 : 1)
+                    .zIndex(tile.faded ? 0 : 1 + tile.stacking)
             }
         }
     }

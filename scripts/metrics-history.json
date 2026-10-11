@@ -2203,5 +2203,14 @@
     "complexity": 913,
     "prodComplexity": 508,
     "files": 70
+  },
+  {
+    "timestamp": "2026-10-10T22:24:40+02:00",
+    "commit": "6d4d16b",
+    "subject": "Baseline: 4925 lines, prod complexity 508",
+    "code": 4724,
+    "complexity": 884,
+    "prodComplexity": 481,
+    "files": 67
   }
 ]

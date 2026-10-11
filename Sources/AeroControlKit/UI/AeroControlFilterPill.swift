@@ -2,29 +2,20 @@ import SwiftUI
 import Common
 
 struct AeroControlFilterPill: View {
-    private struct StripApp {
-        let name: String
-        let icon: NSImage?
-        let summary: String
-        let keys: String
-    }
-
     @Environment(OverviewStore.self) private var state
     @Environment(\.aeroLook) private var look
     let lane: OverviewScene.Lane
 
-    private var app: StripApp? {
-        switch lane {
-        case .notice(let name, let reason): StripApp(name: name, icon: nil, summary: reason, keys: "esc  close")
-        case .app(let name, let bundleId, let summary): StripApp(name: name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: Self.mapKeys)
-        case .keys, .query: nil
-        }
-    }
     private static let mapKeys = "←→↑↓ move · ⏎ focus"
 
     var body: some View {
         Group {
-            if let app { appPill(app) } else if case .query(let query, let miss) = lane { pill(query, miss: miss) } else { keys(Self.mapKeys) }
+            switch lane {
+            case .notice(let name, let reason): appPill(name, icon: nil, summary: reason, keys: "esc  close")
+            case .app(let name, let bundleId, let summary): appPill(name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: Self.mapKeys)
+            case .query(let query, let miss): pill(query, miss: miss)
+            case .keys: keys(Self.mapKeys)
+            }
         }
         .frame(height: AeroControlLayout.pillLane)
     }
@@ -35,21 +26,21 @@ struct AeroControlFilterPill: View {
         .foregroundStyle(look.palette.badgeText.opacity(0.4))
     }
 
-    private func appPill(_ app: StripApp) -> some View {
+    private func appPill(_ name: String, icon: NSImage?, summary: String, keys hint: String) -> some View {
         HStack(spacing: 8) {
-            if let icon = app.icon {
+            if let icon {
                 PixelImage(image: icon, size: CGSize(width: 20, height: 20))
             }
-            Text(app.name)
+            Text(name)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-            Text("· " + app.summary)
+            Text("· " + summary)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .opacity(0.75)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(maxWidth: Self.titleWidth, alignment: .leading)
                 .fixedSize()
-            keys(app.keys).padding(.leading, 12)
+            keys(hint).padding(.leading, 12)
         }
         .capsule(look.palette)
     }

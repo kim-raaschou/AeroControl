@@ -1,6 +1,6 @@
 import Foundation
 
-public struct OverviewModel: Equatable {
+public struct OverviewModel: Equatable, Sendable {
     public var workspaces: [WorkspaceInfo]
     public var focusedWindowId: Int
     public var focusedWorkspace: String

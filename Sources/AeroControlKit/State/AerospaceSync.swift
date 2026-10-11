@@ -12,7 +12,7 @@ final class AerospaceSync {
 
     init(runner: AerospaceProcessRunner) { self.runner = runner }
 
-    func read() async -> Result<OverviewResult, Error> {
+    func read() async -> Result<OverviewModel, Error> {
         do { return .success(try await loadOverview(using: runner)) } catch { return .failure(error) }
     }
 
@@ -46,7 +46,7 @@ final class AerospaceSync {
         if case .focusWindow(let id) = actions.last { await focusAgainIfMissed(id, unlessAfter: mine) }
     }
 
-    func refresh(_ land: @escaping @MainActor (Result<OverviewResult, Error>, _ again: Bool, _ current: @escaping @MainActor () -> Bool) async -> Void) {
+    func refresh(_ land: @escaping @MainActor (Result<OverviewModel, Error>, _ again: Bool, _ current: @escaping @MainActor () -> Bool) async -> Void) {
         generation &+= 1
         let mine = generation
         refreshing?.cancel()
