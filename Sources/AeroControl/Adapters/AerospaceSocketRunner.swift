@@ -91,27 +91,21 @@ enum AerospaceSocket {
 
     static func subscribeStream(socketPath: String, args: [String]) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
-            let handle = SocketHandle()
-            let thread = Thread {
-                do {
-                    let fd = try connectAndHandshake(socketPath)
-                    defer { handle.closeOwned(fd) }
-                    guard handle.register(fd) else { return continuation.finish() }
-                    try writeFrame(fd, encodeRequest(args))
-                    var first = true
-                    while !handle.isCancelled {
-                        let body = try readFrame(fd)
-                        if first, let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
-                        first = false
-                        if let line = String(data: body, encoding: .utf8) { continuation.yield(line) }
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: handle.isCancelled ? nil : error)
-                }
-            }
-            thread.start()
-            continuation.onTermination = { _ in handle.cancel() }
+            Thread {
+                do { try subscribe(socketPath, args) { continuation.yield($0) } } catch { continuation.finish(throwing: error) }
+            }.start()
+        }
+    }
+
+    private static func subscribe(_ socketPath: String, _ args: [String], each: (String) -> Void) throws {
+        let fd = try connectAndHandshake(socketPath)
+        defer { Darwin.close(fd) }
+        try writeFrame(fd, encodeRequest(args))
+        var body = try readFrame(fd)
+        if let answer = try? JSONDecoder().decode(ServerAnswer.self, from: body) { throw answer.failure(args) }
+        while true {
+            if let line = String(data: body, encoding: .utf8) { each(line) }
+            body = try readFrame(fd)
         }
     }
 
@@ -185,35 +179,5 @@ enum AerospaceSocket {
             offset += n
         }
         return buffer
-    }
-}
-
-private final class SocketHandle: @unchecked Sendable {
-    private let lock = NSLock()
-    private var fd: Int32 = -1
-    private var cancelled = false
-
-    var isCancelled: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return cancelled
-    }
-
-    func register(_ value: Int32) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        if cancelled { return false }
-        fd = value
-        return true
-    }
-
-    func cancel() {
-        lock.lock(); defer { lock.unlock() }
-        cancelled = true
-        if fd >= 0 { Darwin.shutdown(fd, SHUT_RDWR) }
-    }
-
-    func closeOwned(_ value: Int32) {
-        lock.lock(); defer { lock.unlock() }
-        fd = -1
-        Darwin.close(value)
     }
 }

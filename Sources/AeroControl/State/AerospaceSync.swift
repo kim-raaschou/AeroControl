@@ -19,11 +19,9 @@ final class AerospaceSync {
         Task.detached(priority: .utility) { [runner] in
             var reconnecting = false
             while true {
-                do {
-                    let stream = runner.subscribe(AerospaceCommand.subscribe)
-                    if reconnecting { await resumed() }
-                    for try await line in stream { if let event = AerospaceEvent.parse(line) { await received(event) } }
-                } catch {}
+                let events = runner.subscribe(AerospaceCommand.subscribe).compactMap(AerospaceEvent.parse)
+                if reconnecting { await resumed() }
+                do { for try await event in events { await received(event) } } catch {}
                 reconnecting = true
                 try? await Task.sleep(for: .seconds(1))
             }

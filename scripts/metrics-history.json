@@ -2239,5 +2239,14 @@
     "complexity": 828,
     "prodComplexity": 467,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-11T14:14:56+02:00",
+    "commit": "3d5aae3",
+    "subject": "Pictures at their tiles' pixels: the overview in 150 ms, not 770",
+    "code": 4538,
+    "complexity": 821,
+    "prodComplexity": 460,
+    "files": 56
   }
 ]
