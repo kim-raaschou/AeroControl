@@ -111,7 +111,7 @@ struct OverviewRoot: View {
                 BackdropBlur()
                 palette.backdrop
             }
-            .opacity(state.visit.strip != nil || state.visit.missingApp != nil ? 0.002 : 1)
+            .opacity(0.6)
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture { state.update { $0.hide(restoreFocus: true) } }
