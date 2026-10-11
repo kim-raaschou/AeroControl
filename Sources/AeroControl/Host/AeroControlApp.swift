@@ -20,7 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: OverviewStore!
     private var overlayManager: OverlayWindowManager!
     private var menuBarController: MenuBarController!
-    private var statusItem: NSStatusItem?
     private var pendingSummon: Summon?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -30,14 +29,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let nativeSystem = NativeApiBridgeAdapter()
 
         state = OverviewStore(runner: runner, nativeSystem: nativeSystem)
-
-
         menuBarController = MenuBarController(onSettingsChanged: { [weak self] in self?.overlayManager.rebuild() },
                                               bridge: nativeSystem)
 
         overlayManager = OverlayWindowManager(state: state)
-
-        installStatusItem()
 
         state.startListening()
 
@@ -47,20 +42,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             pendingSummon = nil
             state.summon(summon)
         }
-    }
-
-    @MainActor private func installStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let button = item.button {
-            let image = NSImage(
-                systemSymbolName: "square.grid.3x3.fill",
-                accessibilityDescription: "AeroControl"
-            )
-            image?.isTemplate = true
-            button.image = image
-        }
-        item.menu = menuBarController.menu
-        statusItem = item
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

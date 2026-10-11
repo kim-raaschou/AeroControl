@@ -78,23 +78,19 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
     func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !ids.isEmpty, var content = await resolvedContent() else { return }
+        if !Set(ids).isSubset(of: content.windows.map { Int($0.windowID) }), let fresh = await Self.shareableContent() { (self.content, content) = (fresh, fresh) }
         let frames = await windowFrames(windowIds: ids)
-        if content.windows.contains(where: { frames[Int($0.windowID)]?.size ?? $0.frame.size != $0.frame.size }),
-           let fresh = await Self.shareableContent() {
-            self.content = fresh
-            content = fresh
-        }
         let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
-        let windows = ids.compactMap { id in byId[id].flatMap { window in sizes[id].map { (window, $0) } } }
+        let windows = ids.compactMap { id in byId[id].flatMap { window in sizes[id].map { (window, frames[id]?.size ?? window.frame.size, $0) } } }
         let started = ContinuousClock.now
         let captured = await withTaskGroup(of: (Int, CGImage)?.self, returning: Int.self) { group in
             var captured = 0
             @MainActor func land(_ landed: (Int, CGImage)?) { if let (id, image) = landed { deliver(id, image); captured += 1 } }
-            for (index, (window, size)) in windows.enumerated() {
+            for (index, (window, frame, size)) in windows.enumerated() {
                 if index >= Self.parallelCaptures, let landed = await group.next() { land(landed) }
                 nonisolated(unsafe) let window = window
                 let id = unsafe Int(window.windowID)
-                group.addTask { unsafe await Self.capture(window, filling: size).map { (id, $0) } }
+                group.addTask { unsafe await Self.capture(window, sized: frame, filling: size).map { (id, $0) } }
             }
             for await landed in group { land(landed) }
             return captured
@@ -103,8 +99,7 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
         log.notice("previews: requested \(ids.count) captured \(captured) in \(Int(ms)) ms")
     }
 
-    private static func capture(_ window: SCWindow, filling size: CGSize) async -> CGImage? {
-        let frame = window.frame
+    private static func capture(_ window: SCWindow, sized frame: CGSize, filling size: CGSize) async -> CGImage? {
         guard frame.width > 1, frame.height > 1 else { return nil }
         let scale = min(max(size.width / frame.width, size.height / frame.height), 1)
         let config = SCStreamConfiguration()

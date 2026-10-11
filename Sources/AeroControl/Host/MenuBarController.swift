@@ -5,13 +5,17 @@ import Common
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let onSettingsChanged: () -> Void
     private let bridge: NativeApiBridge
-    let menu = NSMenu()
+    private let menu = NSMenu()
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
     init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge) {
         self.onSettingsChanged = onSettingsChanged
         self.bridge = bridge
         super.init()
         menu.delegate = self
+        statusItem.button?.image = NSImage(systemSymbolName: "square.grid.3x3.fill", accessibilityDescription: "AeroControl")
+        statusItem.button?.image?.isTemplate = true
+        statusItem.menu = menu
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

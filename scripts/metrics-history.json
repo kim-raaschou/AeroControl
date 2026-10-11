@@ -2257,5 +2257,14 @@
     "complexity": 832,
     "prodComplexity": 464,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-11T16:33:09+02:00",
+    "commit": "41cb839",
+    "subject": "A picture whose tile grows is taken again at its new size",
+    "code": 4552,
+    "complexity": 830,
+    "prodComplexity": 462,
+    "files": 56
   }
 ]
