@@ -64,10 +64,11 @@ between summons, and it asks for no permission except Screen Recording for the p
   there. With a single window the key focuses it.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
-- **Window previews**: each window is captured once per summon (ScreenCaptureKit, works for
-  windows AeroSpace has parked off-screen), at the pixels its tile draws. The overview appears
-  in its final shape with its first card's pictures, at 120 ms at the latest, and the rest land
-  as they are taken — about 150 ms to the overview and 250 ms to the last of eleven pictures. Needs the Screen Recording permission; without
+- **Window previews**: each window is captured when the overview opens (ScreenCaptureKit, works
+  for windows AeroSpace has parked off-screen), at the pixels its tile draws, and again only when
+  its tile grows or its window changes shape. The overview shows at once, about 80 ms after the
+  key, and each card fills when all its pictures are in, the last of fifteen at about 350 ms. A
+  picture fades in once; one taken again takes the old one's place. Needs the Screen Recording permission; without
   it the tiles are plates with their app's icon and the window's title — the overview is built
   around the pictures — and the menu offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.

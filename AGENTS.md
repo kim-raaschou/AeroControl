@@ -132,8 +132,8 @@ on the mirror.
 - Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream
   loses whatever happened meanwhile.
 - `PictureStore.generation`: a capture that finishes after `clear()` is discarded.
-- `AerospaceSocketRunner`: protocol-version handshake, `SocketHandle` fd
-  ownership; blocking syscalls on a private queue, never the cooperative pool.
+- `AerospaceSocketRunner`: protocol-version handshake; blocking syscalls on a private queue,
+  and the subscription on a thread of its own, never the cooperative pool.
 - `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.
 - `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
   meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
