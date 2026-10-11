@@ -156,9 +156,9 @@ public enum AeroControlLayout {
 
     public static func layoutSymbol(rootLayout: String) -> (name: String, help: String)? {
         switch rootLayout {
-        case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side")
-        case "v_tiles": return ("rectangle.split.1x2", "Tiles: windows one above another")
-        case "h_accordion", "v_accordion": return ("rectangle.on.rectangle", "Accordion: windows stacked, one in front")
+        case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side — click to stack them")
+        case "v_tiles": return ("rectangle.split.1x2", "Tiles: windows one above another — click to stack them")
+        case "h_accordion", "v_accordion": return ("rectangle.on.rectangle", "Accordion: windows stacked, one in front — click to tile them")
         default: return nil
         }
     }

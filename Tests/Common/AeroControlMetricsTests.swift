@@ -58,8 +58,8 @@ struct LayoutSymbolTests {
 
     @Test("each says in words what AeroSpace does with the windows")
     func words() {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles")?.help == "Tiles: windows side by side")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles")?.help == "Tiles: windows one above another")
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion")?.help == "Accordion: windows stacked, one in front")
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_tiles")?.help == "Tiles: windows side by side — click to stack them")
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles")?.help == "Tiles: windows one above another — click to stack them")
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion")?.help == "Accordion: windows stacked, one in front — click to tile them")
     }
 }

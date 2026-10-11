@@ -113,6 +113,8 @@ struct AeroControlCardFace: View {
                 Image(systemName: symbol.name)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(look.palette.badgeText.opacity(0.7))
+                    .contentShape(Rectangle())
+                    .onTapGesture { state.send(.action(.toggleLayout(workspace: workspace.name))) }
                     .help(symbol.help)
             }
         }

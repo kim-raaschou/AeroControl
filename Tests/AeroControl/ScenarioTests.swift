@@ -88,6 +88,17 @@ struct ScenarioTests {
         await app.until { app.store.visit.strip?.app == "com.slack" && app.store.pictures.previews[9] != nil }
     }
 
+    @Test("the layout icon on a card switches its workspace between tiles and accordion, keeping the direction, and the card follows")
+    func layoutIconToggles() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 3, layouts: ["1": "v_tiles"])
+        let app = await TestApp.onMap(aero)
+        app.store.send(.action(.toggleLayout(workspace: "1")))
+        await app.until { aero.layout(of: "1") == "v_accordion" && app.scene.cards.first?.workspace.rootLayout == "v_accordion" && app.mirrors(aero) }
+        app.store.send(.action(.toggleLayout(workspace: "1")))
+        await app.until { aero.layout(of: "1") == "v_tiles" && app.scene.cards.first?.workspace.rootLayout == "v_tiles" }
+        #expect(aero.focused == 3 && app.store.visit.visible)
+    }
+
     @Test("a workspace dropped on another moves its windows there in their order and goes along; into an empty one a stack arrives as a stack, set on a tiled window, never a float or a fullscreen one; into one with windows, or from floats alone, no layout comes; onto itself, nothing")
     func merge() async {
         let aero = FakeAeroSpace(["1": [win(9, "Pad", floating: true), win(8, "Film", fullscreen: true), win(1, "Teams"), win(2, "Slack")], "2": [], "3": [win(3, "Code")],
