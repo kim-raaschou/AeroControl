@@ -23,7 +23,10 @@ class OverviewStore {
     func update(_ body: (inout Visit) -> [Visit.Effect]) {
         var next = visit
         let effects = body(&next)
-        if next != visit { visit = next }
+        if next != visit {
+            visit = next
+            Task { await pictures.grow(scene.pictureSizes(scale: screen.scale)) }
+        }
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()

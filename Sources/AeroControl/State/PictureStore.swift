@@ -24,11 +24,11 @@ final class PictureStore {
         self.frames = frames
     }
 
-    private var taken = false
+    private var boxes: [Int: CGSize]?
 
     func take(_ cards: [[Int]], sizes: [Int: CGSize], landed: () -> Void = {}) async {
         generation += 1
-        taken = true
+        boxes = sizes
         let generation = generation
         var waiting = cards.filter { !$0.isEmpty }, arrived: [Int: CGImage] = [:]
         await bridge.windowPreviews(cards.flatMap { $0 }, filling: sizes) { id, image in
@@ -46,19 +46,31 @@ final class PictureStore {
 
     func clear() {
         generation += 1
-        (taken, previews, frames) = (false, [:], [:])
+        (boxes, previews, frames) = (nil, [:], [:])
     }
 
     func settle(_ ids: [Int], sizes: [Int: CGSize], shown: [WorkspaceInfo], retake: Bool) async {
-        guard taken else { return }
+        guard boxes != nil else { return }
         let generation = generation
         let frames = await bridge.windowFrames(windowIds: ids)
         let pictured = previews.mapValues { CGSize(width: $0.width, height: $0.height) }
         let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: pictured, sizes: frames.mapValues(\.size)) : []
         var pictures: [Int: CGImage] = [:]
+        boxes?.merge(sizes.filter { stale.contains($0.key) }) { $1 }
         if !stale.isEmpty { await bridge.windowPreviews(stale, filling: sizes) { pictures[$0] = $1 } }
         guard !Task.isCancelled, generation == self.generation else { return }
         self.frames = frames
+        previews.merge(pictures) { $1 }
+    }
+
+    func grow(_ sizes: [Int: CGSize]) async {
+        let larger = sizes.filter { id, size in boxes?[id].map { size.width > $0.width + 1 || size.height > $0.height + 1 } ?? false }
+        guard !larger.isEmpty else { return }
+        boxes?.merge(larger) { $1 }
+        let generation = generation
+        var pictures: [Int: CGImage] = [:]
+        await bridge.windowPreviews(Array(larger.keys), filling: larger) { pictures[$0] = $1 }
+        guard generation == self.generation else { return }
         previews.merge(pictures) { $1 }
     }
 }
