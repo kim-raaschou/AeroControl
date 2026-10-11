@@ -47,46 +47,37 @@ public struct OverviewScene: Sendable {
     }
 
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
-        let model = visit.model, strip = visit.strip, mine = visit.stripWindows, ring = visit.ringWindowId
-        let usable = AeroControlLayout.usable(available)
+        let model = visit.model, ring = visit.ringWindowId, usable = AeroControlLayout.usable(available)
         (size, ringed, lane) = (usable, ring, Self.lane(visit))
-        func tile(_ w: WindowInfo, _ frame: CGRect, ghost: Bool = false, faded: Bool = false, captioned: Bool = false) -> Tile {
-            Tile(window: w, frame: frame, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId, ghost: ghost,
-                 faded: faded, captioned: captioned,
-                 stacking: ghost ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
-        }
-        func card(_ ws: WorkspaceInfo, _ frame: CGRect, cut: Bool = false, tiles: [Tile]) -> Card {
-            Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
-                 monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: cut, tiles: tiles)
-        }
+        let shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard], offset: CGFloat, filtering: Bool
         if let error {
-            (body, cards, grid, held) = (.error(error), [], [], nil)
+            (body, shown, laid, offset, filtering, held) = (.error(error), [], [], 0, false, nil)
         } else if model.workspaces.isEmpty || visit.missingApp != nil {
-            (body, cards, grid, held) = (.nothing, [], [], nil)
-        } else if let strip, !mine.isEmpty {
-            let groups = visit.stripWorkspaces
-            let laid = AeroControlLayout.stripLayout(groups: groups, bundleId: strip.app ?? "", frames: frames, screens: screens, available: available)
-            let holding = laid.firstIndex { c in strip.centre.map { c.frames[$0] != nil } ?? false }
-            let offset = AeroControlLayout.stripOffset(laid, held: holding ?? 0, viewWidth: usable.width)
-            (body, held, grid) = (.strip, holding, laid.map(\.grid))
-            cards = zip(groups, laid).map { ws, c in
-                let frame = c.frame.offsetBy(dx: offset, dy: 0)
-                return card(ws, frame, cut: frame.minX < 0 || frame.maxX > usable.width,
-                            tiles: ws.windows.compactMap { w in c.frames[w.windowId].map { f in
-                                tile(w, f, ghost: c.ghosts.contains(w.windowId), faded: c.others.contains(w.windowId)) } })
-            }
+            (body, shown, laid, offset, filtering, held) = (.nothing, [], [], 0, false, nil)
+        } else if let strip = visit.strip, !visit.stripWindows.isEmpty {
+            shown = visit.stripWorkspaces
+            laid = AeroControlLayout.stripLayout(groups: shown, bundleId: strip.app ?? "", frames: frames, screens: screens, available: available)
+            held = laid.firstIndex { c in strip.centre.map { c.frames[$0] != nil } ?? false }
+            (body, filtering, offset) = (.strip, false, AeroControlLayout.stripOffset(laid, held: held ?? 0, viewWidth: usable.width))
         } else {
-            let filtered = model.workspaces(holding: visit.matches), filtering = !filtered.isEmpty
-            let shown = filtering ? filtered : model.workspaces
-            let laid = AeroControlLayout.mapLayout(workspaces: shown, frames: frames, screens: screens, available: available, filtering: filtering)
-            (body, held, grid) = (.map, nil, laid.map(\.grid))
-            cards = zip(shown, laid).map { ws, c in
-                card(ws, c.frame, tiles: ws.windows.map { w in
-                    let f = c.frames[w.windowId] ?? .zero
-                    return tile(w, f, ghost: c.ghosts.contains(w.windowId),
-                                captioned: (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight)
-                })
-            }
+            let filtered = model.workspaces(holding: visit.matches)
+            (body, held, offset, filtering) = (.map, nil, 0, !filtered.isEmpty)
+            shown = filtering ? filtered : model.workspaces
+            laid = AeroControlLayout.mapLayout(workspaces: shown, frames: frames, screens: screens, available: available, filtering: filtering)
+        }
+        let captions = body == .map
+        grid = laid.map(\.grid)
+        cards = zip(shown, laid).map { ws, c in
+            let frame = c.frame.offsetBy(dx: offset, dy: 0)
+            let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
+                Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
+                     ghost: c.ghosts.contains(w.windowId), faded: c.others.contains(w.windowId),
+                     captioned: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight,
+                     stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
+            } }
+            return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
+                        monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn,
+                        cut: frame.minX < 0 || frame.maxX > usable.width, tiles: tiles)
         }
     }
 
