@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {

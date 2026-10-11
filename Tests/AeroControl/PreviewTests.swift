@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 // MARK: - Metrics & layout with previews
@@ -11,7 +11,7 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    @Test("pictures are taken first as large as a strip card can be: most of the panel high, the screen's shape, in pixels")
+    @Test("pictures are taken first as large as a strip card can be: 45% of the panel high, the screen's shape, in pixels")
     func captureSize() {
         let wide = CGSize(width: 3440, height: 1440)
         let size = AeroControlLayout.captureSize(available: wide, backingScale: 1, workspaces: 5, strip: true)
@@ -226,26 +226,42 @@ struct StripLayoutTests {
         L.stripLayout(groups: groups, bundleId: bundleId, frames: frames, screens: [1: screen], available: available)
     }
 
-    @Test("one card fills the view's width, up to most of the panel; more each take a 3.5th of it, up to a third of the panel")
+    @Test("a card is at most 45% of the panel high, one or many; more each take a 3.5th of the view's width")
     func cardHeight() {
         func h(_ cards: Int, _ view: CGFloat = 1900) -> CGFloat { L.stripCardHeight(view: view, cards: cards, aspect: 1.6, chrome: 24, panelHeight: 1085) }
-        #expect(h(1) == (1085 * L.tallest).rounded() && h(2) == (1085 * L.tallestOfSeveral).rounded() && h(5) == ((1900 / L.seen - 24) / 1.6).rounded(.down))
+        #expect(L.tallest == 0.45 && h(1) == (1085 * 0.45).rounded() && h(2) == h(1) && h(5) == ((1900 / L.seen - 24) / 1.6).rounded(.down))
         #expect(h(5, 900) == ((900 / L.seen - 24) / 1.6).rounded(.down) && h(3, 900) == ((900 / 3 - 24) / 1.6).rounded(.down))
     }
 
-    @Test("a card that cannot be read is its workspace's screen all the same: every window on it, packed as the map packs them, the other apps' marked")
-    func packedCardIsTheScreen() throws {
+    @Test("a card that cannot be read holds every window on it, packed inside it, the other apps' marked; one window alone fills its height")
+    func packedCardHoldsEveryWindow() throws {
         let stack = ghostty("3", 1...4, [WindowInfo(windowId: 9, appName: "Code", bundleId: "com.Code")])
         let l = layout([stack, ghostty("4", 5...5)])
-        let four = try #require(l.first), box = inner(four)
-        #expect(four.frames == L.packed(stack.windows, frames: [:], screen: screen, inner: box, caption: 0).frames && four.others == [9])
-        #expect(l[0].frame.width == l[1].frame.width && (l[1].frames[5]?.width ?? 0) > box.width * 0.9)
+        let five = try #require(l.first), box = CGRect(origin: .zero, size: inner(five)).insetBy(dx: -0.5, dy: -0.5)
+        #expect(five.frames.count == 5 && five.others == [9] && five.frames.values.allSatisfy { box.contains($0) })
+        #expect((l[1].frames[5]?.height ?? 0) > inner(l[1]).height * 0.9)
+    }
+
+    @Test("a card that cannot be read takes the width the row gives it, not its screen's shape: two windows side by side are each nearly the card's height")
+    func packedCardTakesTheRow() throws {
+        let screenSized = CGRect(x: 0, y: 0, width: 1728, height: 1084)
+        let card = try #require(layout([ghostty("3", 1...2)], frames: [1: screenSized, 2: screenSized]).first)
+        let one = try #require(card.frames[1])
+        #expect(one.height >= inner(card).height * 0.9 && card.frame.width > (inner(card).height * screen.width / screen.height) * 1.5)
+    }
+
+    @Test("two windows in a card that cannot be read always stand in one row, even where stacked would be larger")
+    func twoInARow() throws {
+        let wide = CGRect(x: 0, y: 0, width: 2400, height: 1000)
+        let two = try #require(layout([ghostty("3", 1...1, [WindowInfo(windowId: 9, appName: "Code", bundleId: "com.Code")])], frames: [1: wide, 9: wide]).first)
+        let one = try #require(two.frames[1]), other = try #require(two.frames[9])
+        #expect(one.minY == other.minY && one.maxX <= other.minX)
     }
     private func ghostty(_ ws: String, _ ids: ClosedRange<Int>, _ other: [WindowInfo] = []) -> WorkspaceInfo {
         WorkspaceInfo(name: ws, windows: ids.map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty") } + other, screenIndex: 1, rootLayout: "h_accordion")
     }
 
-    @Test("every card is the map's card: its pictures in its screen's shape at one height, up to a third of the panel, inside the map card's chrome, one gap apart")
+    @Test("every card is the map's card: its pictures in its screen's shape at one height, up to 45% of the panel, inside the map card's chrome, one gap apart")
     func screenShapedCards() {
         let a = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let b = WorkspaceInfo(name: "4", windows: [rected(3, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_tiles")

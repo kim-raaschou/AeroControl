@@ -1,7 +1,7 @@
 import Testing
 @testable import Common
 import Foundation
-@testable import AeroControlKit
+@testable import AeroControl
 
 @Suite("Summon")
 struct SummonTests {

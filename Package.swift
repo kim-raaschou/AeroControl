@@ -10,21 +10,15 @@ let package = Package(
             path: "Sources/Common",
             swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
         ),
-        .target(
-            name: "AeroControlKit",
-            dependencies: ["Common"],
-            path: "Sources/AeroControlKit",
-            swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
-        ),
         .executableTarget(
             name: "AeroControl",
-            dependencies: ["Common", "AeroControlKit"],
-            path: "Sources/AeroControlEntry",
+            dependencies: ["Common"],
+            path: "Sources/AeroControl",
             swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
         ),
         .testTarget(
             name: "AeroControlTests",
-            dependencies: ["Common", "AeroControlKit"],
+            dependencies: ["Common", "AeroControl"],
             path: "Tests",
             swiftSettings: [.swiftLanguageMode(.v6), .strictMemorySafety()]
         )

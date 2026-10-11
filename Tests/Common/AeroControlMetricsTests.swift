@@ -1,7 +1,7 @@
 import Testing
 import Common
 import CoreGraphics
-@testable import AeroControlKit
+@testable import AeroControl
 
 @Suite("AeroControlMetrics")
 struct AeroControlMetricsTests {

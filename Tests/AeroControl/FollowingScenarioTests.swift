@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 @MainActor

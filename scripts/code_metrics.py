@@ -45,10 +45,10 @@ HISTORY = ROOT / "scripts" / "metrics-history.json"
 def layer_for(path: str) -> str:
     """Map a file path to a human-readable architectural layer/area."""
     mapping = [
-        ("Sources/AeroControlEntry/", "App / Entry (windows, lifecycle)"),
-        ("Sources/AeroControlKit/Adapters/", "Kit · Adapters (integrations)"),
-        ("Sources/AeroControlKit/State/", "Kit · State (stores)"),
-        ("Sources/AeroControlKit/UI/", "Kit · UI (SwiftUI views)"),
+        ("Sources/AeroControl/Host/", "App · Host (windows, lifecycle)"),
+        ("Sources/AeroControl/Adapters/", "App · Adapters (integrations)"),
+        ("Sources/AeroControl/State/", "App · State (stores)"),
+        ("Sources/AeroControl/UI/", "App · UI (SwiftUI views)"),
         ("Sources/Common/", "Common (AeroSpace's world, pure)"),
         ("Tests/Live/", LIVE_LAYER),
         ("Tests/", "Tests"),

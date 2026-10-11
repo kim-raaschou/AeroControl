@@ -1,17 +1,17 @@
 import Common
 import SwiftUI
 
-public struct AeroControlPalette: Sendable {
-    public let accent: Color
-    public let cardFill: Color?
-    public let cardBorder: Color
-    public let badgeFill: Color
-    public let badgeText: Color
-    public let focusedBadgeText: Color
-    public let closeButtonFill: Color
-    public let backdrop: Color
+struct AeroControlPalette: Sendable {
+    let accent: Color
+    let cardFill: Color?
+    let cardBorder: Color
+    let badgeFill: Color
+    let badgeText: Color
+    let focusedBadgeText: Color
+    let closeButtonFill: Color
+    let backdrop: Color
 
-    public static func of(_ theme: AeroControlTheme, in scheme: ColorScheme) -> AeroControlPalette {
+    static func of(_ theme: AeroControlTheme, in scheme: ColorScheme) -> AeroControlPalette {
         theme.base.map(derived(from:)) ?? system(scheme)
     }
 
@@ -53,20 +53,20 @@ extension Color {
     }
 }
 
-public struct AeroLook: Sendable {
-    public let palette: AeroControlPalette
-    public let motion: Double
-    public let surface: AeroSurface
-    public init(palette: AeroControlPalette, motion: Double, surface: AeroSurface = .map) { (self.palette, self.motion, self.surface) = (palette, motion, surface) }
+struct AeroLook: Sendable {
+    let palette: AeroControlPalette
+    let motion: Double
+    let surface: AeroSurface
+    init(palette: AeroControlPalette, motion: Double, surface: AeroSurface = .map) { (self.palette, self.motion, self.surface) = (palette, motion, surface) }
 }
 
-public enum AeroSurface: Sendable { case map, strip }
+enum AeroSurface: Sendable { case map, strip }
 
 private struct AeroLookKey: EnvironmentKey {
     static let defaultValue = AeroLook(palette: AeroControlPalette.of(.system, in: .dark), motion: 1)
 }
 
-public extension EnvironmentValues {
+extension EnvironmentValues {
     var aeroLook: AeroLook {
         get { self[AeroLookKey.self] }
         set { self[AeroLookKey.self] = newValue }

@@ -1,14 +1,14 @@
 import SwiftUI
 import Common
 
-public struct AeroControlPanel: View {
+struct AeroControlPanel: View {
     let state: OverviewStore
     @Environment(\.aeroLook) private var look
     @Namespace private var tiles
 
-    public init(state: OverviewStore) { self.state = state }
+    init(state: OverviewStore) { self.state = state }
 
-    public var body: some View {
+    var body: some View {
         let scene = state.scene
         return VStack(spacing: AeroControlLayout.pillGap) {
             switch scene.body {

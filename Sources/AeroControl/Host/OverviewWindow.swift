@@ -1,5 +1,4 @@
 import AppKit
-import AeroControlKit
 import Common
 import OSLog
 import SwiftUI

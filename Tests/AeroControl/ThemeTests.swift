@@ -1,6 +1,6 @@
 import SwiftUI
 import Testing
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 @Suite("Theme")

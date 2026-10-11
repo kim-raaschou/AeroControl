@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-public protocol NativeApiBridge: Sendable {
+protocol NativeApiBridge: Sendable {
     func appIcon(bundleId: String) -> NSImage
     func liveWindow(_ id: Int, pixels: CGSize) -> NSView
 

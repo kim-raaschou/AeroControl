@@ -5,7 +5,6 @@ import Foundation
 final class AerospaceSync {
     private let runner: AerospaceProcessRunner
     private var refreshing: Task<Void, Never>?
-    private var generation = 0
     static let readAfter: Duration = .milliseconds(20)
     static let readAgainAfter: Duration = .milliseconds(300)
     static let focusAgainAfter: Duration = .milliseconds(300)
@@ -46,20 +45,20 @@ final class AerospaceSync {
         if case .focusWindow(let id) = actions.last { await focusAgainIfMissed(id, unlessAfter: mine) }
     }
 
-    func refresh(_ land: @escaping @MainActor (Result<OverviewModel, Error>, _ again: Bool, _ current: @escaping @MainActor () -> Bool) async -> Void) {
-        generation &+= 1
-        let mine = generation
+    func refresh(_ land: @escaping @MainActor (Result<OverviewModel, Error>, _ again: Bool) async -> Void) {
         refreshing?.cancel()
         refreshing = Task {
             for (wait, again) in [(Self.readAfter, false), (Self.readAgainAfter, true)] {
                 try? await Task.sleep(for: wait)
-                guard mine == generation else { return }
-                await land(await read(), again) { mine == self.generation }
+                guard !Task.isCancelled else { return }
+                let read = await read()
+                guard !Task.isCancelled else { return }
+                await land(read, again)
             }
         }
     }
 
-    func stop() { generation &+= 1; refreshing?.cancel() }
+    func stop() { refreshing?.cancel() }
 
     /// WORKAROUND for AeroSpace issue 101, https://github.com/nikitabobko/AeroSpace/issues/101 —
     /// remove once AeroSpace fixes it. Asked to focus a window of an app that has windows on more

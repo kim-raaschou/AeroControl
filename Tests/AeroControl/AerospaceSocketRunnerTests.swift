@@ -2,7 +2,7 @@ import Darwin
 import Foundation
 import Testing
 
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 // Exercises `AerospaceSocketRunner` against a mock AeroSpace server that speaks

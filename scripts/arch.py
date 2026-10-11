@@ -53,10 +53,10 @@ OUT = ROOT / "docs" / "arch.html"
 # keys, the reducer, and the reading of AeroSpace's answers — the functional core the rest is a shell around.
 LAYERS = [
     ("Sources/Common/", "Common"),
-    ("Sources/AeroControlKit/State/", "Kit · State"),
-    ("Sources/AeroControlKit/Adapters/", "Kit · Adapters"),
-    ("Sources/AeroControlKit/UI/", "Kit · UI"),
-    ("Sources/AeroControlEntry/", "App / Entry"),
+    ("Sources/AeroControl/State/", "App · State"),
+    ("Sources/AeroControl/Adapters/", "App · Adapters"),
+    ("Sources/AeroControl/UI/", "App · UI"),
+    ("Sources/AeroControl/Host/", "App · Host"),
 ]
 RANK = {name: i for i, (_, name) in enumerate(LAYERS)}
 # An arrow is drawn between two types when one names the other this often, or it points up a layer, or they name each other.

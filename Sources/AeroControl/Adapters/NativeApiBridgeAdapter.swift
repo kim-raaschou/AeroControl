@@ -6,12 +6,12 @@ import OSLog
 
 private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "previews")
 
-public final class NativeApiBridgeAdapter: NativeApiBridge {
-    public init() {}
+final class NativeApiBridgeAdapter: NativeApiBridge {
+    init() {}
 
     private var iconCache: [String: NSImage] = [:]
 
-    public func appIcon(bundleId: String) -> NSImage {
+    func appIcon(bundleId: String) -> NSImage {
         if let cached = iconCache[bundleId] { return cached }
         let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
         let icon = Self.largeRepresentation(of: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle))
@@ -28,9 +28,9 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return large
     }
 
-    public var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
+    var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
 
-    public func requestPreviewAccess() {
+    func requestPreviewAccess() {
         let granted = CGRequestScreenCaptureAccess()
         log.notice("previews: Screen Recording not granted; requested access -> \(granted)")
     }
@@ -38,7 +38,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
     private var pendingContent: Task<SCShareableContent?, Never>?
     private var content: SCShareableContent?
 
-    public func prepareCapture() {
+    func prepareCapture() {
         guard canCapturePreviews else { return requestPreviewAccess() }
         content = nil
         pendingContent = Task { @MainActor in await Self.shareableContent() }
@@ -55,13 +55,13 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
         return content
     }
 
-    public func liveWindow(_ id: Int, pixels: CGSize) -> NSView {
+    func liveWindow(_ id: Int, pixels: CGSize) -> NSView {
         let view = LiveWindowView()
         Task { unsafe await resolvedContent()?.windows.first { unsafe Int($0.windowID) == id }.map { view.start($0, pixels: pixels) } }
         return view
     }
 
-    public func windowFrames(windowIds: [Int]) async -> [Int: CGRect] {
+    func windowFrames(windowIds: [Int]) async -> [Int: CGRect] {
         guard canCapturePreviews else { return [:] }
         let wanted = Set(windowIds)
         let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -84,7 +84,7 @@ public final class NativeApiBridgeAdapter: NativeApiBridge {
 
     private static let parallelCaptures = 16
 
-    public func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
+    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !windowIds.isEmpty, var content = await resolvedContent() else { return }
         let frames = await windowFrames(windowIds: windowIds)

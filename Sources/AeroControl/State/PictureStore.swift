@@ -2,15 +2,15 @@ import AppKit
 import Common
 
 @MainActor @Observable
-public final class PictureStore {
-    public private(set) var previews: [Int: NSImage] = [:]
-    public private(set) var frames: [Int: CGRect] = [:]
+final class PictureStore {
+    private(set) var previews: [Int: NSImage] = [:]
+    private(set) var frames: [Int: CGRect] = [:]
 
     private let bridge: NativeApiBridge
     init(bridge: NativeApiBridge) { self.bridge = bridge }
 
-    public func icon(for bundleId: String) -> NSImage { bridge.appIcon(bundleId: bundleId) }
-    public func live(_ id: Int, pixels: CGSize) -> NSView { bridge.liveWindow(id, pixels: pixels) }
+    func icon(for bundleId: String) -> NSImage { bridge.appIcon(bundleId: bundleId) }
+    func live(_ id: Int, pixels: CGSize) -> NSView { bridge.liveWindow(id, pixels: pixels) }
 
     private var generation = 0
 
@@ -54,14 +54,14 @@ public final class PictureStore {
         PictureResampler.forget()
     }
 
-    func settle(_ ids: [Int], shown: [WorkspaceInfo], retake: Bool, current: @MainActor () -> Bool) async {
+    func settle(_ ids: [Int], shown: [WorkspaceInfo], retake: Bool) async {
         guard let size = captureSize else { return }
         let generation = generation
         let frames = await bridge.windowFrames(windowIds: ids)
         let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: frames.mapValues(\.size)) : []
         var pictures: [Int: NSImage] = [:]
         if !stale.isEmpty { await bridge.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
-        guard current(), generation == self.generation else { return }
+        guard !Task.isCancelled, generation == self.generation else { return }
         self.frames = frames
         replace(pictures)
     }

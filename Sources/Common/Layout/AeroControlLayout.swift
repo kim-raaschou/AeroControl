@@ -89,10 +89,11 @@ public enum AeroControlLayout {
         }
     }
 
-    static func packed(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize, caption: CGFloat) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
+    static func packed(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize, caption: CGFloat, oneRow: Bool = false) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
         let ratios = ratios(of: windows, sizes: measured.mapValues(\.size), fallback: screenRatio(for: screen?.size ?? inner))
         let gap = packedGap(screen: screen?.size, inner: inner)
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
+        let height = oneRow ? min(inner.height, ((inner.width - gap) / max(0.01, ratios.reduce(0, +))).rounded(.down))
+            : TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
         let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
         let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
         let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
@@ -100,13 +101,12 @@ public enum AeroControlLayout {
         return (frames, [])
     }
 
-    public static let tallest: CGFloat = 0.85
-    public static let tallestOfSeveral: CGFloat = 0.33
+    public static let tallest: CGFloat = 0.45
     public static let seen: CGFloat = 3.5
 
     public static func stripCardHeight(view: CGFloat, cards: Int, aspect: CGFloat, chrome: CGFloat, panelHeight: CGFloat) -> CGFloat {
         let each = view / min(CGFloat(max(1, cards)), seen) - chrome
-        return min((panelHeight * (cards > 1 ? tallestOfSeveral : tallest)).rounded(), (each / max(0.01, aspect)).rounded(.down))
+        return min((panelHeight * tallest).rounded(), (each / max(0.01, aspect)).rounded(.down))
     }
 
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize) -> [LaidCard] {
@@ -114,10 +114,19 @@ public enum AeroControlLayout {
         let aspects = areas.map { $0.width / max(1, $0.height) }, view = usable(available)
         let full = stripCardHeight(view: view.width, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
                                    chrome: 2 * cardPadding + cardGap, panelHeight: view.height)
+        let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
         var x: CGFloat = 0
         return groups.indices.map { g in
-            let inner = CGSize(width: (full * aspects[g]).rounded(), height: full)
-            let laid = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) ?? packed(groups[g].windows, frames: frames, screen: areas[g], inner: inner, caption: 0)
+            var inner = CGSize(width: (full * aspects[g]).rounded(), height: full), laid: (frames: [Int: CGRect], ghosts: Set<Int>)
+            if let tree = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) {
+                laid = tree
+            } else {
+                let packed = packed(groups[g].windows, frames: frames, screen: areas[g], inner: CGSize(width: max(inner.width, room), height: full),
+                                    caption: 0, oneRow: groups[g].windows.count == 2)
+                let used = packed.frames.values.reduce(CGRect.null) { $0.union($1) }
+                inner.width = used.width.rounded(.up)
+                laid = (packed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, packed.ghosts)
+            }
             let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: inner.width + 2 * cardPadding, height: full + cardChrome), frames: laid.frames,
                                 ghosts: laid.ghosts, others: Set(groups[g].windows.filter { $0.bundleId != bundleId }.map(\.windowId)))
             x = card.frame.maxX + cardGap

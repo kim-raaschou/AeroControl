@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 import Foundation
 import Testing
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 /// Against the AeroSpace that is running, with Finder windows made for the test and closed

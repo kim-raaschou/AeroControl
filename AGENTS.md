@@ -84,17 +84,18 @@ fails on any violation.
   `OverviewModel` with its queries and type-to-filter matching, the layout, the keys (`FilterKey.swift`), and the reading of AeroSpace — command argv and response decoding
   (`AerospaceCliParser.swift`, `AerospaceCommands.swift`), the `AerospaceProcessRunner` port. The app
   is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
-- `Sources/AeroControlKit/` — **adapters, state, UI**. `AerospaceSocketRunner` speaks the
-  socket protocol; `AerospaceSync` is everything that talks to AeroSpace through it — the
-  read, the event stream and its reconnect, the commands in order, the debounced refresh and
-  its generation, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) holds the
-  `Visit`, runs its commands and reads through the sync, hands `Visit.Host` effects to the host, and
-  derives the `OverviewScene` from the visit and the screen the host gives it; `PictureStore`, owned by it, keeps the windows'
-  pictures and sizes and talks to the bridge for them; SwiftUI views
-  `AeroControlPanel → WorkspaceCard → AppTile` draw the scene and nothing else of the store's state.
-- `Sources/AeroControlEntry/` — the executable: `OverlayWindowManager` (carries out `Visit.Host`: show,
-  hide, activate, quit, launch, rebuild, capture),
-  `OverviewWindow` (the non-activating panel and its key handling), `MenuBarController`.
+- `Sources/AeroControl/` — **the app: one module around the core**, in four folders. `Adapters/`:
+  `AerospaceSocketRunner` speaks the socket protocol; `NativeApiBridgeAdapter` measures and captures
+  windows. `State/`: `AerospaceSync` is everything that talks to AeroSpace — the read, the event
+  stream and its reconnect, the commands in order, the refresh that reads twice and is cancelled by
+  the next, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) holds the `Visit`,
+  runs its commands, reads and captures, hands `Visit.Host` effects to the host, and derives the
+  `OverviewScene` from the visit and the screen the host gives it; `PictureStore`, owned by it, keeps
+  the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
+  draw the scene and nothing else of the store's state. `Host/`: `OverlayWindowManager` carries out
+  `Visit.Host` (show, hide, activate, quit, launch, rebuild), `OverviewWindow` is the non-activating
+  panel and its key handling, `MenuBarController` the menu and the theme. Tests `@testable import`
+  the app module itself.
 - Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
 
 ### The one-shot model
@@ -122,8 +123,9 @@ on the mirror.
 
 ### Load-bearing defensive code (do not delete as "paranoia")
 
-- `AerospaceSync.refresh` cancel-and-reload with its generation: every event or completed
-  action re-derives truth from AeroSpace; the generation counter drops stale results. There is
+- `AerospaceSync.refresh` cancel-and-reload: every event or completed action re-derives truth
+  from AeroSpace; a newer refresh or the visit's end cancels the old one, and every step after
+  an await checks `Task.isCancelled`, so a stale result is dropped. There is
   **no optimistic local state**.
 - The second read, `readAgainAfter` later: AeroSpace announces a bound key (`binding-triggered`)
   before its command runs, and a new layout announces nothing, so the first read can miss it.

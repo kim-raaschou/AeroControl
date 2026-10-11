@@ -3,24 +3,24 @@ import Common
 import Observation
 
 @MainActor @Observable
-public class OverviewStore {
-    public private(set) var visit = Visit()
+class OverviewStore {
+    private(set) var visit = Visit()
 
     private let sync: AerospaceSync
-    public let pictures: PictureStore
-    public private(set) var error: String?
-    public var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
+    let pictures: PictureStore
+    private(set) var error: String?
+    var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
     private var following = false
-    public var onEffect: ((Visit.Host) -> Void)?
+    var onEffect: ((Visit.Host) -> Void)?
 
-    public var scene: OverviewScene { OverviewScene(visit, error: error, available: screen.available, screens: screen.frames, frames: pictures.frames) }
+    var scene: OverviewScene { OverviewScene(visit, error: error, available: screen.available, screens: screen.frames, frames: pictures.frames) }
 
-    public init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
+    init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.sync = AerospaceSync(runner: runner)
         self.pictures = PictureStore(bridge: nativeSystem)
     }
 
-    public func update(_ body: (inout Visit) -> [Visit.Effect]) {
+    func update(_ body: (inout Visit) -> [Visit.Effect]) {
         var next = visit
         let effects = body(&next)
         if next != visit { visit = next }
@@ -34,25 +34,25 @@ public class OverviewStore {
         }
     }
 
-    public func send(_ input: Visit.Input) { update { $0.apply(input) } }
+    func send(_ input: Visit.Input) { update { $0.apply(input) } }
 
-    @discardableResult public func handle(_ key: FilterKey) -> Bool {
+    @discardableResult func handle(_ key: FilterKey) -> Bool {
         let drawn = scene.grid
         var taken = false
         update { visit in let (handled, effects) = visit.key(key, drawn: drawn); taken = handled; return effects }
         return taken
     }
 
-    public func summon(_ summon: Summon) { let drawn = scene.grid; update { $0.summon(summon, drawn: drawn) } }
+    func summon(_ summon: Summon) { let drawn = scene.grid; update { $0.summon(summon, drawn: drawn) } }
     @ObservationIgnored private var pointer: CGPoint?
-    public func notePointer(_ location: CGPoint) { pointer = location }
-    public func point(_ windowId: Int, at location: CGPoint) {
+    func notePointer(_ location: CGPoint) { pointer = location }
+    func point(_ windowId: Int, at location: CGPoint) {
         guard location != pointer else { return }
         pointer = location
         update { $0.point(windowId); return [] }
     }
 
-    public func endVisit() {
+    func endVisit() {
         following = false
         sync.stop()
         update { $0.end(); return [] }
@@ -68,7 +68,7 @@ public class OverviewStore {
         }
     }
 
-    public func open(_ summon: Summon) async -> Bool {
+    func open(_ summon: Summon) async -> Bool {
         endVisit()
         pictures.prepare()
         await reload()
@@ -78,12 +78,12 @@ public class OverviewStore {
         return visit.visible
     }
 
-    public func capturePreviews() async {
+    func capturePreviews() async {
         let size = AeroControlLayout.captureSize(available: screen.available, backingScale: screen.scale, workspaces: visit.model.workspaces.count, strip: visit.strip != nil)
         await pictures.take(visit.shownWorkspaces.flatMap { $0.windows.map(\.windowId) }, cards: visit.model.workspaces.map { $0.windows.map(\.windowId) }, at: size)
     }
 
-    public func startListening() {
+    func startListening() {
         sync.listen({ event in
             if case .focusChanged(let id?, _) = event { self.update { $0.noteFocus(id); return [] } }
             if self.following { self.send(.event(event)) }
@@ -91,10 +91,10 @@ public class OverviewStore {
     }
 
     private func requestRefresh() {
-        sync.refresh { read, again, current in
+        sync.refresh { read, again in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, retake: again, current: current)
+            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, retake: again)
         }
     }
 }

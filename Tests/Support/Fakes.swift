@@ -1,6 +1,6 @@
 import AppKit
 import Testing
-@testable import AeroControlKit
+@testable import AeroControl
 @testable import Common
 
 /// Native bridge a test can drive: icons and preview capture.

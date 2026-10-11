@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 import Common
-import AeroControlKit
 import OSLog
 
 private let log = Logger(subsystem: "com.aerocontrol.AeroControl", category: "overview")

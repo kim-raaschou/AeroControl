@@ -2221,5 +2221,14 @@
     "complexity": 841,
     "prodComplexity": 477,
     "files": 57
+  },
+  {
+    "timestamp": "2026-10-11T13:10:57+02:00",
+    "commit": "37ce305",
+    "subject": "Simpler architecture: flowdoc goes, five folds that remove a layer each",
+    "code": 4679,
+    "complexity": 845,
+    "prodComplexity": 479,
+    "files": 57
   }
 ]

@@ -137,11 +137,11 @@ struct AeroControlCardFace<Content: View>: View {
 
 }
 
-public enum OverviewDragPayload: Codable, Transferable {
+enum OverviewDragPayload: Codable, Transferable {
     case window(id: Int)
     case workspace(name: String)
 
-    public static var transferRepresentation: some TransferRepresentation {
+    static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .json)
     }
 }

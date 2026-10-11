@@ -181,9 +181,9 @@ put you. For another app's strip, press that app's key.
 Each card is a workspace in its screen's shape, true to AeroSpace's geometry where AeroSpace says
 where the windows are, and on a crowded workspace that is slivers: eighteen windows in `h_tiles`
 get 82 points each. A window on a visible workspace is drawn at its own size, as on the screen; on
-a hidden one at its slot, since in the corner it still has the size it last had. Where it does not (an accordion, a released AeroSpace) the app's windows are
-packed in the card as on the map. One workspace all but fills the screen; several are each at
-most a third of it high. One line under the cards, as high as the map's, names
+a hidden one at its slot, since in the corner it still has the size it last had. Where it does not (an accordion, a released AeroSpace) every window on it is
+packed as on the map, two always in one row, and the card takes the width the row gives it rather than
+its screen's shape. A card is at most 45% of the panel high, one workspace or many. One line under the cards, as high as the map's, names
 the app, how many windows, and the marked window's title, with its workspace when the app spans
 more than one. Pointing at a window marks it, so a sliver is read by pointing at it.
 

@@ -2,14 +2,14 @@ import Common
 import Darwin
 import Foundation
 
-public let aerospaceSocketProtocolVersion: UInt32 = 1
+let aerospaceSocketProtocolVersion: UInt32 = 1
 
-public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError {
+enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError {
     case io(String)
     case protocolMismatch(UInt32)
     case commandFailed(arguments: [String], exitCode: Int32, stderr: String, serverVersion: String?)
 
-    public var description: String {
+    var description: String {
         switch self {
         case .io(let m): "AeroSpace socket: \(m)"
         case .protocolMismatch(let v):
@@ -21,10 +21,10 @@ public enum AerospaceSocketError: Error, CustomStringConvertible, LocalizedError
         }
     }
 
-    public var errorDescription: String? { description }
+    var errorDescription: String? { description }
 }
 
-public struct AerospaceSocketRunner: AerospaceProcessRunner {
+struct AerospaceSocketRunner: AerospaceProcessRunner {
     private let socketPath: String
 
     private static let ioQueue = DispatchQueue(
@@ -32,11 +32,11 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
         attributes: .concurrent
     )
 
-    public init(socketPath: String? = nil) {
+    init(socketPath: String? = nil) {
         self.socketPath = socketPath ?? "/tmp/bobko.aerospace-\(NSUserName()).sock"
     }
 
-    public func run(_ args: [String]) async throws -> String {
+    func run(_ args: [String]) async throws -> String {
         let socketPath = socketPath
         return try await withCheckedThrowingContinuation { continuation in
             Self.ioQueue.async {
@@ -56,7 +56,7 @@ public struct AerospaceSocketRunner: AerospaceProcessRunner {
         return answer.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    public func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
+    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
         AerospaceSocket.subscribeStream(socketPath: socketPath, args: args)
     }
 }
