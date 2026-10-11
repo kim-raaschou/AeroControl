@@ -78,9 +78,9 @@ class OverviewStore {
         return visit.visible
     }
 
-    func capturePreviews() async {
-        let size = AeroControlLayout.captureSize(available: screen.available, backingScale: screen.scale, workspaces: visit.model.workspaces.count, strip: visit.strip != nil)
-        await pictures.take(visit.shownWorkspaces.flatMap { $0.windows.map(\.windowId) }, cards: visit.model.workspaces.map { $0.windows.map(\.windowId) }, at: size)
+    func capturePreviews(landed: () -> Void = {}) async {
+        let scene = scene
+        await pictures.take(scene.cards.map { $0.tiles.map(\.window.windowId) }, sizes: scene.pictureSizes(scale: screen.scale), landed: landed)
     }
 
     func startListening() {
@@ -94,7 +94,8 @@ class OverviewStore {
         sync.refresh { read, again in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), shown: self.visit.shownWorkspaces, retake: again)
+            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), sizes: self.scene.pictureSizes(scale: self.screen.scale),
+                                       shown: self.visit.shownWorkspaces, retake: again)
         }
     }
 }

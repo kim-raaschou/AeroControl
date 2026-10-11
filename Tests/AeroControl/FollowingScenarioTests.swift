@@ -7,7 +7,9 @@ import Testing
 @Suite("Scenarios: following AeroSpace, and the pictures")
 struct FollowingScenarioTests {
     private func reads(_ aero: FakeAeroSpace) -> Int { aero.commands.filter { $0.first == "list-windows" && !$0.contains("--focused") }.count }
-    private func height(_ app: TestApp, _ id: Int) -> CGFloat { app.store.pictures.previews[id]?.size.height ?? 0 }
+    private func shaped(_ app: TestApp, _ id: Int, _ ratio: CGFloat) -> Bool {
+        app.store.pictures.previews[id].map { abs(CGFloat($0.width) / CGFloat($0.height) - ratio) < 0.02 } ?? false
+    }
 
     @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, a focus change is only remembered; shown, every change is read, and an event that changes nothing reads nothing")
     func listening() async {
@@ -87,6 +89,18 @@ struct FollowingScenarioTests {
         #expect(!app.store.visit.visible && app.store.pictures.previews.isEmpty && app.store.pictures.frames.isEmpty)
     }
 
+    @Test("each picture is taken just covering the pixels its tile draws: on the map, and again at the strip's when a strip takes over")
+    func picturesAtTheirTilesPixels() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")], "3": [win(4, "Teams")]], focused: 2)
+        let app = TestApp(aerospace: aero)
+        let drawn = { app.scene.cards.flatMap(\.tiles).allSatisfy { t in app.bridge.filling[t.window.windowId] == CGSize(width: 2 * t.picture.width, height: 2 * t.picture.height) } }
+        await app.open("aerocontrol://workspaces")
+        let onMap = app.bridge.filling[1]
+        #expect(app.scene.body == .map && drawn())
+        await app.open("aerocontrol://app-id=com.teams")
+        await app.until { app.scene.body == .strip && drawn() && app.bridge.filling[1] != onMap }
+    }
+
     @Test("a workspace's pictures land together once all of its windows are taken, in reading order: one that is in waits for those before it")
     func picturesLandByCard() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")], "3": [win(4, "Mail")]], focused: 1)
@@ -119,7 +133,7 @@ struct FollowingScenarioTests {
         await app.until { app.store.pictures.frames[2]?.width == 600 }
         #expect(app.bridge.captured.count == 1)
         await app.until { app.bridge.captured.last == [2] }
-        #expect(height(app, 2) < height(app, 1))
+        #expect(shaped(app, 2, 3) && shaped(app, 1, 1.5))
     }
 
     @Test("a window that resizes in steps is taken again once, after it stops, in its last shape, however many events come on the way")
@@ -150,7 +164,7 @@ struct FollowingScenarioTests {
         app.bridge.holdAfter = nil
         aero.announce()
         app.bridge.release()
-        await app.until { height(app, 2) > 0 && height(app, 2) < height(app, 1) }
+        await app.until { shaped(app, 2, 3) }
     }
 
     @Test("AeroSpace's events coming close together do not hold the sizes back")

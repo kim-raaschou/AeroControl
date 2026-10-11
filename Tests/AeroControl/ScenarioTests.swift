@@ -83,9 +83,9 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")], "3": [win(9, "Slack")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://workspaces")
-        let onMap = app.store.pictures.previews[1]?.size.height ?? 0
+        let onMap = app.store.pictures.previews[1]?.height ?? 0
         await app.open("aerocontrol://app-id=com.teams")
-        await app.until { app.scene.body == .strip && onMap > 0 && (app.store.pictures.previews[1]?.size.height ?? 0) > onMap }
+        await app.until { app.scene.body == .strip && onMap > 0 && (app.store.pictures.previews[1]?.height ?? 0) > onMap }
         await app.open("aerocontrol://workspaces")
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.store.pictures.previews[9] == nil)

@@ -33,16 +33,24 @@ final class FakeBridge: NativeApiBridge {
     private var held: CheckedContinuation<Void, Never>?
     var isHolding: Bool { held != nil }
     func release() { held?.resume(); held = nil }
-    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
-        captured.append(windowIds)
-        for (n, id) in windowIds.enumerated() {
+    /// The pixels each window's picture was asked to fill, last time it was taken.
+    var filling: [Int: CGSize] = [:]
+    func windowPreviews(_ ids: [Int], filling boxes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async {
+        captured.append(ids)
+        for (n, id) in ids.enumerated() {
             if n == holdAfter { await withCheckedContinuation { held = $0 } }
-            guard !blank.contains(id), !Task.isCancelled else { continue }       // a cancelled capture gives nothing, as ScreenCaptureKit's
-            // In the window's shape, as large as fits — like a real capture.
+            guard !blank.contains(id), !Task.isCancelled, let box = boxes[id] else { continue }   // a cancelled capture gives nothing, as ScreenCaptureKit's
+            filling[id] = box
+            // In the window's shape, just covering the box — like a real capture.
             let shape = sizes[id] ?? CGSize(width: 300, height: 200)
-            let scale = min(maxSize.width / shape.width, maxSize.height / shape.height)
-            deliver(id, NSImage(size: CGSize(width: shape.width * scale, height: shape.height * scale)))
+            let scale = max(box.width / shape.width, box.height / shape.height)
+            deliver(id, picture(CGSize(width: shape.width * scale, height: shape.height * scale)))
         }
+    }
+
+    private func picture(_ size: CGSize) -> CGImage {
+        CGContext(data: nil, width: max(1, Int(size.width.rounded())), height: max(1, Int(size.height.rounded())), bitsPerComponent: 8, bytesPerRow: 0,
+                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)!.makeImage()!
     }
 }
 

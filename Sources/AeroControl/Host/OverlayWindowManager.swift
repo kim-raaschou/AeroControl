@@ -42,12 +42,15 @@ final class OverlayWindowManager {
         Task { [weak self] in
             guard let self, await self.state.open(summon) else { return }
             let window = self.replaceWindow()
-            Task { [weak self] in
-                try? await Task.sleep(for: Self.revealAfter)
-                guard let self, self.state.visit.visible, self.window === window else { return }
+            let reveal: @MainActor () -> Void = { [weak self] in
+                guard let self, self.state.visit.visible, self.window === window, !window.isVisible else { return }
                 window.reveal()
             }
-            await self.state.capturePreviews()
+            Task {
+                try? await Task.sleep(for: Self.revealAfter)
+                reveal()
+            }
+            await self.state.capturePreviews(landed: reveal)
         }
     }
 

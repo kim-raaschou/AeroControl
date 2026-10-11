@@ -3,7 +3,7 @@ import Common
 
 @MainActor @Observable
 final class PictureStore {
-    private(set) var previews: [Int: NSImage] = [:]
+    private(set) var previews: [Int: CGImage] = [:]
     private(set) var frames: [Int: CGRect] = [:]
 
     private let bridge: NativeApiBridge
@@ -24,45 +24,41 @@ final class PictureStore {
         self.frames = frames
     }
 
-    private var captureSize: CGSize?
+    private var taken = false
 
-    func take(_ ids: [Int], cards: [[Int]], at size: CGSize) async {
+    func take(_ cards: [[Int]], sizes: [Int: CGSize], landed: () -> Void = {}) async {
         generation += 1
-        captureSize = size
-        let generation = generation, wanted = Set(ids)
-        var waiting = cards.map { $0.filter(wanted.contains) }.filter { !$0.isEmpty }, arrived: [Int: NSImage] = [:]
-        await bridge.windowPreviews(windowIds: ids, maxSize: size) { id, image in
+        taken = true
+        let generation = generation
+        var waiting = cards.filter { !$0.isEmpty }, arrived: [Int: CGImage] = [:]
+        await bridge.windowPreviews(cards.flatMap { $0 }, filling: sizes) { id, image in
             guard generation == self.generation else { return }
             arrived[id] = image
             while let card = waiting.first, card.allSatisfy({ arrived[$0] != nil }) {
                 waiting.removeFirst()
-                replace(arrived.filter { card.contains($0.key) })
+                previews.merge(arrived.filter { card.contains($0.key) }) { $1 }
+                landed()
             }
         }
         guard generation == self.generation else { return }
-        replace(arrived.filter { id, _ in waiting.contains { $0.contains(id) } })
-    }
-
-    private func replace(_ pictures: [Int: NSImage]) {
-        pictures.keys.forEach { PictureResampler.forget(previews[$0]) }
-        previews.merge(pictures) { $1 }
+        previews.merge(arrived.filter { id, _ in waiting.contains { $0.contains(id) } }) { $1 }
     }
 
     func clear() {
         generation += 1
-        (captureSize, previews, frames) = (nil, [:], [:])
-        PictureResampler.forget()
+        (taken, previews, frames) = (false, [:], [:])
     }
 
-    func settle(_ ids: [Int], shown: [WorkspaceInfo], retake: Bool) async {
-        guard let size = captureSize else { return }
+    func settle(_ ids: [Int], sizes: [Int: CGSize], shown: [WorkspaceInfo], retake: Bool) async {
+        guard taken else { return }
         let generation = generation
         let frames = await bridge.windowFrames(windowIds: ids)
-        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: previews.mapValues(\.size), sizes: frames.mapValues(\.size)) : []
-        var pictures: [Int: NSImage] = [:]
-        if !stale.isEmpty { await bridge.windowPreviews(windowIds: stale, maxSize: size) { pictures[$0] = $1 } }
+        let pictured = previews.mapValues { CGSize(width: $0.width, height: $0.height) }
+        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: pictured, sizes: frames.mapValues(\.size)) : []
+        var pictures: [Int: CGImage] = [:]
+        if !stale.isEmpty { await bridge.windowPreviews(stale, filling: sizes) { pictures[$0] = $1 } }
         guard !Task.isCancelled, generation == self.generation else { return }
         self.frames = frames
-        replace(pictures)
+        previews.merge(pictures) { $1 }
     }
 }

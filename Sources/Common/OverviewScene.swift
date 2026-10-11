@@ -20,6 +20,8 @@ public struct OverviewScene: Sendable {
         public let faded: Bool
         public let captioned: Bool
         public let stacking: Double
+
+        public var picture: CGSize { CGSize(width: frame.width, height: frame.height - (captioned ? AeroControlLayout.captionLane : 0)) }
     }
 
     public struct Card: Equatable, Sendable {
@@ -39,6 +41,10 @@ public struct OverviewScene: Sendable {
     public let ringed: Int?
     public let held: Int?
     public let grid: [GridWalk.Card]
+
+    public func pictureSizes(scale: CGFloat) -> [Int: CGSize] {
+        Dictionary(cards.flatMap(\.tiles).map { ($0.window.windowId, CGSize(width: $0.picture.width * scale, height: $0.picture.height * scale)) }) { $1 }
+    }
 
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
         let model = visit.model, strip = visit.strip, mine = visit.stripWindows, ring = visit.ringWindowId

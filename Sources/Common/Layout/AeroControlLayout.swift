@@ -139,16 +139,6 @@ public enum AeroControlLayout {
         return (width > viewWidth ? min(0, max(viewWidth - width, viewWidth / 2 - centre)) : (viewWidth - width) / 2).rounded()
     }
 
-    public static func captureSize(available: CGSize, backingScale: CGFloat, workspaces: Int, strip: Bool) -> CGSize {
-        let height = (available.height * usableScreenFraction * tallest).rounded(.up)
-        var box = CGSize(width: height * screenRatio(for: available), height: height)
-        let usable = usable(available)
-        let cell = CardGrid.lattice(count: max(1, workspaces), in: usable, cellRatio: screenRatio(for: available), gap: cardGap,
-                                    chrome: CGSize(width: 2 * cardPadding, height: cardChrome)).first?.size ?? usable
-        if !strip { box = CGSize(width: min(box.width, inner(of: cell).width), height: min(box.height, inner(of: cell).height)) }
-        return CGSize(width: (box.width * backingScale).rounded(.up), height: (box.height * backingScale).rounded(.up))
-    }
-
     public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
         workspaces.flatMap(\.windows).filter { w in (sizes[w.windowId] ?? w.layoutRect?.size).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
     }

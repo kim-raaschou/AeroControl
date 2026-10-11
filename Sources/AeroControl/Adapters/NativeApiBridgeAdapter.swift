@@ -14,18 +14,9 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
     func appIcon(bundleId: String) -> NSImage {
         if let cached = iconCache[bundleId] { return cached }
         let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
-        let icon = Self.largeRepresentation(of: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle))
+        let icon = url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle)
         iconCache[bundleId] = icon
         return icon
-    }
-
-    static func largeRepresentation(of image: NSImage) -> NSImage {
-        let side: CGFloat = 256
-        let rect = NSRect(x: 0, y: 0, width: side, height: side)
-        guard let rep = image.bestRepresentation(for: rect, context: nil, hints: nil) else { return image }
-        let large = NSImage(size: rect.size)
-        large.addRepresentation(rep)
-        return large
     }
 
     var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
@@ -84,51 +75,48 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
 
     private static let parallelCaptures = 16
 
-    func windowPreviews(windowIds: [Int], maxSize: CGSize, deliver: @MainActor (Int, NSImage) -> Void) async {
+    func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
-        guard !windowIds.isEmpty, var content = await resolvedContent() else { return }
-        let frames = await windowFrames(windowIds: windowIds)
+        guard !ids.isEmpty, var content = await resolvedContent() else { return }
+        let frames = await windowFrames(windowIds: ids)
         if content.windows.contains(where: { frames[Int($0.windowID)]?.size ?? $0.frame.size != $0.frame.size }),
            let fresh = await Self.shareableContent() {
             self.content = fresh
             content = fresh
         }
         let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
-        let windows = windowIds.compactMap { byId[$0] }
+        let windows = ids.compactMap { id in byId[id].flatMap { window in sizes[id].map { (window, $0) } } }
         let started = ContinuousClock.now
-        let captured = await withTaskGroup(of: (Int, NSImage)?.self, returning: Int.self) { group in
+        let captured = await withTaskGroup(of: (Int, CGImage)?.self, returning: Int.self) { group in
             var captured = 0
-            @MainActor func land(_ landed: (Int, NSImage)?) { if let (id, image) = landed { deliver(id, image); captured += 1 } }
-            for (index, window) in windows.enumerated() {
+            @MainActor func land(_ landed: (Int, CGImage)?) { if let (id, image) = landed { deliver(id, image); captured += 1 } }
+            for (index, (window, size)) in windows.enumerated() {
                 if index >= Self.parallelCaptures, let landed = await group.next() { land(landed) }
                 nonisolated(unsafe) let window = window
                 let id = unsafe Int(window.windowID)
-                group.addTask { unsafe await Self.capture(window, maxSize: maxSize).map { (id, $0) } }
+                group.addTask { unsafe await Self.capture(window, filling: size).map { (id, $0) } }
             }
             for await landed in group { land(landed) }
             return captured
         }
         let ms = (ContinuousClock.now - started) / .milliseconds(1)
-        log.notice("previews: requested \(windowIds.count) captured \(captured) in \(Int(ms)) ms")
+        log.notice("previews: requested \(ids.count) captured \(captured) in \(Int(ms)) ms")
     }
 
-    private static func capture(_ window: SCWindow, maxSize: CGSize) async -> NSImage? {
+    private static func capture(_ window: SCWindow, filling size: CGSize) async -> CGImage? {
         let frame = window.frame
         guard frame.width > 1, frame.height > 1 else { return nil }
-        let scale = min(maxSize.width / frame.width, maxSize.height / frame.height, 1)
+        let scale = min(max(size.width / frame.width, size.height / frame.height), 1)
         let config = SCStreamConfiguration()
-        config.width = max(1, Int(frame.width * scale))
-        config.height = max(1, Int(frame.height * scale))
+        config.width = max(1, Int((frame.width * scale).rounded()))
+        config.height = max(1, Int((frame.height * scale).rounded()))
         config.showsCursor = false
-        let filter = SCContentFilter(desktopIndependentWindow: window)
-        let cgImage: CGImage
         do {
-            cgImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            return try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(desktopIndependentWindow: window), configuration: config)
         } catch {
             log.error("previews: capture of window \(window.windowID) failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
-        return NSImage(cgImage: cgImage, size: NSSize(width: frame.width * scale, height: frame.height * scale))
     }
 }
 

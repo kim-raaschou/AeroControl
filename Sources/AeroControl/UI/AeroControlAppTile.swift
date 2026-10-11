@@ -11,7 +11,7 @@ struct AeroControlAppTile: View {
     @State private var isHovering = false
     @Environment(\.displayScale) private var displayScale
 
-    private var preview: NSImage? { state.pictures.previews[tile.window.windowId] }
+    private var preview: CGImage? { state.pictures.previews[tile.window.windowId] }
     private func hoverChanged(_ hovering: Bool) {
         isHovering = hovering
         if hovering { state.point(tile.window.windowId, at: NSEvent.mouseLocation) }
@@ -20,7 +20,7 @@ struct AeroControlAppTile: View {
     private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: tile.frame.width) }
 
     private var contentSize: CGSize {
-        AeroControlMetrics.pixelSnapped(CGSize(width: tile.frame.width, height: tile.frame.height - (tile.captioned ? AeroControlLayout.captionLane : 0)), scale: displayScale)
+        AeroControlMetrics.pixelSnapped(tile.picture, scale: displayScale)
     }
 
     var body: some View {
@@ -74,7 +74,7 @@ struct AeroControlAppTile: View {
         ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
-                PixelImage(image: image, size: AeroControlMetrics.cover(image.size, into: contentSize))
+                PixelImage(image: Image(decorative: image, scale: displayScale), size: AeroControlMetrics.cover(CGSize(width: image.width, height: image.height), into: contentSize))
                     .frame(width: contentSize.width, height: contentSize.height, alignment: .topLeading)
                     .clipShape(plate)
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
@@ -87,7 +87,7 @@ struct AeroControlAppTile: View {
             }
         }
         .overlay(alignment: .bottomLeading) {
-            PixelImage(image: state.pictures.icon(for: tile.window.bundleId), size: CGSize(width: badgeSize, height: badgeSize))
+            PixelImage(image: Image(nsImage: state.pictures.icon(for: tile.window.bundleId)), size: CGSize(width: badgeSize, height: badgeSize))
                 .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                 .padding(badgeSize * 0.2)
         }
@@ -145,15 +145,15 @@ struct AeroControlAppTile: View {
 }
 
 private struct FadingPicture<Content: View>: View {
-    let image: NSImage?
+    let image: CGImage?
     let fade: Double
-    let content: (NSImage) -> Content
+    let content: (CGImage) -> Content
 
-    @State private var shown: NSImage?
-    @State private var under: NSImage?
+    @State private var shown: CGImage?
+    @State private var under: CGImage?
     @State private var arrived = true
 
-    init(image: NSImage?, fade: Double, @ViewBuilder content: @escaping (NSImage) -> Content) {
+    init(image: CGImage?, fade: Double, @ViewBuilder content: @escaping (CGImage) -> Content) {
         self.image = image
         self.fade = fade
         self.content = content

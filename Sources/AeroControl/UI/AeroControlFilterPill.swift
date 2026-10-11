@@ -29,7 +29,7 @@ struct AeroControlFilterPill: View {
     private func appPill(_ name: String, icon: NSImage?, summary: String, keys hint: String) -> some View {
         HStack(spacing: 8) {
             if let icon {
-                PixelImage(image: icon, size: CGSize(width: 20, height: 20))
+                PixelImage(image: Image(nsImage: icon), size: CGSize(width: 20, height: 20))
             }
             Text(name)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))

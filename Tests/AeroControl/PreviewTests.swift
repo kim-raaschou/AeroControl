@@ -11,29 +11,6 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    @Test("pictures are taken first as large as a strip card can be: 45% of the panel high, the screen's shape, in pixels")
-    func captureSize() {
-        let wide = CGSize(width: 3440, height: 1440)
-        let size = AeroControlLayout.captureSize(available: wide, backingScale: 1, workspaces: 5, strip: true)
-        let half = (1440 * AeroControlLayout.usableScreenFraction * AeroControlLayout.tallest).rounded(.up)
-        #expect(size.height == half && abs(size.width - (half * 3440 / 1440).rounded(.up)) <= 1)
-        #expect(abs(AeroControlLayout.captureSize(available: wide, backingScale: 2, workspaces: 5, strip: true).width - 2 * size.width) <= 2)
-    }
-
-    @Test("the map's pictures are taken as large as a card's inner box, the most a tile there draws, never larger than the strip's")
-    func mapCaptureSize() {
-        let laptop = CGSize(width: 1728, height: 1117)
-        let strip = AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 5, strip: true)
-        let map = AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 5, strip: false)
-        let usable = CGSize(width: laptop.width * AeroControlLayout.usableScreenFraction, height: laptop.height * AeroControlLayout.usableScreenFraction)
-        let cell = CardGrid.lattice(count: 5, in: usable, cellRatio: AeroControlLayout.screenRatio(for: laptop), gap: AeroControlLayout.cardGap,
-                                    chrome: CGSize(width: 2 * AeroControlLayout.cardPadding, height: AeroControlLayout.cardChrome))[0].size
-        let inner = AeroControlLayout.inner(of: cell)
-        #expect(abs(map.width - 2 * inner.width) <= 2 && abs(map.height - 2 * inner.height) <= 2)
-        #expect(map.width * map.height < strip.width * strip.height / 2)                // five cards: under half the pixels
-        #expect(AeroControlLayout.captureSize(available: laptop, backingScale: 2, workspaces: 1, strip: false) == strip)   // one card: no larger
-    }
-
     @Test("packed tiles stand one constant apart in the screen's points, scaled to the card, so a packed card reads like one drawn from rects")
     func packedGap() {
         let screen = CGSize(width: 1728, height: 1084), inner = CGSize(width: 1000, height: 500)
@@ -320,55 +297,4 @@ private func framed(_ sizes: [Int: CGSize]) -> [Int: CGRect] { sizes.mapValues {
 
 private func rected(_ id: Int, _ app: String, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> WindowInfo {
     WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", layoutRect: CGRect(x: x, y: y, width: w, height: h))
-}
-
-
-@Suite("a picture at the screen's pixels")
-@MainActor struct PictureResamplerTests {
-    private func image(_ w: Int, _ h: Int) -> CGImage {
-        let context = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
-                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)!
-        context.setFillColor(CGColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: w, height: h))
-        return context.makeImage()!
-    }
-
-    @Test("a capture is scaled to exactly the pixels it is drawn in, once, and kept for that size")
-    func exactPixels() throws {
-        let source = image(1100, 690)
-        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
-        #expect(small.width == 340 && small.height == 213)
-        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) === small)   // cached
-        #expect(PictureResampler.picture(source, pixels: CGSize(width: 1100, height: 690)) === source) // already that size
-        #expect(PictureResampler.picture(source, pixels: .zero) == nil)
-    }
-
-    @Test("a picture taken again takes its scaled copies with it: they are not kept, nor handed to a new picture at its address")
-    func forgottenWhenReplaced() throws {
-        let source = image(1100, 690), other = image(1100, 690)
-        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
-        let kept = try #require(PictureResampler.picture(other, pixels: CGSize(width: 340, height: 213)))
-        PictureResampler.forget(NSImage(cgImage: source, size: .zero))
-        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
-        #expect(PictureResampler.picture(other, pixels: CGSize(width: 340, height: 213)) === kept)       // only its own
-    }
-
-    @Test("closing the overview forgets them with the captures: the next summon takes new ones, and these would never be drawn again")
-    func forgottenOnClose() throws {
-        let source = image(1100, 690)
-        let small = try #require(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)))
-        OverviewStore(runner: FakeAeroSpace(["1": []]), nativeSystem: FakeBridge()).endVisit()
-        #expect(PictureResampler.picture(source, pixels: CGSize(width: 340, height: 213)) !== small)
-    }
-}
-
-@Suite("an app's icon")
-@MainActor struct AppIconTests {
-    @Test("an icon is held as one large picture, the same each time it is asked for, so its exact-size copy can be kept")
-    func iconIsOneStablePicture() throws {
-        let icon = NativeApiBridgeAdapter.largeRepresentation(of: NSWorkspace.shared.icon(for: .applicationBundle))
-        let first = try #require(icon.cgImage(forProposedRect: nil, context: nil, hints: nil))
-        #expect(first.width >= 256 && first.width == first.height)          // 256 points: 512 pixels on a 2x screen
-        #expect(icon.cgImage(forProposedRect: nil, context: nil, hints: nil) === first)
-    }
 }
