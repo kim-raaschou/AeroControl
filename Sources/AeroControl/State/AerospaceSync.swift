@@ -6,7 +6,7 @@ final class AerospaceSync {
     private let runner: AerospaceProcessRunner
     private var refreshing: Task<Void, Never>?
     static let readAfter: Duration = .milliseconds(20)
-    static let readAgainAfter: Duration = .milliseconds(300)
+    static let readAgainAfter: Duration = .milliseconds(150)
     static let focusAgainAfter: Duration = .milliseconds(300)
 
     init(runner: AerospaceProcessRunner) { self.runner = runner }
