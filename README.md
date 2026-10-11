@@ -183,7 +183,7 @@ where the windows are, and on a crowded workspace that is slivers: eighteen wind
 get 82 points each. A window on a visible workspace is drawn at its own size, as on the screen; on
 a hidden one at its slot, since in the corner it still has the size it last had. Where it does not (an accordion, a released AeroSpace) every window on it is
 packed as on the map, two always in one row, and the card takes the width the row gives it rather than
-its screen's shape. A card is at most 45% of the panel high, one workspace or many. One line under the cards, as high as the map's, names
+its screen's shape. Two windows AeroSpace stacks (`v_tiles`) are packed so too, side by side. A card is at most 45% of the panel high, one workspace or many. One line under the cards, as high as the map's, names
 the app, how many windows, and the marked window's title, with its workspace when the app spans
 more than one. Pointing at a window marks it, so a sliver is read by pointing at it.
 

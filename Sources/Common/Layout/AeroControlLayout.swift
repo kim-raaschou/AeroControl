@@ -118,7 +118,8 @@ public enum AeroControlLayout {
         var x: CGFloat = 0
         return groups.indices.map { g in
             var inner = CGSize(width: (full * aspects[g]).rounded(), height: full), laid: (frames: [Int: CGRect], ghosts: Set<Int>)
-            if let tree = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) {
+            let stacked = groups[g].windows.count == 2 && groups[g].rootLayout == "v_tiles"
+            if !stacked, let tree = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) {
                 laid = tree
             } else {
                 let packed = packed(groups[g].windows, frames: frames, screen: areas[g], inner: CGSize(width: max(inner.width, room), height: full),
