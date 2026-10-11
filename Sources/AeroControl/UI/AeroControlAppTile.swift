@@ -147,39 +147,11 @@ struct AeroControlAppTile: View {
 private struct FadingPicture<Content: View>: View {
     let image: CGImage?
     let fade: Double
-    let content: (CGImage) -> Content
-
-    @State private var shown: CGImage?
-    @State private var under: CGImage?
-    @State private var arrived = true
-
-    init(image: CGImage?, fade: Double, @ViewBuilder content: @escaping (CGImage) -> Content) {
-        self.image = image
-        self.fade = fade
-        self.content = content
-        _shown = State(initialValue: image)
-    }
+    @ViewBuilder let content: (CGImage) -> Content
 
     var body: some View {
-        ZStack {
-            if let under { content(under) }
-            Group { if let shown { content(shown) } else { Color.clear } }
-                .opacity(arrived ? 1 : 0)
-                .animation(.smooth(duration: fade), value: arrived)
-        }
-        .onChange(of: image) { _, new in
-            guard let new else { shown = nil; under = nil; return }
-            var faint = Transaction()
-            faint.disablesAnimations = true
-            withTransaction(faint) { under = shown; shown = new; arrived = false }
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(20))
-                guard shown === new else { return }
-                arrived = true
-                try? await Task.sleep(for: .seconds(fade))
-                if shown === new { under = nil }
-            }
-        }
+        ZStack { if let image { content(image).transition(.opacity) } }
+            .animation(.smooth(duration: fade), value: image != nil)
     }
 }
 
