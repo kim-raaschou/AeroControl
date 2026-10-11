@@ -6,7 +6,6 @@ final class OverlayWindowManager {
     private let state: OverviewStore
 
     private var window: OverviewWindow?
-    private static let revealAfter: Duration = .milliseconds(120)
     init(state: OverviewStore) {
         self.state = state
         state.onEffect = { [weak self] in self?.perform($0) }
@@ -41,16 +40,8 @@ final class OverlayWindowManager {
     private func show(_ summon: Summon) {
         Task { [weak self] in
             guard let self, await self.state.open(summon) else { return }
-            let window = self.replaceWindow()
-            let reveal: @MainActor () -> Void = { [weak self] in
-                guard let self, self.state.visit.visible, self.window === window, !window.isVisible else { return }
-                window.reveal()
-            }
-            Task {
-                try? await Task.sleep(for: Self.revealAfter)
-                reveal()
-            }
-            await self.state.capturePreviews(landed: reveal)
+            self.replaceWindow().reveal()
+            await self.state.capturePreviews()
         }
     }
 

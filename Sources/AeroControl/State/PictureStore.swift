@@ -26,7 +26,7 @@ final class PictureStore {
 
     private var boxes: [Int: CGSize]?
 
-    func take(_ cards: [[Int]], sizes: [Int: CGSize], landed: () -> Void = {}) async {
+    func take(_ cards: [[Int]], sizes: [Int: CGSize]) async {
         generation += 1
         boxes = sizes
         let generation = generation
@@ -37,7 +37,6 @@ final class PictureStore {
             while let card = waiting.first, card.allSatisfy({ arrived[$0] != nil }) {
                 waiting.removeFirst()
                 previews.merge(arrived.filter { card.contains($0.key) }) { $1 }
-                landed()
             }
         }
         guard generation == self.generation else { return }

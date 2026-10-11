@@ -79,9 +79,9 @@ class OverviewStore {
         return visit.visible
     }
 
-    func capturePreviews(landed: () -> Void = {}) async {
+    func capturePreviews() async {
         let scene = scene
-        await pictures.take(scene.cards.map { $0.tiles.map(\.window.windowId) }, sizes: scene.pictureSizes(scale: screen.scale), landed: landed)
+        await pictures.take(scene.cards.map { $0.tiles.map(\.window.windowId) }, sizes: scene.pictureSizes(scale: screen.scale))
     }
 
     func startListening() {
