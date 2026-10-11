@@ -16,82 +16,53 @@ import Testing
         await #expect { try await runner.run(["list-workspaces"]) } throws: { "\($0)".contains("AeroSpace is not running") }
     }
 
+    private func served(version: UInt32 = 1, events: [String] = [],
+                        _ answer: @escaping @Sendable ([String: Any]) -> MockAnswer = { _ in MockAnswer(exitCode: 0, stdout: "", stderr: "") }) throws
+        -> (MockAerospaceServer, AerospaceSocketRunner) {
+        let server = try MockAerospaceServer(serverVersion: version, subscribeEvents: events, handle: answer)
+        return (server, AerospaceSocketRunner(socketPath: server.path))
+    }
+
     @Test func runReturnsTrimmedStdoutOnSuccess() async throws {
-        let server = try MockAerospaceServer { _ in
-            MockAnswer(exitCode: 0, stdout: "window one\nwindow two\n", stderr: "")
-        }
+        let (server, runner) = try served { _ in MockAnswer(exitCode: 0, stdout: "window one\nwindow two\n", stderr: "") }
         defer { server.stop() }
-        let runner = AerospaceSocketRunner(socketPath: server.path)
-
-        let output = try await runner.run(["list-windows"])
-
-        #expect(output == "window one\nwindow two")
+        #expect(try await runner.run(["list-windows"]) == "window one\nwindow two")
     }
 
     @Test func runForwardsArgumentsInRequest() async throws {
         let captured = Captured()
-        let server = try MockAerospaceServer { request in
+        let (server, runner) = try served { request in
             captured.set(request)
             return MockAnswer(exitCode: 0, stdout: "ok", stderr: "")
         }
         defer { server.stop() }
-        let runner = AerospaceSocketRunner(socketPath: server.path)
-
         _ = try await runner.run(["move", "left"])
-
         let request = try #require(captured.value)
-        let args = try #require(request["args"] as? [String])
-        #expect(args == ["move", "left"])
-        #expect(request["stdin"] as? String == "")
-        #expect(request["windowId"] is NSNull)
-        #expect(request["workspace"] is NSNull)
+        #expect(request["args"] as? [String] == ["move", "left"] && request["stdin"] as? String == "")
+        #expect(request["windowId"] is NSNull && request["workspace"] is NSNull)
     }
 
     @Test func runThrowsOnNonZeroExit() async throws {
-        let server = try MockAerospaceServer { _ in
-            MockAnswer(exitCode: 3, stdout: "", stderr: "no such workspace")
-        }
+        let (server, runner) = try served { _ in MockAnswer(exitCode: 3, stdout: "", stderr: "no such workspace") }
         defer { server.stop() }
-        let runner = AerospaceSocketRunner(socketPath: server.path)
-
-        await #expect(throws: AerospaceSocketError.self) {
-            try await runner.run(["workspace", "nope"])
-        }
+        await #expect { try await runner.run(["workspace", "nope"]) } throws: { "\($0)".contains("exit 3") && "\($0)".contains("no such workspace") }
     }
 
     @Test func runThrowsOnProtocolMismatch() async throws {
-        let server = try MockAerospaceServer(serverVersion: 999) { _ in
-            MockAnswer(exitCode: 0, stdout: "", stderr: "")
-        }
+        let (server, runner) = try served(version: 999)
         defer { server.stop() }
-        let runner = AerospaceSocketRunner(socketPath: server.path)
-
-        do {
-            _ = try await runner.run(["list-windows"])
-            Issue.record("expected protocolMismatch to throw")
-        } catch let error as AerospaceSocketError {
-            guard case .protocolMismatch(let version) = error else {
-                Issue.record("expected protocolMismatch, got \(error)")
-                return
-            }
-            #expect(version == 999)
-        }
+        await #expect { try await runner.run(["list-windows"]) } throws: { "\($0)".contains("protocol version 999") }
     }
 
     @Test func subscribeStreamsEventLines() async throws {
         let events = [#"{"_event":"focus-changed","windowId":1}"#, #"{"_event":"workspace-changed"}"#]
-        let server = try MockAerospaceServer(subscribeEvents: events) { _ in
-            MockAnswer(exitCode: 0, stdout: "", stderr: "")
-        }
+        let (server, runner) = try served(events: events)
         defer { server.stop() }
-        let runner = AerospaceSocketRunner(socketPath: server.path)
-
         var received: [String] = []
         for try await line in runner.subscribe(["subscribe", "--all"]) {
             received.append(line)
             if received.count == events.count { break }
         }
-
         #expect(received == events)
     }
 }

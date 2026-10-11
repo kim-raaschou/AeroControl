@@ -169,6 +169,12 @@ final class TestApp {
 
     var scene: OverviewScene { store.scene }
 
+    static func onMap(_ aerospace: FakeAeroSpace) async -> TestApp {
+        let app = TestApp(aerospace: aerospace)
+        await app.open("aerocontrol://workspaces")
+        return app
+    }
+
     func open(_ link: String) async {
         store.summon(Summon(URL(string: link)!))
         guard let summon = pending else { return }

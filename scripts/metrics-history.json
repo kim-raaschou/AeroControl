@@ -2284,5 +2284,14 @@
     "complexity": 825,
     "prodComplexity": 456,
     "files": 56
+  },
+  {
+    "timestamp": "2026-10-11T17:45:22+02:00",
+    "commit": "cd9ddc4",
+    "subject": "OverviewScene: each branch picks its cards' layout, the cards are built once",
+    "code": 4458,
+    "complexity": 824,
+    "prodComplexity": 455,
+    "files": 56
   }
 ]

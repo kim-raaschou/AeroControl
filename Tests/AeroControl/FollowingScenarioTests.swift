@@ -37,8 +37,7 @@ struct FollowingScenarioTests {
     @Test("the map is AeroSpace, live: whatever is done in AeroSpace while it is up, a bound key's command run after its event or a focus moved, the map shows as AeroSpace has it")
     func mapIsAeroSpaceLive() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")], "3": []], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         #expect(app.mirrors(aero))
         aero.userFocus(3)
         await app.until { app.mirrors(aero) && aero.focusedWorkspace == "2" }
@@ -72,8 +71,7 @@ struct FollowingScenarioTests {
     @Test("a read that changes nothing redraws nothing; one that changes the windows does")
     func redrawsOnlyChanges() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         let redraws = ModelInvalidationCounter(app.store), measured = app.bridge.measured
         aero.announce()
         await app.until { app.bridge.measured >= measured + 2 }
@@ -128,8 +126,7 @@ struct FollowingScenarioTests {
     @Test("after a move the windows' sizes land at once, and only the window left behind is taken again: larger, as its tile grew, then in its new shape")
     func moveRetakesOnlyChanged() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         #expect(app.bridge.captured == [[1, 2, 3]])
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         app.key(.moveToWorkspace("2"))
@@ -141,8 +138,7 @@ struct FollowingScenarioTests {
     @Test("a window left alone in an accordion keeps its shape, but its tile grows, so it is taken again at the tile's new pixels")
     func leftAloneTakenLarger() async {
         let aero = FakeAeroSpace(["7": [win(1, "Brave"), win(2, "Claude")], "1": [win(3, "Arc")]], focused: 2, layouts: ["7": "h_accordion"])
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         let before = app.bridge.filling[1]
         app.key(.moveToWorkspace("1"))
         await app.until { app.scene.cards.first?.tiles.count == 1 && fills(app, 1) && app.bridge.filling[1] != before }
@@ -151,8 +147,7 @@ struct FollowingScenarioTests {
     @Test("a query that leaves fewer cards draws them larger, and their pictures are taken again to match")
     func filteredTakenLarger() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")], "3": [win(4, "Mail")], "4": [win(5, "Notes")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         let before = app.bridge.filling[3]
         app.type("code")
         await app.until { app.scene.cards.count == 1 && fills(app, 3) && app.bridge.filling[3] != before }
@@ -161,8 +156,7 @@ struct FollowingScenarioTests {
     @Test("a window that resizes in steps is taken again once, after it stops, in its last shape, however many events come on the way")
     func resizingTakenOnce() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         aero.announce()
         for width in [400.0, 500.0, 600.0] {
             try? await Task.sleep(for: .milliseconds(35))
@@ -177,8 +171,7 @@ struct FollowingScenarioTests {
     @Test("a change that comes while pictures are being taken again loses nothing: the next refresh takes them")
     func overlappingRefreshes() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         app.bridge.holdAfter = 0
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         aero.announce()
@@ -192,8 +185,7 @@ struct FollowingScenarioTests {
     @Test("AeroSpace's events coming close together do not hold the sizes back")
     func eventsDoNotHoldSizesBack() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         for _ in 0..<6 {
             aero.announce()
@@ -205,8 +197,7 @@ struct FollowingScenarioTests {
     @Test("a window that appears while the overview is up gets a picture; a refresh that changes nothing takes none")
     func newWindowGetsPicture() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
-        let app = TestApp(aerospace: aero)
-        await app.open("aerocontrol://workspaces")
+        let app = await TestApp.onMap(aero)
         aero.add(win(4, "Slack"), to: "1")
         await app.until { app.bridge.captured.last == [4] }
         let measured = app.bridge.measured
