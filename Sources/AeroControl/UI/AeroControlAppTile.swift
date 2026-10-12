@@ -71,14 +71,15 @@ struct AeroControlAppTile: View {
         ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
-                let shape = CGSize(width: image.width, height: image.height), foreign = !AeroControlLayout.sameShape(shape, contentSize, within: 0.1)
-                PixelImage(image: Image(decorative: image, scale: displayScale), size: foreign ? AeroControlMetrics.fit(shape, into: contentSize) : AeroControlMetrics.cover(shape, into: contentSize))
-                    .frame(width: contentSize.width, height: contentSize.height)
+                PixelImage(image: Image(decorative: image, scale: displayScale), size: AeroControlMetrics.cover(CGSize(width: image.width, height: image.height), into: contentSize))
+                    .frame(width: contentSize.width, height: contentSize.height, alignment: .topLeading)
                     .clipShape(plate)
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
             if tile.ringed {
-                LivePicture { state.pictures.live(tile.window.windowId, pixels: CGSize(width: contentSize.width * displayScale, height: contentSize.height * displayScale)) }
+                let live = AeroControlMetrics.cover(state.pictures.frames[tile.window.windowId]?.size ?? contentSize, into: contentSize)
+                LivePicture { state.pictures.live(tile.window.windowId, pixels: CGSize(width: live.width * displayScale, height: live.height * displayScale)) }
+                    .id([live.width, live.height])
                     .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(plate)
                     .allowsHitTesting(false)
@@ -147,8 +148,8 @@ private struct FadingPicture<Content: View>: View {
     @ViewBuilder let content: (CGImage) -> Content
 
     var body: some View {
-        ZStack { if let image { content(image).id(ObjectIdentifier(image)).transition(.opacity) } }
-            .animation(.smooth(duration: fade), value: image.map(ObjectIdentifier.init))
+        ZStack { if let image { content(image).transition(.opacity) } }
+            .animation(.smooth(duration: fade), value: image != nil)
     }
 }
 

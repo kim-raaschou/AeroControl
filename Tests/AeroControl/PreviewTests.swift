@@ -218,6 +218,14 @@ struct StripLayoutTests {
         #expect((l[1].frames[5]?.height ?? 0) > inner(l[1]).height * 0.9)
     }
 
+    @Test("packed tiles take the shape of AeroSpace's slot, not the window's size, which lags while an app resizes: an accordion's windows are alike")
+    func packedFromTheSlot() throws {
+        let slot = CGRect(x: 16, y: 49, width: 1696, height: 1052)
+        let accordion = WorkspaceInfo(name: "2", windows: (1...3).map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty", layoutRect: slot) }, screenIndex: 1, rootLayout: "h_accordion")
+        let card = try #require(layout([accordion], frames: [1: CGRect(x: 0, y: 0, width: 280, height: 1052)]).first)
+        #expect(Set(card.frames.values.map { ($0.width / $0.height * 100).rounded() }).count == 1)
+    }
+
     @Test("a card takes the width the row gives it, not its screen's shape: two windows side by side are each nearly the card's height")
     func cardTakesTheRow() throws {
         let screenSized = CGRect(x: 0, y: 0, width: 1728, height: 1084)

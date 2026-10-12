@@ -25,7 +25,7 @@ public enum AeroControlLayout {
 
     public static func ratios(of windows: [WindowInfo], sizes: [Int: CGSize], fallback: CGFloat) -> [CGFloat] {
         windows.map { window in
-            guard let size = sizes[window.windowId], size.width > 0, size.height > 0 else { return fallback }
+            guard let size = window.layoutRect?.size ?? sizes[window.windowId], size.width > 0, size.height > 0 else { return fallback }
             return size.width / size.height
         }
     }
@@ -132,9 +132,9 @@ public enum AeroControlLayout {
         return (width > viewWidth ? min(0, max(viewWidth - width, viewWidth / 2 - centre)) : (viewWidth - width) / 2).rounded()
     }
 
-    public static func sameShape(_ picture: CGSize?, _ window: CGSize, within tolerance: CGFloat = 0.02) -> Bool {
+    public static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
         guard let picture, picture.height > 0, window.height > 0 else { return false }
-        return abs(picture.width / picture.height * window.height / window.width - 1) < tolerance
+        return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
     public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {

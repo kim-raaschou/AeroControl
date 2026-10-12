@@ -130,6 +130,7 @@ final class LiveWindowView: NSView, SCStreamOutput {
         (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
         config.minimumFrameInterval = Self.frameInterval
         config.showsCursor = false
+        config.scalesToFit = true
         let stream = unsafe SCStream(filter: SCContentFilter(desktopIndependentWindow: window), configuration: config, delegate: nil)
         try? stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .main)
         self.stream = stream
