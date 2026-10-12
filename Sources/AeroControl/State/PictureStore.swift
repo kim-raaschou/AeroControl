@@ -21,7 +21,8 @@ final class PictureStore {
         let generation = generation
         let frames = await bridge.windowFrames(windowIds: ids)
         guard generation == self.generation else { return }
-        self.frames = frames
+        (self.frames, previews) = (frames, previews.filter { id, picture in
+            frames[id].map { AeroControlLayout.sameShape(CGSize(width: picture.width, height: picture.height), $0.size) } ?? false })
     }
 
     private var boxes: [Int: CGSize]?
@@ -45,7 +46,7 @@ final class PictureStore {
 
     func clear() {
         generation += 1
-        (boxes, previews, frames) = (nil, [:], [:])
+        (boxes, frames) = (nil, [:])
     }
 
     func settle(_ ids: [Int], sizes: [Int: CGSize], shown: [WorkspaceInfo], retake: Bool) async {

@@ -144,7 +144,7 @@ public enum AeroControlLayout {
         workspaces.flatMap(\.windows).filter { w in (sizes[w.windowId] ?? w.layoutRect?.size).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
     }
 
-    static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
+    public static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
         guard let picture, picture.height > 0, window.height > 0 else { return false }
         return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }

@@ -80,7 +80,7 @@ struct FollowingScenarioTests {
         await app.until { redraws.count > 0 }
     }
 
-    @Test("the strip takes its pictures once: every window of its workspaces and nothing else; the map's key opens the map afresh with its own; closing drops them")
+    @Test("the strip takes its pictures once: every window of its workspaces and nothing else; the map's key opens the map afresh with its own; closing keeps them for the next visit")
     func stripPictures() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams"), win(3, "Teams")], "3": [win(7, "Slack")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
@@ -89,7 +89,23 @@ struct FollowingScenarioTests {
         await app.open("aerocontrol://workspaces")
         #expect(app.scene.body == .map && app.bridge.captured.last == [1, 9, 2, 3, 7, 5])
         app.key(.escape)
-        #expect(!app.store.visit.visible && app.store.pictures.previews.isEmpty && app.store.pictures.frames.isEmpty)
+        #expect(!app.store.visit.visible && app.store.pictures.previews.count == 6 && app.store.pictures.frames.isEmpty)
+    }
+
+    @Test("pictures kept from the last visit are on the cards at once; a window that closed, or changed shape, has none until it is taken again")
+    func picturesKeptBetweenVisits() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
+        let app = await TestApp.onMap(aero)
+        app.key(.escape)
+        aero.remove(3)
+        app.bridge.sizes[2] = CGSize(width: 600, height: 200)
+        app.bridge.holdAfter = 0
+        let opening = Task { await app.open("aerocontrol://workspaces") }
+        await app.until { app.bridge.isHolding }
+        #expect(app.store.visit.visible && app.store.pictures.previews.keys.sorted() == [1])
+        app.bridge.release()
+        await opening.value
+        #expect(app.store.pictures.previews.keys.sorted() == [1, 2] && shaped(app, 2, 3))
     }
 
     @Test("each picture is taken just covering the pixels its tile draws: on the map, and again at the strip's when a strip takes over")
@@ -115,14 +131,15 @@ struct FollowingScenarioTests {
         app.bridge.release()
         await opening.value
         #expect(app.store.pictures.previews.keys.sorted() == [1, 2, 3, 4])
-        await app.open("aerocontrol://workspaces")
-        app.bridge.blank = [2]
-        let again = Task { await app.open("aerocontrol://workspaces") }
-        await app.until { app.bridge.isHolding }
-        #expect(app.store.pictures.previews.isEmpty)
-        app.bridge.release()
+        let fresh = TestApp(aerospace: aero)
+        fresh.bridge.blank = [2]
+        fresh.bridge.holdAfter = 3
+        let again = Task { await fresh.open("aerocontrol://workspaces") }
+        await fresh.until { fresh.bridge.isHolding }
+        #expect(fresh.store.pictures.previews.isEmpty)
+        fresh.bridge.release()
         await again.value
-        #expect(app.store.pictures.previews.keys.sorted() == [1, 3, 4])
+        #expect(fresh.store.pictures.previews.keys.sorted() == [1, 3, 4])
     }
 
     @Test("after a move the windows' sizes land at once, and only the window left behind is taken again: larger, as its tile grew, then in its new shape")

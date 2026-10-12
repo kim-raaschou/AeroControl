@@ -104,7 +104,8 @@ Summon → `reload()` reads AeroSpace's whole state → previews are captured �
 appears. One subscription to AeroSpace's event stream (`subscribe`, `--no-send-initial`) lives as
 long as the app. Hidden, it only keeps the order of focus, which decides where a strip opens.
 **While visible** every event means "read again" (`.changed` → `.refresh`), and a focus change
-moves the focus at once. **On hide** previews are dropped and the query is cleared. The windows
+moves the focus at once. **On hide** the query is cleared; the previews are kept, and the next
+visit shows each one whose window still has its shape until its new picture lands. The windows
 themselves always come from commands, never from an event.
 
 ### Rule: true to AeroSpace, live

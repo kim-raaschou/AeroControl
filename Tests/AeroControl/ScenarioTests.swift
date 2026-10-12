@@ -83,9 +83,9 @@ struct ScenarioTests {
         await app.until { app.scene.body == .strip && onMap > 0 && (app.store.pictures.previews[1]?.height ?? 0) > onMap }
         await app.open("aerocontrol://workspaces")
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.store.pictures.previews[9] == nil)
+        #expect(app.bridge.captured.last?.contains(9) == false)
         await app.open("aerocontrol://app-id=com.slack")
-        await app.until { app.store.visit.strip?.app == "com.slack" && app.store.pictures.previews[9] != nil }
+        await app.until { app.store.visit.strip?.app == "com.slack" && app.bridge.captured.last?.contains(9) == true }
     }
 
     @Test("the layout icon on a card switches its workspace between tiles and accordion, keeping the direction, and the card follows")
