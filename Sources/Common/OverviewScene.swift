@@ -17,7 +17,6 @@ public struct OverviewScene: Sendable {
         public let ringed: Bool
         public let origin: Bool
         public let ghost: Bool
-        public let faded: Bool
         public let captioned: Bool
         public let stacking: Double
 
@@ -71,7 +70,7 @@ public struct OverviewScene: Sendable {
             let frame = c.frame.offsetBy(dx: offset, dy: 0)
             let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
                 Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
-                     ghost: c.ghosts.contains(w.windowId), faded: c.others.contains(w.windowId),
+                     ghost: c.ghosts.contains(w.windowId),
                      captioned: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight,
                      stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
             } }

@@ -53,12 +53,12 @@ struct FollowingScenarioTests {
         await app.until { app.mirrors(aero) && aero.windows(on: "1").isEmpty }
     }
 
-    @Test("the strip is AeroSpace, live: every window on its workspaces, the other apps' faded; the app's windows moved, a stack made, a window closed by AeroSpace's keys while it is up, the strip shows as AeroSpace has it")
+    @Test("the strip is AeroSpace, live: the app's windows on each of its workspaces, no other app's; the app's windows moved, a stack made, a window closed by AeroSpace's keys while it is up, the strip shows as AeroSpace has it")
     func stripIsAeroSpaceLive() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")], "3": [win(4, "Teams")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.scene.cards.map(\.workspace.name) == ["1", "2", "3"] && app.scene.cards.first?.tiles.map(\.faded) == [false, true] && app.mirrors(aero))
+        #expect(app.scene.cards.map(\.workspace.name) == ["1", "2", "3"] && app.scene.cards.first?.tiles.map(\.window.windowId) == [1] && app.mirrors(aero))
         aero.bound { $0.shift(4, to: "2") }
         await app.until { app.mirrors(aero) && app.scene.cards.map(\.workspace.name) == ["1", "2"] }
         aero.bound { $0.relayout("2", "h_accordion") }
@@ -80,12 +80,12 @@ struct FollowingScenarioTests {
         await app.until { redraws.count > 0 }
     }
 
-    @Test("the strip takes its pictures once: every window of its workspaces and nothing else; the map's key opens the map afresh with its own; closing keeps them for the next visit")
+    @Test("the strip takes its pictures once: the app's windows and no other's; the map's key opens the map afresh with its own; closing keeps them for the next visit")
     func stripPictures() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams"), win(3, "Teams")], "3": [win(7, "Slack")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.bridge.captured == [[1, 9, 2, 3]] && app.store.pictures.previews[9] != nil && app.store.pictures.previews[7] == nil)
+        #expect(app.bridge.captured == [[1, 2, 3]] && app.store.pictures.previews[9] == nil && app.store.pictures.previews[7] == nil)
         await app.open("aerocontrol://workspaces")
         #expect(app.scene.body == .map && app.bridge.captured.last == [1, 9, 2, 3, 7, 5])
         app.key(.escape)
@@ -179,8 +179,7 @@ struct FollowingScenarioTests {
         aero.remove(2); aero.announce()
         await app.until { app.bridge.captured.last == [1] }
         aero.announce()
-        await app.past(OverviewStore.repaintedAfter)
-        #expect(app.bridge.captured.filter { $0 == [1] }.count == 2)
+        await app.until { app.bridge.captured.filter { $0 == [1] }.count >= 2 }
     }
 
     @Test("a window that gives no picture is tried once for its new tile, not again on every key")

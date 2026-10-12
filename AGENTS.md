@@ -111,13 +111,14 @@ themselves always come from commands, never from an event.
 ### Rule: true to AeroSpace, live
 
 The map and the strip show what AeroSpace shows, while it changes: its layouts, its windows,
-its focused workspace. A change is read again even when AeroSpace announces nothing (a layout
+its focused workspace. The strip shows only the app's windows, packed: it is a picker, the map
+shows the rest. A change is read again even when AeroSpace announces nothing (a layout
 key: `readAgainAfter`). A key that moves the ring or the strip's marking takes AeroSpace's focus
 along, so AeroSpace's own keys act on the window under it, and Escape takes the focus back to
 where the visit began; pointing and typing move only the ring. A feature that would show anything AeroSpace does not, or
 keep AeroSpace somewhere else than the overview shows, needs the user's decision first.
 Tests hold it from the outside: `TestApp.mirrors` checks the cards against the fake AeroSpace
-(their windows, layouts and focused workspace), `mapIsAeroSpaceLive` and `stripIsAeroSpaceLive`
+(their windows, in the strip the app's, layouts and focused workspace), `mapIsAeroSpaceLive` and `stripIsAeroSpaceLive`
 change AeroSpace by bound keys while the overview is up and check the mirror after each, and
 `ringTakesAeroSpaceAlong` keeps AeroSpace with the ring. A scenario that changes AeroSpace ends
 on the mirror.

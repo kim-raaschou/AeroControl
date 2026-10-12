@@ -60,9 +60,6 @@ struct AeroControlAppTile: View {
     private var artwork: some View {
         stack
             .frame(width: contentSize.width, height: contentSize.height)
-            .overlay { if tile.faded { outline } }
-            .saturation(tile.faded ? 0 : 1)
-            .opacity(tile.faded ? Self.fadedOpacity : 1)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .opacity(tile.window.isHidden ? 0.45 : 1)
             .overlay(selectionPlate.allowsHitTesting(false))
@@ -94,12 +91,11 @@ struct AeroControlAppTile: View {
         }
     }
 
-    private static let fadedOpacity: Double = 0.3
     private static let fade: Double = 0.6
 
     private var shadow: (opacity: Double, radius: CGFloat, offset: CGFloat) {
         if tile.window.isFloating { return (0.5, 12, 5) }
-        return (tile.ringed || tile.faded ? 0 : 0.12, 2, 1)
+        return (tile.ringed ? 0 : 0.12, 2, 1)
     }
 
     private var outline: some View {

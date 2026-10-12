@@ -70,10 +70,9 @@ public enum AeroControlLayout {
         public let frame: CGRect
         public let frames: [Int: CGRect]
         public var ghosts: Set<Int> = []
-        public var others: Set<Int> = []
 
         public var grid: GridWalk.Card {
-            (frame, frames.filter { !others.contains($0.key) }.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
+            (frame, frames.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
         }
     }
 
@@ -117,19 +116,12 @@ public enum AeroControlLayout {
         let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
         var x: CGFloat = 0
         return groups.indices.map { g in
-            var inner = CGSize(width: (full * aspects[g]).rounded(), height: full), laid: (frames: [Int: CGRect], ghosts: Set<Int>)
-            let stacked = groups[g].rootLayout == "v_tiles" && groups[g].windows.count == 2 && groups[g].windows.allSatisfy(\.isTiled)
-            if !stacked, let tree = treeLayout(groups[g], frames: frames, screen: areas[g], inner: inner) {
-                laid = tree
-            } else {
-                let packed = packed(groups[g].windows, frames: frames, screen: areas[g], inner: CGSize(width: max(inner.width, room), height: full),
-                                    caption: 0, oneRow: groups[g].windows.count == 2)
-                let used = packed.frames.values.reduce(CGRect.null) { $0.union($1) }
-                inner.width = used.width.rounded(.up)
-                laid = (packed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, packed.ghosts)
-            }
-            let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: inner.width + 2 * cardPadding, height: full + cardChrome), frames: laid.frames,
-                                ghosts: laid.ghosts, others: Set(groups[g].windows.filter { $0.bundleId != bundleId }.map(\.windowId)))
+            let mine = groups[g].windows.filter { $0.bundleId == bundleId }
+            let packed = packed(mine, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full),
+                                caption: 0, oneRow: mine.count == 2)
+            let used = packed.frames.values.reduce(CGRect.null) { $0.union($1) }
+            let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: used.width.rounded(.up) + 2 * cardPadding, height: full + cardChrome),
+                                frames: packed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, ghosts: packed.ghosts)
             x = card.frame.maxX + cardGap
             return card
         }

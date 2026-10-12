@@ -76,10 +76,9 @@ struct AeroControlCardFace: View {
             ZStack(alignment: .topLeading) {
                 ForEach(card.tiles, id: \.window.windowId) { tile in
                     AeroControlAppTile(tile: tile, tiles: tiles)
-                        .allowsHitTesting(!tile.faded)
                         .offset(x: tile.frame.minX, y: tile.frame.minY)
                         .opacity(tile.ghost ? 0.7 : 1)
-                        .zIndex(tile.faded ? 0 : 1 + tile.stacking)
+                        .zIndex(tile.stacking)
                 }
             }
             .frame(width: inner.width, height: inner.height, alignment: .topLeading)

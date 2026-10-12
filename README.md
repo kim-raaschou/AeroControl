@@ -182,14 +182,12 @@ within the app and the strip stands; move it anywhere else with an AeroSpace key
 an empty workspace, and the choice was made there: the strip closes and you are where AeroSpace
 put you. For another app's strip, press that app's key.
 
-Each card is a workspace in its screen's shape, true to AeroSpace's geometry where AeroSpace says
-where the windows are, and on a crowded workspace that is slivers: eighteen windows in `h_tiles`
-get 82 points each. A window on a visible workspace is drawn at its own size, as on the screen; on
-a hidden one at its slot, since in the corner it still has the size it last had. Where it does not (an accordion, a released AeroSpace) every window on it is
-packed as on the map, two always in one row, and the card takes the width the row gives it rather than
-its screen's shape. Two windows AeroSpace stacks (`v_tiles`) are packed so too, side by side. A card is at most 45% of the panel high, one workspace or many. One line under the cards, as high as the map's, names
-the app, how many windows, and the marked window's title, with its workspace when the app spans
-more than one. Pointing at a window marks it, so a sliver is read by pointing at it.
+Each card is one of the app's workspaces and holds the app's windows on it, no other app's: the
+strip asks only which of them, and the map is where a window's neighbours are seen. They are packed
+large, each in its window's own shape, two always in one row, and the card takes the width the row
+gives it. A card is at most 45% of the panel high, one workspace or many. One line under the cards,
+as high as the map's, names the app, how many windows, and the marked window's title, with its
+workspace when the app spans more than one. Pointing at a window marks it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 the arrows are the exception. It handles more — a row that does not fit slides to keep the marked

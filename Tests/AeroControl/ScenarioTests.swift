@@ -26,7 +26,7 @@ struct ScenarioTests {
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.scene.body == .strip && app.scene.cards.map(\.workspace.name) == ["1", "2"])
-        #expect(app.scene.cards.flatMap(\.tiles).map(\.window.windowId) == [1, 9, 2] && app.scene.ringed == 1 && app.store.visit.query.isEmpty)
+        #expect(app.scene.cards.flatMap(\.tiles).map(\.window.windowId) == [1, 2] && app.scene.ringed == 1 && app.store.visit.query.isEmpty)
         app.key(.move(.window(1)))
         app.key(.enter)
         await app.until { aero.focused == 2 }
@@ -315,7 +315,7 @@ struct ScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(2, "Teams"), win(9, "Slack", "Teams standup notes")], "3": [win(3, "Teams")], "4": [win(5, "Code")]], focused: 5)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.scene.cards.flatMap(\.tiles).filter { !$0.faded }.map(\.window.windowId) == [1, 2, 3] && marked(app) == 1)
+        #expect(app.scene.cards.flatMap(\.tiles).map(\.window.windowId) == [1, 2, 3] && marked(app) == 1)
         app.key(.move(.window(1)))
         #expect(marked(app) == 2)
         app.key(.move(.window(1))); app.key(.move(.window(1)))
