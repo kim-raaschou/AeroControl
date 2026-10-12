@@ -62,4 +62,11 @@ struct LayoutSymbolTests {
         #expect(AeroControlLayout.layoutSymbol(rootLayout: "v_tiles")?.help == "Tiles: windows one above another — click to stack them")
         #expect(AeroControlLayout.layoutSymbol(rootLayout: "h_accordion")?.help == "Accordion: windows stacked, one in front — click to tile them")
     }
+
+    @Test("a picture of another shape than its tile, one taken before the window was resized, is shown whole in its own shape, not cut and enlarged; a near fit covers the tile")
+    func foreignPictureFits() {
+        let tile = CGSize(width: 1000, height: 400), half = CGSize(width: 500, height: 400)
+        #expect(!AeroControlLayout.sameShape(half, tile, within: 0.1) && AeroControlMetrics.fit(half, into: tile) == CGSize(width: 500, height: 400))
+        #expect(AeroControlLayout.sameShape(CGSize(width: 960, height: 400), tile, within: 0.1))
+    }
 }

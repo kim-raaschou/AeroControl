@@ -28,6 +28,7 @@ public struct Visit: Equatable {
     public private(set) var recent: [Int] = []
     public private(set) var visible = false
     private var loading = false
+    private var cameFrom: Int?
 
     public init() {}
 
@@ -73,10 +74,10 @@ public struct Visit: Equatable {
         switch key {
         case .move(let step): return move(step, drawn: drawn)
         case .moveToWorkspace(let name): return commandTarget.map { apply(.action(.moveWindow(windowId: $0.windowId, toWorkspace: name))) } ?? []
-        case .close: return commandTarget.map { apply(.action(.closeWindow($0.windowId))) } ?? []
+        case .close: return commandTarget.map { close($0.windowId) } ?? []
         case .quit: return commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? []
         case .enter where missingApp == nil: return enter()
-        case .escape where aside || query.isEmpty: return hide(restoreFocus: true)
+        case .escape where aside || query.isEmpty: return cancel()
         case .character(let c) where strip != nil:
             return FilterKey.workspaceNamed(String(c)).flatMap(stripWorkspaces.map(\.name).firstIndex).map { move(.card($0), drawn: drawn) } ?? []
         case _ where aside: break
@@ -96,16 +97,31 @@ public struct Visit: Equatable {
 
     private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) -> [Effect] {
         marking = (marking ?? Strip(app: nil, marked: ringWindowId, centre: nil)).moved(step, cards: drawn)
-        let ringed = model.workspaces.first { ws in ws.standIn == ringWindowId || ws.windows.contains { $0.windowId == ringWindowId } }?.name
-        guard strip == nil, let ringed, ringed != model.focusedWorkspace else { return [] }
-        return [.run([.focusWorkspace(ringed)], thenRead: false)]
+        return follow()
+    }
+
+    private func close(_ id: Int) -> [Effect] {
+        let ids = model.windows(of: marking).map(\.windowId)
+        let next = marking?.marked != id ? nil : marking?.kept(before: ids, after: ids.filter { $0 != id })?.marked
+        return [.run((next.map { [.focusWindow($0)] } ?? []) + [.closeWindow(id)], thenRead: true)]
+    }
+
+    private func follow() -> [Effect] {
+        guard let ring = ringWindowId, ring != model.focusedWindowId else { return [] }
+        let empty = model.workspaces.first { $0.standIn == ring }?.name
+        return [.run([empty.map(AeroControlAction.focusWorkspace) ?? .focusWindow(ring)], thenRead: false)]
+    }
+
+    public mutating func cancel() -> [Effect] {
+        guard let back = cameFrom, back != model.focusedWindowId || back != ringWindowId, model.window(back) != nil else { return hide(restoreFocus: true) }
+        return hide(restoreFocus: false) + [.run([.focusWindow(back)], thenRead: false)]
     }
 
     public mutating func summon(_ summon: Summon, drawn: [GridWalk.Card]) -> [Effect] {
         guard !loading else { return [] }
         switch summon {
         case _ where !visible: break
-        case .map where strip == nil && missingApp == nil: return hide(restoreFocus: true)
+        case .map where strip == nil && missingApp == nil: return cancel()
         case .app(let ref) where strip != nil && stripWindows.contains(where: ref.matches): return move(.window(1), drawn: drawn)
         default: break
         }
@@ -114,7 +130,7 @@ public struct Visit: Equatable {
     }
 
     public mutating func summoned(_ summon: Summon) -> [Effect] {
-        loading = false
+        (loading, cameFrom) = (false, model.focusedWindowId)
         guard visible, case .app(let ref) = summon else { return [] }
         return open(ref)
     }
@@ -129,7 +145,7 @@ public struct Visit: Equatable {
         case (2, let at?): return apply(.action(.focusWindow(windows[1 - at].windowId)))
         default:
             marking = .opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent)
-            return []
+            return follow()
         }
     }
 
@@ -150,7 +166,7 @@ public struct Visit: Equatable {
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
-    public mutating func noteFocus(_ windowId: Int) { recent = [windowId] + recent.filter { $0 != windowId }.prefix(63) }
+    public mutating func noteFocus(_ windowId: Int) { if !visible { recent = [windowId] + recent.filter { $0 != windowId }.prefix(63) } }
 
     public mutating func end() {
         setQuery("")

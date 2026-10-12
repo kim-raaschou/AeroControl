@@ -49,28 +49,25 @@ final class PictureStore {
         (boxes, frames) = (nil, [:])
     }
 
-    func settle(_ ids: [Int], sizes: [Int: CGSize], shown: [WorkspaceInfo], retake: Bool) async {
-        guard boxes != nil else { return }
+    func settle(_ ids: [Int]) async {
         let generation = generation
         let frames = await bridge.windowFrames(windowIds: ids)
-        let pictured = previews.mapValues { CGSize(width: $0.width, height: $0.height) }
-        let stale = retake ? AeroControlLayout.stale(workspaces: shown, pictures: pictured, sizes: frames.mapValues(\.size)) : []
-        var pictures: [Int: CGImage] = [:]
-        boxes?.merge(sizes.filter { stale.contains($0.key) }) { $1 }
-        if !stale.isEmpty { await bridge.windowPreviews(stale, filling: sizes) { pictures[$0] = $1 } }
         guard !Task.isCancelled, generation == self.generation else { return }
         self.frames = frames
-        previews.merge(pictures) { $1 }
     }
 
-    func grow(_ sizes: [Int: CGSize]) async {
-        let larger = sizes.filter { id, size in boxes?[id].map { size.width > $0.width + 1 || size.height > $0.height + 1 } ?? false }
-        guard !larger.isEmpty else { return }
-        boxes?.merge(larger) { $1 }
+    func retake(_ sizes: [Int: CGSize]) async -> [Int: CGSize] {
+        let changed = sizes.filter { id, size in boxes.map { $0[id] != size } ?? false }
+        if !changed.isEmpty { await shoot(changed) }
+        return changed
+    }
+
+    func shoot(_ changed: [Int: CGSize]) async {
         let generation = generation
         var pictures: [Int: CGImage] = [:]
-        await bridge.windowPreviews(Array(larger.keys), filling: larger) { pictures[$0] = $1 }
+        await bridge.windowPreviews(Array(changed.keys), filling: changed) { pictures[$0] = $1 }
         guard generation == self.generation else { return }
+        boxes?.merge(Task.isCancelled ? changed.filter { pictures[$0.key] != nil } : changed) { $1 }
         previews.merge(pictures) { $1 }
     }
 }

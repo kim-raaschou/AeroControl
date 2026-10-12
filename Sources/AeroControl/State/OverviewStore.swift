@@ -5,6 +5,7 @@ import Observation
 @MainActor @Observable
 class OverviewStore {
     private(set) var visit = Visit()
+    static let repaintedAfter: Duration = .milliseconds(1500)
 
     private let sync: AerospaceSync
     let pictures: PictureStore
@@ -23,10 +24,7 @@ class OverviewStore {
     func update(_ body: (inout Visit) -> [Visit.Effect]) {
         var next = visit
         let effects = body(&next)
-        if next != visit {
-            visit = next
-            if visit.visible { Task { await pictures.grow(scene.pictureSizes(scale: screen.scale)) } }
-        }
+        if next != visit { visit = next }
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()
@@ -41,7 +39,10 @@ class OverviewStore {
     func handle(_ key: FilterKey) {
         let drawn = scene.grid
         update { $0.key(key, drawn: drawn) }
+        Task { _ = await retakePictures() }
     }
+
+    private func retakePictures() async -> [Int: CGSize] { await pictures.retake(scene.pictureSizes(scale: screen.scale)) }
 
     func summon(_ summon: Summon) { let drawn = scene.grid; update { $0.summon(summon, drawn: drawn) } }
     @ObservationIgnored private var pointer: CGPoint?
@@ -94,8 +95,14 @@ class OverviewStore {
         sync.refresh { read, again in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId), sizes: self.scene.pictureSizes(scale: self.screen.scale),
-                                       shown: self.visit.shownWorkspaces, retake: again)
+            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))
+            guard again else { return }
+            let taken = await self.retakePictures()
+            guard !taken.isEmpty else { return }
+            Task {
+                try? await Task.sleep(for: Self.repaintedAfter)
+                await self.pictures.shoot(taken)
+            }
         }
     }
 }

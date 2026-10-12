@@ -128,21 +128,20 @@ struct TreeLayoutTests {
         #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)
     }
 
+    @Test("a window alone on its workspace is drawn in the slot AeroSpace gives it, though the window itself has not been resized to it yet")
+    func aloneInItsSlot() throws {
+        let alone = WorkspaceInfo(name: "9", windows: [rected(1, "GitHub", 16, 49, 1696, 1052)])
+        let laid = try #require(AeroControlLayout.treeLayout(alone, frames: [1: CGRect(x: 0, y: 0, width: 842, height: 1052)], screen: screen, inner: CGSize(width: 1000, height: 600)))
+        let fitted = AeroControlMetrics.fit(screen.size, into: CGSize(width: 1000, height: 600))
+        #expect(abs(laid.frames[1]!.width - fitted.width * 1696 / screen.width) < 1)
+    }
+
     @Test("rects that overlap, an accordion's, cannot be a map: only the front one would show, so the card packs tiles instead")
     func overlappingRectsPackTiles() {
         let same = [rected(1, "Claude", 16, 49, 1696, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
         #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: same), frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
         let padded = [rected(1, "Claude", 46, 49, 1636, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
         #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
-    }
-
-    @Test("a picture is of the window as it is, and stale when the window's own shape no longer fits it; its slot stands in only for a window never measured, and a window with neither is not")
-    func stalePictures() {
-        let tiled = WorkspaceInfo(name: "1", windows: [rected(1, "A", 0, 0, 800, 600), rected(2, "A", 0, 0, 800, 600), rected(5, "A", 0, 0, 800, 600), rected(6, "A", 0, 0, 800, 600)])
-        let floats = WorkspaceInfo(name: "2", windows: [win(3, "A"), win(4, "A")])
-        let pictures = [1: CGSize(width: 400, height: 300), 2: CGSize(width: 400, height: 100), 3: CGSize(width: 400, height: 100), 4: CGSize(width: 400, height: 100), 5: CGSize(width: 400, height: 150), 6: CGSize(width: 400, height: 100)]
-        let sizes = [1: CGSize(width: 800, height: 600), 2: CGSize(width: 800, height: 600), 3: CGSize(width: 800, height: 200), 5: CGSize(width: 1600, height: 600)]
-        #expect(AeroControlLayout.stale(workspaces: [tiled, floats], pictures: pictures, sizes: sizes) == [2, 6])   // 5 refused its slot and its picture fits it as it is; 6 was never measured, so its slot says
     }
 
     @Test("a tiled window without a rect, or none at all (a release AeroSpace), is no map: the card packs tiles")

@@ -142,7 +142,7 @@ struct FollowingScenarioTests {
         #expect(fresh.store.pictures.previews.keys.sorted() == [1, 3, 4])
     }
 
-    @Test("after a move the windows' sizes land at once, and only the window left behind is taken again: larger, as its tile grew, then in its new shape")
+    @Test("after a move every window whose tile changed is taken again, on the workspace it left and the one it joined; one whose tile is the same size keeps its picture")
     func moveRetakesOnlyChanged() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
         let app = await TestApp.onMap(aero)
@@ -150,8 +150,8 @@ struct FollowingScenarioTests {
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         app.key(.moveToWorkspace("2"))
         await app.until { app.store.pictures.frames[2]?.width == 600 }
-        await app.until { shaped(app, 2, 3) }
-        #expect(app.bridge.captured.dropFirst().allSatisfy { $0 == [2] } && shaped(app, 1, 1.5))
+        await app.until { shaped(app, 2, 3) && Set(app.bridge.captured.dropFirst().joined()) == [2, 3] }
+        #expect(shaped(app, 1, 1.5) && shaped(app, 3, 1.5))                                  // 1 is half a card on either workspace
     }
 
     @Test("a window left alone in an accordion keeps its shape, but its tile grows, so it is taken again at the tile's new pixels")
@@ -172,6 +172,29 @@ struct FollowingScenarioTests {
         await app.until { app.scene.cards.count == 1 && fills(app, 3) && app.bridge.filling[3] != before }
     }
 
+    @Test("a window taken again is taken once more a moment later, for an app slow to draw at its new size, even when another change comes in between")
+    func takenOnceMore() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 3)
+        let app = await TestApp.onMap(aero)
+        aero.remove(2); aero.announce()
+        await app.until { app.bridge.captured.last == [1] }
+        aero.announce()
+        await app.past(OverviewStore.repaintedAfter)
+        #expect(app.bridge.captured.filter { $0 == [1] }.count == 2)
+    }
+
+    @Test("a window that gives no picture is tried once for its new tile, not again on every key")
+    func noPictureNotRetried() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 3)
+        let app = await TestApp.onMap(aero)
+        app.bridge.blank = [1]
+        aero.remove(2); aero.announce()
+        await app.until { app.bridge.captured.last == [1] }
+        for _ in 0..<3 { app.key(.move(.window(1))) }
+        await app.past(.milliseconds(200))
+        #expect(app.bridge.captured.filter { $0 == [1] }.count == 1)
+    }
+
     @Test("a window that resizes in steps is taken again once, after it stops, in its last shape, however many events come on the way")
     func resizingTakenOnce() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
@@ -184,7 +207,7 @@ struct FollowingScenarioTests {
         }
         await app.until { app.bridge.captured.count == 2 }
         await app.past(AerospaceSync.readAgainAfter)
-        #expect(app.bridge.captured == [[1, 2], [2]] && app.store.pictures.frames[2]?.width == 600)
+        #expect(app.bridge.captured.count == 2 && app.bridge.captured[1].contains(2) && shaped(app, 2, 3) && app.store.pictures.frames[2]?.width == 600)
     }
 
     @Test("a change that comes while pictures are being taken again loses nothing: the next refresh takes them")
@@ -218,7 +241,7 @@ struct FollowingScenarioTests {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
         let app = await TestApp.onMap(aero)
         aero.add(win(4, "Slack"), to: "1")
-        await app.until { app.bridge.captured.last == [4] }
+        await app.until { app.bridge.captured.last?.contains(4) == true }
         let measured = app.bridge.measured
         aero.announce()
         await app.until { app.bridge.measured >= measured + 2 }

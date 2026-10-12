@@ -173,6 +173,31 @@ struct ScenarioTests {
         #expect(app.scene.body == .strip && app.store.visit.visible)
     }
 
+    @Test("Escape after the window you came from was closed leaves the focus where it is and makes its app active")
+    func escapeAfterOriginClosed() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")]], focused: 1)
+        let app = await TestApp.onMap(aero)
+        app.key(.move(.window(1)))
+        await app.until { aero.focused == 2 }
+        aero.remove(1); aero.announce()
+        await app.until { app.store.visit.model.window(1) == nil }
+        app.key(.escape)
+        #expect(!app.store.visit.visible && !aero.commands.contains(["focus", "--window-id", "1"]) && app.host.last == .activate(bundleId: "com.slack"))
+    }
+
+    @Test("⌘W in the strip focuses the window the marking moves on to before it closes the marked one, so AeroSpace never picks another app and the strip stays")
+    func stripCloseFocusesTheNext() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Teams")], "2": [win(3, "Teams")], "3": [win(5, "Code")]], focused: 5)
+        let app = TestApp(aerospace: aero)
+        await app.open("aerocontrol://app-id=com.teams")
+        let first = marked(app)!
+        await app.until { aero.focused == first }
+        app.key(.close)
+        await app.until { app.store.visit.model.window(first) == nil && marked(app) != first }
+        let focus = aero.commands.lastIndex { $0.first == "focus" }!, close = aero.commands.lastIndex { $0.first == "close" }!
+        #expect(focus < close && aero.focused == marked(app) && app.store.visit.visible)
+    }
+
     @Test("in the strip Enter picks the marked window, and Escape goes back to the window you came from")
     func stripEnterAndEscape() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Teams"), win(3, "Teams")], "2": [win(20, "Code")]], focused: 20)
@@ -186,8 +211,9 @@ struct ScenarioTests {
         aero.userFocus(20)
         await app.until { app.store.visit.recent.first == 20 }
         await app.open("aerocontrol://app-id=com.teams")
+        await app.until { aero.focused != 20 }                                                   // AeroSpace follows the marking
         app.key(.escape)
-        #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.code"))
+        await app.until { !app.store.visit.visible && aero.focused == 20 }                      // and goes back with Escape
     }
 
     @Test("an app with no window is started, and the overview closes; one that will not start is said on the lane")
@@ -262,13 +288,12 @@ struct ScenarioTests {
         #expect(app.scene.ringed == 3)
     }
 
-    @Test("moving the ring onto another workspace takes AeroSpace there, so AeroSpace's own keys act on the workspace in view; within a workspace AeroSpace's focus stays")
+    @Test("AeroSpace's focus follows the ring, within a workspace and onto another, so AeroSpace's own keys act on the window under the ring")
     func ringTakesAeroSpaceAlong() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
         let app = await TestApp.onMap(aero)
         app.key(.move(.window(1)))
-        await app.past(AerospaceSync.readAfter)
-        #expect(app.scene.ringed == 2 && aero.focused == 1)
+        await app.until { app.scene.ringed == 2 && aero.focused == 2 }
         app.key(.move(.window(1)))
         await app.until { aero.focusedWorkspace == "2" && app.store.visit.model.focusedWorkspace == "2" }
         #expect(app.scene.ringed == 3 && app.store.visit.visible && app.scene.cards.map(\.focused) == [false, true])
@@ -329,22 +354,23 @@ struct ScenarioTests {
         await app.until { !app.store.visit.visible && app.host.last == .hide }
     }
 
-    @Test("the strip opens on the app's window used last other than yours, as ⌘` goes back to it; knowing none, on the one after yours, round to the first; its line says how many windows on how many workspaces, and the marked one's title, or the app's name, and workspace")
+    @Test("the strip opens on the app's window used last other than yours, as ⌘` goes back to it; knowing none, on the one after yours, round to the first; AeroSpace follows the marking, and Escape takes it back; its line names the marked window and its workspace")
     func whereTheStripOpens() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams", "standup"), win(2, "Teams")], "2": [win(3, "Teams", "plan")], "3": [win(5, "Code")]], focused: 2)
+        let desk: KeyValuePairs<String, [FakeAeroSpace.Window]> = ["1": [win(1, "Teams", "standup"), win(2, "Teams")], "2": [win(3, "Teams", "plan")], "3": [win(5, "Code")]]
+        let aero = FakeAeroSpace(desk, focused: 2)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
         #expect(marked(app) == 3 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · plan · ws 2"))
-        await app.open("aerocontrol://workspaces")
-        aero.userFocus(3)
-        await app.until { app.store.visit.recent.first == 3 }
+        await app.until { aero.focused == 3 }
+        app.key(.escape)
+        await app.until { aero.focused == 2 && app.store.visit.recent.first == 2 }
+        aero.userFocus(1); aero.userFocus(2)
+        await app.until { app.store.visit.recent.prefix(2) == [2, 1] }
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(marked(app) == 1)
-        await app.open("aerocontrol://workspaces")
-        aero.userFocus(2); aero.userFocus(3)
-        await app.until { app.store.visit.recent.prefix(2) == [3, 2] }
-        await app.open("aerocontrol://app-id=com.teams")
-        #expect(marked(app) == 2 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · Teams · ws 1"))
+        #expect(marked(app) == 1 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · standup · ws 1"))
+        let wrapped = TestApp(aerospace: FakeAeroSpace(desk, focused: 3))
+        await wrapped.open("aerocontrol://app-id=com.teams")
+        #expect(marked(wrapped) == 1)
     }
 
     @Test("pointing marks a window, on the map and in the strip, but only a pointer that moved; in the strip the row stays where it is")

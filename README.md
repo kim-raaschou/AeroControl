@@ -40,8 +40,8 @@ between summons, and it asks for no permission except Screen Recording for the p
   mouse. Starts hidden, summoned by a key bound to `open aerocontrol://workspaces`, dismissed
   as soon as you focus a window or a workspace, or with Escape / a click on the backdrop.
   The ring starts on AeroSpace's focused window and follows every focus change AeroSpace
-  reports, until you press an arrow: then it is yours, and a thin outline keeps showing where
-  AeroSpace's focus is. The window under the ring is live, a stream of it rather than the
+  reports, until you press an arrow: then it is yours, and AeroSpace's focus goes with it, so
+  AeroSpace's own keys act on the window under the ring; Escape takes the focus back. The window under the ring is live, a stream of it rather than the
   picture taken at the summon, on the map and in the strip. See *Keyboard*.
 - A grid that spends the screen on the windows: one card per workspace, in AeroSpace's
   order, every card the same size and the shape of its screen, as GNOME and KWin shape their
@@ -163,8 +163,9 @@ focus: it moves the moment AeroSpace reports a focus change — switch workspace
 AeroSpace key while the map is up and the ring is on the new window before the pictures have
 settled. The arrows take the ring over: ← and → through each workspace's windows as they are
 drawn, which AeroSpace's order within a workspace does not give, then on to the next; ↑ and ↓
-straight up and down as the windows are drawn; from then on AeroSpace's focus is the thin
-outline, as in the strip, and nothing goes to AeroSpace until Enter. Find a window by pointing
+straight up and down as the windows are drawn. AeroSpace's focus goes along with every step,
+so AeroSpace's own keys act on the window under the ring, and Escape takes it back to the
+window you came from. Find a window by pointing
 at it, by typing until it is first, or by walking to it.
 
 **The strip is a picker.** The per-app keys settle three of their
@@ -172,9 +173,9 @@ four cases from AeroSpace's state alone, at once and without a word (none: start
 two and you are in one: the other). The fourth case — two windows from another app, or three
 or more — has no answer without you, and that is the strip: a row of the app's workspaces, a
 marking on the most likely answer (the app's window you used last other than the one you are
-in, or else the one after it), and keys to move it and confirm. The marking is your choice in the making, so it lives
-in the strip, not in AeroSpace, until Enter makes it AeroSpace's focus. Two truths are on
-screen: the ring is the marking, the thin outline is where AeroSpace's focus is now.
+in, or else the one after it), and keys to move it and confirm. AeroSpace's focus follows the marking from the moment the strip
+opens, so AeroSpace's own keys act on the marked window; Enter keeps it there, Escape takes the
+focus back to the window you came from.
 
 A strip is opened only by its app's key. While it is up AeroSpace still decides: move the focus
 within the app and the strip stands; move it anywhere else with an AeroSpace key, another app or
@@ -202,32 +203,32 @@ On the map:
 | Key | Does |
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
-| ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace, AeroSpace going along; an empty one is a stop |
+| ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace, AeroSpace's focus going along; an empty one is a stop |
 | ⌘← ⌘→ | the previous / next workspace's first window, or the empty workspace itself |
 | ⌘↑ ⌘↓ | the first window of the workspace above / below |
 | ⇧⌘ + a key | move the window under the ring to the workspace of that name; a new name creates it |
 | ⌘W | close the window under the ring; the overview stays up |
 | ⌘Q | quit the app under the ring; the overview stays up |
-| ⏎ | focus the window under the ring; on an empty workspace, switch to it |
-| Esc | clear the query; on an empty query, dismiss |
+| ⏎ | close on the window under the ring; on an empty workspace, switch to it |
+| Esc | clear the query; on an empty query, dismiss, back on the window you came from |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
 word in the window's title, app name or workspace name, taken together. A query that matches nothing leaves the full map
 standing and says so. Without a query the ring is on AeroSpace's focused window until a key
-moves it. A key that moves the ring onto another workspace takes AeroSpace there too, so
-AeroSpace's own keys, a layout key say, act on the workspace in view. Pointing moves only the ring.
+moves it. A key that moves the ring takes AeroSpace's focus along, so AeroSpace's own keys, a
+layout or a move key say, act on the window under the ring. Pointing and typing move only the ring.
 
 In the strip the keys move the marking as they move the ring on the map, the strip being one row of cards:
 
 | Key | Does |
 |---|---|
-| ← → ↑ ↓ | move the marking through the app's windows, on to the next workspace |
+| ← → ↑ ↓ | move the marking through the app's windows, on to the next workspace, AeroSpace's focus going along |
 | ⌘← ⌘→ | the previous / next workspace, the row sliding with it |
 | a workspace's name | move the marking to that workspace: 3 for 3, 0 for 10 |
 | ⇧⌘ + a key | move the marked window to the workspace of that name; a new name creates it |
 | ⌘W / ⌘Q | close the marked window / quit its app; the marking moves on |
 | the app's key again | move the marking on, as ⌘` does |
-| ⏎ | focus the marked window |
+| ⏎ | close on the marked window |
 | Esc | dismiss, back on the window you came from |
 
 There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.

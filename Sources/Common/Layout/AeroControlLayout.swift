@@ -45,7 +45,7 @@ public enum AeroControlLayout {
         let ghosts = windows.filter { !$0.isTiled }.map(\.windowId)
         let tiled = windows.filter(\.isTiled)
         let rects = tiled.compactMap(\.layoutRect)
-        guard windows.count >= 2, !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
+        guard !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
               !rects.indices.contains(where: { i in rects.indices.contains { j in
                   j > i && rects[i].intersection(rects[j]).width > 2 && rects[i].intersection(rects[j]).height > 2 } })
         else { return nil }
@@ -140,13 +140,9 @@ public enum AeroControlLayout {
         return (width > viewWidth ? min(0, max(viewWidth - width, viewWidth / 2 - centre)) : (viewWidth - width) / 2).rounded()
     }
 
-    public static func stale(workspaces: [WorkspaceInfo], pictures: [Int: CGSize], sizes: [Int: CGSize]) -> [Int] {
-        workspaces.flatMap(\.windows).filter { w in (sizes[w.windowId] ?? w.layoutRect?.size).map { !sameShape(pictures[w.windowId], $0) } ?? false }.map(\.windowId)
-    }
-
-    public static func sameShape(_ picture: CGSize?, _ window: CGSize) -> Bool {
+    public static func sameShape(_ picture: CGSize?, _ window: CGSize, within tolerance: CGFloat = 0.02) -> Bool {
         guard let picture, picture.height > 0, window.height > 0 else { return false }
-        return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
+        return abs(picture.width / picture.height * window.height / window.width - 1) < tolerance
     }
 
     public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {

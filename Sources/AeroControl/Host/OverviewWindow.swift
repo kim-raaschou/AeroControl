@@ -114,7 +114,7 @@ struct OverviewRoot: View {
             .opacity(0.6)
             .ignoresSafeArea()
             .contentShape(Rectangle())
-            .onTapGesture { state.update { $0.hide(restoreFocus: true) } }
+            .onTapGesture { state.update { $0.cancel() } }
             AeroControlPanel(state: state)
         }
         .environment(\.aeroLook, AeroLook(palette: palette, motion: motion))
