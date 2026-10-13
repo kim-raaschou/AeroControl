@@ -30,4 +30,10 @@ public enum GridWalk {
         let key = { (r: CGRect) in (-inLine(r), abs(r.midY - at.midY), abs(r.midX - at.midX), r.minX) }
         return frames.filter { ($0.value.midY - at.midY) * CGFloat(d) > at.height / 2 }.min { key($0.value) < key($1.value) }?.key
     }
+
+    public static func step(from id: Int, columns d: Int, frames: [Int: CGRect]) -> Int? {
+        guard let at = frames[id] else { return nil }
+        let level = frames.filter { min($0.value.maxY, at.maxY) > max($0.value.minY, at.minY) }
+        return step(from: id, rows: d, frames: level.mapValues { CGRect(x: $0.minY, y: $0.minX, width: $0.height, height: $0.width) })
+    }
 }

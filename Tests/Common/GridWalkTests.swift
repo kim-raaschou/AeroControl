@@ -30,6 +30,14 @@ struct GridWalkTests {
         #expect(GridWalk.step(from: 1, rows: 1, frames: beside) == 3)                      // straight down into C, not across into B
     }
 
+    @Test("← and → go to the nearest window level with it, across into the next card; above or below is not level, so past the row's end nothing, and the reading order goes on")
+    func leftAndRight() {
+        let stack = [1: CGRect(x: 0, y: 0, width: 300, height: 100), 2: CGRect(x: 0, y: 110, width: 140, height: 30), 3: CGRect(x: 0, y: 150, width: 140, height: 30),
+                     4: CGRect(x: 160, y: 110, width: 140, height: 70), 5: CGRect(x: 400, y: 150, width: 90, height: 30)]   // a stack beside a tall window, a card further right
+        #expect(GridWalk.step(from: 2, columns: 1, frames: stack) == 4 && GridWalk.step(from: 4, columns: -1, frames: stack) == 2 && GridWalk.step(from: 4, columns: 1, frames: stack) == 5)
+        #expect(GridWalk.step(from: 1, columns: 1, frames: stack) == nil && GridWalk.step(from: 3, columns: -1, frames: stack) == nil)
+    }
+
     @Test("⌘'s keys go 1–9, then the letters, over the windows in the order drawn: card by card, row by row; an empty card has none; thirty-three in all, none of them ⌘W's or ⌘Q's")
     func picks() {
         let picks = GridWalk.picks(cards)

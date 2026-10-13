@@ -26,7 +26,7 @@ public struct Strip: Equatable, Sendable {
         let frames = cards.reduce(into: [Int: CGRect]()) { $0.merge($1.windows) { a, _ in a } }
         let to: Int?
         switch move {
-        case .window(let d): to = Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] }
+        case .window(let d): to = marked.flatMap { GridWalk.step(from: $0, columns: d, frames: frames) } ?? Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] }
         case .row(let d): to = marked.flatMap { GridWalk.step(from: $0, rows: d, frames: frames) }
         case .workspace(let d):
             let held = Array(Set(ids.compactMap(card))).sorted()
