@@ -118,12 +118,12 @@ struct FilterKeyCodeTests {
 
 @Suite("FilterKey(command:)")
 struct FilterKeyCommandTests {
-    @Test("⌘ with an arrow is a workspace along; ⌘W closes and ⌘Q quits; ⌘ with 1–9 or a–f picks; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
+    @Test("⌘ with an arrow is a workspace along; ⌘W closes and ⌘Q quits; ⌘ with 1–9 or a letter but q and w picks; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
         ("1", false, FilterKey.pick("1") as FilterKey?),
         ("a", false, .pick("a")),
-        ("f", false, .pick("f")),
         ("0", false, nil),                        // 1–9, then a–f: no 0
-        ("g", false, nil),
+        ("z", false, .pick("z")),
+        ("o", false, .pick("o")),
         ("q", false, .quit),
         ("w", false, .close),
         ("", false, nil),
