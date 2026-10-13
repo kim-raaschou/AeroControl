@@ -17,6 +17,7 @@ class OverviewWindow: NSPanel {
     private var fade: TimeInterval { Self.fadeDuration * motion }
     let targetScreen: NSScreen
     var onKey: ((FilterKey) -> Void)?
+    var onCommand: ((Bool) -> Void)?
     private var isDismissing = false
 
     init(targetScreen: NSScreen) {
@@ -48,6 +49,10 @@ class OverviewWindow: NSPanel {
         guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
         FilterKey(command: key, shift: modifiers.contains(.shift)).map { onKey?($0) }
         return true
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        onCommand?(event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command && [54, 55].contains(event.keyCode))
     }
 
     override func keyDown(with event: NSEvent) {

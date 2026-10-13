@@ -32,6 +32,19 @@ struct ScenarioTests {
         await app.until { aero.focused == 2 }
     }
 
+    @Test("⌘ and a window's key closes on it: on the map the windows in the order drawn, in the strip the app's; the keys are on the pictures")
+    func pickByKey() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")]], focused: 1)
+        let app = await TestApp.onMap(aero)
+        #expect(app.scene.cards.flatMap(\.tiles).map(\.pick) == ["1", "2", "3"])
+        app.key(.pick("2"))
+        await app.until { aero.focused == 2 && !app.store.visit.visible }
+        await app.open("aerocontrol://app-id=com.teams")
+        #expect(app.scene.cards.flatMap(\.tiles).map(\.pick) == ["1", "2"])
+        app.key(.pick("2"))
+        await app.until { aero.focused == 3 && !app.store.visit.visible }
+    }
+
     @Test("an app's key with one window focuses it and opens nothing")
     func oneWindowFocuses() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(3, "Code")]], focused: 3)

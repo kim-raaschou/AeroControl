@@ -65,6 +65,7 @@ struct AeroControlAppTile: View {
             .overlay(selectionPlate.allowsHitTesting(false))
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(alignment: .topLeading) { stateBadge }
+            .overlay { pickBadge }
     }
 
     private var stack: some View {
@@ -99,15 +100,11 @@ struct AeroControlAppTile: View {
         return (tile.ringed ? 0 : 0.12, 2, 1)
     }
 
-    private var outline: some View {
-        plate.strokeBorder(look.palette.badgeText.opacity(0.45), lineWidth: 1.5)
-    }
-
     @ViewBuilder private var selectionPlate: some View {
         if tile.ringed {
             plate.strokeBorder(look.palette.accent, lineWidth: AeroControlMetrics.focusRingWidth(scale: displayScale))
         } else if tile.origin {
-            outline
+            plate.strokeBorder(look.palette.badgeText.opacity(0.45), lineWidth: 1.5)
         }
     }
 
@@ -119,6 +116,17 @@ struct AeroControlAppTile: View {
                 .padding(4)
                 .background(look.palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .padding(6)
+        }
+    }
+
+    @ViewBuilder private var pickBadge: some View {
+        if state.picking, let pick = tile.pick {
+            Text(String(pick).uppercased())
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundStyle(look.palette.badgeText)
+                .frame(minWidth: 34, minHeight: 34)
+                .background(look.palette.badgeFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.1).delay(0.25)), removal: .identity))
         }
     }
 

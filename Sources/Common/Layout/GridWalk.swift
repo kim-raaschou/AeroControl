@@ -12,6 +12,10 @@ public enum GridWalk {
         return rows.map { $0.sorted { card.windows[$0]!.minX < card.windows[$1]!.minX } }
     }
 
+    public static func picks(_ cards: [Card]) -> [Int: Character] {
+        Dictionary(zip(cards.flatMap { rows(of: $0).joined() }, FilterKey.picks)) { first, _ in first }
+    }
+
     public static func cardRow(from id: Int, direction: Int, cards: [Card]) -> Int? {
         let held = cards.filter { !$0.windows.isEmpty }, levels = Set(held.map { $0.frame.minY.rounded() }).sorted()
         guard let at = held.first(where: { $0.windows[id] != nil }), let level = levels.firstIndex(of: at.frame.minY.rounded()),

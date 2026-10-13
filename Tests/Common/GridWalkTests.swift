@@ -29,4 +29,10 @@ struct GridWalkTests {
         let beside = [1: r(0, 0), 2: r(220, 70), 3: r(0, 160)]                         // A one row, B beside it two, C under A
         #expect(GridWalk.step(from: 1, rows: 1, frames: beside) == 3)                      // straight down into C, not across into B
     }
+
+    @Test("⌘'s keys go 1–9, then a–f, over the windows in the order drawn: card by card, row by row; an empty card has none")
+    func picks() {
+        let picks = GridWalk.picks(cards)
+        #expect([5, 6, 7, 8, 1, 2, 3, 4, 9, 10, 11, 12].map { picks[$0] } == Array("123456789abc"))
+    }
 }

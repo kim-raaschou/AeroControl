@@ -36,7 +36,6 @@ public struct Visit: Equatable {
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
     public var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
-    public var shownWorkspaces: [WorkspaceInfo] { strip == nil ? model.workspaces : stripWorkspaces }
     public var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
     public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
 
@@ -77,6 +76,7 @@ public struct Visit: Equatable {
         case .close: return commandTarget.map { close($0.windowId) } ?? []
         case .quit: return commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? []
         case .enter where missingApp == nil: return enter()
+        case .pick(let label) where missingApp == nil: return GridWalk.picks(drawn).first { $0.value == label }.map { point($0.key); return enter() } ?? []
         case .escape where aside || query.isEmpty: return cancel()
         case .character(let c) where strip != nil:
             return FilterKey.workspaceNamed(String(c)).flatMap(stripWorkspaces.map(\.name).firstIndex).map { move(.card($0), drawn: drawn) } ?? []

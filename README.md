@@ -208,6 +208,7 @@ On the map:
 | ⌘W | close the window under the ring; the overview stays up |
 | ⌘Q | quit the app under the ring; the overview stays up |
 | ⏎ | close on the window under the ring; on an empty workspace, switch to it |
+| ⌘ held | a key on each window, 1–9 then a–f, in the order drawn; ⌘ + that key closes on it |
 | Esc | clear the query; on an empty query, dismiss, back on the window you came from |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
@@ -227,6 +228,7 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | ⌘W / ⌘Q | close the marked window / quit its app; the marking moves on |
 | the app's key again | move the marking on, as ⌘` does |
 | ⏎ | close on the marked window |
+| ⌘ held | a key on each window, 1–9 then a–f, in the order drawn; ⌘ + that key closes on it |
 | Esc | dismiss, back on the window you came from |
 
 There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.

@@ -15,6 +15,7 @@ public enum KeyHelp {
         Row(keys: "⌘W", does: "close the window under the ring; the overview stays up"),
         Row(keys: "⌘Q", does: "quit the app under the ring; the overview stays up"),
         Row(keys: "⏎", does: "close on the window under the ring; on an empty workspace, switch to it"),
+        Row(keys: "⌘ held", does: "a key on each window, 1–9 then a–f, in the order drawn; ⌘ + that key closes on it"),
         Row(keys: "Esc", does: "clear the query; on an empty query, dismiss, back on the window you came from"),
     ]
 
@@ -26,6 +27,7 @@ public enum KeyHelp {
         Row(keys: "⌘W / ⌘Q", does: "close the marked window / quit its app; the marking moves on"),
         Row(keys: "the app's key again", does: "move the marking on, as ⌘` does"),
         Row(keys: "⏎", does: "close on the marked window"),
+        Row(keys: "⌘ held", does: "a key on each window, 1–9 then a–f, in the order drawn; ⌘ + that key closes on it"),
         Row(keys: "Esc", does: "dismiss, back on the window you came from"),
     ]
 }

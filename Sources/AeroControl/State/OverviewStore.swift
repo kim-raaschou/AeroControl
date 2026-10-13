@@ -12,6 +12,7 @@ class OverviewStore {
     private(set) var error: String?
     var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
     private var following = false
+    var picking = false
     var onEffect: ((Visit.Host) -> Void)?
 
     var scene: OverviewScene { OverviewScene(visit, error: error, available: screen.available, screens: screen.frames, frames: pictures.frames) }
@@ -54,7 +55,7 @@ class OverviewStore {
     }
 
     func endVisit() {
-        following = false
+        (following, picking) = (false, false)
         sync.stop()
         update { $0.end(); return [] }
         pictures.clear()
