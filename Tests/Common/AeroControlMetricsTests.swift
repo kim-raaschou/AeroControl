@@ -13,6 +13,12 @@ struct AeroControlMetricsTests {
         #expect(AeroControlMetrics.fit(.zero, into: box) == box)
     }
 
+    @Test("the app's icon grows with its picture up to 36 pt, but a short picture, a stack's flat row, keeps it to 40 % of its height")
+    func iconFitsPicture() {
+        #expect(AeroControlMetrics.badgeSize(CGSize(width: 600, height: 400)) == 36 && AeroControlMetrics.badgeSize(CGSize(width: 600, height: 50)) == 20)
+        #expect(AeroControlMetrics.badgeSize(CGSize(width: 150, height: 300)) == 16.5 && AeroControlMetrics.badgeSize(CGSize(width: 600, height: 20)) == 12)
+    }
+
     @Test("a picture covers its box with its own shape, the rest to be cut: the window's slot is the frame, whatever the app made of it")
     func coveringPreview() {
         let box = CGSize(width: 144, height: 96)

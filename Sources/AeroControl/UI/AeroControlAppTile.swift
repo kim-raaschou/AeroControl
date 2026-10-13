@@ -17,7 +17,7 @@ struct AeroControlAppTile: View {
         if hovering { state.point(tile.window.windowId, at: NSEvent.mouseLocation) }
     }
     private var plate: RoundedRectangle { RoundedRectangle(cornerRadius: AeroControlMetrics.snapshotRadius, style: .continuous) }
-    private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(width: tile.frame.width) }
+    private var badgeSize: CGFloat { AeroControlMetrics.badgeSize(tile.picture) }
 
     private var contentSize: CGSize {
         AeroControlMetrics.pixelSnapped(tile.picture, scale: displayScale)
