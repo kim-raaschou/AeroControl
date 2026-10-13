@@ -46,12 +46,6 @@ final class OverlayWindowManager {
         }
     }
 
-    private func targetScreen() -> NSScreen {
-        let point = NSEvent.mouseLocation
-        return NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
-            ?? NSScreen.main ?? NSScreen.screens.first ?? NSScreen()
-    }
-
     func rebuild() {
         guard state.visit.visible else { return }
         replaceWindow().reveal()
@@ -60,7 +54,7 @@ final class OverlayWindowManager {
     private func replaceWindow() -> OverviewWindow {
         window?.contentView = nil
         window?.orderOut(nil)
-        let window = makeWindow(for: targetScreen())
+        let window = makeWindow(for: .underMouse)
         self.window = window
         return window
     }
@@ -97,5 +91,11 @@ final class OverlayWindowManager {
         hostingView.sizingOptions = []
         window.contentView = hostingView
         return window
+    }
+}
+
+extension NSScreen {
+    static var underMouse: NSScreen {
+        screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? main ?? screens.first ?? NSScreen()
     }
 }

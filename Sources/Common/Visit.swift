@@ -45,6 +45,7 @@ public struct Visit: Equatable {
         case .loaded(let read): new = read
         case .event(.focusChanged(let windowId, let workspace)): (new.focusedWindowId, new.focusedWorkspace, effects) = (windowId ?? 0, workspace, [.refresh])
         case .event(.changed): effects = [.refresh]
+        case .event(.mode): break
         case .merge(let source, let target): effects = merge(source, into: target)
         case .action(let action): effects = [.run([action], thenRead: !action.isFocus)]
         }

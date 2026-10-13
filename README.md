@@ -81,6 +81,12 @@ between summons, and it asks for no permission except Screen Recording for the p
   comes along — a stack stays a stack — while into one with windows they tile beside what is
   there. No undo — drag them back.
 - Hover a tile on the map to reveal the close action; the strip has no close button, ⌘W does it there.
+- **AeroSpace's keys**: when AeroSpace enters a mode other than main (`mode service`, …), a small
+  hint shows that mode's keys, app keys by the app's icon and name, and goes when you are back in
+  main; a mode left again within the delay set in the menu shows nothing. It never takes the
+  keyboard or the mouse. `open aerocontrol://config` shows or hides it for
+  the mode you are in, main too. The keys are read from AeroSpace (`config --get mode --json`),
+  never from your config file. Where it shows, or off, is set in the menu.
 - Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
   on, and the overlay itself always opens on the one screen under the mouse. With more
   than one display each card names its own; with a single display nothing is shown.
@@ -238,7 +244,9 @@ There is no typing in the strip; the app is already chosen, and a key that names
 Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
 **Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
-- **Keys**: both tables above, on the map and in the strip.
+- **AeroSpace key hint**: **Show now** toggles the hint for the mode you are in; a small screen where you
+  click the spot it shows at, again for off; and **After**, how long a mode must last before it
+  shows (400 ms by default), so a quick mode-and-key never flashes it.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette

@@ -24,7 +24,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
-        menu.addItem(keys())
+        menu.addItem(keyHint())
         let theme = NSMenuItem(title: "Theme: \(AeroControlTheme.chosen.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
         theme.image = swatch(for: AeroControlTheme.chosen)
         for t in AeroControlTheme.all {
@@ -56,25 +56,21 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return item
     }
 
-    private func keys() -> NSMenuItem {
-        let parent = NSMenuItem(title: "Keys", action: nil, keyEquivalent: ""), submenu = NSMenu()
-        submenu.autoenablesItems = false
-        submenu.items = [sectionHeader("On the map")] + KeyHelp.map.map(keyLine) + [.separator(), sectionHeader("In the strip")] + KeyHelp.strip.map(keyLine)
+    private func keyHint() -> NSMenuItem {
+        let parent = NSMenuItem(title: KeyHintPlace.chosen == nil ? "AeroSpace key hint: off" : "AeroSpace key hint", action: nil, keyEquivalent: ""), submenu = NSMenu()
+        let picker = NSMenuItem()
+        picker.view = KeyHintPicker(changed: onSettingsChanged)
+        submenu.items = [item("Show now") { NSWorkspace.shared.open(URL(string: "aerocontrol://config")!) }, .separator(),
+                         sectionHeader("Where · click a spot, again for off"), picker, .separator(), sectionHeader("After")]
+        for ms in [0, 200, 400, 700, 1000] {
+            let entry = item("\(ms) ms") { KeyHint.delay = ms }
+            entry.state = KeyHint.delay == ms ? .on : .off
+            submenu.addItem(entry)
+        }
         parent.submenu = submenu
         return parent
     }
 
-    private static let column: NSParagraphStyle = {
-        let style = NSMutableParagraphStyle()
-        style.tabStops = [NSTextTab(textAlignment: .left, location: 190)]
-        return style
-    }()
-
-    private func keyLine(_ row: KeyHelp.Row) -> NSMenuItem {
-        let line = NSMenuItem(title: row.keys, action: nil, keyEquivalent: "")
-        line.attributedTitle = NSAttributedString(string: "\(row.keys)\t\(row.does)", attributes: [.paragraphStyle: Self.column, .font: NSFont.menuFont(ofSize: 0)])
-        return line
-    }
 
     private final class Action { let run: () -> Void; init(_ run: @escaping () -> Void) { self.run = run } }
 

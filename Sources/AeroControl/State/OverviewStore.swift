@@ -14,6 +14,7 @@ class OverviewStore {
     private var following = false
     var picking = false
     var onEffect: ((Visit.Host) -> Void)?
+    var onEvent: ((AerospaceEvent) -> Void)?
 
     var scene: OverviewScene { OverviewScene(visit, error: error, available: screen.available, screens: screen.frames, frames: pictures.frames) }
 
@@ -87,6 +88,7 @@ class OverviewStore {
 
     func startListening() {
         sync.listen({ event in
+            self.onEvent?(event)
             if case .focusChanged(let id?, _) = event { self.update { $0.noteFocus(id); return [] } }
             if self.following { self.send(.event(event)) }
         }, resumed: { if self.following { await self.reload() } })
