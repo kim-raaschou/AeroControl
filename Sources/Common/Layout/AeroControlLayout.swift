@@ -56,7 +56,10 @@ public enum AeroControlLayout {
             CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale, width: r.width * scale, height: r.height * scale)
         }
         var frames: [Int: CGRect] = [:]
-        for window in tiled { frames[window.windowId] = place(window.layoutRect!) }
+        for window in tiled {
+            let slot = window.layoutRect!, real = measured[window.windowId]?.size ?? slot.size
+            frames[window.windowId] = place(CGRect(x: slot.minX, y: slot.minY, width: max(slot.width, real.width), height: max(slot.height, real.height))).intersection(box)
+        }
         for window in windows where !window.isTiled {
             let size = measured[window.windowId].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
             let centred = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)

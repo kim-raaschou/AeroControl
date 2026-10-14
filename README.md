@@ -166,7 +166,9 @@ before the URL scheme is registered — Launch Services learns it on the app's f
 Two surfaces, two rules.
 
 **The map follows AeroSpace.** The overview is a picture of what AeroSpace has, and nothing
-in it is chosen until you point, type or press an arrow. Until then the ring is AeroSpace's
+in it is chosen until you point, type or press an arrow. Each window is drawn where AeroSpace put
+it and as big as it is: an app that will not shrink to its slot, Mail or Messages in a narrow
+column, sticks out over its neighbour on the card as it does on the screen. Until then the ring is AeroSpace's
 focus: it moves the moment AeroSpace reports a focus change — switch workspace with your
 AeroSpace key while the map is up and the ring is on the new window before the pictures have
 settled. The arrows take the ring over: ← and → through each workspace's windows as they are

@@ -117,18 +117,18 @@ struct TreeLayoutTests {
         #expect(abs(third.minY - (origin.y + (581 - 33) * scale)) < 0.01)
     }
 
-    @Test("a window is drawn at its slot, whatever size its app made it: AeroSpace's layout is the truth, an app's refusal of it is not")
+    @Test("a window its app will not make as small as its slot is drawn as big as it is, from the slot's corner, over its neighbour, as on the screen; the neighbour stays in its own slot")
     func windowDrawnAtItsSlot() throws {
         let inner = CGSize(width: 1000, height: 500)
         let row = [rected(287, "Claude", 16, 49, 418, 1052), rected(9134, "Ghostty", 446, 49, 412, 1052)]
         let scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
         let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: row), frames: framed([287: CGSize(width: 600, height: 1052)]), screen: screen, inner: inner))
         let drawn = try #require(laid.frames[287]), ghostty = try #require(laid.frames[9134])
-        #expect(abs(drawn.width - 418 * scale) < 0.01)                                   // the slot, not the 600 the app refused it for
+        #expect(abs(drawn.width - 600 * scale) < 0.01 && abs(drawn.minX - ghostty.minX + 430 * scale) < 0.01)   // the 600 the app holds to, not the slot's 418
         #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)
     }
 
-    @Test("a window alone on its workspace is drawn in the slot AeroSpace gives it, though the window itself has not been resized to it yet")
+    @Test("a window smaller than its slot has not been resized to it yet: it is drawn in the slot AeroSpace gives it")
     func aloneInItsSlot() throws {
         let alone = WorkspaceInfo(name: "9", windows: [rected(1, "GitHub", 16, 49, 1696, 1052)])
         let laid = try #require(AeroControlLayout.treeLayout(alone, frames: [1: CGRect(x: 0, y: 0, width: 842, height: 1052)], screen: screen, inner: CGSize(width: 1000, height: 600)))
