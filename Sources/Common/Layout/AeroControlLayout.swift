@@ -46,8 +46,7 @@ public enum AeroControlLayout {
         let tiled = windows.filter(\.isTiled)
         let rects = tiled.compactMap(\.layoutRect)
         guard !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
-              !rects.indices.contains(where: { i in rects.indices.contains { j in
-                  j > i && rects[i].intersection(rects[j]).width > 2 && rects[i].intersection(rects[j]).height > 2 } })
+              !rects.enumerated().contains(where: { i, r in rects[(i + 1)...].contains { r.insetBy(dx: 1, dy: 1).intersects($0.insetBy(dx: 1, dy: 1)) } })
         else { return nil }
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted)
@@ -119,15 +118,21 @@ public enum AeroControlLayout {
         let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
         var x: CGFloat = 0
         return groups.indices.map { g in
-            let mine = groups[g].windows.filter { $0.bundleId == bundleId }
-            let packed = packed(mine, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full),
-                                caption: 0, oneRow: mine.count == 2)
-            let used = packed.frames.values.reduce(CGRect.null) { $0.union($1) }
+            let placed = stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full))
+            let used = placed.frames.values.reduce(CGRect.null) { $0.union($1) }
             let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: used.width.rounded(.up) + 2 * cardPadding, height: full + cardChrome),
-                                frames: packed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, ghosts: packed.ghosts)
+                                frames: placed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, ghosts: placed.ghosts)
             x = card.frame.maxX + cardGap
             return card
         }
+    }
+
+    static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
+        let mine = workspace.windows.filter { $0.bundleId == app }, block = mine.compactMap(\.layoutRect).reduce(CGRect.null) { $0.union($1) }
+        let others = workspace.windows.filter(\.isTiled).filter { $0.bundleId != app }
+        let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2)
+        guard mine.allSatisfy(\.isTiled), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
+        return treeLayout(WorkspaceInfo(name: workspace.name, windows: mine, screenIndex: workspace.screenIndex, rootLayout: workspace.rootLayout), frames: frames, screen: block, inner: inner) ?? packed
     }
 
     public static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {
@@ -146,12 +151,10 @@ public enum AeroControlLayout {
     }
 
     public static func layoutSymbol(rootLayout: String) -> (name: String, help: String)? {
-        switch rootLayout {
-        case "h_tiles": return ("rectangle.split.2x1", "Tiles: windows side by side — click to stack them")
-        case "v_tiles": return ("rectangle.split.1x2", "Tiles: windows one above another — click to stack them")
-        case "h_accordion", "v_accordion": return ("rectangle.on.rectangle", "Accordion: windows stacked, one in front — click to tile them")
-        default: return nil
-        }
+        let accordion = ("rectangle.on.rectangle", "Accordion: windows stacked, one in front — click to tile them")
+        return ["h_tiles": ("rectangle.split.2x1", "Tiles: windows side by side — click to stack them"),
+                "v_tiles": ("rectangle.split.1x2", "Tiles: windows one above another — click to stack them"),
+                "h_accordion": accordion, "v_accordion": accordion][rootLayout]
     }
 
 }

@@ -193,9 +193,11 @@ an empty workspace, and the choice was made there: the strip closes and you are 
 put you. For another app's strip, press that app's key.
 
 Each card is one of the app's workspaces and holds the app's windows on it, no other app's: the
-strip asks only which of them, and the map is where a window's neighbours are seen. They are packed
-large, each in its window's own shape, two always in one row, and the card takes the width the row
-gives it. A card is at most 45% of the panel high, one workspace or many. One line under the cards,
+strip asks only which of them, and the map is where a window's neighbours are seen. Where they are
+all tiled and make one block on the screen, no other app's window among them, they stand as AeroSpace
+has them, the card as wide as that block; otherwise (an accordion, a float, another app between them)
+they are packed large, each in its window's own shape, two always in one row, and the card takes the
+width the row gives it. A card is at most 45% of the panel high, one workspace or many. One line under the cards,
 as high as the map's, names the app, how many windows, and the marked window's title, with its
 workspace when the app spans more than one. Pointing at a window marks it.
 

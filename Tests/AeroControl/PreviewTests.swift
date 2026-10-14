@@ -234,19 +234,30 @@ struct StripLayoutTests {
         #expect(one.height >= inner(card).height * 0.9 && card.frame.width > (inner(card).height * screen.width / screen.height) * 1.5)
     }
 
-    @Test("two windows always stand in one row, even where AeroSpace stacks them or stacked would be larger")
-    func twoInARow() throws {
-        let wide = CGRect(x: 0, y: 0, width: 2400, height: 1000)
+    @Test("two windows AeroSpace stacks stand stacked in the strip too, as on the screen, each as wide as the card")
+    func stackedPairMirrored() throws {
         let stacked = WorkspaceInfo(name: "3", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520)], screenIndex: 1, rootLayout: "v_tiles")
-        let two = try #require(layout([stacked], frames: [1: wide, 2: wide]).first)
+        let two = try #require(layout([stacked]).first)
         let one = try #require(two.frames[1]), other = try #require(two.frames[2])
-        #expect(one.minY == other.minY && one.maxX <= other.minX)
+        #expect(one.minX == other.minX && one.maxY <= other.minY && abs(one.width - inner(two).width) < 1)
+    }
+
+    @Test("another app's window inside the app's block, or a floating window of the app's, breaks the mirror: the windows are packed as before, two in one row")
+    func holeInTheBlockPacks() throws {
+        let split = [rected(1, "Ghostty", 16, 49, 1696, 340), rected(9, "Code", 16, 401, 1696, 340), rected(2, "Ghostty", 16, 753, 1696, 348)]
+        let card = try #require(layout([WorkspaceInfo(name: "3", windows: split, screenIndex: 1, rootLayout: "v_tiles")]).first)
+        let one = try #require(card.frames[1]), other = try #require(card.frames[2])
+        #expect(card.frames.keys.sorted() == [1, 2] && one.minY == other.minY && other.minX - one.maxX < one.width / 4)
+        let float = WindowInfo(windowId: 3, appName: "Ghostty", bundleId: "com.Ghostty", isFloating: true, layoutRect: CGRect(x: 400, y: 300, width: 600, height: 400))
+        let stacked = WorkspaceInfo(name: "4", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520), float], screenIndex: 1, rootLayout: "v_tiles")
+        let three = try #require(layout([stacked]).first)
+        #expect(three.frames.count == 3 && three.frames[1]?.minY == three.frames[2]?.minY)
     }
     private func ghostty(_ ws: String, _ ids: ClosedRange<Int>, _ other: [WindowInfo] = []) -> WorkspaceInfo {
         WorkspaceInfo(name: ws, windows: ids.map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty") } + other, screenIndex: 1, rootLayout: "h_accordion")
     }
 
-    @Test("where AeroSpace's rects are known the card is still the app's windows packed: another app's half of the workspace leaves no gap")
+    @Test("the app's one window is its own block: the other app's half of the workspace leaves no gap in the card")
     func rectsDoNotShapeTheCard() throws {
         let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let card = try #require(layout([ws]).first)

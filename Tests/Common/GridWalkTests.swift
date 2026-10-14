@@ -32,4 +32,13 @@ struct GridWalkTests {
         #expect(GridWalk.step(from: 1, columns: 1, frames: stack) == nil && GridWalk.step(from: 3, columns: -1, frames: stack) == nil)
     }
 
+    @Test("the app's key again goes on in reading order, as ⌘` does: down a stacked pair before across, round to the first; → goes across to the window level with it")
+    func onward() {
+        let pair: GridWalk.Card = (frame: CGRect(x: 0, y: 0, width: 200, height: 140), windows: [1: CGRect(x: 0, y: 0, width: 180, height: 60), 2: CGRect(x: 0, y: 70, width: 180, height: 60)])
+        let beside: GridWalk.Card = (frame: CGRect(x: 220, y: 0, width: 200, height: 140), windows: [3: CGRect(x: 220, y: 0, width: 180, height: 130)])
+        let top = Strip(app: "com.a", marked: 1, centre: 1), cards = [pair, beside]
+        #expect(top.moved(.next, cards: cards).marked == 2 && top.moved(.window(1), cards: cards).marked == 3)
+        #expect(top.moved(.next, cards: cards).moved(.next, cards: cards).marked == 3 && Strip(app: "com.a", marked: 3, centre: 3).moved(.next, cards: cards).marked == 1)
+    }
+
 }

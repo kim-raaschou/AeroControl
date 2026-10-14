@@ -111,7 +111,7 @@ public struct Visit: Equatable {
         switch summon {
         case _ where !visible: break
         case .map where strip == nil && missingApp == nil: return cancel()
-        case .app(let ref) where strip != nil && stripWindows.contains(where: ref.matches): return move(.window(1), drawn: drawn)
+        case .app(let ref) where strip != nil && stripWindows.contains(where: ref.matches): return move(.next, drawn: drawn)
         default: break
         }
         (visible, loading) = (true, true)

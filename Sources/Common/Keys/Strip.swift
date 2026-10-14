@@ -1,6 +1,6 @@
 import Foundation
 
-public enum StripMove: Hashable, Sendable { case window(Int), row(Int), card(Int) }
+public enum StripMove: Hashable, Sendable { case window(Int), row(Int), card(Int), next }
 
 public struct Strip: Equatable, Sendable {
     public let app: String?
@@ -24,9 +24,10 @@ public struct Strip: Equatable, Sendable {
     public func moved(_ move: StripMove, cards: [GridWalk.Card]) -> Strip {
         let ids = cards.flatMap { GridWalk.rows(of: $0).joined() }, card = { (id: Int) in cards.firstIndex { $0.windows[id] != nil } }
         let frames = cards.reduce(into: [Int: CGRect]()) { $0.merge($1.windows) { a, _ in a } }
-        let to: Int?
+        let to: Int?, onward = { (d: Int) in Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] } }
         switch move {
-        case .window(let d): to = marked.flatMap { GridWalk.step(from: $0, columns: d, frames: frames) } ?? Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] }
+        case .window(let d): to = marked.flatMap { GridWalk.step(from: $0, columns: d, frames: frames) } ?? onward(d)
+        case .next: to = onward(1)
         case .row(let d): to = marked.flatMap { GridWalk.step(from: $0, rows: d, frames: frames) }
         case .card(let at): to = ids.first { card($0) == at }
         }
