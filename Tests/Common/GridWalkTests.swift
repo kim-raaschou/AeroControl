@@ -16,12 +16,6 @@ struct GridWalkTests {
     }
     private func go(_ id: Int, _ x: CGFloat, _ y: CGFloat) -> Int? { GridWalk.step(from: id, rows: Int(y), frames: frames) }
 
-    @Test("⌘↑ and ⌘↓ go to the card above or below, the nearest across, its first window; a row of empty cards is passed; past the top or bottom, nothing")
-    func cardAbove() {
-        func go(_ id: Int, _ d: Int) -> Int? { GridWalk.cardRow(from: id, direction: d, cards: cards) }
-        #expect(go(6, 1) == 9 && go(11, -1) == 1 && go(2, -1) == nil && go(9, 1) == nil)
-    }
-
     @Test("↑ and ↓ go straight up or down as drawn: the nearest window over or under, into the card over or under; with none straight there, the nearest aslant; past the top or bottom, nothing")
     func upAndDown() {
         #expect(go(1, 0, 1) == 3 && go(4, 0, 1) == 10 && go(8, 0, 1) == 10 && go(9, 0, -1) == 3 && go(7, 0, -1) == 5)
@@ -38,9 +32,4 @@ struct GridWalkTests {
         #expect(GridWalk.step(from: 1, columns: 1, frames: stack) == nil && GridWalk.step(from: 3, columns: -1, frames: stack) == nil)
     }
 
-    @Test("⌘'s keys go 1–9, then the letters, over the windows in the order drawn: card by card, row by row; an empty card has none; thirty-three in all, none of them ⌘W's or ⌘Q's")
-    func picks() {
-        let picks = GridWalk.picks(cards)
-        #expect([5, 6, 7, 8, 1, 2, 3, 4, 9, 10, 11, 12].map { picks[$0] } == Array("123456789abc") && FilterKey.picks.count == 33 && !FilterKey.picks.contains { "wq".contains($0) })
-    }
 }

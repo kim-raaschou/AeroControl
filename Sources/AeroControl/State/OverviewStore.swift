@@ -12,7 +12,6 @@ class OverviewStore {
     private(set) var error: String?
     var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
     private var following = false
-    var picking = false
     var onEffect: ((Visit.Host) -> Void)?
     var onEvent: ((AerospaceEvent) -> Void)?
 
@@ -56,7 +55,7 @@ class OverviewStore {
     }
 
     func endVisit() {
-        (following, picking) = (false, false)
+        following = false
         sync.stop()
         update { $0.end(); return [] }
         pictures.clear()

@@ -6,10 +6,6 @@ public enum FilterKey: Equatable, Sendable {
     case enter
     case escape
     case move(StripMove)
-    case moveToWorkspace(String)
-    case close
-    case quit
-    case pick(Character)
 }
 
 public extension FilterKey {
@@ -31,17 +27,6 @@ public extension FilterKey {
     static func workspaceNamed(_ key: String) -> String? {
         guard key.count == 1, let c = key.first, typed(c) != nil else { return nil }
         return ["0": "10"][key] ?? key
-    }
-
-    private static let commandKeys: [String: FilterKey] = ["\u{F703}": .move(.workspace(1)), "\u{F702}": .move(.workspace(-1)), "\u{F700}": .move(.workspaceRow(-1)),
-                                                           "\u{F701}": .move(.workspaceRow(1)), "w": .close, "q": .quit]
-
-    static let picks = Array("123456789abcdefghijklmnoprstuvxyz")
-
-    init?(command characters: String, shift: Bool) {
-        let pick = Self.picks.first { String($0) == characters }.map(FilterKey.pick)
-        guard let key = shift ? Self.workspaceNamed(characters).map(FilterKey.moveToWorkspace) : Self.commandKeys[characters] ?? pick else { return nil }
-        self = key
     }
 
     static func typed(_ character: Character) -> FilterKey? {

@@ -16,7 +16,6 @@ public struct Visit: Equatable {
         case show(Summon)
         case hide
         case activate(bundleId: String)
-        case quit(bundleId: String)
         case launch(AppRef)
         case rebuild
     }
@@ -37,7 +36,6 @@ public struct Visit: Equatable {
     public var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
     public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
     public var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
-    public var commandTarget: WindowInfo? { missingApp == nil ? ringWindowId.flatMap(model.window) : nil }
 
     public mutating func apply(_ input: Input) -> [Effect] {
         var new = model, effects: [Effect] = []
@@ -73,11 +71,7 @@ public struct Visit: Equatable {
         let aside = strip != nil || missingApp != nil
         switch key {
         case .move(let step): return move(step, drawn: drawn)
-        case .moveToWorkspace(let name): return commandTarget.map { apply(.action(.moveWindow(windowId: $0.windowId, toWorkspace: name))) } ?? []
-        case .close: return commandTarget.map { close($0.windowId) } ?? []
-        case .quit: return commandTarget.map { [.host(.quit(bundleId: $0.bundleId))] } ?? []
         case .enter where missingApp == nil: return enter()
-        case .pick(let label) where missingApp == nil: return GridWalk.picks(drawn).first { $0.value == label }.map { point($0.key); return enter() } ?? []
         case .escape where aside || query.isEmpty: return cancel()
         case .character(let c) where strip != nil:
             return FilterKey.workspaceNamed(String(c)).flatMap(stripWorkspaces.map(\.name).firstIndex).map { move(.card($0), drawn: drawn) } ?? []
@@ -101,13 +95,7 @@ public struct Visit: Equatable {
         return follow()
     }
 
-    private func close(_ id: Int) -> [Effect] {
-        let ids = model.windows(of: marking).map(\.windowId)
-        let next = marking?.marked != id ? nil : marking?.kept(before: ids, after: ids.filter { $0 != id })?.marked
-        return [.run((next.map { [.focusWindow($0)] } ?? []) + [.closeWindow(id)], thenRead: true)]
-    }
-
-    private func follow() -> [Effect] {
+    public func follow() -> [Effect] {
         guard let ring = ringWindowId, ring != model.focusedWindowId else { return [] }
         let empty = model.workspaces.first { $0.standIn == ring }?.name
         return [.run([empty.map(AeroControlAction.focusWorkspace) ?? .focusWindow(ring)], thenRead: false)]

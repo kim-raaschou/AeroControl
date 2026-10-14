@@ -148,7 +148,7 @@ struct FollowingScenarioTests {
         let app = await TestApp.onMap(aero)
         #expect(app.bridge.captured == [[1, 2, 3]])
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
-        app.key(.moveToWorkspace("2"))
+        app.store.send(.action(.moveWindow(windowId: 1, toWorkspace: "2")))
         await app.until { app.store.pictures.frames[2]?.width == 600 }
         await app.until { shaped(app, 2, 3) && Set(app.bridge.captured.dropFirst().joined()) == [2, 3] }
         #expect(shaped(app, 1, 1.5) && shaped(app, 3, 1.5))                                  // 1 is half a card on either workspace
@@ -159,7 +159,7 @@ struct FollowingScenarioTests {
         let aero = FakeAeroSpace(["7": [win(1, "Brave"), win(2, "Claude")], "1": [win(3, "Arc")]], focused: 2, layouts: ["7": "h_accordion"])
         let app = await TestApp.onMap(aero)
         let before = app.bridge.filling[1]
-        app.key(.moveToWorkspace("1"))
+        app.store.send(.action(.moveWindow(windowId: 2, toWorkspace: "1")))
         await app.until { app.scene.cards.first?.tiles.count == 1 && fills(app, 1) && app.bridge.filling[1] != before }
     }
 

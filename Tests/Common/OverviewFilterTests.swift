@@ -116,32 +116,6 @@ struct FilterKeyCodeTests {
     }
 }
 
-@Suite("FilterKey(command:)")
-struct FilterKeyCommandTests {
-    @Test("⌘ with an arrow is a workspace along; ⌘W closes and ⌘Q quits; ⌘ with 1–9 or a letter but q and w picks; ⇧⌘ with a key names a workspace, 0 the tenth; ⌘ with anything else is somebody else's", arguments: [
-        ("1", false, FilterKey.pick("1") as FilterKey?),
-        ("a", false, .pick("a")),
-        ("0", false, nil),                        // 1–9, then a–f: no 0
-        ("z", false, .pick("z")),
-        ("o", false, .pick("o")),
-        ("q", false, .quit),
-        ("w", false, .close),
-        ("", false, nil),
-        ("ab", false, nil),                       // a key that types two characters is not one key, and no crash
-        ("\u{F703}", false, .move(.workspace(1))),       // ⌘→, the next workspace
-        ("\u{F702}", false, .move(.workspace(-1))),      // ⌘←
-        ("\u{F700}", false, .move(.workspaceRow(-1))),   // ⌘↑, the workspace above
-        ("\u{F701}", false, .move(.workspaceRow(1))),    // ⌘↓
-        ("3", true, .moveToWorkspace("3")),              // ⇧⌘3: the window under the ring to workspace 3
-        ("0", true, .moveToWorkspace("10")),
-        ("q", true, .moveToWorkspace("q")),              // a workspace can be named by a letter; ⇧⌘Q is not ⌘Q
-        ("\u{F703}", true, nil),
-    ] as [(String, Bool, FilterKey?)])
-    func command(characters: String, shift: Bool, expected: FilterKey?) {
-        #expect(FilterKey(command: characters, shift: shift) == expected)
-    }
-}
-
 @Suite("FilterKey.typed")
 struct FilterKeyTypedTests {
 

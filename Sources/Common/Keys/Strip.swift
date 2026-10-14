@@ -1,6 +1,6 @@
 import Foundation
 
-public enum StripMove: Hashable, Sendable { case window(Int), row(Int), workspace(Int), workspaceRow(Int), card(Int) }
+public enum StripMove: Hashable, Sendable { case window(Int), row(Int), card(Int) }
 
 public struct Strip: Equatable, Sendable {
     public let app: String?
@@ -28,10 +28,6 @@ public struct Strip: Equatable, Sendable {
         switch move {
         case .window(let d): to = marked.flatMap { GridWalk.step(from: $0, columns: d, frames: frames) } ?? Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] }
         case .row(let d): to = marked.flatMap { GridWalk.step(from: $0, rows: d, frames: frames) }
-        case .workspace(let d):
-            let held = Array(Set(ids.compactMap(card))).sorted()
-            to = Self.step(held.firstIndex { $0 == marked.flatMap(card) } ?? -1, count: held.count, by: d).flatMap { at in ids.first { card($0) == held[at] } }
-        case .workspaceRow(let d): to = marked.flatMap { GridWalk.cardRow(from: $0, direction: d, cards: cards) }
         case .card(let at): to = ids.first { card($0) == at }
         }
         return to.map { Strip(app: app, marked: $0, centre: $0) } ?? self

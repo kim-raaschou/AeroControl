@@ -28,8 +28,10 @@ Five things you do all day, each one summon and one key:
   to narrow, Enter when it is first. No mouse, no reading a number off a badge.
 - **"This belongs on workspace 3."** Drag the window's picture onto the other card. Or drag
   a whole card onto another to merge two workspaces into one.
-- **"Close the strays."** Hover a picture for its close button, or point, type or walk until it
-  wears the ring and press ⌘W to close it, ⌘Q to quit its app — the overview stays up for the next one.
+- **"Close the strays."** Hover a picture for its close button, or walk until it wears the ring
+  and press ⌘W, the app's own: the overview stays up for the next one.
+- **"Another Ghostty, while I'm here."** Hold ⌘ and the keyboard is the app's under the ring:
+  ⌘N, ⌘T, ⌘W act in it, and the map shows what they did. Let go and the keys are AeroControl's.
 
 What it is not: a window manager, a dock, or a permanent panel. It has no state of its own
 between summons, and it asks for no permission except Screen Recording for the pictures.
@@ -80,7 +82,7 @@ between summons, and it asks for no permission except Screen Recording for the p
   windows one by one into the target's root, so into an empty workspace the source's layout
   comes along — a stack stays a stack — while into one with windows they tile beside what is
   there. No undo — drag them back.
-- Hover a tile on the map to reveal the close action; the strip has no close button, ⌘W does it there.
+- Hover a tile on the map to reveal the close action; the strip has no close button, the app's ⌘W does it there.
 - **AeroSpace's keys**: when AeroSpace enters a mode other than main (`mode service`, …), a small
   hint shows that mode's keys, app keys by the app's icon and name, and goes when you are back in
   main; a mode left again within the delay set in the menu shows nothing. It never takes the
@@ -197,8 +199,8 @@ workspace when the app spans more than one. Pointing at a window marks it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 the arrows are the exception. It handles more — a row that does not fit slides to keep the marked
-workspace whole in the middle, up to its ends, the workspaces the edges cut dimmed; ⌘→ and ⌘← a
-workspace along, a workspace's name straight to it.
+workspace whole in the middle, up to its ends, the workspaces the edges cut dimmed; a workspace's
+name goes straight to it.
 
 ## Keyboard
 
@@ -208,13 +210,8 @@ On the map:
 |---|---|
 | letters, digits, space | filter; the grid narrows from the second character |
 | ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace, AeroSpace's focus going along; an empty one is a stop |
-| ⌘← ⌘→ | the previous / next workspace's first window, or the empty workspace itself |
-| ⌘↑ ⌘↓ | the first window of the workspace above / below |
-| ⇧⌘ + a key | move the window under the ring to the workspace of that name; a new name creates it |
-| ⌘W | close the window under the ring; the overview stays up |
-| ⌘Q | quit the app under the ring; the overview stays up |
 | ⏎ | close on the window under the ring; on an empty workspace, switch to it |
-| ⌘ held | a key on each window, 1–9 then a–z but q and w, in the order drawn; ⌘ + that key closes on it |
+| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again |
 | Esc | clear the query; on an empty query, dismiss, back on the window you came from |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
@@ -228,13 +225,10 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | Key | Does |
 |---|---|
 | ← → ↑ ↓ | move the marking through the app's windows, on to the next workspace, AeroSpace's focus going along |
-| ⌘← ⌘→ | the previous / next workspace, the row sliding with it |
 | a workspace's name | move the marking to that workspace: 3 for 3, 0 for 10 |
-| ⇧⌘ + a key | move the marked window to the workspace of that name; a new name creates it |
-| ⌘W / ⌘Q | close the marked window / quit its app; the marking moves on |
 | the app's key again | move the marking on, as ⌘` does |
 | ⏎ | close on the marked window |
-| ⌘ held | a key on each window, 1–9 then a–z but q and w, in the order drawn; ⌘ + that key closes on it |
+| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again |
 | Esc | dismiss, back on the window you came from |
 
 There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.

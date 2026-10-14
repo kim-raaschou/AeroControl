@@ -17,8 +17,9 @@ class OverviewWindow: NSPanel {
     private var fade: TimeInterval { Self.fadeDuration * motion }
     let targetScreen: NSScreen
     var onKey: ((FilterKey) -> Void)?
-    var onCommand: ((Bool) -> Void)?
+    var onLend: (() -> Void)?
     private var isDismissing = false
+    private var lending = false
 
     init(targetScreen: NSScreen) {
         self.targetScreen = targetScreen
@@ -43,16 +44,24 @@ class OverviewWindow: NSPanel {
         onKey?(.escape)
     }
 
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let key = event.charactersIgnoringModifiers ?? ""
-        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
-        guard modifiers.subtracting(.shift) == .command else { return super.performKeyEquivalent(with: event) }
-        FilterKey(command: key, shift: modifiers.contains(.shift)).map { onKey?($0) }
-        return true
-    }
+    override func performKeyEquivalent(with event: NSEvent) -> Bool { event.modifierFlags.contains(.command) || super.performKeyEquivalent(with: event) }
 
     override func flagsChanged(with event: NSEvent) {
-        onCommand?(event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command && [54, 55].contains(event.keyCode))
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard [54, 55].contains(event.keyCode), flags.contains(.command), flags.isDisjoint(with: [.control, .option]) else { return }
+        lend()
+    }
+
+    private func lend() {
+        onLend?()
+        lending = true
+        NSApp.deactivate()
+        Task { @MainActor [weak self] in
+            while NSEvent.modifierFlags.contains(.command) { try? await Task.sleep(for: .milliseconds(30)) }
+            guard let self else { return }
+            self.lending = false
+            if self.isVisible, !self.isDismissing { self.makeKey() }
+        }
     }
 
     override func keyDown(with event: NSEvent) {
@@ -63,10 +72,10 @@ class OverviewWindow: NSPanel {
 
     override func resignKey() {
         super.resignKey()
-        guard isVisible, !isDismissing else { return }
+        guard isVisible, !isDismissing, !lending else { return }
         log.notice("overview: lost key status while visible; retaking")
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.isVisible, !self.isDismissing else { return }
+            guard let self, self.isVisible, !self.isDismissing, !self.lending else { return }
             self.makeKey()
         }
     }

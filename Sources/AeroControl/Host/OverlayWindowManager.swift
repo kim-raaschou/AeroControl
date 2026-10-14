@@ -16,7 +16,6 @@ final class OverlayWindowManager {
         case .show(let summon): show(summon)
         case .hide: hide()
         case .activate(let bundleId): app(bundleId)?.activate()
-        case .quit(let bundleId): app(bundleId)?.terminate()
         case .launch(let ref): launch(ref)
         case .rebuild: rebuild()
         }
@@ -84,7 +83,7 @@ final class OverlayWindowManager {
         let motion: Double = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 1
         window.motion = motion
         window.onKey = { [weak self] in self?.state.handle($0) }
-        window.onCommand = { [weak self] in self?.state.picking = $0 }
+        window.onLend = { [weak self] in self?.state.update { $0.follow() } }
         state.screen = (screen.frame.size, screenFrames, screen.backingScaleFactor)
         let root = OverviewRoot(state: state, theme: AeroControlTheme.chosen, motion: motion)
         let hostingView = InteractiveHostingView(rootView: root)

@@ -19,7 +19,6 @@ public struct OverviewScene: Sendable {
         public let ghost: Bool
         public let captioned: Bool
         public let stacking: Double
-        public let pick: Character?
 
         public var picture: CGSize { CGSize(width: frame.width, height: frame.height - (captioned ? AeroControlLayout.captionLane : 0)) }
     }
@@ -67,14 +66,13 @@ public struct OverviewScene: Sendable {
         }
         let captions = body == .map
         grid = laid.map(\.grid)
-        let picks = GridWalk.picks(grid)
         cards = zip(shown, laid).map { ws, c in
             let frame = c.frame.offsetBy(dx: offset, dy: 0)
             let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
                 Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
                      ghost: c.ghosts.contains(w.windowId),
                      captioned: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight,
-                     stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0, pick: picks[w.windowId])
+                     stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
             } }
             return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
                         monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn,
