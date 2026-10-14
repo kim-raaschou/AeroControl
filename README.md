@@ -259,6 +259,21 @@ For a stable full row of workspaces (including empty ones), set:
 persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 ```
 
+## Arc and other Chromium browsers
+
+Chromium stops drawing a window macOS calls hidden, and to macOS a window AeroSpace has parked in
+the corner of a hidden workspace is hidden. When AeroSpace gives such a window a new size, Arc does
+not draw it at that size until it is shown again, so its picture is the old, smaller one. Start Arc
+with Chromium's switch and it keeps drawing:
+
+```bash
+open -a Arc --args --disable-backgrounding-occluded-windows
+```
+
+Arc has to be quit first, and a start from the Dock or at login does not carry the switch: start
+it this way, for instance from AeroSpace's `after-startup-command`. Hidden Arc windows then use a
+little more power, since they go on drawing.
+
 ## Develop
 
 ```bash
