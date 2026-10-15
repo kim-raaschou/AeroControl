@@ -28,7 +28,9 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
 
 - `make build` · `make test` · `make install` (builds, signs, installs to `/Applications`,
   kills and relaunches the agent).
-- Targeted tests: `swift test --filter <Suite>` works once `SDKROOT` is set as the Makefile does.
+- Targeted tests: `swift test --filter <Suite> -Xswiftc -plugin-path -Xswiftc <TESTING_PLUGINS>` once
+  `SDKROOT` is set as the Makefile does; both come from the Makefile, and without the plugin path the
+  Testing macros fail to resolve.
 - Line endings are **LF**, enforced by `.gitattributes`.
 - After `make install`, confirm the process is newer than the binary before testing
   (`ps -o lstart= -p $(pgrep -x AeroControl)` vs. `stat -f %Sm /Applications/AeroControl.app/Contents/MacOS/AeroControl`).
