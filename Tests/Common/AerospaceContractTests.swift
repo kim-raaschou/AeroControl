@@ -33,9 +33,10 @@ struct AerospaceCommandArgvTests {
         ])
     }
 
-    @Test("subscribe argv is pinned")
+    @Test("subscribe argv is pinned, and the mode asked beside it")
     func subscribe() {
         #expect(AerospaceCommand.subscribe == ["subscribe", "--all", "--no-send-initial"])
+        #expect(AerospaceCommand.currentMode == ["list-modes", "--current"])
     }
 }
 

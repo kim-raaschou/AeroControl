@@ -88,7 +88,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   main; a mode left again within the delay set in the menu shows nothing. It never takes the
   keyboard or the mouse. `open aerocontrol://config` shows or hides it for
   the mode you are in, main too. The keys are read from AeroSpace (`config --get mode --json`),
-  never from your config file. Where it shows, or off, is set in the menu.
+  never from your config file, and the mode is asked (`list-modes --current`) whenever AeroControl
+  connects, so a mode entered before it started or while it was disconnected is shown too. Where it
+  shows, or off, is set in the menu.
 - Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
   on, and the overlay itself always opens on the one screen under the mouse. With more
   than one display each card names its own; with a single display nothing is shown.

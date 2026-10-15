@@ -52,14 +52,14 @@ final class KeyHint {
         showing = Task {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            if wanted { bindings = await loadBindings(using: runner) }
-            wanted && bindings.contains { $0.mode == mode } ? draw() : panel.orderOut(nil)
+            bindings = await wanted ? loadBindings(using: runner) : []
+            bindings.contains { $0.mode == mode } ? draw() : panel.orderOut(nil)
         }
     }
 
     private func draw() {
         let view = NSHostingView(rootView: KeyHintView(mode: mode, bindings: bindings.filter { $0.mode == mode }, theme: AeroControlTheme.chosen))
-        panel.appearance = AeroControlTheme.chosen.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
+        panel.appearance = AeroControlTheme.chosen.isDark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
         panel.contentView = view
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
         panel.invalidateShadow()

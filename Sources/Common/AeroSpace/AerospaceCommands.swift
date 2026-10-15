@@ -21,6 +21,8 @@ public enum AerospaceCommand {
 
     public static let subscribe = ["subscribe", "--all", "--no-send-initial"]
 
+    public static let currentMode = ["list-modes", "--current"]
+
     public static func argv(for action: AeroControlAction) -> [String] {
         switch action {
         case .focusWorkspace(let name): ["workspace", name]

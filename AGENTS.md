@@ -131,8 +131,9 @@ on the mirror.
   **no optimistic local state**.
 - The second read, `readAgainAfter` later: AeroSpace announces a bound key (`binding-triggered`)
   before its command runs, and a new layout announces nothing, so the first read can miss it.
-- Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream
-  loses whatever happened meanwhile.
+- Reload after reconnect in the subscribe loop, and the binding mode asked (`list-modes --current`)
+  at every connection: `--no-send-initial` means a dropped stream loses whatever happened meanwhile,
+  the mode included.
 - `PictureStore.generation`: a capture that finishes after `clear()` is discarded.
 - `AerospaceSocketRunner`: protocol-version handshake; blocking syscalls on a private queue,
   and the subscription on a thread of its own, never the cooperative pool.

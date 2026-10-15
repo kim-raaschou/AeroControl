@@ -107,6 +107,8 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
             windows.removeAll { $0.id == id }
             if focusedId == id { focusedId = windows.last { $0.workspace == focusedName }?.id; return ("", changed()) }
             return ("", nil)
+        case "list-modes":
+            return ("main", nil)
         case "layout":
             let workspace = args.firstIndex(of: "--workspace").map { args[$0 + 1] } ?? focusedName, now = layouts[workspace] ?? "h_tiles"
             layouts[workspace] = args.last == "accordion" ? now.prefix(2) + (now.hasSuffix("tiles") ? "accordion" : "tiles") : args[1]
