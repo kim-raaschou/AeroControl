@@ -17,7 +17,8 @@ public struct KeyBinding: Equatable, Sendable {
 
     public var does: String {
         command.replacingOccurrences(of: "exec-and-forget", with: "").replacingOccurrences(of: "; mode main", with: "")
-            .split(separator: " ").filter { !$0.hasPrefix("--") }.joined(separator: " ")
+            .replacingOccurrences(of: " --(boundaries(-action)?|window-id|workspace|monitor) \\S+| --[\\w-]+", with: "", options: .regularExpression)
+            .split(separator: " ").joined(separator: " ")
     }
 
     public var chord: String {

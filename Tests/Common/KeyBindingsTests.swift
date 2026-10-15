@@ -19,12 +19,14 @@ struct KeyBindingsTests {
         #expect(KeyBinding(mode: "apps", keys: "a", command: "").chord == "a")
     }
 
-    @Test("a command reads plainly: an app key names its app, opened by AeroControl's strip or by open; exec-and-forget, the way back to main and --flags left out")
+    @Test("a command reads plainly: an app key names its app, opened by AeroControl's strip or by open; exec-and-forget, the way back to main and --flags left out, a flag's value with it")
     func does() throws {
         let keys = try parseBindings(json: json)
         let arc = try #require(keys.first { $0.keys == "a" }), sms = try #require(keys.first { $0.keys == "f12" }), tiling = try #require(keys.first { $0.keys == "t" })
         #expect(arc.app == "company.thebrowser.Browser" && sms.app == "com.apple.MobileSMS")
         #expect(tiling.app == nil && tiling.does == "layout tiling")
         #expect(KeyBinding(mode: "main", keys: "cmd-alt-3", command: "move-node-to-workspace 3 --focus-follows-window").does == "move-node-to-workspace 3")
+        #expect(KeyBinding(mode: "window", keys: "down", command: "focus down --boundaries-action wrap-around-the-workspace").does == "focus down")
+        #expect(KeyBinding(mode: "main", keys: "cmd-n", command: "workspace --wrap-around next").does == "workspace next")
     }
 }
