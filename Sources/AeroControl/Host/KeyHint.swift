@@ -71,16 +71,16 @@ private struct KeyHintView: View {
     let mode: String
     let bindings: [KeyBinding]
     let theme: AeroControlTheme
-    private static let perColumn = 12
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let columns = max(1, (bindings.count + 11) / 12), perColumn = (bindings.count + columns - 1) / columns
+        return VStack(alignment: .leading, spacing: 6) {
             Text(mode).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(AeroControlPalette.of(theme, in: scheme).accent)
             HStack(alignment: .top, spacing: 14) {
-                ForEach(Array(stride(from: 0, to: bindings.count, by: Self.perColumn)), id: \.self) { start in
+                ForEach(Array(stride(from: 0, to: bindings.count, by: perColumn)), id: \.self) { start in
                     VStack(alignment: .leading, spacing: 1) {
-                        ForEach(bindings[start..<min(start + Self.perColumn, bindings.count)], id: \.keys) { row($0) }
+                        ForEach(bindings[start..<min(start + perColumn, bindings.count)], id: \.keys) { row($0) }
                     }
                 }
             }
