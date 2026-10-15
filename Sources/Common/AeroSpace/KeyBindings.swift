@@ -21,6 +21,8 @@ public struct KeyBinding: Equatable, Sendable {
             .split(separator: " ").joined(separator: " ")
     }
 
+    var order: String { (does == "mode main" ? "9" : String(keys.split(separator: "-").count - 1)) + " " + chord }
+
     public var chord: String {
         let parts = keys.split(separator: "-").map(String.init), key = parts.last ?? ""
         let held = [("ctrl", "⌃"), ("alt", "⌥"), ("shift", "⇧"), ("cmd", "⌘")].filter { parts.dropLast().contains($0.0) }.map(\.1).joined()
@@ -32,8 +34,8 @@ public struct KeyBinding: Equatable, Sendable {
 public func parseBindings(json: String) throws -> [KeyBinding] {
     let modes = try JSONDecoder().decode([String: [String: [String: String]]].self, from: Data(json.utf8))
     return modes.sorted { ($0.key == "main" ? 0 : 1, $0.key) < ($1.key == "main" ? 0 : 1, $1.key) }.flatMap { mode, sections in
-        (sections["binding"] ?? [:]).sorted { $0.key.localizedStandardCompare($1.key) == .orderedAscending }
-            .map { KeyBinding(mode: mode, keys: $0.key, command: $0.value) }
+        (sections["binding"] ?? [:]).map { KeyBinding(mode: mode, keys: $0.key, command: $0.value) }
+            .sorted { $0.order.localizedStandardCompare($1.order) == .orderedAscending }
     }
 }
 

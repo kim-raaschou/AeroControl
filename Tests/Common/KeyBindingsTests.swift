@@ -4,13 +4,15 @@ import Testing
 
 @Suite("AeroSpace's keys, as its config tells them")
 struct KeyBindingsTests {
-    private let json = #"{"main":{"binding":{"cmd-ctrl-alt-10":"workspace 10","cmd-ctrl-alt-2":"workspace 2","cmd-ctrl-alt-shift-left":"move left","cmd-alt-h":""}},"apps":{"binding":{"a":"exec-and-forget  open \"aerocontrol://app-id=company.thebrowser.Browser\"; mode main","f12":"exec-and-forget  open -b \"com.apple.MobileSMS\"; mode main","esc":"mode main"}},"layout":{"binding":{"t":"layout tiling; mode main"}}}"#
+    private let json = #"{"main":{"binding":{"cmd-ctrl-alt-10":"workspace 10","cmd-ctrl-alt-2":"workspace 2","cmd-ctrl-alt-shift-left":"move left","cmd-alt-h":""}},"apps":{"binding":{"a":"exec-and-forget  open \"aerocontrol://app-id=company.thebrowser.Browser\"; mode main","f12":"exec-and-forget  open -b \"com.apple.MobileSMS\"; mode main","esc":"mode main"}},"layout":{"binding":{"t":"layout tiling; mode main"}},"window":{"binding":{"up":"move up","b":"balance-sizes","shift-left":"resize width +200","cmd-left":"focus left","esc":"mode main","enter":"mode main","left":"move left"}}}"#
 
-    @Test("modes come main first, then by name; keys in the order a person counts")
+    @Test("modes come main first, then by name; keys as the hand finds them: plain keys first, arrows in reading order, then by how many modifiers are held, counting 2 before 10, and the way back to main last")
     func order() throws {
         let keys = try parseBindings(json: json)
-        #expect(keys.map(\.mode) == ["main", "main", "main", "main", "apps", "apps", "apps", "layout"])
+        #expect(keys.map(\.mode) == ["main", "main", "main", "main", "apps", "apps", "apps", "layout"] + Array(repeating: "window", count: 7))
         #expect(keys.filter { $0.mode == "main" }.map(\.keys) == ["cmd-alt-h", "cmd-ctrl-alt-2", "cmd-ctrl-alt-10", "cmd-ctrl-alt-shift-left"])
+        #expect(keys.filter { $0.mode == "window" }.map(\.chord) == ["←", "↑", "b", "⇧ ←", "⌘ ←", "enter", "esc"])
+        #expect(keys.filter { $0.mode == "apps" }.map(\.keys) == ["a", "f12", "esc"])
     }
 
     @Test("a key reads as its chord: the modifiers in the Mac's order, arrows as arrows")
