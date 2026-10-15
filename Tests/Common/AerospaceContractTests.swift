@@ -33,10 +33,11 @@ struct AerospaceCommandArgvTests {
         ])
     }
 
-    @Test("subscribe argv is pinned, and the mode asked beside it")
+    @Test("subscribe argv is pinned, the mode asked beside it, and a binding triggered as its key would")
     func subscribe() {
         #expect(AerospaceCommand.subscribe == ["subscribe", "--all", "--no-send-initial"])
         #expect(AerospaceCommand.currentMode == ["list-modes", "--current"])
+        #expect(AerospaceCommand.triggerBinding(KeyBinding(mode: "apps", keys: "cmd-a", command: "")) == ["trigger-binding", "--mode", "apps", "cmd-a"])
     }
 }
 

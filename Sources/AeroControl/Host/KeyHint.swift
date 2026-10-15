@@ -34,7 +34,7 @@ final class KeyHint {
     init(runner: AerospaceProcessRunner) {
         self.runner = runner
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2)
-        (panel.isOpaque, panel.backgroundColor, panel.hasShadow, panel.ignoresMouseEvents) = (false, .clear, true, true)
+        (panel.isOpaque, panel.backgroundColor, panel.hasShadow, panel.acceptsMouseMovedEvents) = (false, .clear, true, true)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
     }
 
@@ -59,7 +59,8 @@ final class KeyHint {
     }
 
     private func draw() {
-        let view = NSHostingView(rootView: KeyHintView(mode: mode, bindings: bindings.filter { $0.mode == mode }, theme: AeroControlTheme.chosen))
+        let view = InteractiveHostingView(rootView: KeyHintView(mode: mode, bindings: bindings.filter { $0.mode == mode }, theme: AeroControlTheme.chosen,
+                                                                 trigger: { [runner] binding in Task { _ = try? await runner.run(AerospaceCommand.triggerBinding(binding)) } }))
         panel.appearance = AeroControlTheme.chosen.isDark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
         panel.contentView = view
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
@@ -72,7 +73,9 @@ private struct KeyHintView: View {
     let mode: String
     let bindings: [KeyBinding]
     let theme: AeroControlTheme
+    let trigger: (KeyBinding) -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var hovered: String?
 
     var body: some View {
         let columns = max(1, (bindings.count + 11) / 12), perColumn = (bindings.count + columns - 1) / columns
@@ -105,6 +108,11 @@ private struct KeyHintView: View {
         .font(.system(size: 12))
         .lineLimit(1)
         .padding(.vertical, 1)
+        .padding(.horizontal, 4)
+        .background(hovered == binding.keys ? AeroControlPalette.of(theme, in: scheme).accent.opacity(0.3) : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .contentShape(Rectangle())
+        .onHover { hovered = $0 ? binding.keys : nil }
+        .onTapGesture { trigger(binding) }
     }
 }
 

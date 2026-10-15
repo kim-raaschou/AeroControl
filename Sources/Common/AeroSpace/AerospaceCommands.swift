@@ -23,6 +23,8 @@ public enum AerospaceCommand {
 
     public static let currentMode = ["list-modes", "--current"]
 
+    public static func triggerBinding(_ binding: KeyBinding) -> [String] { ["trigger-binding", "--mode", binding.mode, binding.keys] }
+
     public static func argv(for action: AeroControlAction) -> [String] {
         switch action {
         case .focusWorkspace(let name): ["workspace", name]
