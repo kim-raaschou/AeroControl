@@ -103,7 +103,7 @@ class OverviewWindow: NSPanel {
     }
 }
 
-private extension FilterKey {
+extension FilterKey {
     init?(event: NSEvent) {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return nil }

@@ -18,11 +18,23 @@ enum KeyHintPlace: String, CaseIterable {
     }
 }
 
+private final class HintPanel: NSPanel {
+    var onKey: ((FilterKey) -> Void)?
+
+    override var canBecomeKey: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        guard let key = FilterKey(event: event) else { return super.keyDown(with: event) }
+        onKey?(key)
+    }
+}
+
 @MainActor
 final class KeyHint {
     private let runner: AerospaceProcessRunner
-    private let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-    private var bindings: [KeyBinding] = []
+    private let panel = HintPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+    private let view = InteractiveHostingView(rootView: KeyHintView())
+    private var pick = HintPick()
     private var mode = "main", pinned = false
     private var showing: Task<Void, Never>?
 
@@ -36,9 +48,12 @@ final class KeyHint {
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2)
         (panel.isOpaque, panel.backgroundColor, panel.hasShadow, panel.acceptsMouseMovedEvents) = (false, .clear, true, true)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.contentView = view
+        panel.onKey = { [weak self] in self?.pressed($0) }
     }
 
     private var wanted: Bool { pinned || (KeyHintPlace.chosen != nil && mode != "main") }
+    private var holdsKeys: Bool { pinned && pick.takesKeys }
 
     func toggle() { pinned.toggle(); refresh() }
 
@@ -53,38 +68,56 @@ final class KeyHint {
         showing = Task {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            bindings = await wanted ? loadBindings(using: runner) : []
-            bindings.contains { $0.mode == mode } ? draw() : panel.orderOut(nil)
+            let rows = await wanted ? loadBindings(using: runner).filter { $0.mode == mode } : []
+            pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
+            rows.isEmpty ? panel.orderOut(nil) : draw()
         }
     }
 
+    private func pressed(_ key: FilterKey) {
+        switch pick.key(key) {
+        case .marked(let new): pick = new; draw()
+        case .picked(let binding): trigger(binding)
+        case .closed: toggle()
+        case .nothing: break
+        }
+    }
+
+    private func mark(_ keys: String?) {
+        let new = pick.marking(keys ?? (holdsKeys ? pick.marked : nil))
+        guard new != pick else { return }
+        pick = new
+        draw()
+    }
+
+    private func trigger(_ binding: KeyBinding) {
+        pinned = false
+        Task { [runner] in _ = try? await runner.run(AerospaceCommand.triggerBinding(binding)) }
+        refresh()
+    }
+
     private func draw() {
-        let view = InteractiveHostingView(rootView: KeyHintView(mode: mode, bindings: bindings.filter { $0.mode == mode }, theme: AeroControlTheme.chosen,
-                                                                 trigger: { [runner] binding in Task { _ = try? await runner.run(AerospaceCommand.triggerBinding(binding)) } }))
+        view.rootView = KeyHintView(mode: mode, pick: pick, theme: AeroControlTheme.chosen, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) })
         panel.appearance = AeroControlTheme.chosen.isDark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
-        panel.contentView = view
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
         panel.invalidateShadow()
-        panel.orderFrontRegardless()
+        if panel.isKeyWindow, !holdsKeys { panel.orderOut(nil) }
+        holdsKeys ? panel.makeKeyAndOrderFront(nil) : panel.orderFrontRegardless()
     }
 }
 
 private struct KeyHintView: View {
-    let mode: String
-    let bindings: [KeyBinding]
-    let theme: AeroControlTheme
-    let trigger: (KeyBinding) -> Void
+    var mode = "", pick = HintPick(), theme = AeroControlTheme.chosen
+    var mark: (String?) -> Void = { _ in }, trigger: (KeyBinding) -> Void = { _ in }
     @Environment(\.colorScheme) private var scheme
-    @State private var hovered: String?
 
     var body: some View {
-        let columns = max(1, (bindings.count + 11) / 12), perColumn = (bindings.count + columns - 1) / columns
-        return VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(mode).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(AeroControlPalette.of(theme, in: scheme).accent)
             HStack(alignment: .top, spacing: 14) {
-                ForEach(Array(stride(from: 0, to: bindings.count, by: perColumn)), id: \.self) { start in
+                ForEach(Array(stride(from: 0, to: pick.bindings.count, by: pick.perColumn)), id: \.self) { start in
                     VStack(alignment: .leading, spacing: 1) {
-                        ForEach(bindings[start..<min(start + perColumn, bindings.count)], id: \.keys) { row($0) }
+                        ForEach(pick.bindings[start..<min(start + pick.perColumn, pick.bindings.count)], id: \.keys) { row($0) }
                     }
                 }
             }
@@ -109,9 +142,9 @@ private struct KeyHintView: View {
         .lineLimit(1)
         .padding(.vertical, 1)
         .padding(.horizontal, 4)
-        .background(hovered == binding.keys ? AeroControlPalette.of(theme, in: scheme).accent.opacity(0.3) : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .background(pick.marked == binding.keys ? AeroControlPalette.of(theme, in: scheme).accent.opacity(0.3) : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .contentShape(Rectangle())
-        .onHover { hovered = $0 ? binding.keys : nil }
+        .onHover { mark($0 ? binding.keys : nil) }
         .onTapGesture { trigger(binding) }
     }
 }

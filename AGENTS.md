@@ -96,8 +96,9 @@ fails on any violation.
   the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
   draw the scene and nothing else of the store's state. `Host/`: `OverlayWindowManager` carries out
   `Visit.Host` (show, hide, activate, quit, launch, rebuild), `OverviewWindow` is the non-activating
-  panel and its key handling, `MenuBarController` the menu and the theme. Tests `@testable import`
-  the app module itself.
+  panel and its key handling, `MenuBarController` the menu and the theme, `KeyHint` the mode's keys
+  in a panel of their own, a picker through `HintPick` (`Keys/`) only when summoned by
+  `aerocontrol://config`. Tests `@testable import` the app module itself.
 - Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
 
 ### The one-shot model

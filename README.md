@@ -86,9 +86,12 @@ between summons, and it asks for no permission except Screen Recording for the p
 - **AeroSpace's keys**: when AeroSpace enters a mode other than main (`mode service`, …), a small
   hint shows that mode's keys, app keys by the app's icon and name, and goes when you are back in
   main; a mode left again within the delay set in the menu shows nothing. Pointing at a row marks
-  it, a click does what its key does (`trigger-binding`); it never takes the keyboard.
-  `open aerocontrol://config` shows or hides it for
-  the mode you are in, main too. The keys are read from AeroSpace (`config --get mode --json`),
+  it, a click does what its key does (`trigger-binding`); shown so, it never takes the keyboard.
+  `open aerocontrol://config` shows or hides it for the mode you are in, main too, and summoned so
+  it holds the keyboard when the mode leaves the arrows and Enter free: a ring starts on the first
+  key, ↑ ↓ ← → move it, Enter does what the key does, Escape puts it away. A mode that binds an
+  arrow or Enter keeps them, and the hint is pointed and clicked there, as a passive one is. The
+  keys are read from AeroSpace (`config --get mode --json`),
   never from your config file, and the mode is asked (`list-modes --current`) whenever AeroControl
   connects, so a mode entered before it started or while it was disconnected is shown too. Where it
   shows, or off, is set in the menu.
@@ -245,7 +248,9 @@ There is no typing in the strip; the app is already chosen, and a key that names
 Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
 **Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
-- **AeroSpace key hint**: **Show now** toggles the hint for the mode you are in; a small screen where you
+- **AeroSpace key hint**: **Show now** toggles the hint for the mode you are in, with the keyboard
+  when the mode leaves the arrows free (bind `exec-and-forget open aerocontrol://config` to a key for
+  it); a small screen where you
   click the spot it shows at, again for off; and **After**, how long a mode must last before it
   shows (400 ms by default), so a quick mode-and-key never flashes it.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
