@@ -112,8 +112,12 @@ private struct KeyHintView: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(mode).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundStyle(AeroControlPalette.of(theme, in: scheme).accent)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("mode").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.secondary)
+                Text(mode).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(AeroControlPalette.of(theme, in: scheme).accent)
+            }
+            .padding(.horizontal, 4)
             HStack(alignment: .top, spacing: 14) {
                 ForEach(Array(stride(from: 0, to: pick.bindings.count, by: pick.perColumn)), id: \.self) { start in
                     VStack(alignment: .leading, spacing: 1) {
