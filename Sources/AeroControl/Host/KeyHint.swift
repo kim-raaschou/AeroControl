@@ -1,6 +1,7 @@
 import AppKit
 import Common
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum KeyHintPlace: String, CaseIterable {
     case topLeft, top, topRight, bottomLeft, bottom, bottomRight
@@ -95,7 +96,7 @@ private struct KeyHintView: View {
             Text(binding.chord).font(.system(size: 12, weight: .medium, design: .monospaced)).frame(minWidth: 64, alignment: .leading)
             if let id = binding.app {
                 let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
-                Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSImage()).resizable().frame(width: 14, height: 14)
+                Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle)).resizable().frame(width: 14, height: 14)
                 Text(url?.deletingPathExtension().lastPathComponent ?? id)
             } else {
                 Text(binding.does.isEmpty ? "—" : binding.does).foregroundStyle(.secondary)
