@@ -2392,5 +2392,14 @@
     "complexity": 902,
     "prodComplexity": 525,
     "files": 59
+  },
+  {
+    "timestamp": "2026-10-16T09:16:38+02:00",
+    "commit": "8b810cb",
+    "subject": "Tests that pinned constants, guarded nothing or passed values through are gone or one",
+    "code": 4710,
+    "complexity": 896,
+    "prodComplexity": 525,
+    "files": 59
   }
 ]
