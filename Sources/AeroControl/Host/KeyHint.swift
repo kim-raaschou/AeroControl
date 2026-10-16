@@ -43,10 +43,7 @@ final class KeyHint {
     private var mode = "main", pinned = false
     private var showing: Task<Void, Never>?
 
-    static var delay: Int {
-        get { UserDefaults.standard.object(forKey: "settings.keyHintDelay") as? Int ?? 400 }
-        set { UserDefaults.standard.set(newValue, forKey: "settings.keyHintDelay") }
-    }
+    static let delay = 400
 
     init(runner: AerospaceProcessRunner) {
         self.runner = runner

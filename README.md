@@ -262,8 +262,8 @@ Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: wi
 - **Show overview**: the map, now; under it, the line to bind to a key.
 - **AeroSpace key hint**: **Show now** toggles the hint for the mode you are in, with the keyboard
   when the mode leaves the arrows free (bind `exec-and-forget open aerocontrol://config` to a key for
-  it); **Where**, one of six spots on the screen, or Off; and **After**, how long a mode must last
-  before it shows (400 ms by default), so a quick mode-and-key never flashes it.
+  it); and **Where**, one of six spots on the screen, or Off. A mode must last 400 ms before the
+  hint shows, so a quick mode-and-key never flashes it.
 - **Theme**: **System** follows macOS (your accent color, light/dark, frosted cards), or one
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette

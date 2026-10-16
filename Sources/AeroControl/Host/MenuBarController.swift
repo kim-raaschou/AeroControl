@@ -69,13 +69,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             entry.state = KeyHintPlace.chosen == place ? .on : .off
             submenu.addItem(entry)
         }
-        submenu.addItem(.separator())
-        submenu.addItem(sectionHeader("After"))
-        for ms in [0, 200, 400, 700, 1000] {
-            let entry = item("\(ms) ms") { KeyHint.delay = ms }
-            entry.state = KeyHint.delay == ms ? .on : .off
-            submenu.addItem(entry)
-        }
         parent.submenu = submenu
         return parent
     }
