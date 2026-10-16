@@ -61,9 +61,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   marks the first one, Enter focuses it: type until the one you want is first. See *Keyboard*.
 - **One key per app**: `open aerocontrol://app-id=<bundle id>` (or `app-name=<name>`) opens the overview
   already filtered to that app — three Arc windows, nothing else — with the ring on the one
-  you used before, so Enter alone goes back to it and the arrows walk the rest. One line under the
-  cards names the app and the marked window's title; point at a window to read its title
-  there. With a single window the key focuses it.
+  you used before, so Enter alone goes back to it and the arrows walk the rest. Each window's
+  title sits on its picture; one line under the cards names the app, and the marked window's
+  workspace when the app spans more than one. With a single window the key focuses it.
 - **Floating windows** are marked by a raised shadow, so a window that is not part of the
   tiling layout reads as lying on top of it.
 - **Window previews**: each window is captured when the overview opens (ScreenCaptureKit, works
@@ -203,9 +203,10 @@ strip asks only which of them, and the map is where a window's neighbours are se
 all tiled and make one block on the screen, no other app's window among them, they stand as AeroSpace
 has them, the card as wide as that block; otherwise (an accordion, a float, another app between them)
 they are packed large, each in its window's own shape, two always in one row, and the card takes the
-width the row gives it. A card is at most 45% of the panel high, one workspace or many. One line under the cards,
-as high as the map's, names the app, how many windows, and the marked window's title, with its
-workspace when the app spans more than one. Pointing at a window marks it.
+width the row gives it. A card is at most 45% of the panel high, one workspace or many. Each window's
+title sits on its picture, one line, so three terminals can be told apart. One line under the cards, as
+high as the map's, names the app, how many windows, and the marked window's workspace when the app
+spans more than one. Pointing at a window marks it.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 the arrows are the exception. It handles more — a row that does not fit slides to keep the marked

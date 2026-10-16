@@ -257,6 +257,16 @@ struct StripLayoutTests {
         WorkspaceInfo(name: ws, windows: ids.map { WindowInfo(windowId: $0, appName: "Ghostty", bundleId: "com.Ghostty") } + other, screenIndex: 1, rootLayout: "h_accordion")
     }
 
+    @Test("every tile stays inside its card's box, whole: a pair, a stack, a block, a row of four, with AeroSpace's rects or without")
+    func tilesStayInTheBox() {
+        let stack = WorkspaceInfo(name: "2", windows: [rected(3, "Ghostty", 16, 49, 1696, 520), rected(4, "Ghostty", 16, 581, 1696, 520)], screenIndex: 1, rootLayout: "v_tiles")
+        let block = WorkspaceInfo(name: "3", windows: [rected(5, "Ghostty", 16, 49, 842, 1052), rected(6, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
+        for card in layout([ghostty("1", 1...2), stack, block, ghostty("4", 7...10)]) {
+            let box = CGRect(origin: .zero, size: inner(card)).insetBy(dx: -0.5, dy: -0.5)
+            #expect(!card.frames.isEmpty && card.frames.values.allSatisfy { box.contains($0) && $0.height >= 1 })
+        }
+    }
+
     @Test("the app's one window is its own block: the other app's half of the workspace leaves no gap in the card")
     func rectsDoNotShapeTheCard() throws {
         let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")

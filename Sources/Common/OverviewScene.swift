@@ -17,10 +17,10 @@ public struct OverviewScene: Sendable {
         public let ringed: Bool
         public let origin: Bool
         public let ghost: Bool
-        public let captioned: Bool
+        public let lane: CGFloat
         public let stacking: Double
 
-        public var picture: CGSize { CGSize(width: frame.width, height: frame.height - (captioned ? AeroControlLayout.captionLane : 0)) }
+        public var picture: CGSize { CGSize(width: frame.width, height: frame.height - lane) }
     }
 
     public struct Card: Equatable, Sendable {
@@ -71,7 +71,7 @@ public struct OverviewScene: Sendable {
             let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
                 Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
                      ghost: c.ghosts.contains(w.windowId),
-                     captioned: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight,
+                     lane: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight ? AeroControlLayout.captionLane : 0,
                      stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
             } }
             return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
@@ -83,8 +83,8 @@ public struct OverviewScene: Sendable {
     private static func summary(_ windows: [WindowInfo], marked: Int?) -> String {
         let workspaces = Set(windows.map(\.workspace)).count
         let count = "\(windows.count) windows" + (workspaces > 1 ? " on \(workspaces) workspaces" : "")
-        guard let window = windows.first(where: { $0.windowId == marked }) else { return count }
-        return count + " · " + window.caption + (workspaces > 1 ? " · ws \(window.workspace)" : "")
+        guard let window = windows.first(where: { $0.windowId == marked }), workspaces > 1 else { return count }
+        return count + " · ws \(window.workspace)"
     }
 
     private static func lane(_ visit: Visit) -> Lane {

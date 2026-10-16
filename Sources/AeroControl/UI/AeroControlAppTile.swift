@@ -37,7 +37,7 @@ struct AeroControlAppTile: View {
 
     private var face: some View {
         VStack(spacing: AeroControlLayout.captionGap) {
-            if tile.captioned { caption }
+            if tile.lane > 0 { caption }
             artwork
         }
             .frame(width: tile.frame.width, height: tile.frame.height)
@@ -57,11 +57,26 @@ struct AeroControlAppTile: View {
             .frame(height: AeroControlLayout.captionTitleHeight)
     }
 
+    @ViewBuilder private var title: some View {
+        if look.surface == .strip {
+            Text(tile.window.caption)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(look.palette.badgeText)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(look.palette.badgeFill, in: Capsule())
+                .padding(6)
+        }
+    }
+
     private var artwork: some View {
         stack
             .frame(width: contentSize.width, height: contentSize.height)
             .shadow(color: .black.opacity(shadow.opacity), radius: shadow.radius, y: shadow.offset)
             .opacity(tile.window.isHidden ? 0.45 : 1)
+            .overlay(alignment: .top) { title }
             .overlay(selectionPlate.allowsHitTesting(false))
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(alignment: .topLeading) { stateBadge }

@@ -293,20 +293,20 @@ struct ScenarioTests {
         await app.until { !app.store.visit.visible && app.host.last == .hide }
     }
 
-    @Test("the strip opens on the app's window used last other than yours, as ⌘` goes back to it; knowing none, on the one after yours, round to the first; AeroSpace follows the marking, and Escape takes it back; its line names the marked window and its workspace")
+    @Test("the strip opens on the app's window used last other than yours, as ⌘` goes back to it; knowing none, on the one after yours, round to the first; AeroSpace follows the marking, and Escape takes it back; its line names the marked window's workspace")
     func whereTheStripOpens() async {
         let desk: KeyValuePairs<String, [FakeAeroSpace.Window]> = ["1": [win(1, "Teams", "standup"), win(2, "Teams", "weekly")], "2": [win(3, "Teams", "plan")], "3": [win(5, "Code")]]
         let aero = FakeAeroSpace(desk, focused: 2)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(marked(app) == 3 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · plan · ws 2"))
+        #expect(marked(app) == 3 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · ws 2"))
         await app.until { aero.focused == 3 }
         app.key(.escape)
         await app.until { aero.focused == 2 && app.store.visit.recent.first == 2 }
         aero.userFocus(1); aero.userFocus(2)
         await app.until { app.store.visit.recent.prefix(2) == [2, 1] }
         await app.open("aerocontrol://app-id=com.teams")
-        #expect(marked(app) == 1 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · standup · ws 1"))
+        #expect(marked(app) == 1 && app.scene.lane == .app(name: "Teams", bundleId: "com.teams", summary: "3 windows on 2 workspaces · ws 1"))
         let wrapped = TestApp(aerospace: FakeAeroSpace(desk, focused: 3))
         await wrapped.open("aerocontrol://app-id=com.teams")
         #expect(marked(wrapped) == 1)

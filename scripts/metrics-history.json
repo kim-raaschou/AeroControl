@@ -2383,5 +2383,14 @@
     "complexity": 899,
     "prodComplexity": 526,
     "files": 59
+  },
+  {
+    "timestamp": "2026-10-16T06:56:26+02:00",
+    "commit": "acf5c50",
+    "subject": "The fake AeroSpace lists windows as AeroSpace does, and keeps focus as it does",
+    "code": 4762,
+    "complexity": 902,
+    "prodComplexity": 525,
+    "files": 59
   }
 ]
