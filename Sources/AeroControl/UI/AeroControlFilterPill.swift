@@ -12,7 +12,7 @@ struct AeroControlFilterPill: View {
     var body: some View {
         Group {
             switch lane {
-            case .notice(let name, let reason): appPill(name, icon: nil, summary: reason, keys: "esc  close")
+            case .notice: keys("esc close")
             case .app(let name, let bundleId, let summary): appPill(name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: look.surface == .strip ? Self.stripKeys : Self.mapKeys)
             case .query(let query, let miss): pill(query, miss: miss)
             case .keys: keys(Self.mapKeys)

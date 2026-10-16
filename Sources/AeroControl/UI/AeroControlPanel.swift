@@ -12,7 +12,7 @@ struct AeroControlPanel: View {
         let scene = state.scene
         return VStack(spacing: AeroControlLayout.pillGap) {
             switch scene.body {
-            case .nothing: EmptyView()
+            case .nothing: if case .notice(let name, let reason) = scene.lane { notice(name, reason) }
             case .strip: AeroControlAppStrip(scene: scene, tiles: tiles)
             case .map: grid(scene)
             }
@@ -21,6 +21,20 @@ struct AeroControlPanel: View {
         .fixedSize()
         .environment(state)
         .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: scene.body == .strip ? .strip : .map))
+    }
+
+    private func notice(_ name: String, _ reason: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 30)).foregroundStyle(.orange)
+            Text(name).font(.system(size: 22, weight: .bold, design: .rounded))
+            Text(reason).font(.system(size: 15, weight: .medium, design: .rounded)).opacity(0.8)
+        }
+        .foregroundStyle(look.palette.badgeText)
+        .padding(.horizontal, 40)
+        .padding(.vertical, 28)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: AeroControlLayout.cardRadius, style: .continuous).strokeBorder(look.palette.cardBorder, lineWidth: 1))
+        .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
     }
 
     private func grid(_ scene: OverviewScene) -> some View {
