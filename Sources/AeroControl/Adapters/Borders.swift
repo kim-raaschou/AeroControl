@@ -1,25 +1,14 @@
 import AppKit
 
 enum Borders {
-    static let paths = ["/opt/homebrew/bin/borders", "/usr/local/bin/borders"]
-
     static var running: Bool {
-        let pgrep = Process()
-        pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        pgrep.arguments = ["-x", "borders"]
-        pgrep.standardOutput = FileHandle.nullDevice
-        try? pgrep.run()
-        pgrep.waitUntilExit()
-        return pgrep.terminationStatus == 0
+        (try? Process.run(URL(fileURLWithPath: "/usr/bin/pgrep"), arguments: ["-x", "borders"])).map { $0.waitUntilExit(); return $0.terminationStatus == 0 } ?? false
     }
 
     static func matchAccent() {
-        guard running, let path = paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return }
+        guard running, let path = ["/opt/homebrew/bin/borders", "/usr/local/bin/borders"].first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return }
         let accent = NSApp.effectiveAppearance.performAsCurrentDrawingAppearance { hex(.controlAccentColor) }
-        let borders = Process()
-        borders.executableURL = URL(fileURLWithPath: path)
-        borders.arguments = ["active_color=0xff\(accent)", "inactive_color=0x40\(accent)"]
-        try? borders.run()
+        _ = try? Process.run(URL(fileURLWithPath: path), arguments: ["active_color=0xff\(accent)", "inactive_color=0x40\(accent)"])
     }
 
     static func hex(_ color: NSColor) -> String {
