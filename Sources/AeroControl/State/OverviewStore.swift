@@ -65,7 +65,7 @@ class OverviewStore {
     private func landed(_ read: Result<OverviewModel, Error>) -> OverviewModel? {
         switch read {
         case .success(let result): error = nil; return result
-        case .failure(let failure): error = "Load error: \(failure.localizedDescription)"; return nil
+        case .failure(let failure): error = failure.localizedDescription; return nil
         }
     }
 

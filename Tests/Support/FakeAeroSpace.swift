@@ -21,6 +21,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private var focusedName: String
     private var layouts: [String: String] = [:]
     private let knowsRects: Bool
+    var down = false
     private var log: [[String]] = []
     private var events: AsyncThrowingStream<String, Error>.Continuation?
 
@@ -45,6 +46,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     func run(_ args: [String]) async throws -> String {
         locked { log.append(args) }
+        if down { throw AerospaceSocketError.io("AeroSpace is not running") }
         if !knowsRects, args.contains(where: { $0.contains("window-layout-rect") }) {
             throw AerospaceSocketError.commandFailed(arguments: args, exitCode: 1, stderr: "Can't parse 'window-layout-rect'", serverVersion: nil)
         }

@@ -160,8 +160,8 @@ was built and removed in October 2026; see docs/aerospace-layout-data.md, "Revie
 
 AeroSpace is trusted at the **parsing boundary**: the fields AeroControl explicitly requests
 (`AerospaceCommand.listWindowsFields` etc.) are decoded strictly, and the **initial
-`loadOverview`** fails loudly with a visible `Load error:` banner. Steady-state reloads use
-`try?`, unknown events parse to `.other`, and there is **no runtime version check** — the
+`loadOverview`** fails loudly: the lane says `Load error` and why, and Escape closes. A failed
+steady-state reload says the same until the next read lands, unknown events parse to `.other`, and there is **no runtime version check** — the
 minimum (**AeroSpace ≥ 0.21.0-Beta**, where `subscribe` and the public socket protocol
 arrived) is documentation. `Tests/Common/AerospaceContractTests`
 pins argv and event names; if you add or rename a field or event, update both sides.

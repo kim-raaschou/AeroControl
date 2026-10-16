@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 public struct OverviewScene: Sendable {
-    public enum Body: Equatable, Sendable { case error(String), nothing, map, strip }
+    public enum Body: Equatable, Sendable { case nothing, map, strip }
 
     public enum Lane: Equatable, Sendable {
         case keys
@@ -47,11 +47,9 @@ public struct OverviewScene: Sendable {
 
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
         let model = visit.model, ring = visit.ringWindowId, usable = AeroControlLayout.usable(available)
-        (size, ringed, lane) = (usable, ring, Self.lane(visit))
+        (size, ringed, lane) = (usable, ring, Self.lane(visit, error: error))
         let shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard], offset: CGFloat, filtering: Bool
-        if let error {
-            (body, shown, laid, offset, filtering, held) = (.error(error), [], [], 0, false, nil)
-        } else if model.workspaces.isEmpty || visit.missingApp != nil {
+        if error != nil || model.workspaces.isEmpty || visit.missingApp != nil {
             (body, shown, laid, offset, filtering, held) = (.nothing, [], [], 0, false, nil)
         } else if let strip = visit.strip, !visit.stripWindows.isEmpty {
             shown = visit.stripWorkspaces
@@ -87,7 +85,8 @@ public struct OverviewScene: Sendable {
         return count + " · ws \(window.workspace)"
     }
 
-    private static func lane(_ visit: Visit) -> Lane {
+    private static func lane(_ visit: Visit, error: String?) -> Lane {
+        if let error { return .notice(name: "Load error", reason: error) }
         if let missing = visit.missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
         if let strip = visit.strip, let first = visit.stripWindows.first {
             return .app(name: first.appName, bundleId: strip.app ?? "", summary: Self.summary(visit.stripWindows, marked: strip.marked))

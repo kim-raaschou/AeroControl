@@ -185,6 +185,17 @@ struct ScenarioTests {
         await app.until { !app.store.visit.visible && aero.focused == 20 }                      // and goes back with Escape
     }
 
+    @Test("with no AeroSpace to read, the overview shows nothing but the lane, which says the load failed and why; Escape closes it")
+    func noAeroSpace() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
+        aero.down = true
+        let app = await TestApp.onMap(aero)
+        #expect(app.store.visit.visible && app.scene.body == .nothing && app.scene.cards.isEmpty)
+        #expect(app.scene.lane == .notice(name: "Load error", reason: "AeroSpace socket: AeroSpace is not running"))
+        app.key(.escape)
+        await app.until { !app.store.visit.visible && app.host.last == .hide }
+    }
+
     @Test("an app with no window is started, and the overview closes; one that will not start is said on the lane")
     func launchAndMissing() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1))
@@ -222,7 +233,7 @@ struct ScenarioTests {
         app.key(.move(.window(1)))
         #expect(app.scene.cards.map(\.ringed) == [false, true, false])
         app.key(.move(.window(1))); app.key(.move(.window(1)))
-        #expect(app.scene.ringed == 2)
+        await app.until { app.scene.ringed == 2 && aero.focused == 2 }
         aero.userFocus(3)
         await app.until { app.scene.ringed == 2 && app.scene.cards.flatMap(\.tiles).first { $0.window.windowId == 3 }?.origin == true }
         app.type("sl"); app.key(.escape)
