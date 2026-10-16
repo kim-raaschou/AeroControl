@@ -4,8 +4,8 @@ import Testing
 
 // Type-to-filter, the pure half: which windows a query picks out, and what a key names.
 
-private func window(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
-    WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", title: title)
+private func window(_ id: Int, _ app: String, _ title: String = "", on workspace: String = "") -> WindowInfo {
+    WindowInfo(windowId: id, appName: app, bundleId: "com.\(app)", title: title, workspace: workspace)
 }
 
 /// Two Teams windows (only the title tells them apart), a Code window, and an accented title.
@@ -13,8 +13,8 @@ private func window(_ id: Int, _ app: String, _ title: String = "") -> WindowInf
 private var model: OverviewModel { OverviewModel(workspaces: [
     WorkspaceInfo(name: "1", windows: [window(1, "Teams", "Crew standup"),
                                        window(2, "Teams", "Chat")]),
-    WorkspaceInfo(name: "2", windows: [window(3, "Code", "AeroControl — main"),
-                                       window(4, "Safari", "Café Münster")]),
+    WorkspaceInfo(name: "2", windows: [window(3, "Code", "AeroControl — main", on: "2"),
+                                       window(4, "Safari", "Café Münster", on: "2")]),
 ]) }
 
 /// Awkward strings for the word rules. Only ever asserted for membership, so adding a row

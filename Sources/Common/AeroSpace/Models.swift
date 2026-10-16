@@ -24,11 +24,6 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.workspace = workspace
     }
 
-    func on(_ workspace: String) -> WindowInfo {
-        WindowInfo(windowId: windowId, appName: appName, bundleId: bundleId, isFloating: isFloating, isFullscreen: isFullscreen, isHidden: isHidden,
-                   title: title, layoutRect: layoutRect, workspace: workspace)
-    }
-
     public var isTiled: Bool { !isFloating && !isFullscreen && !isHidden }
 
     public var caption: String {
@@ -64,7 +59,7 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
 
     public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0, rootLayout: String = "") {
         self.name = name
-        self.windows = windows.map { $0.on(name) }
+        self.windows = windows
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex

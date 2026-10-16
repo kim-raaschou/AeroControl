@@ -5,10 +5,6 @@ public struct KeyBinding: Equatable, Sendable {
     public let keys: String
     public let command: String
 
-    public init(mode: String, keys: String, command: String) {
-        (self.mode, self.keys, self.command) = (mode, keys, command)
-    }
-
     public var app: String? {
         ["aerocontrol://app-id=", "open -b \""].lazy.compactMap { marker in
             command.range(of: marker).map { String(command[$0.upperBound...].prefix { !"\" ;".contains($0) }) }

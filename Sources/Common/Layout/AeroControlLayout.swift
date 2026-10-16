@@ -68,7 +68,6 @@ public enum AeroControlLayout {
     }
 
     public struct LaidCard: Equatable, Sendable {
-        public let workspace: String
         public let frame: CGRect
         public let frames: [Int: CGRect]
         public var ghosts: Set<Int> = []
@@ -86,7 +85,7 @@ public enum AeroControlLayout {
             let laid = filtering ? nil : treeLayout(ws, frames: frames, screen: screen, inner: inner)
             let placed = laid ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
-            return LaidCard(workspace: ws.name, frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
+            return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
         }
     }
 
@@ -120,7 +119,7 @@ public enum AeroControlLayout {
         return groups.indices.map { g in
             let placed = stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full))
             let used = placed.frames.values.reduce(CGRect.null) { $0.union($1) }
-            let card = LaidCard(workspace: groups[g].name, frame: CGRect(x: x, y: 0, width: used.width.rounded(.up) + 2 * cardPadding, height: full + cardChrome),
+            let card = LaidCard(frame: CGRect(x: x, y: 0, width: used.width.rounded(.up) + 2 * cardPadding, height: full + cardChrome),
                                 frames: placed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, ghosts: placed.ghosts)
             x = card.frame.maxX + cardGap
             return card

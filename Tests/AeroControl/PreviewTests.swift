@@ -166,7 +166,7 @@ struct MapLayoutTests {
     func cardsAsDrawn() throws {
         let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 16, 49, 842, 1052), rected(2, "B", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let cards = layout([a, WorkspaceInfo(name: "2", windows: [], screenIndex: 1)])
-        #expect(cards.map(\.workspace) == ["1", "2"] && cards[0].frame.minX < cards[1].frame.minX && cards[0].frame.size == cards[1].frame.size)
+        #expect(cards[0].frame.minX < cards[1].frame.minX && cards[0].frame.size == cards[1].frame.size)
         let left = try #require(cards[0].grid.windows[1]), right = try #require(cards[0].grid.windows[2])
         #expect(cards[0].frame.contains(left) && cards[0].frame.contains(right) && left.maxX <= right.minX && left.minY > cards[0].frame.minY + AeroControlLayout.badgeLane)
         let inCard = try #require(cards[0].frames[1])                                          // the card draws from its inner box

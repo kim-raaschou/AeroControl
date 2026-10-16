@@ -60,15 +60,6 @@ public struct WorkspaceMonitor: Decodable, Equatable {
         case rootLayout = "workspace-root-container-layout"
         case isFocused = "workspace-is-focused"
     }
-
-    public init(workspace: String, monitorId: Int, monitorName: String? = nil, screenIndex: Int = 0, rootLayout: String? = nil, isFocused: Bool? = nil) {
-        self.workspace = workspace
-        self.monitorId = monitorId
-        self.monitorName = monitorName
-        self.screenIndex = screenIndex
-        self.rootLayout = rootLayout
-        self.isFocused = isFocused
-    }
 }
 
 public func parseWindows(json: String) throws -> [WindowInfo] {
