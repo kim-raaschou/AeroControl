@@ -63,10 +63,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private func keyHint() -> NSMenuItem {
         let parent = NSMenuItem(title: KeyHintPlace.chosen == nil ? "AeroSpace key hint: off" : "AeroSpace key hint", action: nil, keyEquivalent: ""), submenu = NSMenu()
-        let picker = NSMenuItem()
-        picker.view = KeyHintPicker(changed: onSettingsChanged)
-        submenu.items = [item("Show now") { NSWorkspace.shared.open(URL(string: "aerocontrol://config")!) }, .separator(),
-                         sectionHeader("Where · click a spot, again for off"), picker, .separator(), sectionHeader("After")]
+        submenu.items = [item("Show now") { NSWorkspace.shared.open(URL(string: "aerocontrol://config")!) }, .separator(), sectionHeader("Where")]
+        for place in KeyHintPlace.allCases.map(Optional.some) + [nil] {
+            let entry = item(place?.title ?? "Off") { KeyHintPlace.chosen = place; self.onSettingsChanged() }
+            entry.state = KeyHintPlace.chosen == place ? .on : .off
+            submenu.addItem(entry)
+        }
+        submenu.addItem(.separator())
+        submenu.addItem(sectionHeader("After"))
         for ms in [0, 200, 400, 700, 1000] {
             let entry = item("\(ms) ms") { KeyHint.delay = ms }
             entry.state = KeyHint.delay == ms ? .on : .off

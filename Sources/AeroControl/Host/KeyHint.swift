@@ -11,6 +11,11 @@ enum KeyHintPlace: String, CaseIterable {
         set { UserDefaults.standard.set(newValue?.rawValue ?? "off", forKey: "settings.keyHint") }
     }
 
+    var title: String {
+        let words = rawValue.map { $0.isUppercase ? " " + $0.lowercased() : String($0) }.joined()
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
     func frame(_ size: CGSize, in area: CGRect, margin: CGFloat) -> CGRect {
         let index = Self.allCases.firstIndex(of: self)!, room = area.insetBy(dx: margin, dy: margin)
         let (x, y) = ([0, 0.5, 1][index % 3], index < 3 ? 1.0 : 0)
@@ -150,42 +155,5 @@ private struct KeyHintView: View {
         .contentShape(Rectangle())
         .onHover { mark($0 ? binding.keys : nil) }
         .onTapGesture { trigger(binding) }
-    }
-}
-
-final class KeyHintPicker: NSView {
-    private let changed: () -> Void
-
-    init(changed: @escaping () -> Void) {
-        self.changed = changed
-        super.init(frame: NSRect(x: 0, y: 0, width: 200, height: 92))
-    }
-
-    required init?(coder: NSCoder) { nil }
-
-    private var screen: NSRect { bounds.insetBy(dx: 40, dy: 8) }
-
-    private func spot(_ place: KeyHintPlace) -> NSRect {
-        place.frame(CGSize(width: 26, height: 10), in: screen.insetBy(dx: 0, dy: 3).offsetBy(dx: 0, dy: -3), margin: 6)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.secondaryLabelColor.set()
-        let outline = NSBezierPath(roundedRect: screen, xRadius: 6, yRadius: 6)
-        outline.lineWidth = 1.5
-        outline.stroke()
-        NSRect(x: screen.minX, y: screen.maxY - 6, width: screen.width, height: 1).fill()
-        for place in KeyHintPlace.allCases {
-            let mark = NSBezierPath(roundedRect: spot(place), xRadius: 3, yRadius: 3)
-            if place == KeyHintPlace.chosen { NSColor.controlAccentColor.setFill(); mark.fill() } else { NSColor.tertiaryLabelColor.setStroke(); mark.stroke() }
-        }
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
-        guard let place = KeyHintPlace.allCases.first(where: { spot($0).insetBy(dx: -6, dy: -6).contains(point) }) else { return }
-        KeyHintPlace.chosen = place == KeyHintPlace.chosen ? nil : place
-        needsDisplay = true
-        changed()
     }
 }
