@@ -115,12 +115,12 @@ public enum AeroControlLayout {
         let full = stripCardHeight(view: view.width, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
                                    chrome: 2 * cardPadding + cardGap, panelHeight: view.height)
         let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
+        let placed = groups.indices.map { g in stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full)) }
+        let used = placed.map { $0.frames.values.reduce(CGRect.null) { $0.union($1) } }, height = (used.map(\.height).max() ?? 0).rounded(.up)
         var x: CGFloat = 0
-        return groups.indices.map { g in
-            let placed = stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full))
-            let used = placed.frames.values.reduce(CGRect.null) { $0.union($1) }
-            let card = LaidCard(frame: CGRect(x: x, y: 0, width: used.width.rounded(.up) + 2 * cardPadding, height: full + cardChrome),
-                                frames: placed.frames.mapValues { $0.offsetBy(dx: -used.minX, dy: 0) }, ghosts: placed.ghosts)
+        return placed.indices.map { g in
+            let card = LaidCard(frame: CGRect(x: x, y: 0, width: used[g].width.rounded(.up) + 2 * cardPadding, height: height + cardChrome),
+                                frames: placed[g].frames.mapValues { $0.offsetBy(dx: -used[g].minX, dy: ((height - used[g].height) / 2).rounded(.down) - used[g].minY) }, ghosts: placed[g].ghosts)
             x = card.frame.maxX + cardGap
             return card
         }
