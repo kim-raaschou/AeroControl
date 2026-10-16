@@ -54,8 +54,11 @@ class OverviewStore {
         update { $0.point(windowId); return [] }
     }
 
+    private var repaint: Task<Void, Never>?
+
     func endVisit() {
         sync.stop()
+        repaint?.cancel()
         update { $0.end(); return [] }
         pictures.clear()
     }
@@ -99,9 +102,9 @@ class OverviewStore {
             guard again else { return }
             let taken = await self.retakePictures()
             guard !taken.isEmpty else { return }
-            Task {
+            self.repaint = Task {
                 try? await Task.sleep(for: Self.repaintedAfter)
-                await self.pictures.shoot(taken)
+                if !Task.isCancelled { await self.pictures.shoot(taken) }
             }
         }
     }
