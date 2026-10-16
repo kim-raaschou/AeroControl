@@ -26,6 +26,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Show overview") { NSWorkspace.shared.open(URL(string: "aerocontrol://workspaces")!) })
         menu.addItem(sectionHeader("Bind a key to: exec-and-forget open aerocontrol://workspaces"))
+        if Borders.running { menu.addItem(item("Borders: match the accent") { Borders.matchAccent() }) }
         menu.addItem(.separator())
         menu.addItem(keyHint())
 

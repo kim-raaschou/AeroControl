@@ -38,6 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlayManager = OverlayWindowManager(state: state)
 
         state.startListening()
+        Borders.matchAccent()
 
         NSApp.activate(ignoringOtherApps: true)
 

@@ -88,7 +88,7 @@ fails on any violation.
   is an AeroSpace client; its model is the core, not an adapter. Everything outside is the shell.
 - `Sources/AeroControl/` — **the app: one module around the core**, in four folders. `Adapters/`:
   `AerospaceSocketRunner` speaks the socket protocol; `NativeApiBridgeAdapter` measures and captures
-  windows. `State/`: `AerospaceSync` is everything that talks to AeroSpace — the read, the event
+  windows; `Borders` colours a running JankyBorders with the accent, at start and from the menu. `State/`: `AerospaceSync` is everything that talks to AeroSpace — the read, the event
   stream and its reconnect, the commands in order, the refresh that reads twice and is cancelled by
   the next, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) holds the `Visit`,
   runs its commands, reads and captures, hands `Visit.Host` effects to the host, and derives the
