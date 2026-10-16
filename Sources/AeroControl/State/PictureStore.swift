@@ -16,11 +16,9 @@ final class PictureStore {
 
     func prepare() { bridge.prepareCapture() }
 
-    func measure(_ ids: [Int]) async {
+    func measure(_ ids: [Int]) {
         generation += 1
-        let generation = generation
-        let frames = await bridge.windowFrames(windowIds: ids)
-        guard generation == self.generation else { return }
+        let frames = bridge.windowFrames(windowIds: ids)
         (self.frames, previews) = (frames, previews.filter { id, picture in
             frames[id].map { AeroControlLayout.sameShape(CGSize(width: picture.width, height: picture.height), $0.size) } ?? false })
     }
@@ -49,12 +47,7 @@ final class PictureStore {
         (boxes, frames) = (nil, [:])
     }
 
-    func settle(_ ids: [Int]) async {
-        let generation = generation
-        let frames = await bridge.windowFrames(windowIds: ids)
-        guard !Task.isCancelled, generation == self.generation else { return }
-        self.frames = frames
-    }
+    func settle(_ ids: [Int]) { frames = bridge.windowFrames(windowIds: ids) }
 
     func retake(_ sizes: [Int: CGSize]) async -> [Int: CGSize] {
         let changed = sizes.filter { id, size in boxes.map { $0[id] != size } ?? false }

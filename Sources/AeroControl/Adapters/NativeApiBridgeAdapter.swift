@@ -53,7 +53,7 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
         return view
     }
 
-    func windowFrames(windowIds: [Int]) async -> [Int: CGRect] {
+    func windowFrames(windowIds: [Int]) -> [Int: CGRect] {
         guard canCapturePreviews else { return [:] }
         let wanted = Set(windowIds)
         let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -80,7 +80,7 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !ids.isEmpty, var content = await resolvedContent() else { return }
         if !Set(ids).isSubset(of: content.windows.map { Int($0.windowID) }), let fresh = await Self.shareableContent() { (self.content, content) = (fresh, fresh) }
-        let frames = await windowFrames(windowIds: ids)
+        let frames = windowFrames(windowIds: ids)
         let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
         let windows = ids.compactMap { id in byId[id].flatMap { window in sizes[id].map { (window, frames[id]?.size ?? window.frame.size, $0) } } }
         let started = ContinuousClock.now

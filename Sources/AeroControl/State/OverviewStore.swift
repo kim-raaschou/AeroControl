@@ -75,7 +75,7 @@ class OverviewStore {
         pictures.prepare()
         await reload()
         update { $0.summoned(summon) }
-        if visit.visible { await pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId)) }
+        if visit.visible { pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId)) }
         following = visit.visible
         return visit.visible
     }
@@ -97,7 +97,7 @@ class OverviewStore {
         sync.refresh { read, again in
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
-            await self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))
+            self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))
             guard again else { return }
             let taken = await self.retakePictures()
             guard !taken.isEmpty else { return }
