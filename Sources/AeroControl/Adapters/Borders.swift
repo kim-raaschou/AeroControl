@@ -8,7 +8,7 @@ enum Borders {
     static func matchAccent() {
         guard running, let path = ["/opt/homebrew/bin/borders", "/usr/local/bin/borders"].first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return }
         let accent = NSApp.effectiveAppearance.performAsCurrentDrawingAppearance { hex(.controlAccentColor) }
-        _ = try? Process.run(URL(fileURLWithPath: path), arguments: ["active_color=0xff\(accent)", "inactive_color=0x40\(accent)"])
+        _ = try? Process.run(URL(fileURLWithPath: path), arguments: ["active_color=0xff\(accent)"])
     }
 
     static func hex(_ color: NSColor) -> String {

@@ -265,9 +265,9 @@ Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: wi
   it); and **Where**, one of six spots on the screen, or Off. A mode must last 400 ms before the
   hint shows, so a quick mode-and-key never flashes it.
 - **Borders: match the accent**, shown only while [JankyBorders](https://github.com/FelixKratz/JankyBorders)
-  runs: the active border takes your accent colour, the inactive one the same at a quarter.
-  AeroControl does this once when it starts, too; it overrides the colours in your `bordersrc`,
-  so start AeroControl before `borders` if you want your own.
+  runs: the active border takes your accent colour; the inactive one stays as your `bordersrc`
+  has it. AeroControl does this once when it starts, too; it overrides `active_color` in your
+  `bordersrc`, so start AeroControl before `borders` if you want your own.
 - **Window Previews**: grant Screen Recording when it is missing; once refused, the item opens
   the Screen Recording settings instead, since macOS asks only once.
 - **Quit**.
