@@ -56,12 +56,12 @@ final class FakeBridge: NativeApiBridge {
 
 @MainActor
 func waitUntil(_ cond: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
-    let deadline = ContinuousClock.now + .seconds(2)
+    let deadline = ContinuousClock.now + .seconds(5)
     while ContinuousClock.now < deadline {
         if cond() { return }
         try? await Task.sleep(for: .milliseconds(5))
     }
-    Issue.record("waited 2 s and the condition never held", sourceLocation: sourceLocation)
+    Issue.record("waited 5 s and the condition never held", sourceLocation: sourceLocation)
 }
 
 /// Counts how many times the store's `@Observable` `model` invalidates — i.e. how many

@@ -89,10 +89,10 @@ struct ScenarioTests {
         let held = { (name: String) in app.store.visit.model.workspaces.first { $0.name == name }?.windows.count ?? 0 }
         app.store.send(.merge("1", into: "1"))
         app.store.send(.merge("1", into: "2"))
-        await app.until { aero.windows(on: "2") == [9, 8, 1, 2] && aero.layout(of: "2") == "h_accordion" && aero.focusedWorkspace == "2" && held("2") == 4 }
-        #expect(aero.commands.contains(["focus", "--window-id", "1"]) && !aero.commands.contains { $0.first == "move-node-to-workspace" && $0.last == "1" })
+        await app.until { aero.windows(on: "2") == [8, 9, 2, 1] && aero.layout(of: "2") == "h_accordion" && aero.focusedWorkspace == "2" && held("2") == 4 }
+        #expect(aero.commands.contains(["focus", "--window-id", "2"]) && !aero.commands.contains { $0.first == "move-node-to-workspace" && $0.last == "1" })
         app.store.send(.merge("2", into: "3"))
-        await app.until { aero.windows(on: "3") == [9, 8, 1, 2, 3] && held("3") == 5 }
+        await app.until { aero.windows(on: "3") == [3, 8, 9, 2, 1] && held("3") == 5 }
         app.store.send(.merge("5", into: "6"))
         await app.until { aero.windows(on: "6") == [5] }
         #expect(aero.layout(of: "3") == "h_tiles" && aero.layout(of: "6") == "h_tiles")
@@ -217,24 +217,24 @@ struct ScenarioTests {
 
     @Test("on the map the arrows go round, AeroSpace moving its focus moves the outline and not the ring, and a query starts the ring again")
     func arrowsOnTheMap() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [], "3": [win(3, "Code")]], focused: 2)
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [], "3": [win(3, "Code")]], focused: 1)
         let app = await TestApp.onMap(aero)
         app.key(.move(.window(1)))
         #expect(app.scene.cards.map(\.ringed) == [false, true, false])
         app.key(.move(.window(1))); app.key(.move(.window(1)))
-        #expect(app.scene.ringed == 1)
+        #expect(app.scene.ringed == 2)
         aero.userFocus(3)
-        await app.until { app.scene.ringed == 1 && app.scene.cards.flatMap(\.tiles).first { $0.window.windowId == 3 }?.origin == true }
+        await app.until { app.scene.ringed == 2 && app.scene.cards.flatMap(\.tiles).first { $0.window.windowId == 3 }?.origin == true }
         app.type("sl"); app.key(.escape)
         #expect(app.scene.ringed == 3)
     }
 
     @Test("AeroSpace's focus follows the ring, within a workspace and onto another, so AeroSpace's own keys act on the window under the ring")
     func ringTakesAeroSpaceAlong() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 2)
         let app = await TestApp.onMap(aero)
         app.key(.move(.window(1)))
-        await app.until { app.scene.ringed == 2 && aero.focused == 2 }
+        await app.until { app.scene.ringed == 1 && aero.focused == 1 }
         app.key(.move(.window(1)))
         await app.until { aero.focusedWorkspace == "2" && app.store.visit.model.focusedWorkspace == "2" }
         #expect(app.scene.ringed == 3 && app.store.visit.visible && app.scene.cards.map(\.focused) == [false, true])
@@ -295,7 +295,7 @@ struct ScenarioTests {
 
     @Test("the strip opens on the app's window used last other than yours, as ⌘` goes back to it; knowing none, on the one after yours, round to the first; AeroSpace follows the marking, and Escape takes it back; its line names the marked window and its workspace")
     func whereTheStripOpens() async {
-        let desk: KeyValuePairs<String, [FakeAeroSpace.Window]> = ["1": [win(1, "Teams", "standup"), win(2, "Teams")], "2": [win(3, "Teams", "plan")], "3": [win(5, "Code")]]
+        let desk: KeyValuePairs<String, [FakeAeroSpace.Window]> = ["1": [win(1, "Teams", "standup"), win(2, "Teams", "weekly")], "2": [win(3, "Teams", "plan")], "3": [win(5, "Code")]]
         let aero = FakeAeroSpace(desk, focused: 2)
         let app = TestApp(aerospace: aero)
         await app.open("aerocontrol://app-id=com.teams")

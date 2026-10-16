@@ -121,7 +121,7 @@ along, so AeroSpace's own keys act on the window under it, and Escape takes the 
 where the visit began; pointing and typing move only the ring. A feature that would show anything AeroSpace does not, or
 keep AeroSpace somewhere else than the overview shows, needs the user's decision first.
 Tests hold it from the outside: `TestApp.mirrors` checks the cards against the fake AeroSpace
-(their windows, in the strip the app's, layouts and focused workspace), `mapIsAeroSpaceLive` and `stripIsAeroSpaceLive`
+(their windows in the order AeroSpace lists them, by app name then title, as `list-windows` sorts; in the strip the app's; layouts and focused workspace), `mapIsAeroSpaceLive` and `stripIsAeroSpaceLive`
 change AeroSpace by bound keys while the overview is up and check the mirror after each, and
 `ringTakesAeroSpaceAlong` keeps AeroSpace with the ring. A scenario that changes AeroSpace ends
 on the mirror.

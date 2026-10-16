@@ -40,7 +40,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     var focusedWorkspace: String { locked { focusedName } }
     var workspaces: [String] { locked { workspaceNames } }
     var commands: [[String]] { locked { log } }
-    func windows(on workspace: String) -> [Int] { locked { windows.filter { $0.workspace == workspace }.map(\.id) } }
+    func windows(on workspace: String) -> [Int] { locked { ordered.filter { $0.workspace == workspace }.map(\.id) } }
     func layout(of workspace: String) -> String { locked { layouts[workspace] ?? "h_tiles" } }
 
     func run(_ args: [String]) async throws -> String {
@@ -102,11 +102,10 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
             guard let id, let at = windows.firstIndex(where: { $0.id == id }), let name = args.last else { return ("", nil) }
             create(name)
             windows[at].workspace = name
-            return ("", args.contains("--focus-follows-window") ? focus(id) : nil)
+            return ("", args.contains("--focus-follows-window") ? focus(id) : left(id))
         case "close":
             windows.removeAll { $0.id == id }
-            if focusedId == id { focusedId = windows.last { $0.workspace == focusedName }?.id; return ("", changed()) }
-            return ("", nil)
+            return ("", left(id))
         case "list-modes":
             return ("main", nil)
         case "layout":
@@ -118,7 +117,13 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         }
     }
 
-    private var ordered: [Window] { workspaceNames.flatMap { name in windows.filter { $0.workspace == name } } }
+    private var ordered: [Window] { windows.sorted { ($0.app, $0.title) < ($1.app, $1.title) } }
+
+    private func left(_ id: Int?) -> String? {
+        guard focusedId == id, windows.first(where: { $0.id == id })?.workspace != focusedName else { return nil }
+        focusedId = windows.last { $0.workspace == focusedName }?.id
+        return changed()
+    }
 
     private func switchTo(_ name: String) -> String {
         create(name)
@@ -155,10 +160,12 @@ func win(_ id: Int, _ app: String, _ title: String = "", floating: Bool = false,
 final class TestApp {
     let store: OverviewStore
     let bridge = FakeBridge()
+    private let aero: FakeAeroSpace
     private(set) var host: [Visit.Host] = []
     private var pending: Summon?
 
     init(aerospace: FakeAeroSpace) {
+        aero = aerospace
         bridge.granted = true
         store = OverviewStore(runner: aerospace, nativeSystem: bridge)
         store.screen = (available: CGSize(width: 1600, height: 1000), frames: [:], scale: 2)
@@ -179,6 +186,7 @@ final class TestApp {
     }
 
     func open(_ link: String) async {
+        await until { aero.commands.contains { $0.first == "subscribe" } }
         store.summon(Summon(URL(string: link)!))
         guard let summon = pending else { return }
         pending = nil

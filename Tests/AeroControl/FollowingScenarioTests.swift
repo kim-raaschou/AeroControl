@@ -49,7 +49,7 @@ struct FollowingScenarioTests {
         aero.bound { $0.relayout("1", "h_accordion") }
         await app.until { app.mirrors(aero) && aero.layout(of: "1") == "h_accordion" }
         aero.bound { $0.shift(2, to: "2") }
-        await app.until { app.mirrors(aero) && aero.windows(on: "2") == [2, 3] }
+        await app.until { app.mirrors(aero) && aero.windows(on: "2") == [3, 2] }
         aero.bound { $0.remove(1) }
         await app.until { app.mirrors(aero) && aero.windows(on: "1").isEmpty }
     }
@@ -88,7 +88,7 @@ struct FollowingScenarioTests {
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.bridge.captured == [[1, 2, 3]] && app.store.pictures.previews[9] == nil && app.store.pictures.previews[7] == nil)
         await app.open("aerocontrol://workspaces")
-        #expect(app.scene.body == .map && app.bridge.captured.last == [1, 9, 2, 3, 7, 5])
+        #expect(app.scene.body == .map && app.bridge.captured.last == [9, 1, 2, 3, 7, 5])
         app.key(.escape)
         #expect(!app.store.visit.visible && app.store.pictures.previews.count == 6 && app.store.pictures.frames.isEmpty)
     }
@@ -147,7 +147,7 @@ struct FollowingScenarioTests {
     func moveRetakesOnlyChanged() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")]], focused: 1)
         let app = await TestApp.onMap(aero)
-        #expect(app.bridge.captured == [[1, 2, 3]])
+        #expect(app.bridge.captured == [[2, 1, 3]])
         app.bridge.sizes[2] = CGSize(width: 600, height: 200)
         app.store.send(.action(.moveWindow(windowId: 1, toWorkspace: "2")))
         await app.until { app.store.pictures.frames[2]?.width == 600 }
