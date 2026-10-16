@@ -6,7 +6,7 @@ protocol NativeApiBridge: Sendable {
     func liveWindow(_ id: Int, pixels: CGSize) -> NSView
 
     var canCapturePreviews: Bool { get }
-    func requestPreviewAccess()
+    @discardableResult func requestPreviewAccess() -> Bool
     func prepareCapture()
     func windowFrames(windowIds: [Int]) async -> [Int: CGRect]
     func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async

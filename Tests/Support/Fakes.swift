@@ -16,7 +16,7 @@ final class FakeBridge: NativeApiBridge {
     func appIcon(bundleId: String) -> NSImage { icon }
     func liveWindow(_ id: Int, pixels: CGSize) -> NSView { live }
     var canCapturePreviews: Bool { granted }
-    func requestPreviewAccess() {}
+    func requestPreviewAccess() -> Bool { false }
     func prepareCapture() {}
     /// What the window server reports per window; 300 × 200 for any not listed.
     var sizes: [Int: CGSize] = [:]

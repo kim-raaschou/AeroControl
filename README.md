@@ -249,6 +249,7 @@ There is no typing in the strip; the app is already chosen, and a key that names
 Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: with
 **Reduce motion** on (System Settings → Accessibility → Display) the overview moves in one frame.
 
+- **Show overview**: the map, now; under it, the line to bind to a key.
 - **AeroSpace key hint**: **Show now** toggles the hint for the mode you are in, with the keyboard
   when the mode leaves the arrows free (bind `exec-and-forget open aerocontrol://config` to a key for
   it); a small screen where you
@@ -258,7 +259,8 @@ Use the menu-bar icon for all in-app configuration. Motion is macOS's to set: wi
   of the built-in palettes — Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Nord, Gruvbox
   Dark, Dracula, Rosé Pine, Solarized Dark — each shown with a colour swatch. A fixed palette
   looks the same whatever the system appearance is.
-- **Window Previews**: grant Screen Recording when it is missing.
+- **Window Previews**: grant Screen Recording when it is missing; once refused, the item opens
+  the Screen Recording settings instead, since macOS asks only once.
 - **Quit**.
 
 The theme persists (`UserDefaults`). AeroControl writes no config: the key lines above are

@@ -24,6 +24,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(versionHeader())
         menu.addItem(sectionHeader("Compatible with AeroSpace ≥ 0.21.0"))
         menu.addItem(.separator())
+        menu.addItem(item("Show overview") { NSWorkspace.shared.open(URL(string: "aerocontrol://workspaces")!) })
+        menu.addItem(sectionHeader("Bind a key to: exec-and-forget open aerocontrol://workspaces"))
+        menu.addItem(.separator())
         menu.addItem(keyHint())
         let theme = NSMenuItem(title: "Theme: \(AeroControlTheme.chosen.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
         theme.image = swatch(for: AeroControlTheme.chosen)
@@ -40,8 +43,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         if bridge.canCapturePreviews {
             menu.addItem(sectionHeader("On — Screen Recording granted"))
         } else {
-            let grant = item("Enable window previews (Screen Recording)…") { self.bridge.requestPreviewAccess() }
-            grant.toolTip = "Previews capture each window once when the overview opens. Without it the tiles stay empty plates."
+            let grant = item("Enable window previews (Screen Recording)…") {
+                if !self.bridge.requestPreviewAccess() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!) }
+            }
+            grant.toolTip = "Previews capture each window when the overview opens. Without them the tiles are plates with the app's icon and the window's title."
             menu.addItem(grant)
         }
 

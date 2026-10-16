@@ -21,16 +21,17 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
 
     var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
 
-    func requestPreviewAccess() {
+    @discardableResult func requestPreviewAccess() -> Bool {
         let granted = CGRequestScreenCaptureAccess()
         log.notice("previews: Screen Recording not granted; requested access -> \(granted)")
+        return granted
     }
 
     private var pendingContent: Task<SCShareableContent?, Never>?
     private var content: SCShareableContent?
 
     func prepareCapture() {
-        guard canCapturePreviews else { return requestPreviewAccess() }
+        guard canCapturePreviews else { requestPreviewAccess(); return }
         content = nil
         pendingContent = Task { @MainActor in await Self.shareableContent() }
     }
