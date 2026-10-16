@@ -47,9 +47,15 @@ struct AerospaceSocketRunner: AerospaceProcessRunner {
         }
     }
 
+    static let answerWithin = timeval(tv_sec: 3, tv_usec: 0)
+
     private static func runBlocking(socketPath: String, args: [String]) throws -> String {
         let fd = try AerospaceSocket.connectAndHandshake(socketPath)
         defer { Darwin.close(fd) }
+        var wait = answerWithin
+        if unsafe setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &wait, socklen_t(MemoryLayout<timeval>.size)) != 0 {
+            throw AerospaceSocketError.io("setsockopt(SO_RCVTIMEO) errno=\(errno)")
+        }
         try AerospaceSocket.writeFrame(fd, AerospaceSocket.encodeRequest(args))
         let answer = try AerospaceSocket.decodeAnswer(AerospaceSocket.readFrame(fd))
         if answer.exitCode != 0 { throw answer.failure(args) }
@@ -175,7 +181,7 @@ enum AerospaceSocket {
         var offset = 0
         while offset < count {
             let n = unsafe buffer.withUnsafeMutableBytes { unsafe recv(fd, $0.baseAddress!.advanced(by: offset), count - offset, 0) }
-            if n <= 0 { throw AerospaceSocketError.io("recv errno=\(errno) (eof=\(n == 0))") }
+            if n <= 0 { throw AerospaceSocketError.io(errno == EAGAIN ? "AeroSpace did not answer in \(AerospaceSocketRunner.answerWithin.tv_sec) s" : "recv errno=\(errno) (eof=\(n == 0))") }
             offset += n
         }
         return buffer

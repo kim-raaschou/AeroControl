@@ -54,6 +54,15 @@ import Testing
         await #expect { try await runner.run(["list-windows"]) } throws: { "\($0)".contains("protocol version 999") }
     }
 
+    @Test("a server that takes the request and never answers is given up on in a few seconds, in words, so a summon is never stuck")
+    func silentServer() async throws {
+        let (server, runner) = try served { _ in Thread.sleep(forTimeInterval: 8); return MockAnswer(exitCode: 0, stdout: "", stderr: "") }
+        defer { server.stop() }
+        let started = ContinuousClock.now
+        await #expect { try await runner.run(["list-windows"]) } throws: { "\($0)".contains("did not answer in 3 s") }
+        #expect(ContinuousClock.now - started < .seconds(6))
+    }
+
     @Test func subscribeStreamsEventLines() async throws {
         let events = [#"{"_event":"focus-changed","windowId":1}"#, #"{"_event":"workspace-changed"}"#]
         let (server, runner) = try served(events: events)
