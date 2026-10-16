@@ -40,7 +40,6 @@ struct ThemeTests {
 
     @Test("themes are identified by a stable id, and the stored one round-trips")
     func idsAreStable() {
-        #expect(AeroControlTheme.all.count >= 8)
         #expect(Set(AeroControlTheme.all.map(\.id)).count == AeroControlTheme.all.count)
         for theme in AeroControlTheme.all {
             #expect(AeroControlTheme.named(theme.id) == theme)

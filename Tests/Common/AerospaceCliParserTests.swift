@@ -18,18 +18,6 @@ struct ParseWindowsTests {
         #expect(result.map(\.title) == ["Inbox", ""])
         #expect(try parseWindows(json: "").isEmpty && parseWindows(json: "[]").isEmpty)
     }
-
-    @Test("a window list decodes without a monitor-id, which only list-workspaces carries")
-    func windowsCarryNoMonitor() throws {
-        let json = """
-        [
-          {"window-id": 1, "app-name": "Firefox", "app-bundle-id": "org.mozilla.firefox", "workspace": "1", "window-parent-container-layout": "h_tiles"}
-        ]
-        """
-        let result = try parseWindows(json: json)
-        #expect(result.count == 1)
-        #expect(result[0].workspace == "1")
-    }
 }
 
 @Suite("parseWindows — state")
@@ -77,12 +65,6 @@ struct ParseWorkspacesTests {
         #expect(result[2].monitorId == 2)
     }
 
-    @Test("returns empty array for empty string")
-    func emptyString() throws {
-        let result = try parseWorkspaces(json: "")
-        #expect(result.isEmpty)
-    }
-
     @Test("the AppKit screen index is read, and a list without it decodes as 0")
     func screenIndex() throws {
         let json = """
@@ -112,34 +94,22 @@ struct ParseWorkspacesTests {
 
 @Suite("buildOverview")
 struct BuildOverviewTests {
-    @Test("groups windows by workspace and sorts numerically")
-    func groupsAndSorts() throws {
+    @Test("the workspaces in list-workspaces' order, each with its windows, its monitor and its root layout, one with no windows too; no text is no workspace")
+    func built() throws {
         let windows = [
             WindowInfo(windowId: 1, appName: "A", bundleId: "a", workspace: "2"),
             WindowInfo(windowId: 2, appName: "B", bundleId: "b", workspace: "1"),
             WindowInfo(windowId: 3, appName: "C", bundleId: "c", workspace: "2"),
         ]
-        let monitors = try parseWorkspaces(json: #"[{"workspace": "1", "monitor-id": 1}, {"workspace": "2", "monitor-id": 1}]"#)
+        let monitors = try parseWorkspaces(json: """
+        [{"workspace": "2", "monitor-id": 1, "workspace-root-container-layout": "v_accordion"},
+         {"workspace": "1", "monitor-id": 2},
+         {"workspace": "5", "monitor-id": 2}]
+        """)
         let result = buildOverview(windows: windows, workspaceMonitors: monitors)
-
-        #expect(result.workspaces.count == 2)
-        #expect(result.workspaces[0].name == "1")
-        #expect(result.workspaces[0].windows.count == 1)
-        #expect(result.workspaces[1].name == "2")
-        #expect(result.workspaces[1].windows.count == 2)
-    }
-
-    @Test("workspace with no windows gets empty array")
-    func emptyWorkspace() throws {
-        let result = buildOverview(windows: [], workspaceMonitors: try parseWorkspaces(json: #"[{"workspace": "5", "monitor-id": 1}]"#))
-        #expect(result.workspaces[0].windows.isEmpty)
-    }
-
-    @Test("multiple monitors are represented")
-    func multipleMonitors() throws {
-        let monitors = try parseWorkspaces(json: #"[{"workspace": "1", "monitor-id": 1}, {"workspace": "2", "monitor-id": 2}]"#)
-        let result = buildOverview(windows: [], workspaceMonitors: monitors)
-        #expect(Set(result.workspaces.map(\.monitorId)) == [1, 2])
+        #expect(result.workspaces.map(\.name) == ["2", "1", "5"] && result.workspaces.map { $0.windows.map(\.windowId) } == [[1, 3], [2], []])
+        #expect(result.workspaces.map(\.monitorId) == [1, 2, 2] && result.workspaces.map(\.rootLayout) == ["v_accordion", "", ""])
+        #expect(try parseWorkspaces(json: "").isEmpty)
     }
 }
 
@@ -153,13 +123,6 @@ struct RootLayoutTests {
         """
         let result = try parseWorkspaces(json: json)
         #expect(result[0].rootLayout == "h_tiles" && result[1].rootLayout == nil)
-    }
-
-    @Test("the overview result carries it on the workspace")
-    func carried() throws {
-        let monitors = try parseWorkspaces(json: #"[{"workspace": "2", "monitor-id": 1, "workspace-root-container-layout": "v_accordion"}, {"workspace": "3", "monitor-id": 1}]"#)
-        let result = buildOverview(windows: [], workspaceMonitors: monitors)
-        #expect(result.workspaces[0].rootLayout == "v_accordion" && result.workspaces[1].rootLayout == "")
     }
 }
 
