@@ -11,7 +11,7 @@ class OverviewStore {
     let pictures: PictureStore
     private(set) var error: String?
     var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
-    private var following = false
+    private var following: Bool { visit.visible && !visit.loading }
     var onEffect: ((Visit.Host) -> Void)?
     var onEvent: ((AerospaceEvent) -> Void)?
 
@@ -55,7 +55,6 @@ class OverviewStore {
     }
 
     func endVisit() {
-        following = false
         sync.stop()
         update { $0.end(); return [] }
         pictures.clear()
@@ -76,7 +75,6 @@ class OverviewStore {
         await reload()
         update { $0.summoned(summon) }
         if visit.visible { pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId)) }
-        following = visit.visible
         return visit.visible
     }
 

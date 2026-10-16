@@ -26,7 +26,7 @@ public struct Visit: Equatable {
     public private(set) var missingApp: AppRef?
     public private(set) var recent: [Int] = []
     public private(set) var visible = false
-    private var loading = false
+    public private(set) var loading = false
     private var cameFrom: Int?
 
     public init() {}
