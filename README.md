@@ -49,7 +49,7 @@ between summons, and it asks for no permission except Screen Recording for the p
   order, every card the same size and the shape of its screen, as GNOME and KWin shape their
   workspace cells. Cards hold still through window churn. Inside a card every window is drawn
   where AeroSpace put it, at its own shape, or packed at one height when AeroSpace has not said, in
-  AeroSpace's order. Where AeroSpace put a window is `%{window-layout-rect}`, which no AeroSpace
+  the order `list-windows` gives them, by app and then title. Where AeroSpace put a window is `%{window-layout-rect}`, which no AeroSpace
   release has yet (it is a branch of the author's); with a released AeroSpace every card is packed.
   The layout engine is shared with
   [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview
@@ -151,6 +151,16 @@ them to whatever keys you like in your AeroSpace config (`~/.aerospace.toml` or
 
 `aerospace list-apps` prints every running app's bundle id beside its name.
 
+Start AeroControl with AeroSpace, so the strip knows from the first summon which window you used
+last:
+
+```toml
+after-startup-command = ['exec-and-forget open -g -a AeroControl']
+```
+
+`-g` keeps the launch from taking the keyboard. On an AeroControl already running the same command
+opens the map, so it belongs in `after-startup-command` and nowhere else.
+
 `workspaces` closes the overview when it is already up; an app's key while it is up is that app's flow again, its strip
 taking over from whatever was showing. The strip is not a third view: it is the part of the app rule that cannot be
 settled without you (see *The map and the strip*). The rule:
@@ -222,7 +232,7 @@ On the map:
 | letters, digits, space | filter; the grid narrows from the second character |
 | ← → ↑ ↓ | move the ring through the windows as drawn, on to the next workspace, AeroSpace's focus going along; an empty one is a stop |
 | ⏎ | close on the window under the ring; on an empty workspace, switch to it |
-| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again |
+| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again; a tap alone hands AeroSpace the window under the ring, as an arrow does, so a typed match becomes its focus |
 | Esc | clear the query; on an empty query, dismiss, back on the window you came from |
 
 Matching is word-prefix, case- and diacritic-insensitive: every word you type must start a
@@ -239,7 +249,7 @@ In the strip the keys move the marking as they move the ring on the map, the str
 | a workspace's name | move the marking to that workspace: 3 for 3, 0 for 10 |
 | the app's key again | move the marking on, as ⌘` does |
 | ⏎ | close on the marked window |
-| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again |
+| ⌘ held | the keyboard is the app's under the ring: its own shortcuts, ⌘N, ⌘W, ⌘Q, act on that window and the overview stays; let go and the keys are AeroControl's again; a tap alone hands AeroSpace the window under the ring, as an arrow does, so a typed match becomes its focus |
 | Esc | dismiss, back on the window you came from |
 
 There is no typing in the strip; the app is already chosen, and a key that names a workspace goes there. Pointing marks a window, here and on the map.
@@ -273,9 +283,9 @@ For a stable full row of workspaces (including empty ones), set:
 persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 ```
 
-## Arc and other Chromium browsers
+## Arc, and other Chromium and Electron apps
 
-Chromium stops drawing a window macOS calls hidden, and to macOS a window AeroSpace has parked in
+Chromium, and Electron with it, stops drawing a window macOS calls hidden, and to macOS a window AeroSpace has parked in
 the corner of a hidden workspace is hidden. When AeroSpace gives such a window a new size, Arc does
 not draw it at that size until it is shown again, so its picture is the old, smaller one. Start Arc
 with Chromium's switch and it keeps drawing:
