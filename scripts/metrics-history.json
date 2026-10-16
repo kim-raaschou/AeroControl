@@ -2410,5 +2410,14 @@
     "complexity": 889,
     "prodComplexity": 517,
     "files": 60
+  },
+  {
+    "timestamp": "2026-10-16T13:09:41+02:00",
+    "commit": "cd29175",
+    "subject": "A missing app, or a failed load, is a panel in the middle of the screen",
+    "code": 4507,
+    "complexity": 857,
+    "prodComplexity": 498,
+    "files": 58
   }
 ]
