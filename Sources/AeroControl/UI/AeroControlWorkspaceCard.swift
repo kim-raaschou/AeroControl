@@ -109,10 +109,9 @@ struct AeroControlCardFace: View {
             }
             Spacer(minLength: 0)
             if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout) {
-                Image(systemName: symbol.name)
+                Image(systemName: symbol)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(look.palette.badgeText.opacity(0.7))
-                    .help(symbol.help)
             }
         }
     }
@@ -127,8 +126,6 @@ struct AeroControlCardFace: View {
             .overlay(Circle().strokeBorder(look.palette.accent, lineWidth: 1.5).opacity(card.visible && !isFocused ? 1 : 0))
             .contentShape(Circle())
             .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
-            .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
-                  : "Workspace \(workspace.name) — drag the card onto another workspace to merge")
     }
 
 }

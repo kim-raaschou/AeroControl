@@ -149,11 +149,8 @@ public enum AeroControlLayout {
                 y: max(0, ((inner.height - packed.height) / 2).rounded(.down)))
     }
 
-    public static func layoutSymbol(rootLayout: String) -> (name: String, help: String)? {
-        let accordion = ("rectangle.on.rectangle", "Accordion: windows stacked, one in front — click to tile them")
-        return ["h_tiles": ("rectangle.split.2x1", "Tiles: windows side by side — click to stack them"),
-                "v_tiles": ("rectangle.split.1x2", "Tiles: windows one above another — click to stack them"),
-                "h_accordion": accordion, "v_accordion": accordion][rootLayout]
+    public static func layoutSymbol(rootLayout: String) -> String? {
+        ["h_tiles": "rectangle.split.2x1", "v_tiles": "rectangle.split.1x2", "h_accordion": "rectangle.on.rectangle", "v_accordion": "rectangle.on.rectangle"][rootLayout]
     }
 
 }

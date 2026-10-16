@@ -45,7 +45,6 @@ struct AeroControlAppTile: View {
             .contentShape(Rectangle())
             .onTapGesture { state.send(.action(.focusWindow(tile.window.windowId))) }
             .onHover(perform: hoverChanged)
-            .help(tile.window.title.isEmpty ? tile.window.appName : "\(tile.window.appName) — \(tile.window.title)")
     }
 
     private var caption: some View {
@@ -79,7 +78,6 @@ struct AeroControlAppTile: View {
             .overlay(alignment: .top) { title }
             .overlay(selectionPlate.allowsHitTesting(false))
             .overlay(alignment: .topTrailing) { closeButton }
-            .overlay(alignment: .topLeading) { stateBadge }
     }
 
     private var stack: some View {
@@ -122,17 +120,6 @@ struct AeroControlAppTile: View {
         }
     }
 
-    @ViewBuilder private var stateBadge: some View {
-        if tile.window.isFullscreen, preview != nil {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(look.palette.badgeText)
-                .padding(4)
-                .background(look.palette.badgeFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                .padding(6)
-        }
-    }
-
     @ViewBuilder private var closeButton: some View {
         if isHovering, look.surface == .map {
             let diameter: CGFloat = 18
@@ -148,7 +135,6 @@ struct AeroControlAppTile: View {
             }
             .buttonStyle(.plain)
             .padding(6)
-            .help("Close window")
         }
     }
 }

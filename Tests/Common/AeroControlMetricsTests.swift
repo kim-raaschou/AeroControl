@@ -59,6 +59,6 @@ struct LayoutSymbolTests {
         ("v_accordion", "rectangle.on.rectangle"), ("", nil), ("floating", nil),
     ] as [(String, String?)])
     func symbols(layout: String, symbol: String?) {
-        #expect(AeroControlLayout.layoutSymbol(rootLayout: layout)?.name == symbol)
+        #expect(AeroControlLayout.layoutSymbol(rootLayout: layout) == symbol)
     }
 }
