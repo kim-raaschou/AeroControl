@@ -6,13 +6,14 @@ struct AeroControlFilterPill: View {
     @Environment(\.aeroLook) private var look
     let lane: OverviewScene.Lane
 
-    private static let mapKeys = "←→↑↓ move · ⏎ focus"
+    private static let mapKeys = "type to find · ←→↑↓ move · ⏎ focus · ⌘ the app's keys · esc"
+    private static let stripKeys = "←→↑↓ move · 1–9 workspace · ⏎ focus · esc back"
 
     var body: some View {
         Group {
             switch lane {
             case .notice(let name, let reason): appPill(name, icon: nil, summary: reason, keys: "esc  close")
-            case .app(let name, let bundleId, let summary): appPill(name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: Self.mapKeys)
+            case .app(let name, let bundleId, let summary): appPill(name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: look.surface == .strip ? Self.stripKeys : Self.mapKeys)
             case .query(let query, let miss): pill(query, miss: miss)
             case .keys: keys(Self.mapKeys)
             }

@@ -14,15 +14,14 @@ struct AeroControlPanel: View {
             switch scene.body {
             case .error(let message): errorView(message)
             case .nothing: EmptyView()
-            case .strip:
-                AeroControlAppStrip(scene: scene, tiles: tiles)
-                    .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: .strip))
+            case .strip: AeroControlAppStrip(scene: scene, tiles: tiles)
             case .map: grid(scene)
             }
             AeroControlFilterPill(lane: scene.lane)
         }
         .fixedSize()
         .environment(state)
+        .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: scene.body == .strip ? .strip : .map))
     }
 
     private func grid(_ scene: OverviewScene) -> some View {
