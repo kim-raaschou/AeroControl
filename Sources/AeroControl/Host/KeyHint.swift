@@ -73,7 +73,8 @@ final class KeyHint {
         showing = Task {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            let rows = await wanted ? loadBindings(using: runner).filter { $0.mode == mode } : []
+            let mode = mode, rows = await wanted ? loadBindings(using: runner).filter { $0.mode == mode } : []
+            guard !Task.isCancelled else { return }
             pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
             rows.isEmpty ? panel.orderOut(nil) : draw()
         }
@@ -138,7 +139,7 @@ private struct KeyHintView: View {
 
     private func row(_ binding: KeyBinding) -> some View {
         HStack(spacing: 8) {
-            Text(binding.chord).font(.system(size: 12, weight: .medium, design: .monospaced)).frame(minWidth: 64, alignment: .leading)
+            Text(binding.chord).font(.system(size: 12, weight: .medium, design: .monospaced)).frame(minWidth: 84, alignment: .leading)
             if let id = binding.app {
                 let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
                 Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle)).resizable().frame(width: 14, height: 14)

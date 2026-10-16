@@ -26,6 +26,8 @@ struct KeyBindingsTests {
         let keys = try parseBindings(json: json)
         let arc = try #require(keys.first { $0.keys == "a" }), sms = try #require(keys.first { $0.keys == "f12" }), tiling = try #require(keys.first { $0.keys == "t" })
         #expect(arc.app == "company.thebrowser.Browser" && sms.app == "com.apple.MobileSMS")
+        #expect(KeyBinding(mode: "apps", keys: "n", command: "exec-and-forget open aerocontrol://app-name=Notion%20Calendar").app == "Notion Calendar")
+        #expect(KeyBinding(mode: "apps", keys: "c", command: "exec-and-forget open -a \"Arc\"; mode main").app == "Arc")
         #expect(tiling.app == nil && tiling.does == "layout tiling")
         #expect(KeyBinding(mode: "main", keys: "cmd-alt-3", command: "move-node-to-workspace 3 --focus-follows-window").does == "move-node-to-workspace 3")
         #expect(KeyBinding(mode: "window", keys: "down", command: "focus down --boundaries-action wrap-around-the-workspace").does == "focus down")

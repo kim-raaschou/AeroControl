@@ -21,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayManager: OverlayWindowManager!
     private var menuBarController: MenuBarController!
     private var hint: KeyHint!
-    private var pendingSummon: Summon?
+    private var pendingLink: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -41,9 +41,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.activate(ignoringOtherApps: true)
 
-        if let summon = pendingSummon {
-            pendingSummon = nil
-            state.summon(summon)
+        if let url = pendingLink {
+            pendingLink = nil
+            application(NSApp, open: [url])
         }
     }
 
@@ -55,8 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
-        if url.host() == "config" { hint?.toggle(); return }
-        guard let state else { pendingSummon = Summon(url); return }
-        state.summon(Summon(url))
+        guard let state else { pendingLink = url; return }
+        url.host() == "config" ? hint.toggle() : state.summon(Summon(url))
     }
 }

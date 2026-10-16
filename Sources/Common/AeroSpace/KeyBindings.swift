@@ -6,8 +6,8 @@ public struct KeyBinding: Equatable, Sendable {
     public let command: String
 
     public var app: String? {
-        ["aerocontrol://app-id=", "open -b \""].lazy.compactMap { marker in
-            command.range(of: marker).map { String(command[$0.upperBound...].prefix { !"\" ;".contains($0) }) }
+        ["aerocontrol://app-id=", "aerocontrol://app-name=", "open -b \"", "open -a \""].lazy.compactMap { marker in
+            command.range(of: marker).flatMap { String(command[$0.upperBound...].prefix { !"\" ;".contains($0) }).removingPercentEncoding }
         }.first
     }
 
