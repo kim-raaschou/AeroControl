@@ -100,8 +100,7 @@ final class KeyHint {
     }
 
     private func draw() {
-        view.rootView = KeyHintView(mode: mode, pick: pick, theme: AeroControlTheme.chosen, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) })
-        panel.appearance = AeroControlTheme.chosen.isDark.flatMap { NSAppearance(named: $0 ? .darkAqua : .aqua) }
+        view.rootView = KeyHintView(mode: mode, pick: pick, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) })
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
         panel.invalidateShadow()
         if panel.isKeyWindow, !holdsKeys { panel.orderOut(nil) }
@@ -110,7 +109,7 @@ final class KeyHint {
 }
 
 private struct KeyHintView: View {
-    var mode = "", pick = HintPick(), theme = AeroControlTheme.chosen
+    var mode = "", pick = HintPick()
     var mark: (String?) -> Void = { _ in }, trigger: (KeyBinding) -> Void = { _ in }
     @Environment(\.colorScheme) private var scheme
 
@@ -118,7 +117,7 @@ private struct KeyHintView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("mode").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.secondary)
-                Text(mode).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(AeroControlPalette.of(theme, in: scheme).accent)
+                Text(mode).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(AeroControlPalette.system(scheme).accent)
             }
             .padding(.horizontal, 4)
             HStack(alignment: .top, spacing: 14) {
@@ -149,7 +148,7 @@ private struct KeyHintView: View {
         .lineLimit(1)
         .padding(.vertical, 1)
         .padding(.horizontal, 4)
-        .background(pick.marked == binding.keys ? AeroControlPalette.of(theme, in: scheme).accent.opacity(0.3) : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .background(pick.marked == binding.keys ? AeroControlPalette.system(scheme).accent.opacity(0.3) : .clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .contentShape(Rectangle())
         .onHover { mark($0 ? binding.keys : nil) }
         .onTapGesture { trigger(binding) }

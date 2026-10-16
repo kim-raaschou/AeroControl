@@ -74,7 +74,6 @@ final class OverlayWindowManager {
 
     private func makeWindow(for screen: NSScreen) -> OverviewWindow {
         let window = OverviewWindow(targetScreen: screen)
-        window.appearance = AeroControlTheme.chosen.isDark.map { NSAppearance(named: $0 ? .darkAqua : .aqua) } ?? nil
         let screenFrames = Dictionary(uniqueKeysWithValues: NSScreen.screens.enumerated().map { index, screen in
             let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
             let visible = screen.visibleFrame
@@ -85,7 +84,7 @@ final class OverlayWindowManager {
         window.onKey = { [weak self] in self?.state.handle($0) }
         window.onLend = { [weak self] in self?.state.update { $0.follow() } }
         state.screen = (screen.frame.size, screenFrames, screen.backingScaleFactor)
-        let root = OverviewRoot(state: state, theme: AeroControlTheme.chosen, motion: motion)
+        let root = OverviewRoot(state: state, motion: motion)
         let hostingView = InteractiveHostingView(rootView: root)
         hostingView.sizingOptions = []
         window.contentView = hostingView

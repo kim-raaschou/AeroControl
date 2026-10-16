@@ -28,15 +28,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(sectionHeader("Bind a key to: exec-and-forget open aerocontrol://workspaces"))
         menu.addItem(.separator())
         menu.addItem(keyHint())
-        let theme = NSMenuItem(title: "Theme: \(AeroControlTheme.chosen.name)", action: nil, keyEquivalent: ""), themes = NSMenu()
-        theme.image = swatch(for: AeroControlTheme.chosen)
-        for t in AeroControlTheme.all {
-            let entry = item(t.name) { AeroControlTheme.chosen = t; self.onSettingsChanged() }
-            (entry.state, entry.image) = (AeroControlTheme.chosen == t ? .on : .off, swatch(for: t))
-            themes.addItem(entry)
-        }
-        theme.submenu = themes
-        menu.addItem(theme)
 
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
@@ -92,26 +83,4 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         return sectionHeader("AeroControl \(version)")
     }
 
-    private func swatch(for theme: AeroControlTheme) -> NSImage {
-        let side: CGFloat = 12
-        return NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
-            let palette = AeroControlPalette.of(theme, in: .dark)
-            (NSColor(palette.cardFill ?? .clear)).setFill()
-            NSBezierPath(ovalIn: rect).fill()
-            NSColor(palette.accent).setFill()
-            NSBezierPath(ovalIn: rect.insetBy(dx: side * 0.3, dy: side * 0.3)).fill()
-            NSColor(palette.cardBorder).setStroke()
-            let ring = NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5))
-            ring.lineWidth = 1
-            ring.stroke()
-            return true
-        }
-    }
-}
-
-extension AeroControlTheme {
-    static var chosen: AeroControlTheme {
-        get { UserDefaults.standard.string(forKey: "settings.theme").flatMap(named) ?? .system }
-        set { UserDefaults.standard.set(newValue.id, forKey: "settings.theme") }
-    }
 }

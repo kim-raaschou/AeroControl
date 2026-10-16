@@ -93,7 +93,7 @@ struct AeroControlCardFace: View {
     private func cardFill(_ shape: RoundedRectangle) -> some View {
         ZStack {
             if look.surface == .strip { shape.fill(.ultraThickMaterial) }
-            if let fill = look.palette.cardFill { shape.fill(fill) } else { shape.fill(.regularMaterial) }
+            shape.fill(.regularMaterial)
         }
     }
 

@@ -113,13 +113,12 @@ extension FilterKey {
 
 struct OverviewRoot: View {
     let state: OverviewStore
-    let theme: AeroControlTheme
     let motion: Double
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let palette = AeroControlPalette.of(theme, in: colorScheme)
+        let palette = AeroControlPalette.system(colorScheme)
         ZStack {
             ZStack {
                 BackdropBlur()

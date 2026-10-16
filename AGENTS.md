@@ -79,7 +79,7 @@ fails on any violation.
 
 - `Sources/Common/` — **the functional core: AeroSpace's world, pure**. One layer, in four areas, each a step
   down: `Keys/` (keys, links and the strip's moves) over `Layout/` (geometry) over `AeroSpace/` (the model and
-  the reading of AeroSpace), with `Visit`, `OverviewScene` and the theme at the root; `make arch-check` fails if
+  the reading of AeroSpace), with `Visit` and `OverviewScene` at the root; `make arch-check` fails if
   two areas name each other. `Visit` is one visit of the overview as a value: every key, link, read and event
   goes in through a transition that returns the new value and its effects (`Visit.Effect`: commands to run,
   a read, and `Visit.Host` for the host). `OverviewScene` is what is drawn, derived from a `Visit`. Then
@@ -96,7 +96,7 @@ fails on any violation.
   the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
   draw the scene and nothing else of the store's state. `Host/`: `OverlayWindowManager` carries out
   `Visit.Host` (show, hide, activate, quit, launch, rebuild), `OverviewWindow` is the non-activating
-  panel and its key handling, `MenuBarController` the menu and the theme, `KeyHint` the mode's keys
+  panel and its key handling, `MenuBarController` the menu, `KeyHint` the mode's keys
   in a panel of their own, a picker through `HintPick` (`Keys/`) only when summoned by
   `aerocontrol://config`. Tests `@testable import` the app module itself.
 - Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
