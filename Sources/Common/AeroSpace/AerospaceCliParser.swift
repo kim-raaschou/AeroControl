@@ -51,6 +51,7 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     @TolerantInt public var screenIndex: Int
     public let rootLayout: String?
     public let isFocused: Bool?
+    public let isVisible: Bool?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case workspace
@@ -59,6 +60,7 @@ public struct WorkspaceMonitor: Decodable, Equatable {
         case screenIndex = "monitor-appkit-nsscreen-screens-id"
         case rootLayout = "workspace-root-container-layout"
         case isFocused = "workspace-is-focused"
+        case isVisible = "workspace-is-visible"
     }
 }
 
@@ -95,7 +97,8 @@ public func buildOverview(windows: [WindowInfo], workspaceMonitors: [WorkspaceMo
             monitorId: wm.monitorId,
             monitorName: wm.monitorName ?? "",
             screenIndex: wm.screenIndex,
-            rootLayout: wm.rootLayout ?? ""
+            rootLayout: wm.rootLayout ?? "",
+            isVisible: wm.isVisible ?? false
         )
     }
 

@@ -27,6 +27,7 @@ public struct OverviewScene: Sendable {
         public let workspace: WorkspaceInfo
         public let frame: CGRect
         public let focused: Bool
+        public let visible: Bool
         public let monitor: String?
         public let ringed: Bool
         public let cut: Bool
@@ -72,7 +73,7 @@ public struct OverviewScene: Sendable {
                      lane: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight ? AeroControlLayout.captionLane : 0,
                      stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
             } }
-            return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace,
+            return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace, visible: ws.isVisible,
                         monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn,
                         cut: frame.minX < 0 || frame.maxX > usable.width, tiles: tiles)
         }

@@ -94,7 +94,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "list-windows":
             return (json(args.contains("--focused") ? windows.filter { $0.id == focusedId } : ordered), nil)
         case "list-workspaces":
-            return ("[" + workspaceNames.map { #"{"workspace":"\#($0)","monitor-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")","workspace-is-focused":\#($0 == focusedName)}"# }
+            return ("[" + workspaceNames.map { #"{"workspace":"\#($0)","monitor-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")","workspace-is-focused":\#($0 == focusedName),"workspace-is-visible":\#($0 == focusedName)}"# }
                 .joined(separator: ",") + "]", nil)
         case "focus":
             return ("", focus(id))
@@ -200,7 +200,7 @@ final class TestApp {
     func mirrors(_ aero: FakeAeroSpace) -> Bool {
         let app = store.visit.strip?.app, owned = { (id: Int) in app.map { self.store.visit.model.window(id)?.bundleId == $0 } ?? true }
         return scene.cards.allSatisfy { c in c.tiles.map(\.window.windowId) == aero.windows(on: c.workspace.name).filter(owned) && c.workspace.rootLayout == aero.layout(of: c.workspace.name)
-            && c.focused == (c.workspace.name == aero.focusedWorkspace) } && (scene.body != .map || scene.cards.map(\.workspace.name) == aero.workspaces)
+            && c.focused == (c.workspace.name == aero.focusedWorkspace) && c.visible == c.focused } && (scene.body != .map || scene.cards.map(\.workspace.name) == aero.workspaces)
     }
 
     func type(_ text: String) { for c in text { key(.character(c)) } }

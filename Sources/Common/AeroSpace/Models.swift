@@ -48,6 +48,7 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public let monitorName: String
     public let screenIndex: Int
     public let rootLayout: String
+    public let isVisible: Bool
 
     public var standIn: Int {
         -1 - Int(name.utf8.reduce(UInt32(2_166_136_261)) { ($0 ^ UInt32($1)) &* 16_777_619 } >> 1)
@@ -57,16 +58,17 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
         String(monitorName.split(separator: " ").first ?? "")
     }
 
-    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0, rootLayout: String = "") {
+    public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0, rootLayout: String = "", isVisible: Bool = false) {
         self.name = name
         self.windows = windows
         self.monitorId = monitorId
         self.monitorName = monitorName
         self.screenIndex = screenIndex
         self.rootLayout = rootLayout
+        self.isVisible = isVisible
     }
 
     public func with(windows: [WindowInfo]) -> WorkspaceInfo {
-        WorkspaceInfo(name: name, windows: windows, monitorId: monitorId, monitorName: monitorName, screenIndex: screenIndex, rootLayout: rootLayout)
+        WorkspaceInfo(name: name, windows: windows, monitorId: monitorId, monitorName: monitorName, screenIndex: screenIndex, rootLayout: rootLayout, isVisible: isVisible)
     }
 }

@@ -126,6 +126,7 @@ struct AeroControlCardFace: View {
             .foregroundStyle(isFocused ? look.palette.focusedBadgeText : look.palette.badgeText)
             .frame(width: AeroControlLayout.badgeSize, height: AeroControlLayout.badgeSize)
             .background(isFocused ? look.palette.accent : look.palette.badgeFill, in: Circle())
+            .overlay(Circle().strokeBorder(look.palette.accent, lineWidth: 1.5).opacity(card.visible && !isFocused ? 1 : 0))
             .contentShape(Circle())
             .onTapGesture { state.send(.action(.focusWorkspace(workspace.name))) }
             .help(workspace.windows.isEmpty ? "Workspace \(workspace.name)"
