@@ -75,7 +75,7 @@ between summons, and it asks for no permission except Screen Recording for the p
   it the tiles are plates with their app's icon and the window's title — the overview is built
   around the pictures — and the menu offers to request it.
 - Click a tile to focus the window; click a workspace badge to focus the workspace.
-- Click a card's layout icon to switch the workspace between tiles and accordion (`layout --root`).
+- A card's icon says whether its workspace is tiles or an accordion; AeroSpace's own layout key changes it, and the card follows.
 - Drag a tile onto another workspace to move the window there.
 - **Merge**: drag a workspace card (grab it anywhere outside a tile) onto another workspace to
   move all of its windows there, in on-screen order, then focus the target. AeroSpace moves

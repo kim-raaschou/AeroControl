@@ -111,8 +111,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "list-modes":
             return ("main", nil)
         case "layout":
-            let workspace = args.firstIndex(of: "--workspace").map { args[$0 + 1] } ?? focusedName, now = layouts[workspace] ?? "h_tiles"
-            layouts[workspace] = args.last == "accordion" ? now.prefix(2) + (now.hasSuffix("tiles") ? "accordion" : "tiles") : args[1]
+            layouts[focusedName] = args[1]
             return ("", nil)
         default:
             return ("", nil)

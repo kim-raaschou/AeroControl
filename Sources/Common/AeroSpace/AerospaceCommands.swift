@@ -33,7 +33,6 @@ public enum AerospaceCommand {
         case .moveWindowQuietly(let id, let workspace): ["move-node-to-workspace", "--window-id", String(id), workspace]
         case .closeWindow(let id): ["close", "--window-id", String(id)]
         case .setLayout(let layout): ["layout", layout]
-        case .toggleLayout(let workspace): ["layout", "--workspace", workspace, "--root", "tiles", "accordion"]
         }
     }
 }
@@ -45,7 +44,6 @@ public enum AeroControlAction: Equatable, Sendable {
     case closeWindow(Int)
     case moveWindowQuietly(windowId: Int, toWorkspace: String)
     case setLayout(String)
-    case toggleLayout(workspace: String)
 
     public var isFocus: Bool {
         switch self {
