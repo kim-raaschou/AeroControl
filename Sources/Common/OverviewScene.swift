@@ -49,24 +49,22 @@ public struct OverviewScene: Sendable {
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
         let model = visit.model, ring = visit.ringWindowId, usable = AeroControlLayout.usable(available)
         (size, ringed, lane) = (usable, ring, Self.lane(visit, error: error))
-        let shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard], offset: CGFloat, filtering: Bool
+        let filtering = !visit.matches.isEmpty, shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard]
         if error != nil || model.workspaces.isEmpty || visit.missingApp != nil {
-            (body, shown, laid, offset, filtering, held) = (.nothing, [], [], 0, false, nil)
+            (body, shown, laid, held) = (.nothing, [], [], nil)
         } else if let strip = visit.strip, !visit.stripWindows.isEmpty {
             shown = visit.stripWorkspaces
-            laid = AeroControlLayout.stripLayout(groups: shown, bundleId: strip.app ?? "", frames: frames, screens: screens, available: available)
-            held = laid.firstIndex { c in strip.centre.map { c.frames[$0] != nil } ?? false }
-            (body, filtering, offset) = (.strip, false, AeroControlLayout.stripOffset(laid, held: held ?? 0, viewWidth: usable.width))
+            (laid, held) = AeroControlLayout.stripLayout(groups: shown, bundleId: strip.app ?? "", centre: strip.centre, frames: frames, screens: screens, available: available)
+            body = .strip
         } else {
-            let filtered = model.workspaces(holding: visit.matches)
-            (body, held, offset, filtering) = (.map, nil, 0, !filtered.isEmpty)
-            shown = filtering ? filtered : model.workspaces
+            shown = filtering ? model.workspaces(holding: visit.matches) : model.workspaces
             laid = AeroControlLayout.mapLayout(workspaces: shown, frames: frames, screens: screens, available: available, filtering: filtering)
+            (body, held) = (.map, nil)
         }
         let captions = body == .map
         grid = laid.map(\.grid)
         cards = zip(shown, laid).map { ws, c in
-            let frame = c.frame.offsetBy(dx: offset, dy: 0)
+            let frame = c.frame
             let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
                 Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
                      ghost: c.ghosts.contains(w.windowId),

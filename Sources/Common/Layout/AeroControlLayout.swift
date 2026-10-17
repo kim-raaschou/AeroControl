@@ -109,7 +109,8 @@ public enum AeroControlLayout {
         return min((panelHeight * tallest).rounded(), (each / max(0.01, aspect)).rounded(.down))
     }
 
-    public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize) -> [LaidCard] {
+    public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, centre: Int?, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize)
+        -> (cards: [LaidCard], held: Int?) {
         let areas = groups.map { screens[$0.screenIndex] ?? CGRect(origin: .zero, size: available) }
         let aspects = areas.map { $0.width / max(1, $0.height) }, view = usable(available)
         let full = stripCardHeight(view: view.width, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
@@ -118,12 +119,14 @@ public enum AeroControlLayout {
         let placed = groups.indices.map { g in stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full)) }
         let used = placed.map { $0.frames.values.reduce(CGRect.null) { $0.union($1) } }, height = (used.map(\.height).max() ?? 0).rounded(.up)
         var x: CGFloat = 0
-        return placed.indices.map { g in
+        let row = placed.indices.map { g in
             let card = LaidCard(frame: CGRect(x: x, y: 0, width: used[g].width.rounded(.up) + 2 * cardPadding, height: height + cardChrome),
                                 frames: placed[g].frames.mapValues { $0.offsetBy(dx: -used[g].minX, dy: ((height - used[g].height) / 2).rounded(.down) - used[g].minY) }, ghosts: placed[g].ghosts)
             x = card.frame.maxX + cardGap
             return card
         }
+        let held = centre.flatMap { id in row.firstIndex { $0.frames[id] != nil } }, offset = stripOffset(row, held: held ?? 0, viewWidth: view.width)
+        return (row.map { LaidCard(frame: $0.frame.offsetBy(dx: offset, dy: 0), frames: $0.frames, ghosts: $0.ghosts) }, held)
     }
 
     static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
@@ -134,7 +137,7 @@ public enum AeroControlLayout {
         return treeLayout(WorkspaceInfo(name: workspace.name, windows: mine, screenIndex: workspace.screenIndex, rootLayout: workspace.rootLayout), frames: frames, screen: block, inner: inner) ?? packed
     }
 
-    public static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {
+    private static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {
         let width = cards.last?.frame.maxX ?? 0, centre = cards.indices.contains(held) ? cards[held].frame.midX : 0
         return (width > viewWidth ? min(0, max(viewWidth - width, viewWidth / 2 - centre)) : (viewWidth - width) / 2).rounded()
     }

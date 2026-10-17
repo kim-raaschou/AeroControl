@@ -189,8 +189,8 @@ struct StripLayoutTests {
     }
     private let available = CGSize(width: 1702, height: 1124)
     private var view: CGSize { L.usable(available) }
-    private func layout(_ groups: [WorkspaceInfo], bundleId: String = "com.Ghostty", frames: [Int: CGRect] = [:]) -> [L.LaidCard] {
-        L.stripLayout(groups: groups, bundleId: bundleId, frames: frames, screens: [1: screen], available: available)
+    private func layout(_ groups: [WorkspaceInfo], bundleId: String = "com.Ghostty", frames: [Int: CGRect] = [:], centre: Int? = nil) -> [L.LaidCard] {
+        L.stripLayout(groups: groups, bundleId: bundleId, centre: centre, frames: frames, screens: [1: screen], available: available).cards
     }
 
     @Test("one card or two stand as high as the panel lets them; more share the view's width, three and a half of them seen, so a narrower view makes them lower")
@@ -278,13 +278,12 @@ struct StripLayoutTests {
 
     @Test("workspaces that do not fit slide: the held one whole in the middle, the next cut by the edge, up to the row's ends; a row that fits stands centred")
     func slidingRow() throws {
-        let l = layout(groups(5)), w = l[0].frame.width, v = view.width
-        func at(_ held: Int) -> [CGFloat] { l.map { $0.frame.minX + L.stripOffset(l, held: held, viewWidth: v) } }
-        #expect(l[4].frame.maxX > v && at(0)[0] == 0 && at(0).contains { $0 < v && $0 + w > v })
+        func at(_ held: Int) -> [CGFloat] { layout(groups(5), centre: held + 1).map(\.frame.minX) }
+        let w = layout(groups(5), centre: 1)[0].frame.width, v = view.width
+        #expect(at(0)[4] + w > v && at(0)[0] == 0 && at(0).contains { $0 < v && $0 + w > v })
         #expect(abs(at(2)[2] + w / 2 - v / 2) <= 1 && at(2).contains { $0 < 0 && $0 + w > 0 })
         #expect(abs(at(4)[4] + w - v) <= 1)
-        let row = layout(groups(1))
-        #expect(abs(row[0].frame.midX + L.stripOffset(row, held: 0, viewWidth: v) - v / 2) <= 1)
+        #expect(abs(layout(groups(1), centre: 1)[0].frame.midX - v / 2) <= 1)
     }
 }
 
