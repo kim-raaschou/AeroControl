@@ -94,6 +94,18 @@ struct ScenarioTests {
         #expect(!app.store.visit.visible && app.host.suffix(2) == [.hide, .activate(bundleId: "com.code")])
     }
 
+    @Test("Escape goes back to where the first visit began, through a takeover: the strip opened from the map, then the map again, and Escape is still the window you came from")
+    func escapeAfterTakeover() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Teams")], "2": [win(3, "Code")]], focused: 3)
+        let app = await TestApp.onMap(aero)
+        await app.open("aerocontrol://app-id=com.teams")
+        await app.until { app.scene.body == .strip && aero.focused != 3 }
+        await app.open("aerocontrol://workspaces")
+        await app.until { app.scene.body == .map }
+        app.key(.escape)
+        await app.until { !app.store.visit.visible && aero.focused == 3 }
+    }
+
     @Test("the strip's app key again moves the marking on, as ⌘` does; another app's key opens that app's strip, the map's key the map")
     func stripKeyAgain() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(4, "Slack")], "2": [win(2, "Teams"), win(5, "Slack")], "3": [win(3, "Code")]], focused: 3)

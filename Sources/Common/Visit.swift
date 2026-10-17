@@ -121,7 +121,7 @@ public struct Visit: Equatable {
     }
 
     public mutating func summoned(_ summon: Summon) -> [Effect] {
-        (loading, cameFrom) = (false, model.focusedWindowId)
+        (loading, cameFrom) = (false, cameFrom ?? model.focusedWindowId)
         guard visible, case .app(let ref) = summon else { return [] }
         return open(ref)
     }
@@ -162,6 +162,7 @@ public struct Visit: Equatable {
     public mutating func end() {
         setQuery("")
         missingApp = nil
+        if !visible { cameFrom = nil }
     }
 
     private mutating func setQuery(_ text: String) {
