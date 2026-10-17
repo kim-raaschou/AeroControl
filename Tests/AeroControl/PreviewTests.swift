@@ -51,8 +51,8 @@ struct TreeLayoutTests {
     func floatingOverTheMap() throws {
         let inner = CGSize(width: 1000, height: 500)
         let float = WindowInfo(windowId: 99, appName: "Finder", bundleId: "com.apple.finder", isFloating: true)
-        let plain = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected), frames: [:], screen: screen, inner: inner))
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected + [float]), frames: [99: CGRect(x: 216, y: 233, width: 1200, height: 800)], screen: screen, inner: inner))
+        let plain = try #require(AeroControlLayout.treeLayout(ws7Rected, frames: [:], screen: screen, inner: inner))
+        let laid = try #require(AeroControlLayout.treeLayout(ws7Rected + [float], frames: [99: CGRect(x: 216, y: 233, width: 1200, height: 800)], screen: screen, inner: inner))
         #expect(laid.frames.count == 6 && laid.ghosts == [99])
         for id in [8243, 8240, 3352, 5022, 8266] { #expect(laid.frames[id] == plain.frames[id]) }
         let fitted = AeroControlMetrics.fit(screen.size, into: inner), scale = fitted.width / screen.width
@@ -64,7 +64,7 @@ struct TreeLayoutTests {
     @Test("a minimized window, or one of a hidden app, is out of the layout and has no rect: it lies over the map rather than unseat it")
     func hiddenOverTheMap() throws {
         let minimized = WindowInfo(windowId: 99, appName: "Finder", bundleId: "com.apple.finder", isHidden: true)
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected + [minimized]), frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)))
+        let laid = try #require(AeroControlLayout.treeLayout(ws7Rected + [minimized], frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)))
         #expect(laid.frames.count == 6 && laid.ghosts == [99])
     }
 
@@ -72,7 +72,7 @@ struct TreeLayoutTests {
     func ghostWithoutSize() throws {
         let float = WindowInfo(windowId: 99, appName: "Finder", bundleId: "com.apple.finder", isFloating: true)
         let inner = CGSize(width: 1000, height: 500)
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected + [float]), frames: [:], screen: screen, inner: inner))
+        let laid = try #require(AeroControlLayout.treeLayout(ws7Rected + [float], frames: [:], screen: screen, inner: inner))
         #expect(laid.frames.count == 6 && laid.ghosts == [99])
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         #expect(abs(laid.frames[99]!.width - fitted.width) < 0.01 && abs(laid.frames[99]!.height - fitted.height) < 0.01)
@@ -83,7 +83,7 @@ struct TreeLayoutTests {
         let inner = CGSize(width: 1000, height: 500)
         let full = WindowInfo(windowId: 98, appName: "Zoom", bundleId: "us.zoom", isFullscreen: true)
         let huge = WindowInfo(windowId: 97, appName: "Big", bundleId: "big", isFloating: true)
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected + [full, huge]), frames: [98: screen, 97: CGRect(x: 0, y: 33, width: 3000, height: 3000)],
+        let laid = try #require(AeroControlLayout.treeLayout(ws7Rected + [full, huge], frames: [98: screen, 97: CGRect(x: 0, y: 33, width: 3000, height: 3000)],
                                                              screen: screen, inner: inner))
         let screenBox = AeroControlMetrics.fit(screen.size, into: inner)
         let full98 = try #require(laid.frames[98])
@@ -96,7 +96,7 @@ struct TreeLayoutTests {
     @Test("with AeroSpace's own rects every window is drawn exactly where it is, at the screen's scale: no engine, no guess")
     func rectsDrawExactly() throws {
         let inner = CGSize(width: 1000, height: 500)
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected), frames: [:], screen: screen, inner: inner))
+        let laid = try #require(AeroControlLayout.treeLayout(ws7Rected, frames: [:], screen: screen, inner: inner))
         #expect(laid.ghosts.isEmpty && laid.frames.count == 5)
         let fitted = AeroControlMetrics.fit(screen.size, into: inner)
         let scale = fitted.width / screen.width
@@ -113,7 +113,7 @@ struct TreeLayoutTests {
         let inner = CGSize(width: 1000, height: 500)
         let row = [rected(287, "Claude", 16, 49, 418, 1052), rected(9134, "Ghostty", 446, 49, 412, 1052)]
         let scale = AeroControlMetrics.fit(screen.size, into: inner).width / screen.width
-        let laid = try #require(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: row), frames: framed([287: CGSize(width: 600, height: 1052)]), screen: screen, inner: inner))
+        let laid = try #require(AeroControlLayout.treeLayout(row, frames: framed([287: CGSize(width: 600, height: 1052)]), screen: screen, inner: inner))
         let drawn = try #require(laid.frames[287]), ghostty = try #require(laid.frames[9134])
         #expect(abs(drawn.width - 600 * scale) < 0.01 && abs(drawn.minX - ghostty.minX + 430 * scale) < 0.01)   // the 600 the app holds to, not the slot's 418
         #expect(abs(ghostty.minX - drawn.minX - 430 * scale) < 0.01)
@@ -122,7 +122,7 @@ struct TreeLayoutTests {
     @Test("a window smaller than its slot has not been resized to it yet: it is drawn in the slot AeroSpace gives it")
     func aloneInItsSlot() throws {
         let alone = WorkspaceInfo(name: "9", windows: [rected(1, "GitHub", 16, 49, 1696, 1052)])
-        let laid = try #require(AeroControlLayout.treeLayout(alone, frames: [1: CGRect(x: 0, y: 0, width: 842, height: 1052)], screen: screen, inner: CGSize(width: 1000, height: 600)))
+        let laid = try #require(AeroControlLayout.treeLayout(alone.windows, frames: [1: CGRect(x: 0, y: 0, width: 842, height: 1052)], screen: screen, inner: CGSize(width: 1000, height: 600)))
         let fitted = AeroControlMetrics.fit(screen.size, into: CGSize(width: 1000, height: 600))
         #expect(abs(laid.frames[1]!.width - fitted.width * 1696 / screen.width) < 1)
     }
@@ -130,18 +130,18 @@ struct TreeLayoutTests {
     @Test("rects that overlap, an accordion's, cannot be a map: only the front one would show, so the card packs tiles instead")
     func overlappingRectsPackTiles() {
         let same = [rected(1, "Claude", 16, 49, 1696, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: same), frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(AeroControlLayout.treeLayout(same, frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
         let padded = [rected(1, "Claude", 46, 49, 1636, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: padded), frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(AeroControlLayout.treeLayout(padded, frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
     @Test("a tiled window without a rect, or none at all (a release AeroSpace), is no map: the card packs tiles")
     func noRectsNoMap() {
         var windows = ws7Rected
         windows[2] = WindowInfo(windowId: 3352, appName: "Ghostty", bundleId: "com.Ghostty")
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: windows), frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7), frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
-        #expect(AeroControlLayout.treeLayout(WorkspaceInfo(name: "7", windows: ws7Rected), frames: [:], screen: nil, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(AeroControlLayout.treeLayout(windows, frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(AeroControlLayout.treeLayout(ws7, frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(AeroControlLayout.treeLayout(ws7Rected, frames: [:], screen: nil, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
 }

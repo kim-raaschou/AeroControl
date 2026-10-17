@@ -30,7 +30,7 @@ final class PictureStore {
         boxes = sizes
         let generation = generation
         var waiting = cards.filter { !$0.isEmpty }, arrived: [Int: CGImage] = [:]
-        await bridge.windowPreviews(cards.flatMap { $0 }, filling: sizes) { id, image in
+        await bridge.windowPreviews(cards.flatMap { $0 }, filling: sizes, frames: frames) { id, image in
             guard generation == self.generation else { return }
             arrived[id] = image
             while let card = waiting.first, card.allSatisfy({ arrived[$0] != nil }) {
@@ -58,7 +58,7 @@ final class PictureStore {
     func shoot(_ changed: [Int: CGSize]) async {
         let generation = generation
         var pictures: [Int: CGImage] = [:]
-        await bridge.windowPreviews(Array(changed.keys), filling: changed) { pictures[$0] = $1 }
+        await bridge.windowPreviews(Array(changed.keys), filling: changed, frames: frames) { pictures[$0] = $1 }
         guard generation == self.generation else { return }
         boxes?.merge(Task.isCancelled ? changed.filter { pictures[$0.key] != nil } : changed) { $1 }
         previews.merge(pictures) { $1 }

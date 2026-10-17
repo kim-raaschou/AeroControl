@@ -1,17 +1,10 @@
 import Foundation
 
 public enum TilePacker {
-    public struct Tile: Equatable, Sendable {
-        public let x: CGFloat
-        public let y: CGFloat
-        public let width: CGFloat
-        public let height: CGFloat
-    }
-
     public struct Packed: Equatable, Sendable {
         public let height: CGFloat
         public let width: CGFloat
-        public let tiles: [Tile]
+        public let tiles: [CGRect]
     }
 
     public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
@@ -34,12 +27,12 @@ public enum TilePacker {
         let rows = even.allSatisfy { rowWidth($0) <= width } ? even : greedy
 
         let widest = rows.map(rowWidth).max() ?? 0
-        var tiles = [Tile](repeating: Tile(x: 0, y: 0, width: 0, height: 0), count: sizes.count)
+        var tiles = [CGRect](repeating: .zero, count: sizes.count)
         var y: CGFloat = 0
         for row in rows {
             var x = ((widest - rowWidth(row)) / 2).rounded(.down)
             for j in row {
-                tiles[j] = Tile(x: x, y: y, width: sizes[j].width, height: sizes[j].height + caption)
+                tiles[j] = CGRect(x: x, y: y, width: sizes[j].width, height: sizes[j].height + caption)
                 x += sizes[j].width + gap
             }
             y += (row.map { sizes[$0].height }.max() ?? 0) + caption + gap

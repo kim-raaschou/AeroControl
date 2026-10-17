@@ -35,7 +35,7 @@ final class FakeBridge: NativeApiBridge {
     func release() { held?.resume(); held = nil }
     /// The pixels each window's picture was asked to fill, last time it was taken.
     var filling: [Int: CGSize] = [:]
-    func windowPreviews(_ ids: [Int], filling boxes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async {
+    func windowPreviews(_ ids: [Int], filling boxes: [Int: CGSize], frames: [Int: CGRect], deliver: @MainActor (Int, CGImage) -> Void) async {
         captured.append(ids)
         for (n, id) in ids.enumerated() {
             if n == holdAfter { await withCheckedContinuation { held = $0 } }

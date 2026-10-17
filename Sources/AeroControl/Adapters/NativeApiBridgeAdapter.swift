@@ -28,24 +28,16 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
         return granted
     }
 
-    private var pendingContent: Task<SCShareableContent?, Never>?
-    private var content: SCShareableContent?
+    private var content: Task<SCShareableContent?, Never>?
 
     func prepareCapture() {
         guard canCapturePreviews else { requestPreviewAccess(); return }
-        content = nil
-        pendingContent = Task { @MainActor in await Self.shareableContent() }
+        content = Task { @MainActor in await Self.shareableContent() }
     }
 
     private func resolvedContent() async -> SCShareableContent? {
-        if let content { return content }
-        if let pending = pendingContent {
-            pendingContent = nil
-            content = await pending.value
-        } else {
-            content = await Self.shareableContent()
-        }
-        return content
+        if content == nil { content = Task { @MainActor in await Self.shareableContent() } }
+        return await content?.value
     }
 
     func liveWindow(_ id: Int, pixels: CGSize) -> NSView {
@@ -77,11 +69,10 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
 
     private static let parallelCaptures = 16
 
-    func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async {
+    func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], frames: [Int: CGRect], deliver: @MainActor (Int, CGImage) -> Void) async {
         guard canCapturePreviews else { log.notice("previews: Screen Recording not granted"); return }
         guard !ids.isEmpty, var content = await resolvedContent() else { return }
-        if !Set(ids).isSubset(of: content.windows.map { Int($0.windowID) }), let fresh = await Self.shareableContent() { (self.content, content) = (fresh, fresh) }
-        let frames = windowFrames(windowIds: ids)
+        if !Set(ids).isSubset(of: content.windows.map { Int($0.windowID) }), let fresh = await Self.shareableContent() { (self.content, content) = (Task { @MainActor in fresh }, fresh) }
         let byId = Dictionary(content.windows.map { (Int($0.windowID), $0) }) { first, _ in first }
         let windows = ids.compactMap { id in byId[id].flatMap { window in sizes[id].map { (window, frames[id]?.size ?? window.frame.size, $0) } } }
         let started = ContinuousClock.now
@@ -117,7 +108,6 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
     }
 }
 
-@unsafe @preconcurrency import ScreenCaptureKit
 
 final class LiveWindowView: NSView, SCStreamOutput {
     private nonisolated(unsafe) var stream: SCStream?

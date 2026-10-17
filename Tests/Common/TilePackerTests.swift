@@ -15,15 +15,15 @@ private func pack(_ ratios: [CGFloat], height: CGFloat, width: CGFloat) -> TileP
 
 /// Tile indices by row, in reading order, read off the tiles' y and x.
 private func rows(_ packed: TilePacker.Packed) -> [[Int]] {
-    Dictionary(grouping: packed.tiles.indices) { packed.tiles[$0].y }.sorted { $0.key < $1.key }
-        .map { $0.value.sorted { packed.tiles[$0].x < packed.tiles[$1].x } }
+    Dictionary(grouping: packed.tiles.indices) { packed.tiles[$0].minY }.sorted { $0.key < $1.key }
+        .map { $0.value.sorted { packed.tiles[$0].minX < packed.tiles[$1].minX } }
 }
 
-private func overlap(_ tiles: [TilePacker.Tile]) -> (Int, Int)? {
+private func overlap(_ tiles: [CGRect]) -> (Int, Int)? {
     for i in tiles.indices {
         for j in tiles.indices where j > i {
             let a = tiles[i], b = tiles[j]
-            if a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height { return (i, j) }
+            if a.intersects(b) { return (i, j) }
         }
     }
     return nil
@@ -36,9 +36,9 @@ struct PackRowsTests {
         // Five 150-wide tiles with 8 between them, in a 500-wide card, fall as 3 + 2: 466 wide over 308 wide.
         let r = pack(Array(repeating: 1.5, count: 5), height: 100, width: 500)
         #expect(rows(r) == [[0, 1, 2], [3, 4]] && r.width == 466)
-        #expect(r.tiles[0].x == 0 && r.tiles[1].x == 158 && r.tiles[2].x == 316)
-        #expect(r.tiles[3].x == 79 && r.tiles[4].x == 237)              // (466 - 308) / 2 = 79
-        #expect(r.tiles.allSatisfy { $0.x >= 0 && $0.x + $0.width <= r.width })
+        #expect(r.tiles[0].minX == 0 && r.tiles[1].minX == 158 && r.tiles[2].minX == 316)
+        #expect(r.tiles[3].minX == 79 && r.tiles[4].minX == 237)              // (466 - 308) / 2 = 79
+        #expect(r.tiles.allSatisfy { $0.minX >= 0 && $0.minX + $0.width <= r.width })
     }
 
     @Test("six mixed tiles: every one placed, none overlapping, inside the width, a caption under each")
@@ -47,8 +47,8 @@ struct PackRowsTests {
         let r = pack(ratios, height: 120, width: 900)
         #expect(r.tiles.count == ratios.count)
         #expect(overlap(r.tiles) == nil)
-        #expect(r.tiles.allSatisfy { $0.x >= 0 && $0.x + $0.width <= 901 })
-        #expect(r.width == r.tiles.map { $0.x + $0.width }.max())
+        #expect(r.tiles.allSatisfy { $0.minX >= 0 && $0.minX + $0.width <= 901 })
+        #expect(r.width == r.tiles.map { $0.minX + $0.width }.max())
         #expect(r.tiles.allSatisfy { $0.height > caption })
         #expect(rows(r).flatMap { $0 } == Array(ratios.indices))               // reading order, every index once
     }

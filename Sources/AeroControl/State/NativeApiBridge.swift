@@ -9,5 +9,5 @@ protocol NativeApiBridge: Sendable {
     @discardableResult func requestPreviewAccess() -> Bool
     func prepareCapture()
     func windowFrames(windowIds: [Int]) -> [Int: CGRect]
-    func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], deliver: @MainActor (Int, CGImage) -> Void) async
+    func windowPreviews(_ ids: [Int], filling sizes: [Int: CGSize], frames: [Int: CGRect], deliver: @MainActor (Int, CGImage) -> Void) async
 }

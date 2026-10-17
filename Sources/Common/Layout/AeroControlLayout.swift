@@ -39,9 +39,8 @@ public enum AeroControlLayout {
         return max(2, packedGapOnScreen * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
     }
 
-    public static func treeLayout(_ workspace: WorkspaceInfo, frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
+    public static func treeLayout(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
-        let windows = workspace.windows
         let ghosts = windows.filter { !$0.isTiled }.map(\.windowId)
         let tiled = windows.filter(\.isTiled)
         let rects = tiled.compactMap(\.layoutRect)
@@ -82,7 +81,7 @@ public enum AeroControlLayout {
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).map { ws, cell in
             let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let laid = filtering ? nil : treeLayout(ws, frames: frames, screen: screen, inner: inner)
+            let laid = filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner)
             let placed = laid ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
             return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
@@ -96,7 +95,7 @@ public enum AeroControlLayout {
             : TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: gap, caption: caption)
         let packed = TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: gap, caption: caption)
         let origin = tileOrigin(packed: CGSize(width: packed.width, height: packed.height), inner: inner)
-        let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { CGRect(x: origin.x + $0.x, y: origin.y + $0.y, width: $0.width, height: $0.height) }),
+        let frames = Dictionary(zip(windows.map(\.windowId), packed.tiles.map { $0.offsetBy(dx: origin.x, dy: origin.y) }),
                                 uniquingKeysWith: { _, b in b })
         return (frames, [])
     }
@@ -128,7 +127,7 @@ public enum AeroControlLayout {
         let others = workspace.windows.filter(\.isTiled).filter { $0.bundleId != app }
         let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2)
         guard mine.allSatisfy(\.isTiled), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
-        return treeLayout(WorkspaceInfo(name: workspace.name, windows: mine, screenIndex: workspace.screenIndex, rootLayout: workspace.rootLayout), frames: frames, screen: block, inner: inner) ?? packed
+        return treeLayout(mine, frames: frames, screen: block, inner: inner) ?? packed
     }
 
     private static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {
