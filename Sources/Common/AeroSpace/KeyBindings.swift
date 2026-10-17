@@ -17,7 +17,10 @@ public struct KeyBinding: Equatable, Sendable {
             .split(separator: " ").joined(separator: " ")
     }
 
-    var order: String { (does == "mode main" ? "9" : String(keys.split(separator: "-").count - 1)) + " " + chord }
+    var order: String {
+        let key = keys.split(separator: "-").last ?? "", functionKey = key.hasPrefix("f") && Int(key.dropFirst()) != nil
+        return (does == "mode main" ? "9" : String(keys.split(separator: "-").count - 1)) + (functionKey ? "1 " : "0 ") + chord
+    }
 
     public var chord: String {
         let parts = keys.split(separator: "-").map(String.init), key = parts.last ?? ""
