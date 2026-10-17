@@ -15,7 +15,7 @@ struct AeroControlFilterPill: View {
             case .notice: keys("esc close")
             case .app(let name, let bundleId, let summary): appPill(name, icon: state.pictures.icon(for: bundleId), summary: summary, keys: look.surface == .strip ? Self.stripKeys : Self.mapKeys)
             case .query(let query, let miss): pill(query, miss: miss)
-            case .keys: keys(Self.mapKeys)
+            case .keys: keys(Self.mapKeys).capsule(look.palette)
             }
         }
         .frame(height: AeroControlLayout.pillLane)
@@ -24,7 +24,7 @@ struct AeroControlFilterPill: View {
     private func keys(_ text: String) -> some View {
         Text(text)
         .font(.system(size: 12, weight: .medium, design: .rounded))
-        .foregroundStyle(look.palette.badgeText.opacity(0.4))
+        .foregroundStyle(look.palette.badgeText.opacity(0.7))
     }
 
     private func appPill(_ name: String, icon: NSImage?, summary: String, keys hint: String) -> some View {

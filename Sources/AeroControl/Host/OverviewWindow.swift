@@ -120,10 +120,7 @@ struct OverviewRoot: View {
     var body: some View {
         let palette = AeroControlPalette.system(colorScheme)
         ZStack {
-            ZStack {
-                BackdropBlur()
-                palette.backdrop.opacity(0.6)
-            }
+            palette.backdrop
             .ignoresSafeArea()
             .contentShape(Rectangle())
             .onTapGesture { state.update { $0.cancel() } }
@@ -131,16 +128,4 @@ struct OverviewRoot: View {
         }
         .environment(\.aeroLook, AeroLook(palette: palette, motion: motion))
     }
-}
-
-private struct BackdropBlur: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .fullScreenUI
-        view.blendingMode = .behindWindow
-        view.state = .active
-        return view
-    }
-
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }

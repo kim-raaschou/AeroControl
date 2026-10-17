@@ -18,7 +18,7 @@ struct AeroControlPalette: Sendable {
             badgeText: .secondary,
             focusedBadgeText: .white,
             closeButtonFill: Color(white: dark ? 0.26 : 0.92),
-            backdrop: .black.opacity(0.35)
+            backdrop: .black.opacity(0.85)
         )
     }
 }
