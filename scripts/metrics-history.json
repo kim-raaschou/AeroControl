@@ -2419,5 +2419,14 @@
     "complexity": 857,
     "prodComplexity": 498,
     "files": 58
+  },
+  {
+    "timestamp": "2026-10-17T07:51:52+02:00",
+    "commit": "4e42da0",
+    "subject": "A refresh says Load error only when its second read fails too",
+    "code": 4514,
+    "complexity": 860,
+    "prodComplexity": 500,
+    "files": 60
   }
 ]
