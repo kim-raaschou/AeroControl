@@ -38,8 +38,8 @@ private final class HintPanel: NSPanel {
 final class KeyHint {
     private let runner: AerospaceProcessRunner
     private let panel = HintPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
-    private let view = InteractiveHostingView(rootView: KeyHintView())
-    private var pick = HintPick(), modes: [String] = []
+    private let view = InteractiveHostingView(rootView: KeyHintView()), gauge = NSHostingView(rootView: KeyHintView())
+    private var pick = HintPick(), modes: [String] = [], size = CGSize.zero
     private var mode = "main", pinned = false
     private var showing: Task<Void, Never>?
 
@@ -73,9 +73,15 @@ final class KeyHint {
             let mode = mode, all = await wanted ? loadBindings(using: runner) : [], rows = all.filter { $0.mode == mode }
             guard !Task.isCancelled else { return }
             modes = all.reduce(into: []) { if !$0.contains($1.mode) { $0.append($1.mode) } }
+            size = modes.filter { $0 != "main" }.map { measure($0, in: all) }.reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
             pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
             rows.isEmpty ? panel.orderOut(nil) : draw()
         }
+    }
+
+    private func measure(_ mode: String, in all: [KeyBinding]) -> CGSize {
+        gauge.rootView = KeyHintView(mode: mode, modes: modes, pick: HintPick(all.filter { $0.mode == mode }))
+        return gauge.fittingSize
     }
 
     private func pressed(_ key: FilterKey) {
@@ -101,7 +107,7 @@ final class KeyHint {
     }
 
     private func draw() {
-        view.rootView = KeyHintView(mode: mode, modes: modes, pick: pick, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) },
+        view.rootView = KeyHintView(mode: mode, modes: modes, pick: pick, size: size, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) },
                                     switchMode: { [runner] name in Task { _ = try? await runner.run(AerospaceCommand.switchMode(name)) } })
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
         panel.invalidateShadow()
@@ -111,7 +117,7 @@ final class KeyHint {
 }
 
 private struct KeyHintView: View {
-    var mode = "", modes: [String] = [], pick = HintPick()
+    var mode = "", modes: [String] = [], pick = HintPick(), size = CGSize.zero
     var mark: (String?) -> Void = { _ in }, trigger: (KeyBinding) -> Void = { _ in }, switchMode: (String) -> Void = { _ in }
     @Environment(\.colorScheme) private var scheme
 
@@ -144,6 +150,7 @@ private struct KeyHintView: View {
             .fixedSize()
         }
         .padding(10)
+        .frame(minWidth: size.width, minHeight: size.height, alignment: .topLeading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
