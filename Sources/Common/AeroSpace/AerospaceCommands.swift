@@ -25,6 +25,8 @@ public enum AerospaceCommand {
 
     public static func triggerBinding(_ binding: KeyBinding) -> [String] { ["trigger-binding", "--mode", binding.mode, binding.keys] }
 
+    public static func switchMode(_ name: String) -> [String] { ["mode", name] }
+
     public static func argv(for action: AeroControlAction) -> [String] {
         switch action {
         case .focusWorkspace(let name): ["workspace", name]

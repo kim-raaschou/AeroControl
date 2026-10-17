@@ -31,6 +31,14 @@ struct HintPickTests {
         #expect(HintPick([KeyBinding(mode: "window", keys: "shift-left", command: "resize width +200")]).takesKeys)
     }
 
+    @Test("the way back to main is not a row: it stands apart, the ring never lands on it, and the keys it binds are still kept from the hint")
+    func back() {
+        let esc = KeyBinding(mode: "apps", keys: "esc", command: "mode main"), enter = KeyBinding(mode: "window", keys: "enter", command: "mode main")
+        let pick = HintPick(keys + [esc], marked: "k13")
+        #expect(pick.back == [esc] && pick.rows == keys && pick.moved(.row(1)).marked == "k1" && pick.reloaded(keys + [esc], ringed: true).marked == "k13")
+        #expect(!HintPick([enter] + keys).takesKeys && HintPick([esc] + keys).takesKeys)
+    }
+
     @Test("a re-read keeps the mark by its key; a key that went loses it, and a ring is given to the first key only when asked")
     func reloaded() {
         let pick = HintPick(keys, marked: "k3")

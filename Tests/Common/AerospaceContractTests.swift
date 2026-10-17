@@ -38,6 +38,7 @@ struct AerospaceCommandArgvTests {
         #expect(AerospaceCommand.subscribe == ["subscribe", "--all", "--no-send-initial"])
         #expect(AerospaceCommand.currentMode == ["list-modes", "--current"])
         #expect(AerospaceCommand.triggerBinding(KeyBinding(mode: "apps", keys: "cmd-a", command: "")) == ["trigger-binding", "--mode", "apps", "cmd-a"])
+        #expect(AerospaceCommand.switchMode("apps") == ["mode", "apps"])
     }
 }
 

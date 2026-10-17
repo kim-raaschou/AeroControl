@@ -39,7 +39,7 @@ final class KeyHint {
     private let runner: AerospaceProcessRunner
     private let panel = HintPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     private let view = InteractiveHostingView(rootView: KeyHintView())
-    private var pick = HintPick()
+    private var pick = HintPick(), modes: [String] = []
     private var mode = "main", pinned = false
     private var showing: Task<Void, Never>?
 
@@ -70,8 +70,9 @@ final class KeyHint {
         showing = Task {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
-            let mode = mode, rows = await wanted ? loadBindings(using: runner).filter { $0.mode == mode } : []
+            let mode = mode, all = await wanted ? loadBindings(using: runner) : [], rows = all.filter { $0.mode == mode }
             guard !Task.isCancelled else { return }
+            modes = all.reduce(into: []) { if !$0.contains($1.mode) { $0.append($1.mode) } }
             pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
             rows.isEmpty ? panel.orderOut(nil) : draw()
         }
@@ -100,7 +101,8 @@ final class KeyHint {
     }
 
     private func draw() {
-        view.rootView = KeyHintView(mode: mode, pick: pick, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) })
+        view.rootView = KeyHintView(mode: mode, modes: modes, pick: pick, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) },
+                                    switchMode: { [runner] name in Task { _ = try? await runner.run(AerospaceCommand.switchMode(name)) } })
         panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
         panel.invalidateShadow()
         if panel.isKeyWindow, !holdsKeys { panel.orderOut(nil) }
@@ -109,27 +111,39 @@ final class KeyHint {
 }
 
 private struct KeyHintView: View {
-    var mode = "", pick = HintPick()
-    var mark: (String?) -> Void = { _ in }, trigger: (KeyBinding) -> Void = { _ in }
+    var mode = "", modes: [String] = [], pick = HintPick()
+    var mark: (String?) -> Void = { _ in }, trigger: (KeyBinding) -> Void = { _ in }, switchMode: (String) -> Void = { _ in }
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        let accent = AeroControlPalette.system(scheme).accent, rows = pick.rows
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("mode").font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.secondary)
-                Text(mode).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(AeroControlPalette.system(scheme).accent)
+            HStack(spacing: 2) {
+                ForEach(modes, id: \.self) { name in
+                    Text(name).font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(name == mode ? accent : Color.secondary)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(name == mode ? accent.opacity(0.25) : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                        .onTapGesture { switchMode(name) }
+                }
+                Spacer(minLength: 24)
+                if !pick.back.isEmpty {
+                    Text(pick.back.map(\.chord).joined(separator: " ") + " → main").font(.system(size: 12)).foregroundStyle(.secondary).padding(.trailing, 4)
+                }
             }
-            .padding(.horizontal, 4)
+            .padding(.bottom, 8)
+            .overlay(alignment: .bottom) { Divider() }
             HStack(alignment: .top, spacing: 14) {
-                ForEach(Array(stride(from: 0, to: pick.bindings.count, by: pick.perColumn)), id: \.self) { start in
+                ForEach(Array(stride(from: 0, to: rows.count, by: pick.perColumn)), id: \.self) { start in
                     VStack(alignment: .leading, spacing: 1) {
-                        ForEach(pick.bindings[start..<min(start + pick.perColumn, pick.bindings.count)], id: \.keys) { row($0) }
+                        ForEach(rows[start..<min(start + pick.perColumn, rows.count)], id: \.keys) { row($0) }
                     }
                 }
             }
+            .fixedSize()
         }
         .padding(10)
-        .fixedSize()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 

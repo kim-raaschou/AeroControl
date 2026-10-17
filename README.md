@@ -85,7 +85,9 @@ between summons, and it asks for no permission except Screen Recording for the p
 - Hover a tile on the map to reveal the close action; the strip has no close button, the app's ⌘W does it there.
 - **AeroSpace's keys**: when AeroSpace enters a mode other than main (`mode service`, …), a small
   hint shows that mode's keys, app keys by the app's icon and name, and goes when you are back in
-  main; a mode left again within the delay set in the menu shows nothing. Pointing at a row marks
+  main; a mode left again within the delay set in the menu shows nothing. Its head names every
+  mode AeroSpace has, the one you are in filled; a click on another switches to it (`mode <name>`),
+  and the key that leads back to main stands at the right, out of the list. Pointing at a row marks
   it, a click does what its key does (`trigger-binding`); shown so, it never takes the keyboard.
   `open aerocontrol://config` shows or hides it for the mode you are in, main too, and summoned so
   it holds the keyboard when the mode leaves the arrows and Enter free: a ring starts on the first
