@@ -20,6 +20,20 @@ struct ScenarioTests {
         await app.until { aero.focused == 1 }
     }
 
+    @Test("with AeroSpace's rects the map is a mirror: two windows in h_tiles stand side by side, each half the screen; an accordion's overlap and are packed; the strip mirrors the app's block")
+    func rectsMirrored() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams"), win(4, "Teams")]], focused: 1, layouts: ["2": "h_accordion"], knowsRects: true)
+        let app = TestApp(aerospace: aero)
+        app.store.screen = (available: CGSize(width: 1600, height: 1000), frames: [1: FakeAeroSpace.screen], scale: 2)
+        await app.open("aerocontrol://workspaces")
+        let tiles = app.scene.cards.map { Dictionary(uniqueKeysWithValues: $0.tiles.map { ($0.window.windowId, $0.frame) }) }
+        #expect(app.mirrors(aero) && tiles[0][2]!.maxX <= tiles[0][1]!.minX + 1 && abs(tiles[0][1]!.width - tiles[0][2]!.width) < 1 && tiles[0][1]!.minY == tiles[0][2]!.minY)
+        #expect(tiles[1][3]!.intersection(tiles[1][4]!).isNull || tiles[1][3]!.intersection(tiles[1][4]!).width < 1)
+        await app.open("aerocontrol://app-id=com.teams")
+        await app.until { app.scene.body == .strip && app.mirrors(aero) && app.scene.cards.count == 2 }
+        #expect(app.scene.cards[0].tiles.count == 1 && app.scene.cards[1].tiles.count == 2)
+    }
+
     @Test("an app's key with windows on two workspaces opens its strip; → and Enter focus its second window")
     func stripPicks() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams")], "3": [win(3, "Code")]], focused: 3)

@@ -21,6 +21,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private var focusedName: String
     private var layouts: [String: String] = [:]
     private let knowsRects: Bool
+    static let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084)
     var down = false
     private var log: [[String]] = []
     private var events: AsyncThrowingStream<String, Error>.Continuation?
@@ -94,7 +95,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "list-windows":
             return (json(args.contains("--focused") ? windows.filter { $0.id == focusedId } : ordered), nil)
         case "list-workspaces":
-            return ("[" + workspaceNames.map { #"{"workspace":"\#($0)","monitor-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")","workspace-is-focused":\#($0 == focusedName),"workspace-is-visible":\#($0 == focusedName)}"# }
+            return ("[" + workspaceNames.map { #"{"workspace":"\#($0)","monitor-id":1,"monitor-appkit-nsscreen-screens-id":1,"workspace-root-container-layout":"\#(layouts[$0] ?? "h_tiles")","workspace-is-focused":\#($0 == focusedName),"workspace-is-visible":\#($0 == focusedName)}"# }
                 .joined(separator: ",") + "]", nil)
         case "focus":
             return ("", focus(id))
@@ -148,8 +149,19 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private func json(_ list: [Window]) -> String {
         "[" + list.map { w in
             #"{"window-id":\#(w.id),"app-name":"\#(w.app)","app-bundle-id":"\#(w.bundleId)","window-title":"\#(w.title)","#
-                + #""workspace":"\#(w.workspace)","window-parent-container-layout":"\#(w.floating ? "floating" : layouts[w.workspace] ?? "h_tiles")","window-is-fullscreen":\#(w.fullscreen)}"#
+                + #""workspace":"\#(w.workspace)","window-parent-container-layout":"\#(w.floating ? "floating" : layouts[w.workspace] ?? "h_tiles")","window-is-fullscreen":\#(w.fullscreen)"#
+                + (rect(of: w).map { #","window-layout-rect":"\#($0)""# } ?? "") + "}"
         }.joined(separator: ",") + "]"
+    }
+
+    private func rect(of w: Window) -> String? {
+        guard knowsRects, !w.floating, !w.fullscreen else { return nil }
+        let tiled = ordered.filter { $0.workspace == w.workspace && !$0.floating && !$0.fullscreen }, n = CGFloat(tiled.count), i = CGFloat(tiled.firstIndex(of: w)!), s = Self.screen
+        switch layouts[w.workspace] ?? "h_tiles" {
+        case "h_tiles": return "\(s.minX + i * s.width / n),\(s.minY),\(s.width / n),\(s.height)"
+        case "v_tiles": return "\(s.minX),\(s.minY + i * s.height / n),\(s.width),\(s.height / n)"
+        default: return "\(s.minX),\(s.minY),\(s.width),\(s.height)"
+        }
     }
 }
 
