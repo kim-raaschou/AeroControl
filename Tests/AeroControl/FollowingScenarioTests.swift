@@ -18,8 +18,7 @@ struct FollowingScenarioTests {
     func listening() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(2, "Code")]], focused: 1)
         let app = TestApp(aerospace: aero)
-        await app.until { aero.commands.contains { $0.first == "subscribe" } }
-        #expect(aero.commands.contains(AerospaceCommand.currentMode))
+        await app.until { aero.commands.contains(AerospaceCommand.currentMode) }
         aero.userFocus(2)
         await app.until { app.store.visit.recent.first == 2 }
         await app.past(AerospaceSync.readAfter)

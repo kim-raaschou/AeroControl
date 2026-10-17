@@ -96,6 +96,7 @@ class OverviewStore {
 
     private func requestRefresh() {
         sync.refresh { read, again in
+            if case .failure = read, !again { return }
             guard let result = self.landed(read) else { return }
             self.send(.loaded(result))
             self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))

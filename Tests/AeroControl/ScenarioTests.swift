@@ -185,6 +185,18 @@ struct ScenarioTests {
         await app.until { !app.store.visit.visible && app.host.last == .hide }
     }
 
+    @Test("AeroSpace going away while the map is up is said on the lane once a refresh's second read fails too; a read that lands takes it back")
+    func aeroSpaceGoesAway() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
+        let app = await TestApp.onMap(aero)
+        aero.down = true
+        aero.announce()
+        await app.until { app.scene.lane == .notice(name: "Load error", reason: "AeroSpace socket: AeroSpace is not running") }
+        aero.down = false
+        aero.announce()
+        await app.until { app.scene.body == .map && app.mirrors(aero) }
+    }
+
     @Test("an app with no window is started, and the overview closes; one that will not start is said on the lane")
     func launchAndMissing() async {
         let app = TestApp(aerospace: FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1))
