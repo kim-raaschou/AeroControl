@@ -39,7 +39,7 @@ final class KeyHint {
     private let runner: AerospaceProcessRunner
     private let panel = HintPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     private let view = InteractiveHostingView(rootView: KeyHintView()), gauge = NSHostingView(rootView: KeyHintView())
-    private var pick = HintPick(), modes: [String] = [], size = CGSize.zero
+    private var pick = HintPick(), modes: [String] = [], size = CGSize.zero, area: CGRect?
     private var mode = "main", pinned = false
     private var showing: Task<Void, Never>?
 
@@ -71,6 +71,7 @@ final class KeyHint {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
             let mode = mode, all = await wanted ? loadBindings(using: runner) : [], rows = all.filter { $0.mode == mode }
+            area = await (try? runner.run(AerospaceCommand.visibleWindows)).flatMap { try? parseWindows(json: $0) }.flatMap(AeroControlLayout.tiledArea)
             guard !Task.isCancelled else { return }
             modes = all.reduce(into: []) { if !$0.contains($1.mode) { $0.append($1.mode) } }
             size = modes.filter { $0 != "main" }.map { measure($0, in: all) }.reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
@@ -109,7 +110,8 @@ final class KeyHint {
     private func draw() {
         view.rootView = KeyHintView(mode: mode, modes: modes, pick: pick, size: size, mark: { [weak self] in self?.mark($0) }, trigger: { [weak self] in self?.trigger($0) },
                                     switchMode: { [runner] name in Task { _ = try? await runner.run(AerospaceCommand.switchMode(name)) } })
-        panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: NSScreen.underMouse.visibleFrame, margin: 12), display: true)
+        let top = NSScreen.screens.first?.frame.maxY ?? 0, room = area.map { CGRect(x: $0.minX, y: top - $0.maxY, width: $0.width, height: $0.height) }
+        panel.setFrame((KeyHintPlace.chosen ?? .bottom).frame(view.fittingSize, in: room ?? NSScreen.underMouse.visibleFrame, margin: room == nil ? 12 : 0), display: true)
         panel.invalidateShadow()
         if panel.isKeyWindow, !holdsKeys { panel.orderOut(nil) }
         holdsKeys ? panel.makeKeyAndOrderFront(nil) : panel.orderFrontRegardless()

@@ -96,7 +96,9 @@ between summons, and it asks for no permission except Screen Recording for the p
   keys are read from AeroSpace (`config --get mode --json`),
   never from your config file, and the mode is asked (`list-modes --current`) whenever AeroControl
   connects, so a mode entered before it started or while it was disconnected is shown too. Where it
-  shows, or off, is set in the menu.
+  shows, or off, is set in the menu: at that corner of the tiled windows on the screen under the
+  mouse, read from their layout rects, so it sits flush with them inside AeroSpace's gaps; with no
+  tiled window there, 12 points in from the screen's edge.
 - Multi-monitor aware: every workspace is listed, whichever monitor AeroSpace put it
   on, and the overlay itself always opens on the one screen under the mouse. With more
   than one display each card names its own; with a single display nothing is shown.

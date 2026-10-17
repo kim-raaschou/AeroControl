@@ -76,6 +76,11 @@ public enum AeroControlLayout {
         }
     }
 
+    public static func tiledArea(_ windows: [WindowInfo]) -> CGRect? {
+        let rects = windows.filter(\.isTiled).compactMap(\.layoutRect)
+        return rects.isEmpty ? nil : rects.reduce(.null) { $0.union($1) }
+    }
+
     public static func mapLayout(workspaces: [WorkspaceInfo], frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize, filtering: Bool) -> [LaidCard] {
         let cells = CardGrid.lattice(count: workspaces.count, in: usable(available), cellRatio: screenRatio(for: available), gap: cardGap,
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))

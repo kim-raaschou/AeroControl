@@ -15,6 +15,8 @@ public enum AerospaceCommand {
 
     public static let listWorkspaces = ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
 
+    public static let visibleWindows = ["list-windows", "--monitor", "mouse", "--workspace", "visible", "--json", "--format", listWindowsFields + " " + layoutRectField]
+
     public static let listFocusedWindow = ["list-windows", "--focused", "--json", "--format", listWindowsFields]
 
     public static let modes = ["config", "--get", "mode", "--json"]
