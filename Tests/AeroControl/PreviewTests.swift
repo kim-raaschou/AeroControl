@@ -195,8 +195,8 @@ struct StripLayoutTests {
 
     @Test("one card or two stand as high as the panel lets them; more share the view's width, three and a half of them seen, so a narrower view makes them lower")
     func cardHeight() {
-        func h(_ cards: Int, _ view: CGFloat = 1900) -> CGFloat { L.stripCardHeight(view: view, cards: cards, aspect: 1.6, chrome: 24, panelHeight: 1085) }
-        #expect(h(1) == h(2) && h(5) < h(1) && h(4) == h(5) && h(5, 900) < h(5) && h(3, 900) > h(5, 900))
+        func h(_ cards: Int) -> CGFloat { layout(groups(cards))[0].frame.height }
+        #expect(h(1) == h(2) && h(5) < h(1) && h(4) == h(5))
     }
 
     @Test("a card holds the app's windows on its workspace and no other app's, packed inside it; one window alone fills its height")

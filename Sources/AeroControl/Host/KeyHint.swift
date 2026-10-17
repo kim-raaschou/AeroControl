@@ -138,7 +138,7 @@ private struct KeyHintView: View {
             Text(binding.chord).font(.system(size: 12, weight: .medium, design: .monospaced)).frame(minWidth: 84, alignment: .leading)
             if let id = binding.app {
                 let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
-                Image(nsImage: url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle)).resizable().frame(width: 14, height: 14)
+                Image(nsImage: NativeApiBridgeAdapter.icon(at: url)).resizable().frame(width: 14, height: 14)
                 Text(url?.deletingPathExtension().lastPathComponent ?? id)
             } else {
                 Text(binding.does.isEmpty ? "—" : binding.does).foregroundStyle(.secondary)

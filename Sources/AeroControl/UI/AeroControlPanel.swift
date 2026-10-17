@@ -21,6 +21,7 @@ struct AeroControlPanel: View {
         .fixedSize()
         .environment(state)
         .environment(\.aeroLook, AeroLook(palette: look.palette, motion: look.motion, surface: scene.body == .strip ? .strip : .map))
+        .onAppear { state.notePointer(NSEvent.mouseLocation) }
     }
 
     private func notice(_ name: String, _ reason: String) -> some View {
@@ -46,7 +47,6 @@ struct AeroControlPanel: View {
             }
         }
         .frame(width: scene.size.width, height: scene.size.height, alignment: .topLeading)
-        .onAppear { state.notePointer(NSEvent.mouseLocation) }
         .animation(.easeInOut(duration: 0.15 * look.motion), value: scene.cards.map(\.workspace))
     }
 }

@@ -21,11 +21,11 @@ public extension OverviewModel {
 }
 
 public extension OverviewModel {
-    static var minQueryLength: Int { 2 }
+    static func isQuery(_ query: String) -> Bool { query.trimmingCharacters(in: .whitespaces).count >= 2 }
 
     func matching(_ query: String) -> [WindowInfo] {
         let needles = query.words
-        guard query.trimmingCharacters(in: .whitespaces).count >= Self.minQueryLength, !needles.isEmpty else { return [] }
+        guard Self.isQuery(query), !needles.isEmpty else { return [] }
         return windowsInGridOrder.filter { "\($0.title) \($0.appName) \($0.workspace)".hasWordsStarting(with: needles) }
     }
 

@@ -94,6 +94,6 @@ public struct OverviewScene: Sendable {
             return .app(name: ringed.appName, bundleId: ringed.bundleId, summary: ringed.caption + " · ws " + ringed.workspace)
         }
         if visit.query.isEmpty { return .keys }
-        return .query(visit.query, miss: visit.matches.isEmpty && visit.query.trimmingCharacters(in: .whitespaces).count >= OverviewModel.minQueryLength)
+        return .query(visit.query, miss: visit.matches.isEmpty && OverviewModel.isQuery(visit.query))
     }
 }

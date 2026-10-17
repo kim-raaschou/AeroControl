@@ -104,18 +104,12 @@ public enum AeroControlLayout {
     public static let tallest: CGFloat = 0.45
     public static let seen: CGFloat = 3.5
 
-    public static func stripCardHeight(view: CGFloat, cards: Int, aspect: CGFloat, chrome: CGFloat, panelHeight: CGFloat) -> CGFloat {
-        let each = view / min(CGFloat(max(1, cards)), seen) - chrome
-        return min((panelHeight * tallest).rounded(), (each / max(0.01, aspect)).rounded(.down))
-    }
-
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, centre: Int?, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize)
         -> (cards: [LaidCard], held: Int?) {
         let areas = groups.map { screens[$0.screenIndex] ?? CGRect(origin: .zero, size: available) }
         let aspects = areas.map { $0.width / max(1, $0.height) }, view = usable(available)
-        let full = stripCardHeight(view: view.width, cards: groups.count, aspect: aspects.reduce(0, +) / CGFloat(max(1, groups.count)),
-                                   chrome: 2 * cardPadding + cardGap, panelHeight: view.height)
         let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
+        let full = min((view.height * tallest).rounded(), (room / max(0.01, aspects.reduce(0, +) / CGFloat(max(1, groups.count)))).rounded(.down))
         let placed = groups.indices.map { g in stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full)) }
         let used = placed.map { $0.frames.values.reduce(CGRect.null) { $0.union($1) } }, height = (used.map(\.height).max() ?? 0).rounded(.up)
         var x: CGFloat = 0
@@ -161,15 +155,12 @@ public enum AeroControlLayout {
 public enum AeroControlMetrics {
     public static func badgeSize(_ picture: CGSize) -> CGFloat { min(36, max(12, min(picture.width * 0.11, picture.height * 0.4))) }
 
-    public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize {
-        guard imageSize.width > 0, imageSize.height > 0 else { return box }
-        let scale = min(box.width / imageSize.width, box.height / imageSize.height)
-        return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
-    }
+    public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize { scaled(imageSize, into: box, min) }
+    public static func cover(_ imageSize: CGSize, into box: CGSize) -> CGSize { scaled(imageSize, into: box, max) }
 
-    public static func cover(_ imageSize: CGSize, into box: CGSize) -> CGSize {
+    private static func scaled(_ imageSize: CGSize, into box: CGSize, _ pick: (CGFloat, CGFloat) -> CGFloat) -> CGSize {
         guard imageSize.width > 0, imageSize.height > 0 else { return box }
-        let scale = max(box.width / imageSize.width, box.height / imageSize.height)
+        let scale = pick(box.width / imageSize.width, box.height / imageSize.height)
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 

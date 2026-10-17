@@ -84,10 +84,13 @@ public struct Visit: Equatable {
         return []
     }
 
+    private func focus(_ ring: Int) -> AeroControlAction {
+        model.workspaces.first { $0.standIn == ring }.map { .focusWorkspace($0.name) } ?? .focusWindow(ring)
+    }
+
     private mutating func enter() -> [Effect] {
-        let workspace = marking?.marked.flatMap { id in model.workspaces.first { $0.standIn == id }?.name }
-        guard let ring = workspace.map(AeroControlAction.focusWorkspace) ?? ringWindowId.map(AeroControlAction.focusWindow) else { return hide(restoreFocus: true) }
-        return apply(.action(ring))
+        guard let ring = ringWindowId else { return hide(restoreFocus: true) }
+        return apply(.action(focus(ring)))
     }
 
     private mutating func move(_ step: StripMove, drawn: [GridWalk.Card]) -> [Effect] {
@@ -97,8 +100,7 @@ public struct Visit: Equatable {
 
     public func follow() -> [Effect] {
         guard let ring = ringWindowId, ring != model.focusedWindowId else { return [] }
-        let empty = model.workspaces.first { $0.standIn == ring }?.name
-        return [.run([empty.map(AeroControlAction.focusWorkspace) ?? .focusWindow(ring)], thenRead: false)]
+        return [.run([focus(ring)], thenRead: false)]
     }
 
     public mutating func cancel() -> [Effect] {

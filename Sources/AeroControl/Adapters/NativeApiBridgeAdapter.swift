@@ -13,11 +13,12 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
 
     func appIcon(bundleId: String) -> NSImage {
         if let cached = iconCache[bundleId] { return cached }
-        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId)
-        let icon = url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle)
+        let icon = Self.icon(at: NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId))
         iconCache[bundleId] = icon
         return icon
     }
+
+    static func icon(at url: URL?) -> NSImage { url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .applicationBundle) }
 
     var canCapturePreviews: Bool { CGPreflightScreenCaptureAccess() }
 

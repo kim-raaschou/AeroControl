@@ -21,6 +21,5 @@ struct AeroControlAppStrip: View {
         .frame(width: scene.size.width, height: scene.cards.first?.frame.height ?? 0, alignment: .topLeading)
         .clipped()
         .animation(.smooth(duration: Self.turn * look.motion), value: scene.held ?? -1)
-        .onAppear { state.notePointer(NSEvent.mouseLocation) }
     }
 }
