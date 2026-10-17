@@ -62,6 +62,8 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     func relayout(_ workspace: String, _ layout: String) { locked { layouts[workspace] = layout } }
 
+    func disconnect() { locked { events?.finish(); events = nil } }
+
     func shift(_ id: Int, to workspace: String) { locked { create(workspace); windows = windows.map { var w = $0; if w.id == id { w.workspace = workspace }; return w } } }
 
     func remove(_ id: Int) { locked { windows.removeAll { $0.id == id } } }

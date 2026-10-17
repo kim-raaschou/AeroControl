@@ -34,6 +34,15 @@ struct FollowingScenarioTests {
         #expect(aero.commands.filter { $0.first == "subscribe" }.count == 1)
     }
 
+    @Test("the stream dropped, AeroControl connects again after a moment, asks the mode again, and reads what it missed meanwhile")
+    func reconnects() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": []], focused: 1)
+        let app = await TestApp.onMap(aero)
+        aero.disconnect()
+        aero.shift(2, to: "2")
+        await app.until { app.mirrors(aero) && aero.commands.filter { $0 == AerospaceCommand.currentMode }.count == 2 }
+    }
+
     @Test("the map is AeroSpace, live: whatever is done in AeroSpace while it is up, a bound key's command run after its event or a focus moved, the map shows as AeroSpace has it")
     func mapIsAeroSpaceLive() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Code")], "3": []], focused: 1)

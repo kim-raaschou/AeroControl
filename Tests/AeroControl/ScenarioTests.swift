@@ -30,8 +30,7 @@ struct ScenarioTests {
         #expect(app.mirrors(aero) && tiles[0][2]!.maxX <= tiles[0][1]!.minX + 1 && abs(tiles[0][1]!.width - tiles[0][2]!.width) < 1 && tiles[0][1]!.minY == tiles[0][2]!.minY)
         #expect(tiles[1][3]!.intersection(tiles[1][4]!).isNull || tiles[1][3]!.intersection(tiles[1][4]!).width < 1)
         await app.open("aerocontrol://app-id=com.teams")
-        await app.until { app.scene.body == .strip && app.mirrors(aero) && app.scene.cards.count == 2 }
-        #expect(app.scene.cards[0].tiles.count == 1 && app.scene.cards[1].tiles.count == 2)
+        await app.until { app.scene.body == .strip && app.mirrors(aero) && app.scene.cards.map(\.tiles.count) == [1, 2] }
     }
 
     @Test("an app's key with windows on two workspaces opens its strip; → and Enter focus its second window")
@@ -200,21 +199,16 @@ struct ScenarioTests {
         await app.until { !app.store.visit.visible && aero.focused == 20 }                      // and goes back with Escape
     }
 
-    @Test("with no AeroSpace to read, the overview shows nothing but the lane, which says the load failed and why; Escape closes it")
+    @Test("with no AeroSpace to read, the overview shows nothing but the lane, which says the load failed and why, and Escape closes it; AeroSpace going away under the map is said once a refresh's second read fails too, and a read that lands takes it back")
     func noAeroSpace() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
         aero.down = true
         let app = await TestApp.onMap(aero)
-        #expect(app.store.visit.visible && app.scene.body == .nothing && app.scene.cards.isEmpty)
-        #expect(app.scene.lane == .notice(name: "Load error", reason: "AeroSpace socket: AeroSpace is not running"))
+        #expect(app.store.visit.visible && app.scene.body == .nothing && app.scene.cards.isEmpty && app.scene.lane == .notice(name: "Load error", reason: "AeroSpace socket: AeroSpace is not running"))
         app.key(.escape)
         await app.until { !app.store.visit.visible && app.host.last == .hide }
-    }
-
-    @Test("AeroSpace going away while the map is up is said on the lane once a refresh's second read fails too; a read that lands takes it back")
-    func aeroSpaceGoesAway() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams")]], focused: 1)
-        let app = await TestApp.onMap(aero)
+        aero.down = false
+        await app.open("aerocontrol://workspaces")
         aero.down = true
         aero.announce()
         await app.until { app.scene.lane == .notice(name: "Load error", reason: "AeroSpace socket: AeroSpace is not running") }
