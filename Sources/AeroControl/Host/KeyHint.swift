@@ -74,7 +74,7 @@ final class KeyHint {
             area = await (try? runner.run(AerospaceCommand.visibleWindows)).flatMap { try? parseWindows(json: $0) }.flatMap(AeroControlLayout.tiledArea)
             guard !Task.isCancelled else { return }
             modes = all.reduce(into: []) { if !$0.contains($1.mode) { $0.append($1.mode) } }
-            size = modes.filter { $0 != "main" }.map { measure($0, in: all) }.reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
+            size = modes.map { measure($0, in: all) }.reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
             pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
             rows.isEmpty ? panel.orderOut(nil) : draw()
         }
