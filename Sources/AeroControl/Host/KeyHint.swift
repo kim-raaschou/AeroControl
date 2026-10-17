@@ -74,14 +74,16 @@ final class KeyHint {
             area = await (try? runner.run(AerospaceCommand.visibleWindows)).flatMap { try? parseWindows(json: $0) }.flatMap(AeroControlLayout.tiledArea)
             guard !Task.isCancelled else { return }
             modes = all.reduce(into: []) { if !$0.contains($1.mode) { $0.append($1.mode) } }
-            size = modes.map { measure($0, in: all) }.reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
-            pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys)
+            let picks = modes.map { m in HintPick(all.filter { $0.mode == m }) }, spans = picks.map(\.columns).max() ?? 1
+            size = zip(modes, picks).map { measure(HintPick($1.bindings, columnsAtLeast: spans), mode: $0) }
+                .reduce(.zero) { CGSize(width: max($0.width, $1.width), height: max($0.height, $1.height)) }
+            pick = pick.reloaded(rows, ringed: pinned && HintPick(rows).takesKeys, columnsAtLeast: spans)
             rows.isEmpty ? panel.orderOut(nil) : draw()
         }
     }
 
-    private func measure(_ mode: String, in all: [KeyBinding]) -> CGSize {
-        gauge.rootView = KeyHintView(mode: mode, modes: modes, pick: HintPick(all.filter { $0.mode == mode }))
+    private func measure(_ pick: HintPick, mode: String) -> CGSize {
+        gauge.rootView = KeyHintView(mode: mode, modes: modes, pick: pick)
         return gauge.fittingSize
     }
 
@@ -153,21 +155,21 @@ private struct KeyHintView: View {
         }
         .padding(10)
         .frame(minWidth: size.width, minHeight: size.height, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func row(_ binding: KeyBinding) -> some View {
         HStack(spacing: 8) {
-            Text(binding.chord).font(.system(size: 12, weight: .medium, design: .monospaced)).frame(minWidth: 84, alignment: .leading)
+            Text(pick.widestChord).hidden().overlay(alignment: .leading) { Text(binding.chord) }.font(.system(size: 13, weight: .medium, design: .monospaced))
             if let id = binding.app {
                 let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)
-                Image(nsImage: NativeApiBridgeAdapter.icon(at: url)).resizable().frame(width: 14, height: 14)
+                Image(nsImage: NativeApiBridgeAdapter.icon(at: url)).resizable().frame(width: 16, height: 16)
                 Text(url?.deletingPathExtension().lastPathComponent ?? id)
             } else {
-                Text(binding.does.isEmpty ? "—" : binding.does).foregroundStyle(.secondary)
+                Text(binding.does.isEmpty ? "—" : binding.does)
             }
         }
-        .font(.system(size: 12))
+        .font(.system(size: 13))
         .lineLimit(1)
         .padding(.vertical, 1)
         .padding(.horizontal, 4)

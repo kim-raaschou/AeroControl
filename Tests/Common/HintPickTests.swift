@@ -5,10 +5,11 @@ import Testing
 struct HintPickTests {
     private let keys = (1...13).map { KeyBinding(mode: "apps", keys: "k\($0)", command: "open \($0)") }
 
-    @Test("↓ and ↑ step along the column and on into the next, around the ends; ← and → keep the row across the columns, the last column's shorter end held")
+    @Test("↓ and ↑ step along the column and on into the next, around the ends; ← and → keep the row across the columns, the last column's shorter end held; a mode may be asked for more columns than its count needs, and keeps them through a mark")
     func ring() {
         let pick = HintPick(keys, marked: "k1")
-        #expect(pick.columns == 2 && pick.perColumn == 7)
+        #expect(pick.columns == 2 && pick.perColumn == 7 && pick.widestChord == "k10")
+        #expect(HintPick(keys, columnsAtLeast: 3).columns == 3 && HintPick(keys, columnsAtLeast: 3).perColumn == 5 && HintPick(keys, columnsAtLeast: 3).marking("k1").columns == 3)
         #expect(pick.moved(.row(1)).marked == "k2" && pick.moved(.row(-1)).marked == "k13" && pick.moved(.row(1)).moved(.row(6)).marked == "k8")
         #expect(pick.moved(.window(1)).marked == "k8" && pick.moved(.window(1)).moved(.window(1)).marked == "k1" && pick.moved(.window(-1)).marked == "k8")
         #expect(HintPick(keys, marked: "k7").moved(.window(1)).marked == "k13" && HintPick(keys).moved(.row(1)).marked == "k1")
