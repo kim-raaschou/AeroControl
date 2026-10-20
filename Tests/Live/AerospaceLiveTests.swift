@@ -80,7 +80,7 @@ struct AerospaceLiveTests {
         let stacked = try await one()
         print("live: ws 1 stacked, rects \(Set(stacked.windows.compactMap { $0.layoutRect.map { "\(Int($0.minX)),\(Int($0.width))" } }))")
         #expect(stacked.rootLayout == "h_accordion")
-        #expect(card(stacked) == nil)                                                   // all in one place: the card packs them
+        #expect(!AeroControlLayout.mirrors(stacked.windows.filter(\.isTiled)))           // all in one place: the card packs them
     }
 
     /// Seconds until every window's real width is its rect's on `workspace`, polled; nil after 3 s.

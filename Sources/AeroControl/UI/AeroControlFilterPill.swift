@@ -27,7 +27,7 @@ struct AeroControlFilterPill: View {
         .foregroundStyle(look.palette.badgeText.opacity(0.7))
     }
 
-    private func appPill(_ name: String, icon: NSImage?, summary: String, keys hint: String) -> some View {
+    private func appPill(_ name: String, icon: NSImage?, summary: String, keys line: String) -> some View {
         HStack(spacing: 8) {
             if let icon {
                 PixelImage(image: Image(nsImage: icon), size: CGSize(width: 20, height: 20))
@@ -41,7 +41,7 @@ struct AeroControlFilterPill: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: Self.titleWidth, alignment: .leading)
                 .fixedSize()
-            keys(hint).padding(.leading, 12)
+            keys(line).padding(.leading, 12)
         }
         .capsule(look.palette)
     }

@@ -20,7 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var state: OverviewStore!
     private var overlayManager: OverlayWindowManager!
     private var menuBarController: MenuBarController!
-    private var hint: KeyHint!
     private var pendingLink: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -30,10 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let nativeSystem = NativeApiBridgeAdapter()
 
         state = OverviewStore(runner: runner, nativeSystem: nativeSystem)
-        hint = KeyHint(runner: runner)
-        state.onEvent = { [weak self] in self?.hint.heard($0) }
-        menuBarController = MenuBarController(onSettingsChanged: { [weak self] in self?.overlayManager.rebuild(); self?.hint.refresh() },
-                                              bridge: nativeSystem)
+        menuBarController = MenuBarController(bridge: nativeSystem)
 
         overlayManager = OverlayWindowManager(state: state)
 
@@ -57,6 +53,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let url = urls.first else { return }
         log.notice("link: \(url.host() ?? "-", privacy: .public)")
         guard let state else { pendingLink = url; return }
-        url.host() == "config" ? hint.toggle() : state.summon(Summon(url))
+        state.summon(Summon(url))
     }
 }

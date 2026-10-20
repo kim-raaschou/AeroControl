@@ -111,8 +111,6 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         case "close":
             windows.removeAll { $0.id == id }
             return ("", left(id))
-        case "list-modes":
-            return ("main", nil)
         case "layout":
             layouts[focusedName] = args[1]
             return ("", nil)

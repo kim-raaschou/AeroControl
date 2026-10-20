@@ -3,13 +3,11 @@ import Common
 
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
-    private let onSettingsChanged: () -> Void
     private let bridge: NativeApiBridge
     private let menu = NSMenu()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-    init(onSettingsChanged: @escaping () -> Void, bridge: NativeApiBridge) {
-        self.onSettingsChanged = onSettingsChanged
+    init(bridge: NativeApiBridge) {
         self.bridge = bridge
         super.init()
         menu.delegate = self
@@ -27,9 +25,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("Show overview") { NSWorkspace.shared.open(URL(string: "aerocontrol://workspaces")!) })
         menu.addItem(sectionHeader("Bind a key to: exec-and-forget open aerocontrol://workspaces"))
         if Borders.running { menu.addItem(item("Borders: match the accent") { Borders.matchAccent() }) }
-        menu.addItem(.separator())
-        menu.addItem(keyHint())
-
         menu.addItem(.separator())
         menu.addItem(sectionHeader("Window Previews"))
         if bridge.canCapturePreviews {
@@ -52,19 +47,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         item.representedObject = Action(run)
         return item
     }
-
-    private func keyHint() -> NSMenuItem {
-        let parent = NSMenuItem(title: KeyHintPlace.chosen == nil ? "AeroSpace key hint: off" : "AeroSpace key hint", action: nil, keyEquivalent: ""), submenu = NSMenu()
-        submenu.items = [item("Show now") { NSWorkspace.shared.open(URL(string: "aerocontrol://config")!) }, .separator(), sectionHeader("Where")]
-        for place in KeyHintPlace.allCases.map(Optional.some) + [nil] {
-            let entry = item(place?.title ?? "Off") { KeyHintPlace.chosen = place; self.onSettingsChanged() }
-            entry.state = KeyHintPlace.chosen == place ? .on : .off
-            submenu.addItem(entry)
-        }
-        parent.submenu = submenu
-        return parent
-    }
-
 
     private final class Action { let run: () -> Void; init(_ run: @escaping () -> Void) { self.run = run } }
 

@@ -37,17 +37,3 @@ struct WorkspaceTreeOrderTests {
         #expect(T.order([(2, r(46, 48, 1636, 1052)), (1, r(16, 48, 1696, 1052))]) == [2, 1])
     }
 }
-
-@Suite("AeroControlLayout.tiledArea: the tiled windows' outer edge, as AeroSpace laid them")
-struct TiledAreaTests {
-    private func r(_ x: Double, _ y: Double, _ w: Double, _ h: Double) -> CGRect { CGRect(x: x, y: y, width: w, height: h) }
-    private func w(_ id: Int, _ rect: CGRect?, floating: Bool = false) -> WindowInfo {
-        WindowInfo(windowId: id, appName: "a", bundleId: "a", isFloating: floating, isFullscreen: false, isHidden: false, title: "", layoutRect: rect, workspace: "1")
-    }
-
-    @Test("the area is the union of the tiled windows' rects; a floating one and one without a rect count for nothing, and none at all is no area")
-    func area() {
-        #expect(AeroControlLayout.tiledArea([w(1, r(24, 42, 1000, 800)), w(2, r(1034, 42, 1502, 1646)), w(3, r(0, 0, 50, 50), floating: true), w(4, nil)]) == r(24, 42, 2512, 1646))
-        #expect(AeroControlLayout.tiledArea([w(3, r(0, 0, 50, 50), floating: true), w(4, nil)]) == nil)
-    }
-}

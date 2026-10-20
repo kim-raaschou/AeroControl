@@ -4,10 +4,6 @@ public enum AeroControlLayout {
     public static let usableScreenFraction: CGFloat = 0.94
     public static let pillLane: CGFloat = 38
     public static let pillGap: CGFloat = 18
-
-    public static func usable(_ available: CGSize) -> CGSize {
-        CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction - pillLane - pillGap)
-    }
     public static let cardGap: CGFloat = 24
     public static let tileSpacing: CGFloat = 14
     public static let cardPadding: CGFloat = 18
@@ -18,53 +14,11 @@ public enum AeroControlLayout {
     public static let captionGap: CGFloat = 6
     public static let captionLane: CGFloat = captionTitleHeight + captionGap
     public static let minPictureHeight: CGFloat = 92
-
-    public static func screenRatio(for available: CGSize) -> CGFloat {
-        available.height > 0 ? available.width / available.height : 1.5
-    }
-
-    public static func ratios(of windows: [WindowInfo], sizes: [Int: CGSize], fallback: CGFloat) -> [CGFloat] {
-        windows.map { window in
-            guard let size = window.layoutRect?.size ?? sizes[window.windowId], size.width > 0, size.height > 0 else { return fallback }
-            return size.width / size.height
-        }
-    }
-
     public static let cardChrome: CGFloat = cardPadding + badgeLane + tileSpacing
-    public static func inner(of size: CGSize) -> CGSize { CGSize(width: size.width - 2 * cardPadding, height: size.height - cardChrome) }
-
     public static let packedGapOnScreen: CGFloat = 12
-    public static func packedGap(screen: CGSize?, inner: CGSize) -> CGFloat {
-        guard let screen, screen.width > 0 else { return tileSpacing }
-        return max(2, packedGapOnScreen * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
-    }
-
-    public static func treeLayout(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
-        -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
-        let ghosts = windows.filter { !$0.isTiled }.map(\.windowId)
-        let tiled = windows.filter(\.isTiled)
-        let rects = tiled.compactMap(\.layoutRect)
-        guard !tiled.isEmpty, rects.count == tiled.count, inner.width > 0, inner.height > 0, let screen,
-              !rects.enumerated().contains(where: { i, r in rects[(i + 1)...].contains { r.insetBy(dx: 1, dy: 1).intersects($0.insetBy(dx: 1, dy: 1)) } })
-        else { return nil }
-        let fitted = AeroControlMetrics.fit(screen.size, into: inner)
-        let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted)
-        let scale = fitted.width / screen.width
-        func place(_ r: CGRect) -> CGRect {
-            CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale, width: r.width * scale, height: r.height * scale)
-        }
-        var frames: [Int: CGRect] = [:]
-        for window in tiled {
-            let slot = window.layoutRect!, real = measured[window.windowId]?.size ?? slot.size
-            frames[window.windowId] = place(CGRect(x: slot.minX, y: slot.minY, width: max(slot.width, real.width), height: max(slot.height, real.height))).intersection(box)
-        }
-        for window in windows where !window.isTiled {
-            let size = measured[window.windowId].map { CGSize(width: min(box.width, $0.width * scale), height: min(box.height, $0.height * scale)) } ?? box.size
-            let centred = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
-            frames[window.windowId] = window.isFloating ? measured[window.windowId].map { place($0).intersection(box) } ?? centred : centred
-        }
-        return (frames, Set(ghosts))
-    }
+    public static let tallest: CGFloat = 0.45
+    public static let seen: CGFloat = 3.5
+    public static let parkedEdge: CGFloat = 4
 
     public struct LaidCard: Equatable, Sendable {
         public let frame: CGRect
@@ -76,21 +30,49 @@ public enum AeroControlLayout {
         }
     }
 
-    public static func tiledArea(_ windows: [WindowInfo]) -> CGRect? {
-        let rects = windows.filter(\.isTiled).compactMap(\.layoutRect)
-        return rects.isEmpty ? nil : rects.reduce(.null) { $0.union($1) }
-    }
-
     public static func mapLayout(workspaces: [WorkspaceInfo], frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize, filtering: Bool) -> [LaidCard] {
         let cells = CardGrid.lattice(count: workspaces.count, in: usable(available), cellRatio: screenRatio(for: available), gap: cardGap,
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).map { ws, cell in
             let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let laid = filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner)
-            let placed = laid ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
+            let placed = (filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner)) ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
             return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
         }
+    }
+
+    public static func usable(_ available: CGSize) -> CGSize {
+        CGSize(width: available.width * usableScreenFraction, height: available.height * usableScreenFraction - pillLane - pillGap)
+    }
+
+    public static func screenRatio(for available: CGSize) -> CGFloat {
+        available.height > 0 ? available.width / available.height : 1.5
+    }
+
+    public static func inner(of size: CGSize) -> CGSize { CGSize(width: size.width - 2 * cardPadding, height: size.height - cardChrome) }
+
+    public static func treeLayout(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
+        -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
+        guard let screen, inner.width > 0, inner.height > 0 else { return nil }
+        let tiled = windows.filter(\.isTiled), ghosts = windows.filter { !$0.isTiled }
+        let (box, place) = onScreen(screen, inner: inner)
+        let tiles = mirrors(tiled) ? Dictionary(tiled.map { window in
+            let slot = window.layoutRect!, real = measured[window.windowId]?.size ?? slot.size
+            return (window.windowId, place(CGRect(x: slot.minX, y: slot.minY, width: max(slot.width, real.width), height: max(slot.height, real.height))).intersection(box))
+        }, uniquingKeysWith: { _, b in b }) : packed(tiled, frames: measured, screen: screen, inner: inner, caption: 0).frames
+        return (tiles.merging(loose(ghosts, frames: measured, screen: screen, inner: inner)) { a, _ in a }, Set(ghosts.map(\.windowId)))
+    }
+
+    private static func onScreen(_ screen: CGRect, inner: CGSize) -> (box: CGRect, place: (CGRect) -> CGRect) {
+        let fitted = AeroControlMetrics.fit(screen.size, into: inner)
+        let box = CGRect(origin: tileOrigin(packed: fitted, inner: inner), size: fitted), scale = fitted.width / screen.width
+        return (box, { r in CGRect(x: box.minX + (r.minX - screen.minX) * scale, y: box.minY + (r.minY - screen.minY) * scale, width: r.width * scale, height: r.height * scale) })
+    }
+
+    public static func mirrors(_ tiled: [WindowInfo]) -> Bool {
+        let rects = tiled.compactMap(\.layoutRect)
+        return !tiled.isEmpty && rects.count == tiled.count
+            && !rects.enumerated().contains { i, r in rects[(i + 1)...].contains { r.insetBy(dx: 1, dy: 1).intersects($0.insetBy(dx: 1, dy: 1)) } }
     }
 
     static func packed(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize, caption: CGFloat, oneRow: Bool = false) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
@@ -105,8 +87,33 @@ public enum AeroControlLayout {
         return (frames, [])
     }
 
-    public static let tallest: CGFloat = 0.45
-    public static let seen: CGFloat = 3.5
+    private static func loose(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect, inner: CGSize) -> [Int: CGRect] {
+        let (box, place) = onScreen(screen, inner: inner)
+        return Dictionary(windows.map { window in
+            let real = measured[window.windowId]
+            let size = real.map(place).map { CGSize(width: min(box.width, $0.width), height: min(box.height, $0.height)) } ?? box.size
+            let centred = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
+            let standing = real.flatMap { r -> CGRect? in let on = r.intersection(screen); return min(on.width, on.height) < parkedEdge ? nil : place(r).intersection(box) }
+            return (window.windowId, window.isFloating ? standing ?? centred : centred)
+        }, uniquingKeysWith: { _, b in b })
+    }
+
+    public static func ratios(of windows: [WindowInfo], sizes: [Int: CGSize], fallback: CGFloat) -> [CGFloat] {
+        windows.map { window in
+            guard let size = window.layoutRect?.size ?? sizes[window.windowId], size.width > 0, size.height > 0 else { return fallback }
+            return size.width / size.height
+        }
+    }
+
+    public static func packedGap(screen: CGSize?, inner: CGSize) -> CGFloat {
+        guard let screen, screen.width > 0 else { return tileSpacing }
+        return max(2, packedGapOnScreen * AeroControlMetrics.fit(screen, into: inner).width / screen.width)
+    }
+
+    public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {
+        CGPoint(x: max(0, ((inner.width - packed.width) / 2).rounded(.down)),
+                y: max(0, ((inner.height - packed.height) / 2).rounded(.down)))
+    }
 
     public static func stripLayout(groups: [WorkspaceInfo], bundleId: String, centre: Int?, frames: [Int: CGRect], screens: [Int: CGRect], available: CGSize)
         -> (cards: [LaidCard], held: Int?) {
@@ -131,7 +138,7 @@ public enum AeroControlLayout {
         let mine = workspace.windows.filter { $0.bundleId == app }, block = mine.compactMap(\.layoutRect).reduce(CGRect.null) { $0.union($1) }
         let others = workspace.windows.filter(\.isTiled).filter { $0.bundleId != app }
         let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2)
-        guard mine.allSatisfy(\.isTiled), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
+        guard mine.allSatisfy(\.isTiled), mirrors(mine), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
         return treeLayout(mine, frames: frames, screen: block, inner: inner) ?? packed
     }
 
@@ -145,15 +152,9 @@ public enum AeroControlLayout {
         return abs(picture.width / picture.height * window.height / window.width - 1) < 0.02
     }
 
-    public static func tileOrigin(packed: CGSize, inner: CGSize) -> CGPoint {
-        CGPoint(x: max(0, ((inner.width - packed.width) / 2).rounded(.down)),
-                y: max(0, ((inner.height - packed.height) / 2).rounded(.down)))
-    }
-
     public static func layoutSymbol(rootLayout: String) -> String? {
         ["h_tiles": "rectangle.split.2x1", "v_tiles": "rectangle.split.1x2", "h_accordion": "rectangle.on.rectangle", "v_accordion": "rectangle.on.rectangle"][rootLayout]
     }
-
 }
 
 public enum AeroControlMetrics {

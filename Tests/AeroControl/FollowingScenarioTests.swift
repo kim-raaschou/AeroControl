@@ -14,11 +14,11 @@ struct FollowingScenarioTests {
         app.store.pictures.previews[id].map { abs(CGFloat($0.width) / CGFloat($0.height) - ratio) < 0.02 } ?? false
     }
 
-    @Test("one connection to AeroSpace for as long as AeroControl runs, its binding mode asked at each connection: hidden, a focus change is only remembered; shown, every change is read, and an event that changes nothing reads nothing")
+    @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, a focus change is only remembered; shown, every change is read, and an event that changes nothing reads nothing")
     func listening() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(2, "Code")]], focused: 1)
         let app = TestApp(aerospace: aero)
-        await app.until { aero.commands.contains(AerospaceCommand.currentMode) }
+        await app.until { aero.commands.contains { $0.first == "subscribe" } }
         aero.userFocus(2)
         await app.until { app.store.visit.recent.first == 2 }
         await app.past(AerospaceSync.readAfter)
@@ -34,13 +34,13 @@ struct FollowingScenarioTests {
         #expect(aero.commands.filter { $0.first == "subscribe" }.count == 1)
     }
 
-    @Test("the stream dropped, AeroControl connects again after a moment, asks the mode again, and reads what it missed meanwhile")
+    @Test("the stream dropped, AeroControl connects again after a moment and reads what it missed meanwhile")
     func reconnects() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": []], focused: 1)
         let app = await TestApp.onMap(aero)
         aero.disconnect()
         aero.shift(2, to: "2")
-        await app.until { app.mirrors(aero) && aero.commands.filter { $0 == AerospaceCommand.currentMode }.count == 2 }
+        await app.until { app.mirrors(aero) && aero.commands.filter { $0.first == "subscribe" }.count == 2 }
     }
 
     @Test("the map is AeroSpace, live: whatever is done in AeroSpace while it is up, a bound key's command run after its event or a focus moved, the map shows as AeroSpace has it")

@@ -130,17 +130,17 @@ struct TreeLayoutTests {
     @Test("rects that overlap, an accordion's, cannot be a map: only the front one would show, so the card packs tiles instead")
     func overlappingRectsPackTiles() {
         let same = [rected(1, "Claude", 16, 49, 1696, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(same, frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
         let padded = [rected(1, "Claude", 46, 49, 1636, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)]
-        #expect(AeroControlLayout.treeLayout(padded, frames: [:], screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(!AeroControlLayout.mirrors(same) && !AeroControlLayout.mirrors(padded))
+        let inner = CGSize(width: 1000, height: 500)
+        #expect(AeroControlLayout.treeLayout(same, frames: [:], screen: screen, inner: inner)?.frames == AeroControlLayout.packed(same, frames: [:], screen: screen, inner: inner, caption: 0).frames)
     }
 
     @Test("a tiled window without a rect, or none at all (a release AeroSpace), is no map: the card packs tiles")
     func noRectsNoMap() {
         var windows = ws7Rected
         windows[2] = WindowInfo(windowId: 3352, appName: "Ghostty", bundleId: "com.Ghostty")
-        #expect(AeroControlLayout.treeLayout(windows, frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
-        #expect(AeroControlLayout.treeLayout(ws7, frames: framed(sizes), screen: screen, inner: CGSize(width: 1000, height: 500)) == nil)
+        #expect(!AeroControlLayout.mirrors(windows) && !AeroControlLayout.mirrors(ws7))
         #expect(AeroControlLayout.treeLayout(ws7Rected, frames: [:], screen: nil, inner: CGSize(width: 1000, height: 500)) == nil)
     }
 
@@ -176,6 +176,32 @@ struct MapLayoutTests {
         #expect(layout([a]).first?.ghosts == [9])
         let packed = try #require(layout([a], filtering: true).first)
         #expect(packed.ghosts.isEmpty && packed.frames.count == 3)
+    }
+
+    @Test("an accordion's card packs its tiled windows, and a float still lies where it stands on the screen, as a ghost")
+    func floatOverAnAccordion() throws {
+        let float = WindowInfo(windowId: 9, appName: "C", bundleId: "com.C", isFloating: true)
+        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 24, 57, 1680, 1035), rected(2, "B", 24, 57, 1680, 1035), float], screenIndex: 1, rootLayout: "h_accordion")
+        let card = try #require(AeroControlLayout.mapLayout(workspaces: [a], frames: [9: CGRect(x: 432, y: 304, width: 864, height: 542)], screens: [1: screen],
+                                                            available: CGSize(width: 1800, height: 1100), filtering: false).first)
+        let inner = AeroControlLayout.inner(of: card.frame.size), fitted = AeroControlMetrics.fit(screen.size, into: inner), scale = fitted.width / screen.width
+        let origin = AeroControlLayout.tileOrigin(packed: fitted, inner: inner), ghost = try #require(card.frames[9])
+        #expect(card.ghosts == [9] && card.frames[1]!.maxX <= card.frames[2]!.minX)
+        #expect(abs(ghost.minX - (origin.x + 432 * scale)) < 0.01 && abs(ghost.minY - (origin.y + 271 * scale)) < 0.01 && abs(ghost.width - 864 * scale) < 0.01)
+    }
+
+    @Test("a float on a hidden workspace, which AeroSpace has parked in the screen's corner, lies in the middle of the card at its own size; one the user has pushed half off the screen stays where it is")
+    func parkedFloat() throws {
+        let float = WindowInfo(windowId: 9, appName: "C", bundleId: "com.C", isFloating: true)
+        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 24, 57, 1680, 1035), float], screenIndex: 1, rootLayout: "h_tiles")
+        let card = try #require(AeroControlLayout.mapLayout(workspaces: [a], frames: [9: CGRect(x: 1727, y: 1085, width: 1081, height: 842)], screens: [1: screen],
+                                                            available: CGSize(width: 1800, height: 1100), filtering: false).first)
+        let inner = AeroControlLayout.inner(of: card.frame.size), fitted = AeroControlMetrics.fit(screen.size, into: inner), scale = fitted.width / screen.width
+        let box = CGRect(origin: AeroControlLayout.tileOrigin(packed: fitted, inner: inner), size: fitted), ghost = try #require(card.frames[9])
+        #expect(abs(ghost.midX - box.midX) < 0.01 && abs(ghost.midY - box.midY) < 0.01 && abs(ghost.width - 1081 * scale) < 0.01)
+        let halfOff = try #require(AeroControlLayout.mapLayout(workspaces: [a], frames: [9: CGRect(x: 1200, y: 300, width: 1081, height: 842)], screens: [1: screen],
+                                                               available: CGSize(width: 1800, height: 1100), filtering: false).first?.frames[9])
+        #expect(abs(halfOff.minX - (box.minX + 1200 * scale)) < 0.01 && abs(halfOff.maxX - box.maxX) < 0.01)
     }
 }
 

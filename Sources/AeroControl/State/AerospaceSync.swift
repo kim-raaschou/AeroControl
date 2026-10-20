@@ -20,7 +20,6 @@ final class AerospaceSync {
             var reconnecting = false
             while true {
                 let events = runner.subscribe(AerospaceCommand.subscribe).compactMap(AerospaceEvent.parse)
-                if let mode = try? await runner.run(AerospaceCommand.currentMode) { await received(.mode(mode)) }
                 if reconnecting { await resumed() }
                 do { for try await event in events { await received(event) } } catch {}
                 reconnecting = true

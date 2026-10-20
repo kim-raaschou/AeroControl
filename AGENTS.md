@@ -96,9 +96,8 @@ fails on any violation.
   the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
   draw the scene and nothing else of the store's state. `Host/`: `OverlayWindowManager` carries out
   `Visit.Host` (show, hide, activate, quit, launch, rebuild), `OverviewWindow` is the non-activating
-  panel and its key handling, `MenuBarController` the menu, `KeyHint` the mode's keys
-  in a panel of their own, a picker through `HintPick` (`Keys/`) only when summoned by
-  `aerocontrol://config`. Tests `@testable import` the app module itself.
+  panel and its key handling, `MenuBarController` the menu. Tests `@testable import` the app
+  module itself.
 - Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
 
 ### The one-shot model
@@ -134,9 +133,8 @@ on the mirror.
   **no optimistic local state**.
 - The second read, `readAgainAfter` later: AeroSpace announces a bound key (`binding-triggered`)
   before its command runs, and a new layout announces nothing, so the first read can miss it.
-- Reload after reconnect in the subscribe loop, and the binding mode asked (`list-modes --current`)
-  at every connection: `--no-send-initial` means a dropped stream loses whatever happened meanwhile,
-  the mode included.
+- Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream loses
+  whatever happened meanwhile.
 - `PictureStore.generation`: a capture that finishes after `clear()` is discarded.
 - `AerospaceSocketRunner`: protocol-version handshake; blocking syscalls on a private queue,
   and the subscription on a thread of its own, never the cooperative pool.

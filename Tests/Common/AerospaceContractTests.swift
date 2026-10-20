@@ -33,13 +33,9 @@ struct AerospaceCommandArgvTests {
         ])
     }
 
-    @Test("subscribe argv is pinned, the mode asked beside it, and a binding triggered as its key would")
+    @Test("subscribe argv is pinned")
     func subscribe() {
         #expect(AerospaceCommand.subscribe == ["subscribe", "--all", "--no-send-initial"])
-        #expect(AerospaceCommand.currentMode == ["list-modes", "--current"])
-        #expect(AerospaceCommand.triggerBinding(KeyBinding(mode: "apps", keys: "cmd-a", command: "")) == ["trigger-binding", "--mode", "apps", "cmd-a"])
-        #expect(AerospaceCommand.switchMode("apps") == ["mode", "apps"])
-        #expect(AerospaceCommand.visibleWindows == ["list-windows", "--monitor", "mouse", "--workspace", "visible", "--json", "--format", AerospaceCommand.listWindowsFields + " %{window-layout-rect}"])
     }
 }
 
@@ -54,7 +50,7 @@ struct AerospaceCommandArgvTests {
 
 @Suite("AerospaceEvent.parse")
 struct AerospaceEventParseTests {
-    @Test("a focus change carries the window and the workspace, a mode change its mode; every other name about windows means: read again; anything else is no event", arguments: [
+    @Test("a focus change carries the window and the workspace; every other name about windows means: read again; anything else is no event", arguments: [
         (#"{"_event":"focus-changed","windowId":42,"workspace":"2"}"#, AerospaceEvent?.some(.focusChanged(windowId: 42, workspace: "2"))),
         (#"{"_event":"focus-changed","workspace":"7"}"#, .focusChanged(windowId: nil, workspace: "7")),   // an empty workspace
         (#"{"_event":"focused-workspace-changed","prevWorkspace":"1","workspace":"2"}"#, .changed),
@@ -62,7 +58,7 @@ struct AerospaceEventParseTests {
         (#"{"_event":"window-detected","appBundleId":"com.apple.finder","appName":"Finder","windowId":511,"workspace":"2"}"#, .changed),
         (#"{"_event":"window-detected"}"#, .changed),                        // no payload at all
         (#"{"_event":"binding-triggered","binding":"cmd-ctrl-alt-left","mode":"main"}"#, .changed),
-        (#"{"_event":"mode-changed","mode":"resize"}"#, .mode("resize")),
+        (#"{"_event":"mode-changed","mode":"resize"}"#, nil),
         (#"{"_event":"some-future-event","workspace":"1"}"#, nil),
         // Stock AeroSpace emits no close event; the overview learns about closes from the
         // reload it does anyway. If upstream ever adds one, it lands here as a doorbell.

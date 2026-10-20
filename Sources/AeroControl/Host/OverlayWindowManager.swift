@@ -45,7 +45,7 @@ final class OverlayWindowManager {
         }
     }
 
-    func rebuild() {
+    private func rebuild() {
         guard state.visit.visible else { return }
         replaceWindow().reveal()
     }
@@ -65,9 +65,9 @@ final class OverlayWindowManager {
         case .bundleId(let id): open.arguments = ["-b", id]
         case .name(let name): open.arguments = ["-a", name]
         }
-        open.terminationHandler = { process in
+        open.terminationHandler = { [weak self] process in
             guard process.terminationStatus != 0 else { return }
-            Task { @MainActor [weak self] in self?.state.update { $0.launchFailed(ref) } }
+            Task { @MainActor in self?.state.update { $0.launchFailed(ref) } }
         }
         try? open.run()
     }
@@ -92,7 +92,7 @@ final class OverlayWindowManager {
     }
 }
 
-extension NSScreen {
+private extension NSScreen {
     static var underMouse: NSScreen {
         screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? main ?? screens.first ?? NSScreen()
     }

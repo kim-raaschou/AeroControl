@@ -5,12 +5,12 @@ enum Borders {
         (try? Process.run(URL(fileURLWithPath: "/usr/bin/pgrep"), arguments: ["-x", "borders"])).map { $0.waitUntilExit(); return $0.terminationStatus == 0 } ?? false
     }
 
-    static func matchAccent() {
+    @MainActor static func matchAccent() {
         guard running, let path = ["/opt/homebrew/bin/borders", "/usr/local/bin/borders"].first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return }
         _ = try? Process.run(URL(fileURLWithPath: path), arguments: ["active_color=0xff\(accent)"])
     }
 
-    static var accent: String {
+    @MainActor static var accent: String {
         var accent = ""
         (NSApp?.effectiveAppearance ?? NSAppearance.currentDrawing()).performAsCurrentDrawingAppearance { accent = hex(.controlAccentColor) }
         return accent

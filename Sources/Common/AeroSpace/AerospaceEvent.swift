@@ -3,7 +3,6 @@ import Foundation
 public enum AerospaceEvent: Equatable, Sendable {
     case focusChanged(windowId: Int?, workspace: String)
     case changed
-    case mode(String)
 }
 
 extension AerospaceEvent {
@@ -14,7 +13,6 @@ extension AerospaceEvent {
             return nil
         }
         if raw.event == "focus-changed" { return .focusChanged(windowId: raw.windowId, workspace: raw.workspace ?? "") }
-        if raw.event == "mode-changed" { return .mode(raw.mode ?? "main") }
         return readAgain.contains(raw.event) ? .changed : nil
     }
 
@@ -22,11 +20,10 @@ extension AerospaceEvent {
         let event: String
         let windowId: Int?
         let workspace: String?
-        let mode: String?
 
         private enum CodingKeys: String, CodingKey {
             case event = "_event"
-            case windowId, workspace, mode
+            case windowId, workspace
         }
     }
 }
