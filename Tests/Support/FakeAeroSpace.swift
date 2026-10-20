@@ -51,7 +51,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         if !knowsRects, args.contains(where: { $0.contains("window-layout-rect") }) {
             throw AerospaceSocketError.commandFailed(arguments: args, exitCode: 1, stderr: "Can't parse 'window-layout-rect'", serverVersion: nil)
         }
-        let (answer, event) = locked { answer(args) }
+        let (answer, event) = locked { self.answer(args) }
         if let event { events?.yield(event) }
         return answer
     }
