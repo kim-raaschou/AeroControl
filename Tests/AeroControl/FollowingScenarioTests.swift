@@ -27,6 +27,7 @@ struct FollowingScenarioTests {
         await app.open("aerocontrol://workspaces")
         aero.add(win(4, "Slack"), to: "1")
         await app.until { app.scene.cards.flatMap(\.tiles).map(\.window.windowId).contains(4) }
+        await app.past(AerospaceSync.readAgainAfter)
         let read = reads(aero)
         aero.announce("mode-changed")
         await app.past(AerospaceSync.readAfter)
