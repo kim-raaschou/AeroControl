@@ -84,7 +84,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     func forget(_ workspace: String) {
         locked { workspaceNames.removeAll { $0 == workspace && !windows.contains { $0.workspace == workspace } } }
-        events?.yield(#"{"_event":"focused-workspace-changed","workspace":"\#(focusedWorkspace)"}"#)
+        announce()
     }
 
     func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
@@ -108,9 +108,6 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
             create(name)
             windows[at].workspace = name
             return ("", args.contains("--focus-follows-window") ? focus(id) : left(id))
-        case "close":
-            windows.removeAll { $0.id == id }
-            return ("", left(id))
         case "layout":
             layouts[focusedName] = args[1]
             return ("", nil)
@@ -137,7 +134,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private func create(_ name: String) { if !workspaceNames.contains(name) { workspaceNames.append(name) } }
 
     private func focus(_ id: Int?) -> String? {
-        guard let id, let window = windows.first(where: { $0.id == id }) else { return nil }
+        guard let id, id != focusedId, let window = windows.first(where: { $0.id == id }) else { return nil }
         (focusedId, focusedName) = (id, window.workspace)
         return changed()
     }
@@ -179,7 +176,6 @@ final class TestApp {
 
     init(aerospace: FakeAeroSpace) {
         aero = aerospace
-        bridge.granted = true
         store = OverviewStore(runner: aerospace, nativeSystem: bridge)
         store.screen = (available: CGSize(width: 1600, height: 1000), frames: [:], scale: 2)
         store.startListening()
@@ -192,9 +188,9 @@ final class TestApp {
 
     var scene: OverviewScene { store.scene }
 
-    static func onMap(_ aerospace: FakeAeroSpace) async -> TestApp {
+    static func opening(_ aerospace: FakeAeroSpace, _ link: String = "aerocontrol://workspaces") async -> TestApp {
         let app = TestApp(aerospace: aerospace)
-        await app.open("aerocontrol://workspaces")
+        await app.open(link)
         return app
     }
 
@@ -206,8 +202,6 @@ final class TestApp {
         if await store.open(summon) { await store.capturePreviews() }
     }
 
-    func launchFails(_ ref: AppRef) { store.update { $0.launchFailed(ref) } }
-
     func mirrors(_ aero: FakeAeroSpace) -> Bool {
         let app = store.visit.strip?.app, owned = { (id: Int) in app.map { self.store.visit.model.window(id)?.bundleId == $0 } ?? true }
         return scene.cards.allSatisfy { c in c.tiles.map(\.window.windowId) == aero.windows(on: c.workspace.name).filter(owned) && c.workspace.rootLayout == aero.layout(of: c.workspace.name)
@@ -218,9 +212,14 @@ final class TestApp {
 
     func key(_ key: FilterKey) { store.handle(key) }
 
-    func hover(_ windowId: Int, at point: CGPoint) { store.point(windowId, at: point) }
-
-    func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async { await waitUntil(condition, sourceLocation: sourceLocation) }
+    func until(_ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
+        let deadline = ContinuousClock.now + .seconds(5)
+        while ContinuousClock.now < deadline {
+            if condition() { return }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("waited 5 s and the condition never held", sourceLocation: sourceLocation)
+    }
 
     func past(_ delay: Duration) async { try? await Task.sleep(for: delay + .milliseconds(100)) }
 }

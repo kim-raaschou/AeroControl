@@ -6,16 +6,11 @@ import Testing
 /// Native bridge a test can drive: icons and preview capture.
 @MainActor
 final class FakeBridge: NativeApiBridge {
-    /// Screen Recording granted?
-    var granted = false
     /// Every window-id list the store has asked to capture.
     var captured: [[Int]] = []
-    /// What the bridge gives for any app's icon, and for a live picture: one each, to be recognised.
-    let icon = NSImage()
-    let live = NSView()
-    func appIcon(bundleId: String) -> NSImage { icon }
-    func liveWindow(_ id: Int, pixels: CGSize) -> NSView { live }
-    var canCapturePreviews: Bool { granted }
+    func appIcon(bundleId: String) -> NSImage { NSImage() }
+    func liveWindow(_ id: Int, pixels: CGSize) -> NSView { NSView() }
+    var canCapturePreviews: Bool { true }
     func requestPreviewAccess() -> Bool { false }
     func prepareCapture() {}
     /// What the window server reports per window; 300 × 200 for any not listed.
@@ -54,36 +49,4 @@ final class FakeBridge: NativeApiBridge {
     }
 }
 
-@MainActor
-func waitUntil(_ cond: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
-    let deadline = ContinuousClock.now + .seconds(5)
-    while ContinuousClock.now < deadline {
-        if cond() { return }
-        try? await Task.sleep(for: .milliseconds(5))
-    }
-    Issue.record("waited 5 s and the condition never held", sourceLocation: sourceLocation)
-}
-
-/// Counts how many times the store's `@Observable` `model` invalidates — i.e. how many
-/// times SwiftUI's `NSHostingView` would re-render. Re-registers after each change.
-@MainActor
-final class ModelInvalidationCounter {
-    private(set) var count = 0
-    private let store: OverviewStore
-
-    init(_ store: OverviewStore) {
-        self.store = store
-        register()
-    }
-
-    private func register() {
-        withObservationTracking {
-            _ = store.visit.model
-        } onChange: { [weak self] in
-            Task { @MainActor in
-                self?.count += 1
-                self?.register()
-            }
-        }
-    }
-}
+final class Flag: @unchecked Sendable { var on = false }

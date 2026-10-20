@@ -34,8 +34,9 @@ The key does what the app's windows allow, at once:
 |---|---|
 | none | the app starts |
 | one | it is focused |
+| some, and you are in another app | the one you used last is focused, as ⌘Tab does |
 | two, and you are in one | the other is focused: a toggle |
-| two from elsewhere, or more | the strip opens: only that app's windows, the ring on the one you used last |
+| three or more, and you are in one | the strip opens: only that app's windows, the ring on the one you used last before |
 
 The strip is ⌘` with pictures. Enter takes the marked window, the arrows walk the rest.
 

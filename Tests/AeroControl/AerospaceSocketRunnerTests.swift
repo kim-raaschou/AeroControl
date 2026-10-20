@@ -87,14 +87,8 @@ private struct MockAnswer {
 private final class Captured: @unchecked Sendable {
     private let lock = NSLock()
     private var stored: [String: Any]?
-    func set(_ value: [String: Any]) {
-        lock.lock(); defer { lock.unlock() }
-        stored = value
-    }
-    var value: [String: Any]? {
-        lock.lock(); defer { lock.unlock() }
-        return stored
-    }
+    func set(_ value: [String: Any]) { lock.withLock { stored = value } }
+    var value: [String: Any]? { lock.withLock { stored } }
 }
 
 /// A minimal AF_UNIX server implementing the AeroSpace handshake + length-framing

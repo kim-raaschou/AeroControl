@@ -2446,5 +2446,14 @@
     "complexity": 814,
     "prodComplexity": 450,
     "files": 54
+  },
+  {
+    "timestamp": "2026-10-20T19:37:15+02:00",
+    "commit": "f86ad68",
+    "subject": "FakeAeroSpace: self.answer, which CI's Swift cannot tell from the local",
+    "code": 4126,
+    "complexity": 810,
+    "prodComplexity": 452,
+    "files": 54
   }
 ]

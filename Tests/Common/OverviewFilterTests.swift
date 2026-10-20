@@ -110,25 +110,12 @@ struct FilterKeyCodeTests {
         (126, "\u{F700}", .move(.row(-1))),       // ↑ — a private-use scalar, never text
         (125, "\u{F701}", .move(.row(1))),        // ↓
         (122, "\u{F704}", nil),                   // F1 is nobody's
+        (0, "é", .character("é")),
+        (49, " ", .character(" ")),
+        (0, "\u{3}", nil),                         // a control character is no text
+        (0, "\u{F700}", nil),                      // nor a private-use scalar under another key
     ] as [(UInt16, String?, FilterKey?)])
     func code(keyCode: UInt16, characters: String?, expected: FilterKey?) {
         #expect(FilterKey(keyCode: keyCode, characters: characters) == expected)
-    }
-}
-
-@Suite("FilterKey.typed")
-struct FilterKeyTypedTests {
-
-    @Test("text is a key; arrows, function keys and control characters are not", arguments: [
-        ("a" as Character, FilterKey.character("a")),
-        ("é", .character("é")),
-        (" ", .character(" ")),
-        (Character(UnicodeScalar(0xF700)!), nil),        // up arrow: a private-use scalar, not a glyph
-        (Character(UnicodeScalar(0xF704)!), nil),        // F1
-        ("\u{3}", nil),
-        ("\t", nil),
-    ])
-    func typed(character: Character, expected: FilterKey?) {
-        #expect(FilterKey.typed(character) == expected)
     }
 }

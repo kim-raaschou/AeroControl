@@ -45,13 +45,14 @@ them back.
 
 ## The strip is a picker
 
-The per-app keys settle three of their four cases from AeroSpace's state alone, at once and
-without a word: none, start; one, focus; two and you are in one, the other. The fourth case,
-two windows from another app or three or more, has no answer without you, and that is the
-strip: a row of the app's workspaces, a marking on the most likely answer (the app's window you
-used last other than the one you are in, or else the one after it), and keys to move it and
-confirm. AeroSpace's focus follows the marking from the moment the strip opens; Enter keeps it
-there, Escape takes the focus back to the window you came from.
+The per-app keys settle four of their five cases from AeroSpace's state alone, at once and
+without a word: none, start; one, focus; from another app, the app's window you used last, as
+⌘Tab does; two and you are in one, the other. The fifth case, three or more and you are in one,
+has no answer without you, and that is the strip, as ⌘` is the second step after ⌘Tab: a row
+of the app's workspaces, a marking on the most likely answer (the app's window you used last
+other than the one you are in, or else the one after it), and keys to move it and confirm.
+AeroSpace's focus follows the marking from the moment the strip opens; Enter keeps it there,
+Escape takes the focus back to the window you came from.
 
 A strip is opened only by its app's key. While it is up AeroSpace still decides: move the focus
 within the app and the strip stands; move it anywhere else, with an AeroSpace key, another app

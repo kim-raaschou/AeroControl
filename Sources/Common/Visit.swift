@@ -53,6 +53,7 @@ public struct Visit: Equatable {
         }
         if focusMoved, let strip { marking = strip.following(model.focusedWindow) }
         var out = hadStrip && strip == nil ? hide(restoreFocus: true) : []
+        if case .action(.focusWindow(let id)) = input { remember(id) }
         if case .action(let action) = input, action.isFocus { out += hide(restoreFocus: action == .focusWindow(model.focusedWindowId)) }
         return out + effects
     }
@@ -120,12 +121,13 @@ public struct Visit: Equatable {
     }
 
     public mutating func summoned(_ summon: Summon) -> [Effect] {
+        let fresh = cameFrom == nil
         (loading, cameFrom) = (false, cameFrom ?? model.focusedWindowId)
         guard visible, case .app(let ref) = summon else { return [] }
-        return open(ref)
+        return open(ref, fresh: fresh)
     }
 
-    private mutating func open(_ ref: AppRef) -> [Effect] {
+    private mutating func open(_ ref: AppRef, fresh: Bool) -> [Effect] {
         missingApp = nil
         let windows = model.windowsInGridOrder.filter(ref.matches)
         let focusedAt = windows.firstIndex { $0.windowId == model.focusedWindowId }
@@ -133,6 +135,7 @@ public struct Visit: Equatable {
         case (0, _): return hide(restoreFocus: false) + [.host(.launch(ref))]
         case (1, _): return apply(.action(.focusWindow(windows[0].windowId)))
         case (2, let at?): return apply(.action(.focusWindow(windows[1 - at].windowId)))
+        case (_, nil) where fresh: return apply(.action(.focusWindow(recent.first { id in windows.contains { $0.windowId == id } } ?? windows[0].windowId)))
         default:
             marking = .opened(windows[0].bundleId, origin: focusedAt.map { _ in model.focusedWindowId }, ids: windows.map(\.windowId), recent: recent)
             return follow()
@@ -156,7 +159,9 @@ public struct Visit: Equatable {
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
 
-    public mutating func noteFocus(_ windowId: Int) { if !visible { recent = [windowId] + recent.filter { $0 != windowId }.prefix(63) } }
+    public mutating func noteFocus(_ windowId: Int) { if !visible { remember(windowId) } }
+
+    private mutating func remember(_ id: Int) { recent = [id] + recent.filter { $0 != id }.prefix(63) }
 
     public mutating func end() {
         setQuery("")

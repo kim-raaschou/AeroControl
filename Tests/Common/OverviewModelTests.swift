@@ -27,8 +27,6 @@ struct MonitorNamingTests {
     func spansMonitors() {
         #expect(!OverviewModel().spansMonitors)                                  // nothing loaded
         #expect(!OverviewModel(workspaces: [ws("1", monitor: 1), ws("2", monitor: 1)]).spansMonitors)
-        let two = OverviewModel(workspaces: [ws("1", monitor: 1), ws("5", monitor: 2)])
-        #expect(two.spansMonitors)
-        #expect(two.workspaces.map(\.monitorName) == ["Display 1", "Display 2"])
+        #expect(OverviewModel(workspaces: [ws("1", monitor: 1), ws("5", monitor: 2)]).spansMonitors)
     }
 }

@@ -49,22 +49,6 @@ struct ParseWindowStateTests {
 
 @Suite("parseWorkspaces")
 struct ParseWorkspacesTests {
-    @Test("parses valid workspace JSON")
-    func parsesValidJson() throws {
-        let json = """
-        [
-          {"workspace": "1", "monitor-id": 1},
-          {"workspace": "2", "monitor-id": 1},
-          {"workspace": "3", "monitor-id": 2}
-        ]
-        """
-        let result = try parseWorkspaces(json: json)
-        #expect(result.count == 3)
-        #expect(result[0].workspace == "1")
-        #expect(result[0].monitorId == 1)
-        #expect(result[2].monitorId == 2)
-    }
-
     @Test("the AppKit screen index is read, and a list without it decodes as 0")
     func screenIndex() throws {
         let json = """
@@ -76,25 +60,11 @@ struct ParseWorkspacesTests {
         let built = buildOverview(windows: [], workspaceMonitors: try parseWorkspaces(json: json))
         #expect(built.workspaces.map(\.screenIndex) == [1, 2, 0])
     }
-
-    @Test("tolerates string NULL-MONITOR-ID monitor-id")
-    func nullMonitorSentinel() throws {
-        let json = """
-        [
-          {"workspace": "1", "monitor-id": "NULL-MONITOR-ID"},
-          {"workspace": "2", "monitor-id": 2}
-        ]
-        """
-        let result = try parseWorkspaces(json: json)
-        #expect(result.count == 2)
-        #expect(result[0].monitorId == 0)
-        #expect(result[1].monitorId == 2)
-    }
 }
 
 @Suite("buildOverview")
 struct BuildOverviewTests {
-    @Test("the workspaces in list-workspaces' order, each with its windows, its monitor and its root layout, one with no windows too; no text is no workspace")
+    @Test("the workspaces in list-workspaces' order, each with its windows, its monitor and its root layout, one with no windows too, one with no monitor; no text is no workspace")
     func built() throws {
         let windows = [
             WindowInfo(windowId: 1, appName: "A", bundleId: "a", workspace: "2"),
@@ -104,36 +74,24 @@ struct BuildOverviewTests {
         let monitors = try parseWorkspaces(json: """
         [{"workspace": "2", "monitor-id": 1, "workspace-root-container-layout": "v_accordion"},
          {"workspace": "1", "monitor-id": 2},
-         {"workspace": "5", "monitor-id": 2}]
+         {"workspace": "5", "monitor-id": 2},
+         {"workspace": "6", "monitor-id": "NULL-MONITOR-ID"}]
         """)
         let result = buildOverview(windows: windows, workspaceMonitors: monitors)
-        #expect(result.workspaces.map(\.name) == ["2", "1", "5"] && result.workspaces.map { $0.windows.map(\.windowId) } == [[1, 3], [2], []])
-        #expect(result.workspaces.map(\.monitorId) == [1, 2, 2] && result.workspaces.map(\.rootLayout) == ["v_accordion", "", ""])
+        #expect(result.workspaces.map(\.name) == ["2", "1", "5", "6"] && result.workspaces.map { $0.windows.map(\.windowId) } == [[1, 3], [2], [], []])
+        #expect(result.workspaces.map(\.monitorId) == [1, 2, 2, 0] && result.workspaces.map(\.rootLayout) == ["v_accordion", "", "", ""])
         #expect(try parseWorkspaces(json: "").isEmpty)
     }
 }
 
-@Suite("a workspace's root layout")
-struct RootLayoutTests {
-    @Test("a workspace says how its root container is laid out; an older AeroSpace that does not still decodes")
-    func decodes() throws {
-        let json = """
-        [{"workspace": "2", "monitor-id": 1, "workspace-root-container-layout": "h_tiles"},
-         {"workspace": "3", "monitor-id": 1}]
-        """
-        let result = try parseWorkspaces(json: json)
-        #expect(result[0].rootLayout == "h_tiles" && result[1].rootLayout == nil)
-    }
+private func windowJSON(_ id: Int, _ app: String, _ rect: String?) -> String {
+    let field = rect.map { ", \"window-layout-rect\": \"\($0)\"" } ?? ""
+    return #"{"window-id": \#(id), "app-name": "\#(app)", "app-bundle-id": "com.\#(app)", "workspace": "4", "window-parent-container-layout": "h_tiles"\#(field)}"#
 }
 
 @Suite("window-layout-rect")
 struct LayoutRectTests {
-    private func window(_ rect: String?) -> String {
-        let field = rect.map { ", \"window-layout-rect\": \"\($0)\"" } ?? ""
-        return """
-        [{"window-id": 1, "app-name": "Ghostty", "app-bundle-id": "com.mitchellh.ghostty", "workspace": "7", "window-parent-container-layout": "h_tiles"\(field)}]
-        """
-    }
+    private func window(_ rect: String?) -> String { "[" + windowJSON(1, "Ghostty", rect) + "]" }
 
     @Test("x,y,width,height in points becomes the window's layout rect")
     func parsed() throws {
@@ -152,21 +110,16 @@ struct LayoutRectTests {
 
 @Suite("a workspace's windows in the layout's order")
 struct LayoutOrderTests {
-    private func w(_ id: Int, _ app: String, _ rect: String?) -> String {
-        let field = rect.map { ", \"window-layout-rect\": \"\($0)\"" } ?? ""
-        return #"{"window-id": \#(id), "app-name": "\#(app)", "app-bundle-id": "com.\#(app)", "workspace": "4", "window-parent-container-layout": "h_tiles"\#(field)}"#
-    }
-
     @Test("with AeroSpace's rects a workspace's windows come in the layout's order, floats and windows without a rect after them")
     func ordered() throws {
-        let json = "[" + [w(10916, "Ghostty", "1726,48,1698,1375"), w(10776, "Mail", "16,48,1698,1375"), w(5, "Finder", "")].joined(separator: ",") + "]"
+        let json = "[" + [windowJSON(10916, "Ghostty", "1726,48,1698,1375"), windowJSON(10776, "Mail", "16,48,1698,1375"), windowJSON(5, "Finder", "")].joined(separator: ",") + "]"
         let result = buildOverview(windows: try parseWindows(json: json), workspaceMonitors: try parseWorkspaces(json: #"[{"workspace": "4", "monitor-id": 1}]"#))
         #expect(result.workspaces[0].windows.map(\.windowId) == [10776, 10916, 5])
     }
 
     @Test("without rects the listing's order stands")
     func listingOrder() throws {
-        let json = "[" + [w(10916, "Ghostty", nil), w(10776, "Mail", nil)].joined(separator: ",") + "]"
+        let json = "[" + [windowJSON(10916, "Ghostty", nil), windowJSON(10776, "Mail", nil)].joined(separator: ",") + "]"
         let result = buildOverview(windows: try parseWindows(json: json), workspaceMonitors: try parseWorkspaces(json: #"[{"workspace": "4", "monitor-id": 1}]"#))
         #expect(result.workspaces[0].windows.map(\.windowId) == [10916, 10776])
     }

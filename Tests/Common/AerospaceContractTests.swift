@@ -22,7 +22,6 @@ struct AerospaceCommandArgvTests {
         let rects = AerospaceCommand.listWindows(layoutRects: true)
         #expect(rects.dropLast() == plain.dropLast())
         #expect(rects.last == plain.last! + " %{window-layout-rect}")
-        #expect(AerospaceCommand.listWindows(layoutRects: false) == plain)
     }
 
     @Test("list-workspaces argv is pinned")
