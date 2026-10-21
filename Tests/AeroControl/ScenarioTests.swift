@@ -139,7 +139,6 @@ struct ScenarioTests {
         await app.until { aero.focused == 2 && !app.store.visit.visible }
         await app.open("aerocontrol://app-id=com.teams")
         await app.until { aero.focused == 1 }
-        await app.past(AerospaceSync.focusAgainAfter)
         #expect(aero.focused == 1 && aero.commands.filter { $0 == ["focus", "--window-id", "2"] }.count == 1)
     }
 
@@ -163,7 +162,7 @@ struct ScenarioTests {
         #expect(marked(app) == 3)
         app.key(.enter)
         await app.until { aero.focused == 3 && !app.store.visit.visible }
-        await app.past(AerospaceSync.focusAgainAfter)
+        await app.commandsLanded()
         aero.userFocus(1)
         await app.until { app.store.visit.recent.first == 1 }
         await app.open("aerocontrol://app-id=com.teams")
@@ -285,7 +284,7 @@ struct ScenarioTests {
         await app.until { aero.focused == 3 }
         app.key(.enter)                                                                          // picked where AeroSpace's focus already is
         await app.until { !app.store.visit.visible }
-        await app.past(AerospaceSync.focusAgainAfter)
+        await app.commandsLanded()
         aero.userFocus(5)
         await app.until { app.store.visit.recent.first == 5 }
         await app.open("aerocontrol://app-id=com.teams")
@@ -299,7 +298,7 @@ struct ScenarioTests {
         aero.userFocus(2)
         await app.until { app.store.visit.model.focusedWindowId == 2 }
         #expect(app.store.visit.visible && app.scene.body == .strip)
-        await app.past(AerospaceSync.focusAgainAfter)
+        await app.commandsLanded()
         aero.userFocus(9)
         await app.until { !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack") && app.store.visit.recent.first == 9 }
         aero.userFocus(1)

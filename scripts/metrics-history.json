@@ -2455,5 +2455,14 @@
     "complexity": 810,
     "prodComplexity": 452,
     "files": 54
+  },
+  {
+    "timestamp": "2026-10-21T10:18:52+02:00",
+    "commit": "6ebf946",
+    "subject": "Crew review: a visit's own lifecycle, floats always floats",
+    "code": 4127,
+    "complexity": 806,
+    "prodComplexity": 445,
+    "files": 54
   }
 ]

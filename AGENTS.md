@@ -90,7 +90,7 @@ fails on any violation.
   `AerospaceSocketRunner` speaks the socket protocol; `NativeApiBridgeAdapter` measures and captures
   windows; `Borders` colours a running JankyBorders with the accent, at start and from the menu. `State/`: `AerospaceSync` is everything that talks to AeroSpace — the read, the event
   stream and its reconnect, the commands in order, the refresh that reads twice and is cancelled by
-  the next, the issue-101 WORKAROUND; `OverviewStore` (`@MainActor @Observable`) holds the `Visit`,
+  the next; `OverviewStore` (`@MainActor @Observable`) holds the `Visit`,
   runs its commands, reads and captures, hands `Visit.Host` effects to the host, and derives the
   `OverviewScene` from the visit and the screen the host gives it; `PictureStore`, owned by it, keeps
   the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
@@ -202,11 +202,10 @@ Each is marked `WORKAROUND` in the code with the AeroSpace issue it works around
 when AeroSpace fixes the issue.
 
 - **AeroSpace issue 101** (https://github.com/nikitabobko/AeroSpace/issues/101):
-  `focus --window-id` on a window of an app with windows on more than one monitor often lands
-  on the app's other window, because macOS hands the keyboard to the app's last key window as
-  the activation completes. `AerospaceSync.focusAgainIfMissed` asks once more if AeroSpace's
-  focus is elsewhere 300 ms later. Measured with Ghostty across two screens: 3 of 5 right
-  without it, 5 of 5 with it.
+  `focus --window-id` on a window of an app with windows on more than one monitor sometimes lands
+  on the app's other window (measured with Ghostty across two screens: 3 of 5 right). AeroControl
+  does not work around it: it cannot tell AeroSpace's slip from the user's own move, and a
+  second focus overrode the user's. The fix belongs in AeroSpace.
 
 ## Workflow conventions
 

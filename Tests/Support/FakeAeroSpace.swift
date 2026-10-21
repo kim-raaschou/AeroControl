@@ -222,4 +222,7 @@ final class TestApp {
     }
 
     func past(_ delay: Duration) async { try? await Task.sleep(for: delay + .milliseconds(100)) }
+
+    /// AeroControl's own commands reach AeroSpace on a task of their own: a move of the user's made before they land is undone by them.
+    func commandsLanded() async { await past(.zero) }
 }
