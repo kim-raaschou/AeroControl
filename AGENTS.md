@@ -105,7 +105,7 @@ fails on any violation.
 
 ### The one-shot model
 
-Summon → `reload()` reads AeroSpace's whole state → previews are captured → the overlay
+Summon → `OverviewStore.open` reads AeroSpace's whole state → previews are captured → the overlay
 appears. One subscription to AeroSpace's event stream (`subscribe`, `--no-send-initial`) lives as
 long as the app. Hidden, it only keeps the order of focus, which decides where a strip opens.
 **While visible** every event means "read again" (`.changed` → `.refresh`), and a focus change
@@ -136,16 +136,16 @@ on the mirror.
   **no optimistic local state**.
 - The second read, `readAgainAfter` later: AeroSpace announces a bound key (`binding-triggered`)
   before its command runs, and a new layout announces nothing, so the first read can miss it.
-- Reload after reconnect in the subscribe loop: `--no-send-initial` means a dropped stream loses
-  whatever happened meanwhile.
+- Read again after reconnect: the subscribe loop hands the visit a `.changed`, since
+  `--no-send-initial` means a dropped stream loses whatever happened meanwhile.
 - `PictureStore.generation`: a capture that finishes after `clear()` is discarded.
 - `AerospaceSocketRunner`: protocol-version handshake; blocking syscalls on a private queue,
   and the subscription on a thread of its own, never the cooperative pool.
 - `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.
 - `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
   meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
-- `Visit.recent` / `noteFocus` / `remember`: the order windows last had the focus, kept from
-  AeroSpace's events while the overview is hidden and from a window picked in it, for as long as
+- `Visit.recent` / `remember`: the order windows last had the focus, kept from AeroSpace's
+  focus events once the overview is not up and from a window picked in it, for as long as
   the app runs. AeroSpace keeps no such order to ask for, so this is
   remembered on purpose — the one thing besides the strip's marking that is.
 
@@ -163,7 +163,9 @@ was built and removed in October 2026; see docs/aerospace-layout-data.md, "Revie
 AeroSpace is trusted at the **parsing boundary**: the fields AeroControl explicitly requests
 (`AerospaceCommand.listWindowsFields` etc.) are decoded strictly, and the **initial
 `loadOverview`** fails loudly: the lane says `Load error` and why, and Escape closes. A refresh
-whose second read fails too says the same until a read lands; the first read alone fails quietly, since the second follows in 150 ms, unknown events parse to nothing, and there is **no runtime version check** — the
+whose second read fails too says the same until a read lands; the first read alone fails quietly in
+`AerospaceSync.refresh`, since the second follows in 150 ms. The error is the visit's
+(`Visit.error`), as is when an event counts (`Visit.following`), unknown events parse to nothing, and there is **no runtime version check** — the
 minimum (**AeroSpace ≥ 0.21.0-Beta**, where `subscribe` and the public socket protocol
 arrived) is documentation. `Tests/Common/AerospaceContractTests`
 pins argv and event names; if you add or rename a field or event, update both sides.

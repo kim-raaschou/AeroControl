@@ -1,3 +1,5 @@
+import Foundation
+
 public struct Visit: Equatable {
     public enum Effect: Sendable {
         case run([AeroControlAction], thenRead: Bool)
@@ -6,7 +8,7 @@ public struct Visit: Equatable {
     }
 
     public enum Input: Sendable {
-        case loaded(OverviewModel)
+        case loaded(Result<OverviewModel, Error>)
         case event(AerospaceEvent)
         case action(AeroControlAction)
         case merge(String, into: String)
@@ -25,8 +27,9 @@ public struct Visit: Equatable {
     public private(set) var query = ""
     private(set) var missingApp: AppRef?
     private(set) var recent: [Int] = []
+    public private(set) var error: String?
     public private(set) var visible = false
-    public private(set) var loading = false
+    private(set) var loading = false
     private var cameFrom: Int?
 
     public init() {}
@@ -36,15 +39,19 @@ public struct Visit: Equatable {
     var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
     var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
     var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
+    public var following: Bool { visible && !loading }
 
     public mutating func apply(_ input: Input) -> [Effect] {
         var new = model, effects: [Effect] = []
         switch input {
-        case .loaded(let read): new = read
+        case .loaded(.success(let read)): (new, error) = (read, nil)
+        case .loaded(.failure(let failure)): error = failure.localizedDescription
+        case .event where !following: break
         case .event(.focusChanged(let windowId, let workspace)): (new.focusedWindowId, new.focusedWorkspace, effects) = (windowId ?? 0, workspace, [.refresh])
         case .event(.changed): effects = [.refresh]
+        case .action(let action) where action.isFocus: effects = hide(restoreFocus: action == .focusWindow(model.focusedWindowId)) + [.run([action], thenRead: false)]
+        case .action(let action): effects = [.run([action], thenRead: true)]
         case .merge(let source, let target): effects = merge(source, into: target)
-        case .action(let action): effects = [.run([action], thenRead: !action.isFocus)]
         }
         let focusMoved = new.focusedWindowId != model.focusedWindowId, hadStrip = strip != nil
         if new != model {
@@ -52,9 +59,9 @@ public struct Visit: Equatable {
             model = new
         }
         if focusMoved, let strip { marking = strip.following(model.focusedWindow) }
-        var out = hadStrip && strip == nil ? hide(restoreFocus: true) : []
+        let out = hadStrip && strip == nil ? hide(restoreFocus: true) : []
         if case .action(.focusWindow(let id)) = input { remember(id) }
-        if case .action(let action) = input, action.isFocus { out += hide(restoreFocus: action == .focusWindow(model.focusedWindowId)) }
+        if case .event(.focusChanged(let id?, _)) = input, !visible { remember(id) }
         return out + effects
     }
 
@@ -158,8 +165,6 @@ public struct Visit: Equatable {
         guard model.windows(of: marking).contains(where: { $0.windowId == windowId }) else { return }
         marking = (marking ?? Strip(app: nil, marked: nil, centre: nil)).marking(windowId)
     }
-
-    public mutating func noteFocus(_ windowId: Int) { if !visible { remember(windowId) } }
 
     private mutating func remember(_ id: Int) { recent = [id] + recent.filter { $0 != id }.prefix(63) }
 

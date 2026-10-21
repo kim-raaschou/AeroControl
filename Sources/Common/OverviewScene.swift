@@ -47,8 +47,8 @@ public struct OverviewScene: Sendable {
         Dictionary(cards.flatMap(\.tiles).map { ($0.window.windowId, CGSize(width: $0.picture.width * scale, height: $0.picture.height * scale)) }) { $1 }
     }
 
-    public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
-        let model = visit.model, ring = visit.ringWindowId, filtering = !visit.matches.isEmpty, lane = Self.lane(visit, error: error)
+    public init(_ visit: Visit, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
+        let model = visit.model, ring = visit.ringWindowId, filtering = !visit.matches.isEmpty, lane = Self.lane(visit)
         (size, ringed, self.lane) = (AeroControlLayout.usable(available), ring, lane)
         let shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard]
         switch (lane, visit.strip) {
@@ -80,8 +80,8 @@ public struct OverviewScene: Sendable {
         return count + " · ws \(window.workspace)"
     }
 
-    private static func lane(_ visit: Visit, error: String?) -> Lane {
-        if let error { return .notice(name: "Load error", reason: error) }
+    private static func lane(_ visit: Visit) -> Lane {
+        if let error = visit.error { return .notice(name: "Load error", reason: error) }
         if let missing = visit.missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
         if let strip = visit.strip, let first = visit.stripWindows.first {
             return .app(name: first.appName, bundleId: strip.app ?? "", summary: Self.summary(visit.stripWindows, marked: strip.marked))

@@ -9,12 +9,10 @@ class OverviewStore {
 
     private let sync: AerospaceSync
     let pictures: PictureStore
-    private(set) var error: String?
     var screen: (available: CGSize, frames: [Int: CGRect], scale: CGFloat) = (.zero, [:], 1)
-    private var following: Bool { visit.visible && !visit.loading }
     var onEffect: ((Visit.Host) -> Void)?
 
-    var scene: OverviewScene { OverviewScene(visit, error: error, available: screen.available, screens: screen.frames, frames: pictures.frames) }
+    var scene: OverviewScene { OverviewScene(visit, available: screen.available, screens: screen.frames, frames: pictures.frames) }
 
     init(runner: AerospaceProcessRunner, nativeSystem: NativeApiBridge) {
         self.sync = AerospaceSync(runner: runner)
@@ -28,7 +26,7 @@ class OverviewStore {
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()
-            case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead, following { requestRefresh() } }
+            case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead { requestRefresh() } }
             case .host(let effect): onEffect?(effect)
             }
         }
@@ -62,19 +60,10 @@ class OverviewStore {
         pictures.clear()
     }
 
-    private func reload() async { if let result = landed(await sync.read()) { send(.loaded(result)) } }
-
-    private func landed(_ read: Result<OverviewModel, Error>) -> OverviewModel? {
-        switch read {
-        case .success(let result): error = nil; return result
-        case .failure(let failure): error = failure.localizedDescription; return nil
-        }
-    }
-
     func open(_ summon: Summon, reveal: () -> Void) async {
         endVisit()
         pictures.prepare()
-        await reload()
+        send(.loaded(await sync.read()))
         update { $0.summoned(summon) }
         guard visit.visible else { return }
         pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId))
@@ -83,26 +72,20 @@ class OverviewStore {
         await pictures.take(scene.cards.map { $0.tiles.map(\.window.windowId) }, sizes: scene.pictureSizes(scale: screen.scale))
     }
 
-    func startListening() {
-        sync.listen({ event in
-            if self.following { self.send(.event(event)) }
-            if case .focusChanged(let id?, _) = event { self.update { $0.noteFocus(id); return [] } }
-        }, resumed: { if self.following { await self.reload() } })
-    }
+    func startListening() { sync.listen { self.send(.event($0)) } }
 
     private func requestRefresh() {
         sync.refresh { read, again in
-            if case .failure = read, !again { return }
-            guard self.following, let result = self.landed(read) else { return }
-            self.send(.loaded(result))
-            guard self.following else { return }
+            guard self.visit.following else { return }
+            self.send(.loaded(read))
+            guard self.visit.following, case .success(let result) = read else { return }
             self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))
             guard again else { return }
             let taken = await self.retakePictures()
             guard !taken.isEmpty else { return }
             self.repaint = Task {
                 try? await Task.sleep(for: Self.repaintedAfter)
-                guard !Task.isCancelled, self.following else { return }
+                guard !Task.isCancelled, self.visit.following else { return }
                 await self.pictures.shoot(self.scene.pictureSizes(scale: self.screen.scale).filter { taken[$0.key] != nil })
             }
         }

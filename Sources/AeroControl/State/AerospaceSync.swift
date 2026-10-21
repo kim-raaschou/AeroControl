@@ -14,12 +14,12 @@ final class AerospaceSync {
         do { return .success(try await loadOverview(using: runner)) } catch { return .failure(error) }
     }
 
-    func listen(_ received: @escaping @MainActor (AerospaceEvent) -> Void, resumed: @escaping @MainActor () async -> Void) {
+    func listen(_ received: @escaping @MainActor (AerospaceEvent) -> Void) {
         Task.detached(priority: .utility) { [runner] in
             var reconnecting = false
             while true {
                 let events = runner.subscribe(AerospaceCommand.subscribe).compactMap(AerospaceEvent.parse)
-                if reconnecting { await resumed() }
+                if reconnecting { await received(.changed) }
                 do { for try await event in events { await received(event) } } catch {}
                 reconnecting = true
                 try? await Task.sleep(for: .seconds(1))
@@ -47,6 +47,7 @@ final class AerospaceSync {
                 guard !Task.isCancelled else { return }
                 let read = await read()
                 guard !Task.isCancelled else { return }
+                if case .failure = read, !again { continue }
                 await land(read, again)
             }
         }
