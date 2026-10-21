@@ -15,11 +15,12 @@ public struct OverviewScene: Sendable {
         public let window: WindowInfo
         public let frame: CGRect
         public let ringed: Bool
-        public let origin: Bool
+        public let focused: Bool
         public let ghost: Bool
         public let lane: CGFloat
-        public let stacking: Double
 
+        public var origin: Bool { focused && !ringed }
+        public var stacking: Double { ghost ? 2 : focused ? 1 : 0 }
         public var picture: CGSize { CGSize(width: frame.width, height: frame.height - lane) }
     }
 
@@ -47,33 +48,28 @@ public struct OverviewScene: Sendable {
     }
 
     public init(_ visit: Visit, error: String?, available: CGSize, screens: [Int: CGRect], frames: [Int: CGRect]) {
-        let model = visit.model, ring = visit.ringWindowId, usable = AeroControlLayout.usable(available)
-        (size, ringed, lane) = (usable, ring, Self.lane(visit, error: error))
-        let filtering = !visit.matches.isEmpty, shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard]
-        if error != nil || model.workspaces.isEmpty || visit.missingApp != nil {
-            (body, shown, laid, held) = (.nothing, [], [], nil)
-        } else if let strip = visit.strip, !visit.stripWindows.isEmpty {
+        let model = visit.model, ring = visit.ringWindowId, filtering = !visit.matches.isEmpty, lane = Self.lane(visit, error: error)
+        (size, ringed, self.lane) = (AeroControlLayout.usable(available), ring, lane)
+        let shown: [WorkspaceInfo], laid: [AeroControlLayout.LaidCard]
+        switch (lane, visit.strip) {
+        case (.notice, _),
+             _ where model.workspaces.isEmpty: (body, shown, laid, held) = (.nothing, [], [], nil)
+        case (_, let strip?) where !visit.stripWindows.isEmpty:
             shown = visit.stripWorkspaces
             (laid, held) = AeroControlLayout.stripLayout(groups: shown, bundleId: strip.app ?? "", centre: strip.centre, frames: frames, screens: screens, available: available)
             body = .strip
-        } else {
+        default:
             shown = filtering ? model.workspaces(holding: visit.matches) : model.workspaces
             laid = AeroControlLayout.mapLayout(workspaces: shown, frames: frames, screens: screens, available: available, filtering: filtering)
             (body, held) = (.map, nil)
         }
-        let captions = body == .map
         grid = laid.map(\.grid)
         cards = zip(shown, laid).map { ws, c in
-            let frame = c.frame
             let tiles = ws.windows.compactMap { w in c.frames[w.windowId].map { f in
-                Tile(window: w, frame: f, ringed: w.windowId == ring, origin: w.windowId != ring && w.windowId == model.focusedWindowId,
-                     ghost: c.ghosts.contains(w.windowId),
-                     lane: captions && (filtering || frames[w.windowId] == nil) && f.height >= AeroControlLayout.captionLane + AeroControlLayout.minPictureHeight ? AeroControlLayout.captionLane : 0,
-                     stacking: c.ghosts.contains(w.windowId) ? 2 : w.windowId == model.focusedWindowId ? 1 : 0)
+                Tile(window: w, frame: f, ringed: w.windowId == ring, focused: w.windowId == model.focusedWindowId, ghost: c.ghosts.contains(w.windowId), lane: c.lanes[w.windowId] ?? 0)
             } }
-            return Card(workspace: ws, frame: frame, focused: ws.name == model.focusedWorkspace, visible: ws.isVisible,
-                        monitor: model.spansMonitors && !ws.monitorShortName.isEmpty ? ws.monitorShortName : nil, ringed: ring == ws.standIn,
-                        cut: frame.minX < 0 || frame.maxX > usable.width, tiles: tiles)
+            return Card(workspace: ws, frame: c.frame, focused: ws.name == model.focusedWorkspace, visible: ws.isVisible,
+                        monitor: model.spansMonitors ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: c.cut, tiles: tiles)
         }
     }
 

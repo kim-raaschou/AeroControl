@@ -22,7 +22,7 @@ public enum AeroControlLayout {
     struct LaidCard: Equatable, Sendable {
         public let frame: CGRect
         public let frames: [Int: CGRect]
-        var ghosts: Set<Int> = []
+        var ghosts: Set<Int> = [], lanes: [Int: CGFloat] = [:], cut = false
 
         public var grid: GridWalk.Card {
             (frame, frames.mapValues { $0.offsetBy(dx: frame.minX + cardPadding, dy: frame.minY + cardChrome - cardPadding) })
@@ -36,7 +36,8 @@ public enum AeroControlLayout {
             let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
             let placed = (filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner, hidden: !ws.isVisible)) ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
-            return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
+            return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts,
+                            lanes: placed.frames.filter { (filtering || frames[$0.key] == nil) && $0.value.height >= captionLane + minPictureHeight }.mapValues { _ in captionLane })
         }
     }
 
@@ -128,7 +129,8 @@ public enum AeroControlLayout {
             return card
         }
         let held = centre.flatMap { id in row.firstIndex { $0.frames[id] != nil } }, offset = stripOffset(row, held: held ?? 0, viewWidth: view.width)
-        return (row.map { LaidCard(frame: $0.frame.offsetBy(dx: offset, dy: 0), frames: $0.frames, ghosts: $0.ghosts) }, held)
+        let shown = row.map { $0.frame.offsetBy(dx: offset, dy: 0) }
+        return (zip(row, shown).map { c, frame in LaidCard(frame: frame, frames: c.frames, ghosts: c.ghosts, cut: frame.minX < 0 || frame.maxX > view.width) }, held)
     }
 
     static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> (frames: [Int: CGRect], ghosts: Set<Int>) {

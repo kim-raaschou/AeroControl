@@ -54,8 +54,8 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
         -1 - Int(name.utf8.reduce(UInt32(2_166_136_261)) { ($0 ^ UInt32($1)) &* 16_777_619 } >> 1)
     }
 
-    var monitorShortName: String {
-        String(monitorName.split(separator: " ").first ?? "")
+    var monitorShortName: String? {
+        monitorName.split(separator: " ").first.map(String.init)
     }
 
     public init(name: String, windows: [WindowInfo], monitorId: Int = 1, monitorName: String = "", screenIndex: Int = 0, rootLayout: String = "", isVisible: Bool = false) {
