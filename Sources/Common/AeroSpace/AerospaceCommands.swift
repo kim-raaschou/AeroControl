@@ -5,17 +5,17 @@ public enum AerospaceCommand {
         keys.map { "%{\($0.stringValue)}" }.joined(separator: " ")
     }
 
-    public static let listWindowsFields = format(DecodedWindow.CodingKeys.allCases.filter { $0 != .windowLayoutRect })
+    static let listWindowsFields = format(DecodedWindow.CodingKeys.allCases.filter { $0 != .windowLayoutRect })
     static let layoutRectField = format([DecodedWindow.CodingKeys.windowLayoutRect])
-    public static let listWorkspacesFields = format(WorkspaceMonitor.CodingKeys.allCases)
+    static let listWorkspacesFields = format(WorkspaceMonitor.CodingKeys.allCases)
 
-    public static func listWindows(layoutRects: Bool = false) -> [String] {
+    static func listWindows(layoutRects: Bool = false) -> [String] {
         ["list-windows", "--all", "--json", "--format", listWindowsFields + (layoutRects ? " " + layoutRectField : "")]
     }
 
-    public static let listWorkspaces = ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
+    static let listWorkspaces = ["list-workspaces", "--monitor", "all", "--json", "--format", listWorkspacesFields]
 
-    public static let listFocusedWindow = ["list-windows", "--focused", "--json", "--format", listWindowsFields]
+    static let listFocusedWindow = ["list-windows", "--focused", "--json", "--format", listWindowsFields]
 
     public static let subscribe = ["subscribe", "--all", "--no-send-initial"]
 
@@ -39,7 +39,7 @@ public enum AeroControlAction: Equatable, Sendable {
     case moveWindowQuietly(windowId: Int, toWorkspace: String)
     case setLayout(String)
 
-    public var isFocus: Bool {
+    var isFocus: Bool {
         switch self {
         case .focusWindow, .focusWorkspace: true
         default: false

@@ -1,13 +1,13 @@
 import Foundation
 
-public enum TilePacker {
-    public struct Packed: Equatable, Sendable {
+enum TilePacker {
+    struct Packed: Equatable, Sendable {
         public let height: CGFloat
         public let width: CGFloat
         public let tiles: [CGRect]
     }
 
-    public static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
+    static func packRows(ratios: [CGFloat], tileHeight: CGFloat, width: CGFloat,
                                 gap: CGFloat, caption: CGFloat) -> Packed {
         guard !ratios.isEmpty else { return Packed(height: 0, width: 0, tiles: []) }
         let sizes = ratios.map { ratio in
@@ -40,7 +40,7 @@ public enum TilePacker {
         return Packed(height: y - gap, width: widest, tiles: tiles)
     }
 
-    public static func packHeight(ratios: [CGFloat], width: CGFloat, height: CGFloat,
+    static func packHeight(ratios: [CGFloat], width: CGFloat, height: CGFloat,
                                   gap: CGFloat, caption: CGFloat) -> CGFloat {
         guard !ratios.isEmpty, width > 0, height > 0 else { return 0 }
         var lo: CGFloat = 1

@@ -4,10 +4,10 @@ public enum StripMove: Hashable, Sendable { case window(Int), row(Int), card(Int
 
 public struct Strip: Equatable, Sendable {
     public let app: String?
-    public let marked: Int?
-    public let centre: Int?
+    let marked: Int?
+    let centre: Int?
 
-    public static func opened(_ app: String, origin: Int?, ids: [Int], recent: [Int]) -> Strip {
+    static func opened(_ app: String, origin: Int?, ids: [Int], recent: [Int]) -> Strip {
         let first = recent.first { ids.contains($0) && $0 != origin } ?? step(origin.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: 1).map { ids[$0] }
         return Strip(app: app, marked: first, centre: first)
     }
@@ -17,11 +17,11 @@ public struct Strip: Equatable, Sendable {
         return ((max(index, direction < 0 ? 0 : -1) + direction) % count + count) % count
     }
 
-    public func owns(_ window: WindowInfo) -> Bool { app.map { $0 == window.bundleId } ?? true }
+    func owns(_ window: WindowInfo) -> Bool { app.map { $0 == window.bundleId } ?? true }
 
-    public func marking(_ id: Int) -> Strip { Strip(app: app, marked: id, centre: centre) }
+    func marking(_ id: Int) -> Strip { Strip(app: app, marked: id, centre: centre) }
 
-    public func moved(_ move: StripMove, cards: [GridWalk.Card]) -> Strip {
+    func moved(_ move: StripMove, cards: [GridWalk.Card]) -> Strip {
         let ids = cards.flatMap { GridWalk.rows(of: $0).joined() }, card = { (id: Int) in cards.firstIndex { $0.windows[id] != nil } }
         let frames = cards.reduce(into: [Int: CGRect]()) { $0.merge($1.windows) { a, _ in a } }
         let to: Int?, onward = { (d: Int) in Self.step(marked.flatMap { ids.firstIndex(of: $0) } ?? -1, count: ids.count, by: d).map { ids[$0] } }
@@ -36,13 +36,13 @@ public struct Strip: Equatable, Sendable {
 
     public func following(_ focused: WindowInfo?) -> Strip? { focused?.bundleId == app ? self : nil }
 
-    public func kept(before: [Int], after: [Int]) -> Strip? {
+    func kept(before: [Int], after: [Int]) -> Strip? {
         guard let marked, let at = before.firstIndex(of: marked), !after.contains(marked) else { return self }
         return after.dropFirst(max(0, min(after.count - 1, at))).first.map { Strip(app: app, marked: $0, centre: $0) }
     }
 }
 
-public extension OverviewModel {
+extension OverviewModel {
     func windows(of marking: Strip?) -> [WindowInfo] {
         windowsInGridOrder.filter { marking?.owns($0) ?? true }
     }

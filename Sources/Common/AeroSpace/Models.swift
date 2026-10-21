@@ -2,13 +2,13 @@ import Foundation
 
 public struct WindowInfo: Equatable, Hashable, Sendable {
     public let windowId: Int
-    public let appName: String
+    let appName: String
     public let bundleId: String
     public let isFloating: Bool
-    public let isFullscreen: Bool
+    let isFullscreen: Bool
     public let isHidden: Bool
     public let title: String
-    public let layoutRect: CGRect?
+    let layoutRect: CGRect?
     public let workspace: String
 
     public init(windowId: Int, appName: String, bundleId: String, isFloating: Bool = false,
@@ -24,7 +24,7 @@ public struct WindowInfo: Equatable, Hashable, Sendable {
         self.workspace = workspace
     }
 
-    public var isTiled: Bool { !isFloating && !isFullscreen && !isHidden }
+    var isTiled: Bool { !isFloating && !isFullscreen && !isHidden }
 
     public var caption: String {
         let text = title.trimmingCharacters(in: .whitespaces)
@@ -44,17 +44,17 @@ public struct WorkspaceInfo: Equatable, Hashable, Identifiable, Sendable {
     public var id: String { name }
     public let name: String
     public let windows: [WindowInfo]
-    public let monitorId: Int
+    let monitorId: Int
     public let monitorName: String
-    public let screenIndex: Int
+    let screenIndex: Int
     public let rootLayout: String
     public let isVisible: Bool
 
-    public var standIn: Int {
+    var standIn: Int {
         -1 - Int(name.utf8.reduce(UInt32(2_166_136_261)) { ($0 ^ UInt32($1)) &* 16_777_619 } >> 1)
     }
 
-    public var monitorShortName: String {
+    var monitorShortName: String {
         String(monitorName.split(separator: " ").first ?? "")
     }
 

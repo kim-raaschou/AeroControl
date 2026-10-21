@@ -21,21 +21,21 @@ public struct Visit: Equatable {
     }
 
     public private(set) var model = OverviewModel()
-    public private(set) var marking: Strip?
+    private(set) var marking: Strip?
     public private(set) var query = ""
-    public private(set) var missingApp: AppRef?
-    public private(set) var recent: [Int] = []
+    private(set) var missingApp: AppRef?
+    private(set) var recent: [Int] = []
     public private(set) var visible = false
     public private(set) var loading = false
     private var cameFrom: Int?
 
     public init() {}
 
-    public var matches: [WindowInfo] { model.matching(query) }
+    var matches: [WindowInfo] { model.matching(query) }
     public var strip: Strip? { marking.flatMap { m in m.app.map { _ in m } } }
-    public var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
-    public var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
-    public var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
+    var stripWindows: [WindowInfo] { strip.map(model.windows(of:)) ?? [] }
+    var stripWorkspaces: [WorkspaceInfo] { strip.map { s in model.workspaces.filter { $0.windows.contains(where: s.owns) } } ?? [] }
+    var ringWindowId: Int? { marking?.marked ?? matches.first?.windowId ?? model.focusedWindow?.windowId }
 
     public mutating func apply(_ input: Input) -> [Effect] {
         var new = model, effects: [Effect] = []

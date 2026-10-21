@@ -2,8 +2,8 @@ import Foundation
 import CoreGraphics
 
 @propertyWrapper
-public struct TolerantInt: Decodable, Equatable {
-    public var wrappedValue: Int
+struct TolerantInt: Decodable, Equatable {
+    var wrappedValue: Int
     public init(wrappedValue: Int) { self.wrappedValue = wrappedValue }
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
@@ -17,15 +17,15 @@ extension KeyedDecodingContainer {
     }
 }
 
-public struct DecodedWindow: Decodable, Equatable {
+struct DecodedWindow: Decodable, Equatable {
     public let windowId: Int
-    public let appName: String
-    public let appBundleId: String
-    public var windowTitle: String?
+    let appName: String
+    let appBundleId: String
+    var windowTitle: String?
     public let workspace: String
-    public let parentLayout: String
-    public let windowIsFullscreen: Bool?
-    public let windowLayoutRect: String?
+    let parentLayout: String
+    let windowIsFullscreen: Bool?
+    let windowLayoutRect: String?
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case windowId = "window-id"
@@ -39,12 +39,12 @@ public struct DecodedWindow: Decodable, Equatable {
     }
 }
 
-public func parseLayoutRect(_ text: String?) -> CGRect? {
+func parseLayoutRect(_ text: String?) -> CGRect? {
     let parts = (text ?? "").split(separator: ",").compactMap { Double($0) }
     return parts.count == 4 ? CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]) : nil
 }
 
-public struct WorkspaceMonitor: Decodable, Equatable {
+struct WorkspaceMonitor: Decodable, Equatable {
     public let workspace: String
     @TolerantInt public var monitorId: Int
     public let monitorName: String?
@@ -64,7 +64,7 @@ public struct WorkspaceMonitor: Decodable, Equatable {
     }
 }
 
-public func parseWindows(json: String) throws -> [WindowInfo] {
+func parseWindows(json: String) throws -> [WindowInfo] {
     guard let data = json.data(using: .utf8), !json.isEmpty else { return [] }
     let decoded = try JSONDecoder().decode([DecodedWindow].self, from: data)
     return decoded.map { dw in
@@ -82,12 +82,12 @@ public func parseWindows(json: String) throws -> [WindowInfo] {
     }
 }
 
-public func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
+func parseWorkspaces(json: String) throws -> [WorkspaceMonitor] {
     guard let data = json.data(using: .utf8), !json.isEmpty else { return [] }
     return try JSONDecoder().decode([WorkspaceMonitor].self, from: data)
 }
 
-public func buildOverview(windows: [WindowInfo], workspaceMonitors: [WorkspaceMonitor], focusedWindowId: Int = 0) -> OverviewModel {
+func buildOverview(windows: [WindowInfo], workspaceMonitors: [WorkspaceMonitor], focusedWindowId: Int = 0) -> OverviewModel {
     let byWorkspace = Dictionary(grouping: windows, by: \.workspace)
 
     let workspaces = workspaceMonitors.map { wm in
@@ -114,7 +114,7 @@ func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
     }.map(\.element)
 }
 
-public func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
+func loadFocusedWindow(using runner: AerospaceProcessRunner) async -> WindowInfo? {
     (try? await runner.run(AerospaceCommand.listFocusedWindow)).flatMap { try? parseWindows(json: $0).first }
 }
 
@@ -132,8 +132,8 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
     return buildOverview(windows: windows, workspaceMonitors: workspaceMonitors, focusedWindowId: focused)
 }
 
-public enum WorkspaceTree {
-    public static func order(_ rects: [(Int, CGRect)]) -> [Int] {
+enum WorkspaceTree {
+    static func order(_ rects: [(Int, CGRect)]) -> [Int] {
         guard rects.count > 1 else { return rects.map(\.0) }
         for (lo, hi) in [(\CGRect.minX, \CGRect.maxX), (\.minY, \.maxY)] {
             if let parts = cut(rects, lo, hi) { return parts.flatMap { order($0) } }

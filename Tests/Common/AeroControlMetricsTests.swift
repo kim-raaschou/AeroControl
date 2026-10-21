@@ -1,5 +1,5 @@
 import Testing
-import Common
+@testable import Common
 import CoreGraphics
 @testable import AeroControl
 

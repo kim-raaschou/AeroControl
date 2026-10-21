@@ -2,8 +2,8 @@ import Foundation
 
 public struct OverviewModel: Equatable, Sendable {
     public var workspaces: [WorkspaceInfo]
-    public var focusedWindowId: Int
-    public var focusedWorkspace: String
+    var focusedWindowId: Int
+    var focusedWorkspace: String
 
     public init(
         workspaces: [WorkspaceInfo] = [],
