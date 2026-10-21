@@ -200,6 +200,7 @@ def build_payload() -> dict:
             "duplicates": duplicates,
         },
         "purity": purity_violations(files),
+        "overComplex": [f for f in all_funcs if f["complexity"] > MAX_FUNCTION_COMPLEXITY and counts_toward_gate(f["layer"])],
         "files": sorted(rows, key=lambda r: r["path"]),
         "topFuncs": sorted(all_funcs, key=lambda f: (-f["complexity"], f["path"], f["name"]))[:15],
     }
@@ -322,6 +323,9 @@ def main() -> None:
 
 GUARDED = ("code", "prodComplexity")
 
+# No function, production or test, may branch more than this (modified McCabe: a switch counts once).
+MAX_FUNCTION_COMPLEXITY = 10
+
 # Allowed headroom above the recorded baseline before a commit is blocked.
 # The enforced ceiling for each metric is floor(baseline * (1 + MARGIN)).
 MARGIN = 0.01
@@ -406,7 +410,13 @@ def check() -> int:
             file=sys.stderr,
         )
 
-    if regressions or violations:
+    over = payload["overComplex"]
+    if over:
+        print(f"code-metrics: a function above complexity {MAX_FUNCTION_COMPLEXITY} — commit blocked.", file=sys.stderr)
+        for f in over:
+            print(f"  {f['path']}: {f['name']} {f['complexity']}", file=sys.stderr)
+
+    if regressions or violations or over:
         return 1
 
     reduced = [(k, base[k], totals[k]) for k in GUARDED if totals[k] < base[k]]

@@ -273,6 +273,8 @@ def rules(by_name: dict[str, Type], edges: dict[tuple[str, str], int], payload: 
     rows = [
         ("Size within the gate's ceiling", over, within),
         ("Common imports no UI framework", [f"{v['path']} imports {v['import']}" for v in payload["purity"]], ""),
+        (f"No function above complexity {metrics.MAX_FUNCTION_COMPLEXITY}", [f"{f['file']}: {f['name']} {f['complexity']}" for f in payload["overComplex"]],
+         f"the highest is {max((f['complexity'] for f in payload['topFuncs']), default=0)}"),
         ("No arrow points up a layer", ups, ""),
         ("No two types name each other", [f"{a} ⟲ {b}" for a, b in cycles], ""),
         ("Common's areas name only downwards", check_areas(by_name, edges), ""),

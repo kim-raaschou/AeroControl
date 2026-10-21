@@ -40,6 +40,9 @@ macOS 27 SDK whose SwiftUI macros need Xcode). The Makefile fixes that; always u
 - Tracked Swift **code lines and approximate complexity may not rise more than 1% above**
   `scripts/metrics-baseline.json`. Tests count towards the line total. Ceiling per metric is
   `floor(baseline × 1.01)`.
+- **No function above complexity 10**, production or test (modified McCabe: a `switch` counts
+  once). Under it by naming a real concept, a decision moved into the type it belongs to or a
+  special case defined away, never by a helper that only moves branches.
 - `.githooks/pre-commit` runs `python3 scripts/code_metrics.py --check` and fails the commit
   when a ceiling is exceeded. Enable once per clone: `git config core.hooksPath .githooks`.
 - When you **reduce** code, ratchet down: `python3 scripts/code_metrics.py --update-baseline`,
