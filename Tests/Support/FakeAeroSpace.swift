@@ -199,7 +199,7 @@ final class TestApp {
         store.summon(Summon(URL(string: link)!))
         guard let summon = pending else { return }
         pending = nil
-        if await store.open(summon) { await store.capturePreviews() }
+        await store.open(summon) {}
     }
 
     func mirrors(_ aero: FakeAeroSpace) -> Bool {

@@ -71,16 +71,14 @@ class OverviewStore {
         }
     }
 
-    func open(_ summon: Summon) async -> Bool {
+    func open(_ summon: Summon, reveal: () -> Void) async {
         endVisit()
         pictures.prepare()
         await reload()
         update { $0.summoned(summon) }
-        if visit.visible { pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId)) }
-        return visit.visible
-    }
-
-    func capturePreviews() async {
+        guard visit.visible else { return }
+        pictures.measure(visit.model.workspaces.flatMap(\.windows).map(\.windowId))
+        reveal()
         let scene = scene
         await pictures.take(scene.cards.map { $0.tiles.map(\.window.windowId) }, sizes: scene.pictureSizes(scale: screen.scale))
     }
