@@ -111,7 +111,7 @@ public struct Visit: Equatable {
     public mutating func summon(_ summon: Summon, drawn: [GridWalk.Card]) -> [Effect] {
         guard !loading else { return [] }
         switch summon {
-        case _ where !visible: break
+        case _ where !visible: cameFrom = nil
         case .map where strip == nil && missingApp == nil: return cancel()
         case .app(let ref) where strip != nil && stripWindows.contains(where: ref.matches): return move(.next, drawn: drawn)
         default: break
@@ -166,7 +166,6 @@ public struct Visit: Equatable {
     public mutating func end() {
         setQuery("")
         missingApp = nil
-        if !visible { cameFrom = nil }
     }
 
     private mutating func setQuery(_ text: String) {

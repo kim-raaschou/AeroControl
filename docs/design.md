@@ -30,9 +30,10 @@ Inside a card every window is drawn where AeroSpace put it, at its own shape, or
 height when AeroSpace has not said, in the order `list-windows` gives them, by app and then
 title. The layout engine is shared with
 [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview for
-Omarchy/Hyprland. Floating windows lie over the card where they stand on the screen, faint, packed
-tiles or not; on a hidden workspace, where AeroSpace has parked them in a corner, in the middle of
-the card at their own size. A card's icon says whether its
+Omarchy/Hyprland. Floating windows are always floats: they lie over the card where they stand on
+the screen, faint, packed tiles or not, a workspace of floats only too; on a hidden workspace,
+where AeroSpace has parked them in a corner, in the middle of the card at their own size. Only
+while a query is typed is every window packed as a tile. A card's icon says whether its
 workspace is tiles or an accordion; AeroSpace's own layout key changes it, and the card follows.
 
 ### Merge
@@ -52,7 +53,8 @@ has no answer without you, and that is the strip, as ⌘` is the second step aft
 of the app's workspaces, a marking on the most likely answer (the app's window you used last
 other than the one you are in, or else the one after it), and keys to move it and confirm.
 AeroSpace's focus follows the marking from the moment the strip opens; Enter keeps it there,
-Escape takes the focus back to the window you came from.
+Escape takes the focus back to the window you came from. From the map an app's key is a question
+already: there two windows from elsewhere open the strip too.
 
 A strip is opened only by its app's key. While it is up AeroSpace still decides: move the focus
 within the app and the strip stands; move it anywhere else, with an AeroSpace key, another app

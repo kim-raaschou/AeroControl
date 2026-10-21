@@ -78,7 +78,7 @@ lets the strip know from the first summon which window you used last; `-g` keeps
 from taking the keyboard.
 
 The map's key closes the map when it is up. An app's key while the map is up opens that app's
-strip. `open -a AeroControl` toggles the map too, and works before the URL scheme is registered.
+strip when it has two windows or more, unless you are in one of two: then the other is focused. `open -a AeroControl` toggles the map too, and works before the URL scheme is registered.
 
 ## Keys
 

@@ -15,6 +15,17 @@ struct LoadedTests {
         _ = visit.apply(.loaded(OverviewModel(workspaces: [ws("1")], focusedWorkspace: "4")))
         #expect(visit.model.focusedWindowId == 0 && visit.model.focusedWorkspace == "4")
     }
+
+    @Test("a summon while the last visit is still closing is a visit of its own: from another app the app's key goes straight to its window")
+    func freshWhileClosing() {
+        var visit = Visit()
+        let slack = { (id: Int) in WindowInfo(windowId: id, appName: "Slack", bundleId: "com.slack") }, app = Summon.app(.bundleId("com.slack"))
+        _ = visit.apply(.loaded(OverviewModel(workspaces: [ws("1", WindowInfo(windowId: 1, appName: "Code", bundleId: "com.code"), slack(2), slack(3))], focusedWindowId: 1, focusedWorkspace: "1")))
+        _ = visit.summon(.map, drawn: []); _ = visit.summoned(.map)
+        _ = visit.hide(restoreFocus: false)
+        _ = visit.summon(app, drawn: []); _ = visit.summoned(app)
+        #expect(visit.strip == nil && !visit.visible)
+    }
 }
 
 @Suite("OverviewModel — monitors")

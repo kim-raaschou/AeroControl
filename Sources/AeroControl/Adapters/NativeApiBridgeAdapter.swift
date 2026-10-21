@@ -45,7 +45,6 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
     }
 
     func windowFrames(windowIds: [Int]) -> [Int: CGRect] {
-        guard canCapturePreviews else { return [:] }
         let wanted = Set(windowIds)
         let windows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
         return windows.reduce(into: [:]) { frames, window in

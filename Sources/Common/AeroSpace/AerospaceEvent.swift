@@ -9,9 +9,7 @@ extension AerospaceEvent {
     private static let readAgain: Set<String> = ["focused-workspace-changed", "focused-monitor-changed", "window-detected", "binding-triggered"]
 
     public static func parse(_ json: String) -> AerospaceEvent? {
-        guard let raw = try? JSONDecoder().decode(RawEvent.self, from: Data(json.utf8)) else {
-            return nil
-        }
+        guard let raw = try? JSONDecoder().decode(RawEvent.self, from: Data(json.utf8)) else { return nil }
         if raw.event == "focus-changed" { return .focusChanged(windowId: raw.windowId, workspace: raw.workspace ?? "") }
         return readAgain.contains(raw.event) ? .changed : nil
     }

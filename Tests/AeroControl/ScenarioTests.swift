@@ -292,15 +292,16 @@ struct ScenarioTests {
         await app.until { aero.focused == 3 && !app.store.visit.visible }
     }
 
-    @Test("AeroSpace's focus decides while the strip is up: within the app it stays, anywhere else it is over and that app keeps the keyboard; on an empty workspace it is over too")
+    @Test("AeroSpace's focus decides while the strip is up: within the app it stays, anywhere else it is over, that app keeps the keyboard and its window counts as used last; on an empty workspace it is over too")
     func stripFollowsFocus() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams"), win(3, "Teams")], "3": [win(5, "Code")], "4": []], focused: 1)
         let app = await TestApp.opening(aero, "aerocontrol://app-id=com.teams")
         aero.userFocus(2)
         await app.until { app.store.visit.model.focusedWindowId == 2 }
         #expect(app.store.visit.visible && app.scene.body == .strip)
+        await app.past(AerospaceSync.focusAgainAfter)
         aero.userFocus(9)
-        await app.until { !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack") }
+        await app.until { !app.store.visit.visible && app.host.last == .activate(bundleId: "com.slack") && app.store.visit.recent.first == 9 }
         aero.userFocus(1)
         await app.until { app.store.visit.recent.first == 1 }
         await app.open("aerocontrol://app-id=com.teams")

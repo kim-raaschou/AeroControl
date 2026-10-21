@@ -18,7 +18,6 @@ public enum AeroControlLayout {
     public static let packedGapOnScreen: CGFloat = 12
     public static let tallest: CGFloat = 0.45
     public static let seen: CGFloat = 3.5
-    public static let parkedEdge: CGFloat = 4
 
     public struct LaidCard: Equatable, Sendable {
         public let frame: CGRect
@@ -35,7 +34,7 @@ public enum AeroControlLayout {
                                      chrome: CGSize(width: 2 * cardPadding, height: cardChrome))
         return zip(workspaces, cells).map { ws, cell in
             let screen = screens[ws.screenIndex], inner = inner(of: cell.size)
-            let placed = (filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner)) ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
+            let placed = (filtering ? nil : treeLayout(ws.windows, frames: frames, screen: screen, inner: inner, hidden: !ws.isVisible)) ?? packed(ws.windows, frames: frames, screen: screen, inner: inner, caption: filtering ? captionLane : 0)
             let standIn = [ws.standIn: CGRect(origin: .zero, size: inner)].filter { _ in placed.frames.isEmpty }
             return LaidCard(frame: cell, frames: placed.frames.merging(standIn) { a, _ in a }, ghosts: placed.ghosts)
         }
@@ -51,7 +50,7 @@ public enum AeroControlLayout {
 
     public static func inner(of size: CGSize) -> CGSize { CGSize(width: size.width - 2 * cardPadding, height: size.height - cardChrome) }
 
-    public static func treeLayout(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize)
+    public static func treeLayout(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect?, inner: CGSize, hidden: Bool = false)
         -> (frames: [Int: CGRect], ghosts: Set<Int>)? {
         guard let screen, inner.width > 0, inner.height > 0 else { return nil }
         let tiled = windows.filter(\.isTiled), ghosts = windows.filter { !$0.isTiled }
@@ -60,7 +59,7 @@ public enum AeroControlLayout {
             let slot = window.layoutRect!, real = measured[window.windowId]?.size ?? slot.size
             return (window.windowId, place(CGRect(x: slot.minX, y: slot.minY, width: max(slot.width, real.width), height: max(slot.height, real.height))).intersection(box))
         }, uniquingKeysWith: { _, b in b }) : packed(tiled, frames: measured, screen: screen, inner: inner, caption: 0).frames
-        return (tiles.merging(loose(ghosts, frames: measured, screen: screen, inner: inner)) { a, _ in a }, Set(ghosts.map(\.windowId)))
+        return (tiles.merging(loose(ghosts, frames: measured, box: box, place: place, hidden: hidden)) { a, _ in a }, Set(ghosts.map(\.windowId)))
     }
 
     private static func onScreen(_ screen: CGRect, inner: CGSize) -> (box: CGRect, place: (CGRect) -> CGRect) {
@@ -87,14 +86,12 @@ public enum AeroControlLayout {
         return (frames, [])
     }
 
-    private static func loose(_ windows: [WindowInfo], frames measured: [Int: CGRect], screen: CGRect, inner: CGSize) -> [Int: CGRect] {
-        let (box, place) = onScreen(screen, inner: inner)
-        return Dictionary(windows.map { window in
-            let real = measured[window.windowId]
-            let size = real.map(place).map { CGSize(width: min(box.width, $0.width), height: min(box.height, $0.height)) } ?? box.size
-            let centred = CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height)
-            let standing = real.flatMap { r -> CGRect? in let on = r.intersection(screen); return min(on.width, on.height) < parkedEdge ? nil : place(r).intersection(box) }
-            return (window.windowId, window.isFloating ? standing ?? centred : centred)
+    private static func loose(_ windows: [WindowInfo], frames measured: [Int: CGRect], box: CGRect, place: (CGRect) -> CGRect, hidden: Bool) -> [Int: CGRect] {
+        Dictionary(windows.map { window -> (Int, CGRect) in
+            let real = measured[window.windowId].map(place)
+            if window.isFloating, !hidden, let standing = real?.intersection(box), !standing.isEmpty { return (window.windowId, standing) }
+            let size = real.map { CGSize(width: min(box.width, $0.width), height: min(box.height, $0.height)) } ?? box.size
+            return (window.windowId, CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height))
         }, uniquingKeysWith: { _, b in b })
     }
 

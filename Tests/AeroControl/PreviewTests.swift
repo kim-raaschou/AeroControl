@@ -13,25 +13,14 @@ private func win(_ id: Int, _ app: String, _ title: String = "") -> WindowInfo {
 
 @Suite("layout")
 struct LayoutTests {
-    /// What the card does: the largest shared picture height that fits, then the rows at it.
-    private func pack(_ ratios: [CGFloat], _ inner: CGSize) -> TilePacker.Packed {
-        let height = TilePacker.packHeight(ratios: ratios, width: inner.width, height: inner.height, gap: AeroControlLayout.tileSpacing, caption: 0)
-        return TilePacker.packRows(ratios: ratios, tileHeight: max(1, height), width: inner.width, gap: AeroControlLayout.tileSpacing, caption: 0)
-    }
-
     @Test("a card's tiles are packed inside its inner box at the largest height that fits, each at its window's own shape")
     func packedTiles() {
         let inner = CGSize(width: 1600 - 2 * AeroControlLayout.cardPadding, height: 900 - AeroControlLayout.cardChrome)
-        let windows = (1...4).map { win($0, "Code") }
-        let sizes: [Int: CGSize] = [1: CGSize(width: 1600, height: 1000), 2: CGSize(width: 800, height: 1000)]
-        let ratios = AeroControlLayout.ratios(of: windows, sizes: sizes, fallback: 1.5)
-        #expect(ratios == [1.6, 0.8, 1.5, 1.5])                                  // measured, measured, screen, screen
-        let packed = pack(ratios, inner)
-        #expect(packed.tiles.count == 4 && packed.width <= inner.width && packed.height <= inner.height)
-        #expect(abs(packed.tiles[1].width / packed.tiles[1].height - 0.8) < 0.02)  // the portrait one stays portrait
-        // Each card on its own: a card with one window gets a taller picture than one with four.
-        let alone = pack([1.5], inner)
-        #expect(alone.tiles[0].height > packed.tiles[0].height)
+        let windows = (1...4).map { win($0, "Code") }, sizes = [1: CGSize(width: 1600, height: 1000), 2: CGSize(width: 800, height: 1000)]
+        #expect(AeroControlLayout.ratios(of: windows, sizes: sizes, fallback: 1.5) == [1.6, 0.8, 1.5, 1.5])   // measured, measured, screen, screen
+        let frames = AeroControlLayout.packed(windows, frames: sizes.mapValues { CGRect(origin: .zero, size: $0) }, screen: nil, inner: inner, caption: 0).frames
+        #expect(frames.count == 4 && frames.values.allSatisfy { CGRect(origin: .zero, size: inner).contains($0) } && abs(frames[2]!.width / frames[2]!.height - 0.8) < 0.02)
+        #expect(AeroControlLayout.packed([win(1, "Code")], frames: [:], screen: nil, inner: inner, caption: 0).frames[1]!.height > frames[1]!.height)   // alone, taller
     }
 }
 
@@ -133,7 +122,7 @@ struct TreeLayoutTests {
         var windows = ws7Rected
         windows[2] = WindowInfo(windowId: 3352, appName: "Ghostty", bundleId: "com.Ghostty")
         #expect(!AeroControlLayout.mirrors(windows) && !AeroControlLayout.mirrors(ws7))
-        #expect(AeroControlLayout.treeLayout(ws7Rected, frames: [:], screen: nil, inner: inner) == nil)
+        #expect(AeroControlLayout.treeLayout(windows, frames: [:], screen: screen, inner: inner)?.frames == AeroControlLayout.packed(windows, frames: [:], screen: screen, inner: inner, caption: 0).frames)
     }
 
 }
@@ -171,7 +160,7 @@ struct MapLayoutTests {
 
     @Test("an accordion's card packs its tiled windows, and a float still lies where it stands on the screen, as a ghost")
     func floatOverAnAccordion() throws {
-        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 24, 57, 1680, 1035), rected(2, "B", 24, 57, 1680, 1035), float], screenIndex: 1, rootLayout: "h_accordion")
+        let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 24, 57, 1680, 1035), rected(2, "B", 24, 57, 1680, 1035), float], screenIndex: 1, rootLayout: "h_accordion", isVisible: true)
         let card = try #require(layout([a], frames: [9: CGRect(x: 432, y: 304, width: 864, height: 542)]).first)
         let inner = AeroControlLayout.inner(of: card.frame.size), fitted = AeroControlMetrics.fit(screen.size, into: inner), scale = fitted.width / screen.width
         let origin = AeroControlLayout.tileOrigin(packed: fitted, inner: inner), ghost = try #require(card.frames[9])
@@ -179,15 +168,24 @@ struct MapLayoutTests {
         #expect(abs(ghost.minX - (origin.x + 432 * scale)) < 0.01 && abs(ghost.minY - (origin.y + 271 * scale)) < 0.01 && abs(ghost.width - 864 * scale) < 0.01)
     }
 
-    @Test("a float on a hidden workspace, which AeroSpace has parked in the screen's corner, lies in the middle of the card at its own size; one the user has pushed half off the screen stays where it is")
+    @Test("a float on a hidden workspace, which AeroSpace has parked in the screen's corner, lies in the middle of the card at its own size; on a shown one it stands where it is, half off the screen too")
     func parkedFloat() throws {
         let a = WorkspaceInfo(name: "1", windows: [rected(1, "A", 24, 57, 1680, 1035), float], screenIndex: 1, rootLayout: "h_tiles")
         let card = try #require(layout([a], frames: [9: CGRect(x: 1727, y: 1085, width: 1081, height: 842)]).first)
         let inner = AeroControlLayout.inner(of: card.frame.size), fitted = AeroControlMetrics.fit(screen.size, into: inner), scale = fitted.width / screen.width
         let box = CGRect(origin: AeroControlLayout.tileOrigin(packed: fitted, inner: inner), size: fitted), ghost = try #require(card.frames[9])
         #expect(abs(ghost.midX - box.midX) < 0.01 && abs(ghost.midY - box.midY) < 0.01 && abs(ghost.width - 1081 * scale) < 0.01)
-        let halfOff = try #require(layout([a], frames: [9: CGRect(x: 1200, y: 300, width: 1081, height: 842)]).first?.frames[9])
+        let shown = WorkspaceInfo(name: "1", windows: a.windows, screenIndex: 1, rootLayout: "h_tiles", isVisible: true)
+        let halfOff = try #require(layout([shown], frames: [9: CGRect(x: 1200, y: 300, width: 1081, height: 842)]).first?.frames[9])
         #expect(abs(halfOff.minX - (box.minX + 1200 * scale)) < 0.01 && abs(halfOff.maxX - box.maxX) < 0.01)
+    }
+
+    @Test("a workspace of floats only is floats: each stands where it is, none packed")
+    func floatsOnly() throws {
+        let other = WindowInfo(windowId: 8, appName: "D", bundleId: "com.D", isFloating: true)
+        let a = WorkspaceInfo(name: "1", windows: [float, other], screenIndex: 1, isVisible: true)
+        let card = try #require(layout([a], frames: [9: CGRect(x: 100, y: 133, width: 600, height: 400), 8: CGRect(x: 900, y: 600, width: 600, height: 400)]).first)
+        #expect(card.ghosts == [8, 9] && card.frames[9]!.maxX < card.frames[8]!.minX && card.frames[9]!.maxY < card.frames[8]!.minY)
     }
 }
 
@@ -233,6 +231,13 @@ struct StripLayoutTests {
         #expect(one.height >= inner(card).height * 0.9 && card.frame.width > (inner(card).height * screen.width / screen.height) * 1.5)
     }
 
+    @Test("two windows of an accordion, one on top of the other on the screen, stand side by side in one row")
+    func accordionPairInOneRow() throws {
+        let pair = WorkspaceInfo(name: "3", windows: [rected(1, "Ghostty", 16, 49, 1696, 1052), rected(2, "Ghostty", 16, 49, 1696, 1052)], screenIndex: 1, rootLayout: "h_accordion")
+        let card = try #require(layout([pair]).first), one = try #require(card.frames[1]), other = try #require(card.frames[2])
+        #expect(one.minY == other.minY && one.maxX <= other.minX)
+    }
+
     @Test("two windows AeroSpace stacks stand stacked in the strip too, as on the screen, each as wide as the card")
     func stackedPairMirrored() throws {
         let stacked = WorkspaceInfo(name: "3", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520)], screenIndex: 1, rootLayout: "v_tiles")
@@ -266,23 +271,17 @@ struct StripLayoutTests {
         }
     }
 
-    @Test("the app's one window is its own block: the other app's half of the workspace leaves no gap in the card")
-    func rectsDoNotShapeTheCard() throws {
-        let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
-        let card = try #require(layout([ws]).first)
-        #expect(card.frames.keys.sorted() == [1] && abs(card.frames[1]!.width - inner(card).width) < 1)
-    }
-
     private func groups(_ n: Int) -> [WorkspaceInfo] {
         (1...n).map { WorkspaceInfo(name: "\($0)", windows: [rected($0, "Ghostty", 16, 49, 842, 1052), rected($0 + 100, "Ghostty", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles") }
     }
 
-    @Test("the cards for the keys: each card on the unrolled row, and in it the app's own windows where they are drawn; no other app's")
+    @Test("the cards for the keys: each card on the unrolled row, and in it the app's own windows where they are drawn; no other app's, and the app's one window is its own block, leaving no gap")
     func gridForTheKeys() throws {
         let ws = WorkspaceInfo(name: "2", windows: [rected(1, "Ghostty", 16, 49, 842, 1052), rected(2, "Code", 870, 49, 842, 1052)], screenIndex: 1, rootLayout: "h_tiles")
         let l = layout(groups(2) + [ws]), card = try #require(l.map(\.grid).last), laid = try #require(l.last)
         #expect(l.count == 3 && card.frame == laid.frame && card.windows.keys.sorted() == [1])
         #expect(card.windows[1] == laid.frames[1]?.offsetBy(dx: laid.frame.minX + L.cardPadding, dy: L.cardChrome - L.cardPadding))
+        #expect(abs(laid.frames[1]!.width - inner(laid).width) < 1)                             // the app's rects do not shape the card
     }
 
     @Test("workspaces that do not fit slide: the held one whole in the middle, the next cut by the edge, up to the row's ends; a row that fits stands centred")

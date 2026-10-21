@@ -28,7 +28,7 @@ class OverviewStore {
         for effect in effects {
             switch effect {
             case .refresh: requestRefresh()
-            case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead { requestRefresh() } }
+            case .run(let actions, let thenRead): Task { await sync.run(actions); if thenRead, following { requestRefresh() } }
             case .host(let effect): onEffect?(effect)
             }
         }
@@ -87,23 +87,25 @@ class OverviewStore {
 
     func startListening() {
         sync.listen({ event in
-            if case .focusChanged(let id?, _) = event { self.update { $0.noteFocus(id); return [] } }
             if self.following { self.send(.event(event)) }
+            if case .focusChanged(let id?, _) = event { self.update { $0.noteFocus(id); return [] } }
         }, resumed: { if self.following { await self.reload() } })
     }
 
     private func requestRefresh() {
         sync.refresh { read, again in
             if case .failure = read, !again { return }
-            guard let result = self.landed(read) else { return }
+            guard self.following, let result = self.landed(read) else { return }
             self.send(.loaded(result))
+            guard self.following else { return }
             self.pictures.settle(result.workspaces.flatMap(\.windows).map(\.windowId))
             guard again else { return }
             let taken = await self.retakePictures()
             guard !taken.isEmpty else { return }
             self.repaint = Task {
                 try? await Task.sleep(for: Self.repaintedAfter)
-                if !Task.isCancelled { await self.pictures.shoot(taken) }
+                guard !Task.isCancelled, self.following else { return }
+                await self.pictures.shoot(self.scene.pictureSizes(scale: self.screen.scale).filter { taken[$0.key] != nil })
             }
         }
     }

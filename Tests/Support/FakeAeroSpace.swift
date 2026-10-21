@@ -70,7 +70,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
 
     func bound(_ command: @escaping @Sendable (FakeAeroSpace) -> Void) {
         events?.yield(#"{"_event":"binding-triggered","binding":"alt-x"}"#)
-        Task { try? await Task.sleep(for: .milliseconds(40)); command(self) }
+        Task { try? await Task.sleep(for: .milliseconds(90)); command(self) }
     }
 
     func announce(_ event: String = "focused-workspace-changed") {
@@ -134,7 +134,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     private func create(_ name: String) { if !workspaceNames.contains(name) { workspaceNames.append(name) } }
 
     private func focus(_ id: Int?) -> String? {
-        guard let id, id != focusedId, let window = windows.first(where: { $0.id == id }) else { return nil }
+        guard let id, let window = windows.first(where: { $0.id == id }), id != focusedId || window.workspace != focusedName else { return nil }
         (focusedId, focusedName) = (id, window.workspace)
         return changed()
     }

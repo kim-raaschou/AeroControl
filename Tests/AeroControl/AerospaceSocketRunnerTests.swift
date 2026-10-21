@@ -123,6 +123,8 @@ private final class MockAerospaceServer: @unchecked Sendable {
             while true {
                 let client = accept(serverFd, nil, nil)
                 if client < 0 { break }
+                var noSigPipe: Int32 = 1
+                _ = unsafe setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))   // a client gone is an error, not a signal
                 guard let self, self.running else { close(client); break }
                 self.serve(client, serverVersion: serverVersion, subscribeEvents: subscribeEvents, handle: handle)
                 close(client)

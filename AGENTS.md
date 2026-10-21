@@ -95,7 +95,7 @@ fails on any violation.
   `OverviewScene` from the visit and the screen the host gives it; `PictureStore`, owned by it, keeps
   the windows' pictures and frames. `UI/`: SwiftUI views `AeroControlPanel → WorkspaceCard → AppTile`
   draw the scene and nothing else of the store's state. `Host/`: `OverlayWindowManager` carries out
-  `Visit.Host` (show, hide, activate, quit, launch, rebuild), `OverviewWindow` is the non-activating
+  `Visit.Host` (show, hide, activate, launch, rebuild), `OverviewWindow` is the non-activating
   panel and its key handling, `MenuBarController` the menu. Tests `@testable import` the app
   module itself.
 - Decisions go in `Visit`, not in the store or the host. The store's size is the I/O it owns.
@@ -141,8 +141,9 @@ on the mirror.
 - `TolerantInt`: `NULL-MONITOR*` string sentinels are valid runtime values for monitor ids.
 - `FilterKey(event:)` rules out Cmd/Ctrl/Option; `performKeyEquivalent` intersects only the
   meaningful modifier flags (the raw set carries `.numericPad`, `.function` and the like).
-- `recentWindows` / `noteFocus`: the order windows last had the focus, kept from AeroSpace's
-  events for as long as the app runs. AeroSpace keeps no such order to ask for, so this is
+- `Visit.recent` / `noteFocus` / `remember`: the order windows last had the focus, kept from
+  AeroSpace's events while the overview is hidden and from a window picked in it, for as long as
+  the app runs. AeroSpace keeps no such order to ask for, so this is
   remembered on purpose — the one thing besides the strip's marking that is.
 
 ### Rule: read, don't infer — and remember nothing that can drift
@@ -159,7 +160,7 @@ was built and removed in October 2026; see docs/aerospace-layout-data.md, "Revie
 AeroSpace is trusted at the **parsing boundary**: the fields AeroControl explicitly requests
 (`AerospaceCommand.listWindowsFields` etc.) are decoded strictly, and the **initial
 `loadOverview`** fails loudly: the lane says `Load error` and why, and Escape closes. A refresh
-whose second read fails too says the same until a read lands; the first read alone fails quietly, since the second follows in 150 ms, unknown events parse to `.other`, and there is **no runtime version check** — the
+whose second read fails too says the same until a read lands; the first read alone fails quietly, since the second follows in 150 ms, unknown events parse to nothing, and there is **no runtime version check** — the
 minimum (**AeroSpace ≥ 0.21.0-Beta**, where `subscribe` and the public socket protocol
 arrived) is documentation. `Tests/Common/AerospaceContractTests`
 pins argv and event names; if you add or rename a field or event, update both sides.
@@ -203,7 +204,7 @@ when AeroSpace fixes the issue.
 - **AeroSpace issue 101** (https://github.com/nikitabobko/AeroSpace/issues/101):
   `focus --window-id` on a window of an app with windows on more than one monitor often lands
   on the app's other window, because macOS hands the keyboard to the app's last key window as
-  the activation completes. `OverviewStore.focusAgainIfMissed` asks once more if AeroSpace's
+  the activation completes. `AerospaceSync.focusAgainIfMissed` asks once more if AeroSpace's
   focus is elsewhere 300 ms later. Measured with Ghostty across two screens: 3 of 5 right
   without it, 5 of 5 with it.
 

@@ -15,7 +15,7 @@ struct FollowingScenarioTests {
         app.store.pictures.previews[id].map { abs(CGFloat($0.width) / CGFloat($0.height) - ratio) < 0.02 } ?? false
     }
 
-    @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, a focus change is only remembered; shown, every change is read, and an event that changes nothing reads nothing")
+    @Test("one connection to AeroSpace for as long as AeroControl runs: hidden, a focus change is only remembered; shown, every change is read, and an event AeroControl does not know reads nothing")
     func listening() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams")], "2": [win(2, "Code")]], focused: 1)
         let app = TestApp(aerospace: aero)
@@ -29,7 +29,7 @@ struct FollowingScenarioTests {
         await app.until { app.scene.cards.flatMap(\.tiles).map(\.window.windowId).contains(4) }
         await app.past(AerospaceSync.readAgainAfter)
         let read = reads(aero)
-        aero.announce("mode-changed")
+        aero.announce("some-future-event")
         await app.past(AerospaceSync.readAfter)
         #expect(reads(aero) == read)
         await app.open("aerocontrol://workspaces")
