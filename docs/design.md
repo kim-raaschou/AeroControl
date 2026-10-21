@@ -30,7 +30,9 @@ Inside a card every window is drawn where AeroSpace put it, at its own shape, or
 height when AeroSpace has not said, in the order `list-windows` gives them, by app and then
 title. The layout engine is shared with
 [krn.overview](https://github.com/kim-raaschou/krn.overview), the same author's overview for
-Omarchy/Hyprland. Floating windows are always floats: they lie over the card where they stand on
+Omarchy/Hyprland. The card the ring is in names the ring's window at its top, its app's icon, name
+and title, centred between the workspace and its layout; the line under the cards keeps the keys
+and what is typed. Floating windows are always floats: they lie over the card where they stand on
 the screen, faint, packed tiles or not, a workspace of floats only too; on a hidden workspace,
 where AeroSpace has parked them in a corner, in the middle of the card at their own size. Only
 while a query is typed is every window packed as a tile. A card's icon says whether its
@@ -66,8 +68,9 @@ are all tiled and make one block on the screen, they stand as AeroSpace has them
 wide as that block; otherwise (an accordion, a float, another app between them) they are packed
 large, each in its window's own shape, two always in one row. A card is at most 45 % of the
 panel high. Each window's title sits on its picture, one line, so three terminals can be told
-apart. One line under the cards names the app, how many windows, and the marked window's
-workspace when the app spans more than one.
+apart. The card the marking is in names the marked window at its top, as the map does; one line
+under the cards names the app, how many windows, and the marked window's workspace when the app
+spans more than one.
 
 Built for two to five windows of an app: there the strip is a confirm step with a picture, and
 the arrows are the exception. It handles more: a row that does not fit slides to keep the

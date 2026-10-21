@@ -18,7 +18,8 @@ between summons and asks for one permission, Screen Recording, for the pictures.
 `open aerocontrol://workspaces`
 
 Every workspace is a card, every window a picture, laid out as AeroSpace laid it out. The
-window AeroSpace has focused wears the ring. Click a window, or type until the one you want is
+window AeroSpace has focused wears the ring, and its card names it at the top, between the
+workspace and its layout. Click a window, or type until the one you want is
 first and press Enter. Drag a picture onto another card to move the window there; drag a whole
 card onto another to merge the two workspaces.
 

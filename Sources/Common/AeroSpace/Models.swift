@@ -2,7 +2,7 @@ import Foundation
 
 public struct WindowInfo: Equatable, Hashable, Sendable {
     public let windowId: Int
-    let appName: String
+    public let appName: String
     public let bundleId: String
     public let isFloating: Bool
     let isFullscreen: Bool

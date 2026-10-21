@@ -33,6 +33,7 @@ public struct OverviewScene: Sendable {
         public let ringed: Bool
         public let cut: Bool
         public let tiles: [Tile]
+        public let named: WindowInfo?
     }
 
     public let body: Body
@@ -69,7 +70,8 @@ public struct OverviewScene: Sendable {
                 Tile(window: w, frame: f, ringed: w.windowId == ring, focused: w.windowId == model.focusedWindowId, ghost: c.ghosts.contains(w.windowId), lane: c.lanes[w.windowId] ?? 0)
             } }
             return Card(workspace: ws, frame: c.frame, focused: ws.name == model.focusedWorkspace, visible: ws.isVisible,
-                        monitor: model.spansMonitors ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: c.cut, tiles: tiles)
+                        monitor: model.spansMonitors ? ws.monitorShortName : nil, ringed: ring == ws.standIn, cut: c.cut, tiles: tiles,
+                        named: tiles.first(where: \.ringed)?.window)
         }
     }
 
@@ -85,9 +87,6 @@ public struct OverviewScene: Sendable {
         if let missing = visit.missingApp?.notFound { return .notice(name: missing.name, reason: missing.reason) }
         if let strip = visit.strip, let first = visit.stripWindows.first {
             return .app(name: first.appName, bundleId: strip.app ?? "", summary: Self.summary(visit.stripWindows, marked: strip.marked))
-        }
-        if let marked = visit.marking?.marked, let ringed = visit.model.windowsInGridOrder.first(where: { $0.windowId == marked }) {
-            return .app(name: ringed.appName, bundleId: ringed.bundleId, summary: ringed.caption + " · ws " + ringed.workspace)
         }
         if visit.query.isEmpty { return .keys }
         return .query(visit.query, miss: visit.matches.isEmpty && OverviewModel.isQuery(visit.query))

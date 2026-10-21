@@ -107,13 +107,28 @@ struct AeroControlCardFace: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            Spacer(minLength: 0)
+            Spacer(minLength: 4)
+            if let named = card.named { heading(named) }
+            Spacer(minLength: 4)
             if let symbol = AeroControlLayout.layoutSymbol(rootLayout: workspace.rootLayout) {
                 Image(systemName: symbol)
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(look.palette.badgeText.opacity(0.7))
             }
         }
+    }
+
+    private func heading(_ window: WindowInfo) -> some View {
+        HStack(spacing: 5) {
+            Image(nsImage: state.pictures.icon(for: window.bundleId)).resizable().frame(width: 16, height: 16)
+            Text(window.appName).font(.system(size: 12, weight: .semibold)).layoutPriority(1)
+            if window.caption != window.appName {
+                Text(window.caption).font(.system(size: 12)).foregroundStyle(look.palette.badgeText.opacity(0.75)).truncationMode(.middle)
+            }
+        }
+        .foregroundStyle(look.palette.badgeText)
+        .lineLimit(1)
+        .frame(maxWidth: size.width * 0.6)
     }
 
     private var badge: some View {

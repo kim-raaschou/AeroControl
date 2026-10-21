@@ -291,6 +291,20 @@ struct ScenarioTests {
         await app.until { aero.focused == 3 && !app.store.visit.visible }
     }
 
+    @Test("the card the ring is in names the ring's window at its top, and no other card does, on the map and in the strip; the map's lane keeps the keys, the strip's names the app")
+    func ringNamedInItsCard() async {
+        let aero = FakeAeroSpace(["1": [win(1, "Teams", "standup")], "2": [win(2, "Code", "main.swift")], "3": [win(3, "Teams", "plan")]], focused: 1)
+        let app = await TestApp.opening(aero)
+        #expect(app.scene.cards.map { $0.named?.windowId } == [1, nil, nil] && app.scene.lane == .keys)
+        app.key(.move(.window(1)))
+        #expect(app.scene.cards.map { $0.named?.windowId } == [nil, 2, nil] && app.scene.lane == .keys)
+        await app.until { aero.focused == 2 }                                                     // AeroSpace's focus follows the ring
+        await app.open("aerocontrol://app-id=com.teams")
+        let marked = app.store.visit.strip?.marked
+        #expect(app.scene.body == .strip && app.scene.cards.compactMap { $0.named?.windowId } == [marked].compactMap { $0 })
+        if case .app = app.scene.lane {} else { Issue.record("the strip's lane names the app") }
+    }
+
     @Test("AeroSpace's focus decides while the strip is up: within the app it stays, anywhere else it is over, that app keeps the keyboard and its window counts as used last; on an empty workspace it is over too")
     func stripFollowsFocus() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(9, "Slack")], "2": [win(2, "Teams"), win(3, "Teams")], "3": [win(5, "Code")], "4": []], focused: 1)
