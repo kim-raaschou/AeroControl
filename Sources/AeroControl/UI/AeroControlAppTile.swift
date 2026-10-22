@@ -65,7 +65,7 @@ struct AeroControlAppTile: View {
                 .truncationMode(.middle)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(look.palette.badgeFill, in: Capsule())
+                .background(.thickMaterial, in: Capsule())
                 .padding(6)
         }
     }
