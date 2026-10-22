@@ -58,7 +58,7 @@ struct ScenarioTests {
 
     @Test("a strip opened from the map is a visit of its own, its pictures taken at the strip's size; another app's key opens that app's strip with its own")
     func takeoverTakesItsPictures() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams")], "3": [win(9, "Slack")], "4": [win(5, "Code")]], focused: 5)
+        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams"), win(4, "Teams")], "3": [win(9, "Slack")], "4": [win(5, "Code")]], focused: 5)
         let app = await TestApp.opening(aero)
         let onMap = app.store.pictures.previews[1]?.height ?? 0
         await app.open("aerocontrol://app-id=com.teams")
@@ -106,15 +106,17 @@ struct ScenarioTests {
         let first = app.store.visit.strip?.marked
         await app.open("aerocontrol://app-id=com.teams")
         #expect(app.store.visit.strip?.marked != first && app.store.visit.strip?.app == "com.teams")
+        await app.commandsLanded()
         await app.open("aerocontrol://app-name=Slack")
         #expect(app.store.visit.strip?.app == "com.slack" && app.store.visit.visible)
         let slack = app.store.visit.strip?.marked
         await app.open("aerocontrol://app-name=Slack")
         #expect(app.store.visit.strip?.marked != slack && app.store.visit.strip?.app == "com.slack")
+        await app.commandsLanded()
         await app.open("aerocontrol://workspaces")
         #expect(app.store.visit.visible && app.scene.body == .map)
         await app.open("aerocontrol://workspaces")
-        #expect(!app.store.visit.visible && app.host.last == .activate(bundleId: "com.teams"))
+        await app.until { !app.store.visit.visible && aero.focused == 1 }                       // back on the window it began on
     }
 
     @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then closes the overview, back on the focused app")
