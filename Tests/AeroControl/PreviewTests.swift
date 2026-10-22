@@ -239,20 +239,21 @@ struct StripLayoutTests {
         #expect(one.minY == other.minY && one.maxX <= other.minX)
     }
 
-    @Test("a column beside two stacked windows stands as AeroSpace's balance-sizes would have it: the column half the card, the pair stacked in the other half, two equal rows as wide as their column, so the window that holds a whole column gets the most room")
-    func balancedBlock() throws {
+    @Test("a column beside two stacked windows stands at its true shape: the column as high as the pair together and as narrow as its window is, each of the pair's rows in its window's shape, so every picture is whole and fills its tile")
+    func shapedBlock() throws {
         let column = [rected(1, "Ghostty", 16, 49, 330, 1052), rected(2, "Ghostty", 358, 49, 1354, 520), rected(3, "Ghostty", 358, 581, 1354, 520)]
         let card = try #require(layout([WorkspaceInfo(name: "3", windows: column, screenIndex: 1, rootLayout: "h_tiles")]).first)
         let tall = try #require(card.frames[1]), top = try #require(card.frames[2]), bottom = try #require(card.frames[3])
-        #expect(abs(tall.width - top.width) <= 1 && abs(tall.height - L.inner(of: card.frame.size).height) < 1 && abs(top.height - bottom.height) <= 1)
-        #expect(tall.maxX <= top.minX && top.maxY <= bottom.minY && top.minX == bottom.minX && tall.height > 1.5 * top.height)
+        #expect(abs(tall.width / tall.height - 330 / 1052) < 0.02 && abs(tall.height - L.inner(of: card.frame.size).height) < 1 && abs(top.height - bottom.height) <= 1)
+        #expect(tall.maxX <= top.minX && top.maxY <= bottom.minY && top.minX == bottom.minX && abs(top.width / top.height - 1354 / 520) < 0.05)
     }
 
-    @Test("another app's windows between the app's leave the app's own structure standing, balanced: a column beside two stacked is a column and two rows of equal shares; a floating window of the app's has no place in it, and the windows are packed")
+    @Test("another app's windows between the app's leave the app's own structure standing, at its true shapes: a column beside two stacked is as high as the two together, every window in its own shape; a floating window of the app's has no place in it, and the windows are packed")
     func otherAppsBetween() throws {
         let desk = [rected(1, "Ghostty", 24, 42, 828, 1646), rected(2, "Ghostty", 870, 42, 819, 265), rected(3, "Ghostty", 870, 325, 819, 256), rected(9, "Code", 870, 600, 819, 1088)]
         let card = try #require(layout([WorkspaceInfo(name: "1", windows: desk, screenIndex: 1, rootLayout: "h_tiles")]).first), f = card.frames
-        #expect(f.keys.sorted() == [1, 2, 3] && f[1]!.maxX < f[2]!.minX && f[2]!.minX == f[3]!.minX && f[2]!.maxY < f[3]!.minY && abs(f[1]!.width - f[2]!.width) < 2 && abs(f[2]!.height - f[3]!.height) < 2)
+        #expect(f.keys.sorted() == [1, 2, 3] && f[1]!.maxX < f[2]!.minX && f[2]!.minX == f[3]!.minX && f[2]!.maxY < f[3]!.minY && abs(f[1]!.height - (f[3]!.maxY - f[2]!.minY)) < 1)
+        #expect(abs(f[1]!.width / f[1]!.height - 828 / 1646) < 0.02 && abs(f[2]!.width / f[2]!.height - 819 / 265) < 0.1 && abs(f[3]!.width / f[3]!.height - 819 / 256) < 0.1)
         let float = WindowInfo(windowId: 3, appName: "Ghostty", bundleId: "com.Ghostty", isFloating: true, layoutRect: CGRect(x: 400, y: 300, width: 600, height: 400))
         let stacked = WorkspaceInfo(name: "4", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520), float], screenIndex: 1, rootLayout: "v_tiles")
         let three = try #require(layout([stacked]).first)

@@ -8,7 +8,7 @@ import Foundation
 
 fileprivate typealias T = WorkspaceTree
 
-@Suite("WorkspaceTree: AeroSpace's tree read from its rects — the layout's own order, and the tree balanced in a box")
+@Suite("WorkspaceTree: AeroSpace's tree read from its rects — the layout's own order, and the tree at its shape in a box")
 struct WorkspaceTreeOrderTests {
     private func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect { CGRect(x: x, y: y, width: w, height: h) }
 
@@ -26,11 +26,11 @@ struct WorkspaceTreeOrderTests {
         #expect(T.order(rects) == [8240, 10721, 10724, 10727, 10730])
     }
 
-    @Test("balanced in a box, as balance-sizes would: every cut shares its side equally, a gap between, in the layout's order whatever order AeroSpace listed them in; rects that overlap, an accordion's, all take the whole box and keep the order they came in")
-    func balancedInABox() {
-        let laid = T.balanced([(2, r(358, 49, 1354, 520)), (1, r(16, 49, 330, 1052)), (3, r(358, 581, 1354, 520))], in: r(10, 20, 610, 410), gap: 10)
-        #expect(laid.map(\.0) == [1, 2, 3] && laid.map(\.1) == [r(10, 20, 300, 410), r(320, 20, 300, 200), r(320, 230, 300, 200)])
-        let accordion = T.balanced([(2, r(46, 48, 1636, 1052)), (1, r(16, 48, 1696, 1052))], in: r(0, 0, 50, 40), gap: 4)
+    @Test("in a box, every window at its own shape and the parts of a split sharing the side across it, a gap between, in the layout's order whatever order AeroSpace listed them in: a column beside two stacked is the column's 330:1052 beside the pair's 1354:1040, as high as each other; rects that overlap, an accordion's, all take the whole box and keep the order they came in")
+    func shapedInABox() {
+        let laid = T.shaped([(2, r(358, 49, 1354, 520)), (1, r(16, 49, 330, 1052)), (3, r(358, 581, 1354, 520))], in: r(10, 20, 610, 410), gap: 10)
+        #expect(laid.map(\.0) == [1, 2, 3] && laid.map(\.1) == [r(10, 20, 116, 410), r(136, 20, 484, 200), r(136, 230, 484, 200)])
+        let accordion = T.shaped([(2, r(46, 48, 1636, 1052)), (1, r(16, 48, 1696, 1052))], in: r(0, 0, 50, 40), gap: 4)
         #expect(accordion.map(\.0) == [2, 1] && accordion.map(\.1) == [r(0, 0, 50, 40), r(0, 0, 50, 40)])
     }
 }

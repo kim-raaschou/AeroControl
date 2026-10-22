@@ -133,24 +133,37 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
 }
 
 enum WorkspaceTree {
-    static func order(_ rects: [(Int, CGRect)]) -> [Int] { balanced(rects, in: .zero, gap: 0).map(\.0) }
+    static func order(_ rects: [(Int, CGRect)]) -> [Int] { shaped(rects, in: .zero, gap: 0).map(\.0) }
 
-    static func balanced(_ rects: [(Int, CGRect)], in box: CGRect, gap: CGFloat) -> [(Int, CGRect)] {
-        let axes = [(\CGRect.minX, \CGRect.maxX, \CGSize.width, CGRectEdge.minXEdge), (\.minY, \.maxY, \.height, .minYEdge)]
-        guard rects.count > 1, let split = axes.lazy.compactMap({ lo, hi, side, edge in cut(rects, lo, hi).map { (parts: $0, side: side, edge: edge) } }).first else { return rects.map { ($0.0, box) } }
-        let n = CGFloat(split.parts.count), span = box.size[keyPath: split.side] + gap, at = (0...split.parts.count).map { (span * CGFloat($0) / n).rounded() }
-        return split.parts.enumerated().flatMap { i, part in balanced(part, in: box.divided(atDistance: at[i + 1] - gap, from: split.edge).slice.divided(atDistance: at[i], from: split.edge).remainder, gap: gap) }
+    static func shape(_ rects: [(Int, CGRect)]) -> CGSize {
+        split(rects).map { split in
+            var shape = CGSize(width: 1, height: 1)
+            shape[keyPath: split.side] = split.shares.reduce(0, +)
+            return shape
+        } ?? CGSize(width: max(1, rects[0].1.width), height: max(1, rects[0].1.height))
+    }
+
+    static func shaped(_ rects: [(Int, CGRect)], in box: CGRect, gap: CGFloat) -> [(Int, CGRect)] {
+        guard let split = split(rects) else { return rects.map { ($0.0, box) } }
+        let free = box.size[keyPath: split.side] - gap * CGFloat(split.shares.count - 1), whole = split.shares.reduce(0, +)
+        let at = (0...split.shares.count).map { i in (free * split.shares.prefix(i).reduce(0, +) / whole).rounded() + gap * CGFloat(i) }
+        return split.parts.enumerated().flatMap { i, part in shaped(part, in: box.divided(atDistance: at[i + 1] - gap, from: split.edge).slice.divided(atDistance: at[i], from: split.edge).remainder, gap: gap) }
+    }
+
+    private static func split(_ rects: [(Int, CGRect)]) -> (parts: [[(Int, CGRect)]], shares: [CGFloat], side: WritableKeyPath<CGSize, CGFloat>, edge: CGRectEdge)? {
+        let axes = [(\CGRect.minX, \CGRect.maxX, \CGSize.width, \CGSize.height, CGRectEdge.minXEdge), (\.minY, \.maxY, \.height, \.width, .minYEdge)]
+        return axes.lazy.compactMap { lo, hi, side, cross, edge in
+            cut(rects, lo, hi).map { parts in (parts, parts.map { let s = shape($0); return s[keyPath: side] / s[keyPath: cross] }, side, edge) }
+        }.first
     }
 
     private static func cut(_ rects: [(Int, CGRect)], _ lo: KeyPath<CGRect, CGFloat>, _ hi: KeyPath<CGRect, CGFloat>) -> [[(Int, CGRect)]]? {
         let indexed = rects.enumerated().sorted { $0.element.1[keyPath: lo] < $1.element.1[keyPath: lo] }
-        var runs: [[(offset: Int, element: (Int, CGRect))]] = [[indexed[0]]]
-        var end = indexed[0].element.1[keyPath: hi]
-        for item in indexed.dropFirst() {
+        var runs: [[(offset: Int, element: (Int, CGRect))]] = [], end = -CGFloat.infinity
+        for item in indexed {
             if item.element.1[keyPath: lo] >= end - 2 { runs.append([item]) } else { runs[runs.count - 1].append(item) }
             end = max(end, item.element.1[keyPath: hi])
         }
-        guard runs.count > 1 else { return nil }
-        return runs.map { run in run.sorted { $0.offset < $1.offset }.map(\.element) }
+        return runs.count > 1 ? runs.map { run in run.sorted { $0.offset < $1.offset }.map(\.element) } : nil
     }
 }
