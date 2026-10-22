@@ -133,12 +133,13 @@ public func loadOverview(using runner: AerospaceProcessRunner) async throws -> O
 }
 
 enum WorkspaceTree {
-    static func order(_ rects: [(Int, CGRect)]) -> [Int] {
-        guard rects.count > 1 else { return rects.map(\.0) }
-        for (lo, hi) in [(\CGRect.minX, \CGRect.maxX), (\.minY, \.maxY)] {
-            if let parts = cut(rects, lo, hi) { return parts.flatMap { order($0) } }
-        }
-        return rects.map(\.0)
+    static func order(_ rects: [(Int, CGRect)]) -> [Int] { balanced(rects, in: .zero, gap: 0).map(\.0) }
+
+    static func balanced(_ rects: [(Int, CGRect)], in box: CGRect, gap: CGFloat) -> [(Int, CGRect)] {
+        let axes = [(\CGRect.minX, \CGRect.maxX, \CGSize.width, CGRectEdge.minXEdge), (\.minY, \.maxY, \.height, .minYEdge)]
+        guard rects.count > 1, let split = axes.lazy.compactMap({ lo, hi, side, edge in cut(rects, lo, hi).map { (parts: $0, side: side, edge: edge) } }).first else { return rects.map { ($0.0, box) } }
+        let n = CGFloat(split.parts.count), span = box.size[keyPath: split.side] + gap, at = (0...split.parts.count).map { (span * CGFloat($0) / n).rounded() }
+        return split.parts.enumerated().flatMap { i, part in balanced(part, in: box.divided(atDistance: at[i + 1] - gap, from: split.edge).slice.divided(atDistance: at[i], from: split.edge).remainder, gap: gap) }
     }
 
     private static func cut(_ rects: [(Int, CGRect)], _ lo: KeyPath<CGRect, CGFloat>, _ hi: KeyPath<CGRect, CGFloat>) -> [[(Int, CGRect)]]? {

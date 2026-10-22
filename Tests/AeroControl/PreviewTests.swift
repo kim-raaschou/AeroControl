@@ -239,12 +239,13 @@ struct StripLayoutTests {
         #expect(one.minY == other.minY && one.maxX <= other.minX)
     }
 
-    @Test("two windows AeroSpace stacks stand stacked in the strip too, as on the screen, each as wide as the card")
-    func stackedPairMirrored() throws {
-        let stacked = WorkspaceInfo(name: "3", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520)], screenIndex: 1, rootLayout: "v_tiles")
-        let two = try #require(layout([stacked]).first)
-        let one = try #require(two.frames[1]), other = try #require(two.frames[2])
-        #expect(one.minX == other.minX && one.maxY <= other.minY && abs(one.width - L.inner(of: two.frame.size).width) < 1)
+    @Test("a column beside two stacked windows stands as AeroSpace's balance-sizes would have it: the column half the card, the pair stacked in the other half, two equal rows as wide as their column, so the window that holds a whole column gets the most room")
+    func balancedBlock() throws {
+        let column = [rected(1, "Ghostty", 16, 49, 330, 1052), rected(2, "Ghostty", 358, 49, 1354, 520), rected(3, "Ghostty", 358, 581, 1354, 520)]
+        let card = try #require(layout([WorkspaceInfo(name: "3", windows: column, screenIndex: 1, rootLayout: "h_tiles")]).first)
+        let tall = try #require(card.frames[1]), top = try #require(card.frames[2]), bottom = try #require(card.frames[3])
+        #expect(abs(tall.width - top.width) <= 1 && abs(tall.height - L.inner(of: card.frame.size).height) < 1 && abs(top.height - bottom.height) <= 1)
+        #expect(tall.maxX <= top.minX && top.maxY <= bottom.minY && top.minX == bottom.minX && tall.height > 1.5 * top.height)
     }
 
     @Test("another app's window inside the app's block, or a floating window of the app's, breaks the mirror: the windows are packed as before, two in one row")

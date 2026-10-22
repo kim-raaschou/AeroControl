@@ -120,11 +120,11 @@ public enum AeroControlLayout {
         let room = (view.width / min(CGFloat(max(1, groups.count)), seen) - 2 * cardPadding - cardGap).rounded(.down)
         let full = min((view.height * tallest).rounded(), (room / max(0.01, aspects.reduce(0, +) / CGFloat(max(1, groups.count)))).rounded(.down))
         let placed = groups.indices.map { g in stripCard(groups[g], app: bundleId, frames: frames, screen: areas[g], inner: CGSize(width: max((full * aspects[g]).rounded(), room), height: full)) }
-        let used = placed.map { $0.frames.values.reduce(CGRect.null) { $0.union($1) } }, height = (used.map(\.height).max() ?? 0).rounded(.up)
+        let used = placed.map { $0.values.reduce(CGRect.null) { $0.union($1) } }, height = (used.map(\.height).max() ?? 0).rounded(.up)
         var x: CGFloat = 0
         let row = placed.indices.map { g in
             let card = LaidCard(frame: CGRect(x: x, y: 0, width: used[g].width.rounded(.up) + 2 * cardPadding, height: height + cardChrome),
-                                frames: placed[g].frames.mapValues { $0.offsetBy(dx: -used[g].minX, dy: ((height - used[g].height) / 2).rounded(.down) - used[g].minY) }, ghosts: placed[g].ghosts)
+                                frames: placed[g].mapValues { $0.offsetBy(dx: -used[g].minX, dy: ((height - used[g].height) / 2).rounded(.down) - used[g].minY) })
             x = card.frame.maxX + cardGap
             return card
         }
@@ -133,12 +133,13 @@ public enum AeroControlLayout {
         return (zip(row, shown).map { c, frame in LaidCard(frame: frame, frames: c.frames, ghosts: c.ghosts, cut: frame.minX < 0 || frame.maxX > view.width) }, held)
     }
 
-    static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> (frames: [Int: CGRect], ghosts: Set<Int>) {
+    static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> [Int: CGRect] {
         let mine = workspace.windows.filter { $0.bundleId == app }, block = mine.compactMap(\.layoutRect).reduce(CGRect.null) { $0.union($1) }
         let others = workspace.windows.filter(\.isTiled).filter { $0.bundleId != app }
-        let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2)
+        let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2).frames
         guard mine.allSatisfy(\.isTiled), mirrors(mine), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
-        return treeLayout(mine, frames: frames, screen: block, inner: inner) ?? packed
+        let box = CGRect(origin: .zero, size: AeroControlMetrics.fit(block.size, into: inner))
+        return Dictionary(WorkspaceTree.balanced(mine.map { ($0.windowId, $0.layoutRect!) }, in: box, gap: packedGap(screen: block.size, inner: inner))) { _, b in b }
     }
 
     private static func stripOffset(_ cards: [LaidCard], held: Int, viewWidth: CGFloat) -> CGFloat {

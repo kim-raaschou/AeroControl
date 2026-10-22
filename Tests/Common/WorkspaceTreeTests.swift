@@ -8,15 +8,9 @@ import Foundation
 
 fileprivate typealias T = WorkspaceTree
 
-@Suite("WorkspaceTree.order: the layout's own order from AeroSpace's rects")
+@Suite("WorkspaceTree: AeroSpace's tree read from its rects — the layout's own order, and the tree balanced in a box")
 struct WorkspaceTreeOrderTests {
     private func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect { CGRect(x: x, y: y, width: w, height: h) }
-
-    @Test("side by side: left to right, whatever order AeroSpace listed them in")
-    func sideBySide() {
-        // The owner's workspace 4: Ghostty listed first, standing on the right of Mail.
-        #expect(T.order([(10916, r(1726, 48, 1698, 1375)), (10776, r(16, 48, 1698, 1375))]) == [10776, 10916])
-    }
 
     @Test("a column of four beside a tall window: the column top to bottom, then the window, as AeroSpace's tree has them")
     func columnThenWindow() {
@@ -32,8 +26,11 @@ struct WorkspaceTreeOrderTests {
         #expect(T.order(rects) == [8240, 10721, 10724, 10727, 10730])
     }
 
-    @Test("rects that overlap, an accordion's, keep the order they came in")
-    func overlapKeepsOrder() {
-        #expect(T.order([(2, r(46, 48, 1636, 1052)), (1, r(16, 48, 1696, 1052))]) == [2, 1])
+    @Test("balanced in a box, as balance-sizes would: every cut shares its side equally, a gap between, in the layout's order whatever order AeroSpace listed them in; rects that overlap, an accordion's, all take the whole box and keep the order they came in")
+    func balancedInABox() {
+        let laid = T.balanced([(2, r(358, 49, 1354, 520)), (1, r(16, 49, 330, 1052)), (3, r(358, 581, 1354, 520))], in: r(10, 20, 610, 410), gap: 10)
+        #expect(laid.map(\.0) == [1, 2, 3] && laid.map(\.1) == [r(10, 20, 300, 410), r(320, 20, 300, 200), r(320, 230, 300, 200)])
+        let accordion = T.balanced([(2, r(46, 48, 1636, 1052)), (1, r(16, 48, 1696, 1052))], in: r(0, 0, 50, 40), gap: 4)
+        #expect(accordion.map(\.0) == [2, 1] && accordion.map(\.1) == [r(0, 0, 50, 40), r(0, 0, 50, 40)])
     }
 }

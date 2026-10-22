@@ -116,8 +116,9 @@ themselves always come from commands, never from an event.
 ### Rule: true to AeroSpace, live
 
 The map and the strip show what AeroSpace shows, while it changes: its layouts, its windows,
-its focused workspace. The strip shows only the app's windows, as AeroSpace places them when they
-make one block and packed otherwise: it is a picker, the map shows the rest. A change is read again even when AeroSpace announces nothing (a layout
+its focused workspace. The strip shows only the app's windows, in AeroSpace's arrangement with its splits shared equally
+(as `balance-sizes` would have them) when they make one block and packed otherwise: it is a picker,
+the map shows the rest. A change is read again even when AeroSpace announces nothing (a layout
 key: `readAgainAfter`). A key that moves the ring or the strip's marking takes AeroSpace's focus
 along, so AeroSpace's own keys act on the window under it, and Escape takes the focus back to
 where the visit began; pointing and typing move only the ring. A feature that would show anything AeroSpace does not, or
