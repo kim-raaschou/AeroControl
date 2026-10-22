@@ -89,8 +89,8 @@ public enum AeroControlLayout {
 
     private static func loose(_ windows: [WindowInfo], frames measured: [Int: CGRect], box: CGRect, place: (CGRect) -> CGRect, hidden: Bool) -> [Int: CGRect] {
         Dictionary(windows.map { window -> (Int, CGRect) in
-            let real = measured[window.windowId].map(place)
-            if window.isFloating, !hidden, let standing = real?.intersection(box), !standing.isEmpty { return (window.windowId, standing) }
+            let real = (window.layoutRect ?? measured[window.windowId]).map(place)
+            if window.isFloating, !hidden || window.layoutRect != nil, let standing = real?.intersection(box), !standing.isEmpty { return (window.windowId, standing) }
             let size = real.map { CGSize(width: min(box.width, $0.width), height: min(box.height, $0.height)) } ?? box.size
             return (window.windowId, CGRect(x: box.midX - size.width / 2, y: box.midY - size.height / 2, width: size.width, height: size.height))
         }, uniquingKeysWith: { _, b in b })

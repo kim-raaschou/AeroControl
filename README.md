@@ -128,7 +128,8 @@ moves in one frame when **Reduce motion** is on.
 - **Where a window is drawn** comes from `%{window-layout-rect}`, which no AeroSpace release
   has yet; it is a branch of the author's, not yet published. With a released AeroSpace every
   card packs its tiled windows at one height instead of mirroring the screen; floating windows
-  still lie where they stand.
+  still lie where they stand, but on a hidden workspace in the middle of the card, since only
+  the branch says where AeroSpace will put them back.
 - **Without Screen Recording** the tiles are plates with the app's icon and the window's title.
   The menu offers to request it; once refused, it opens the Screen Recording settings instead.
 - **A stable row of workspaces**, empty ones included:

@@ -106,7 +106,7 @@ func buildOverview(windows: [WindowInfo], workspaceMonitors: [WorkspaceMonitor],
 }
 
 func layoutOrdered(_ windows: [WindowInfo]) -> [WindowInfo] {
-    let placed = windows.compactMap { w in w.layoutRect.map { (w.windowId, $0) } }
+    let placed = windows.filter(\.isTiled).compactMap { w in w.layoutRect.map { (w.windowId, $0) } }
     guard placed.count > 1 else { return windows }
     let rank = Dictionary(uniqueKeysWithValues: WorkspaceTree.order(placed).enumerated().map { ($1, $0) })
     return windows.enumerated().sorted { a, b in

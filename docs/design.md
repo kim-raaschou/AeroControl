@@ -33,8 +33,10 @@ title. The layout engine is shared with
 Omarchy/Hyprland. The card the ring is in names the ring's window at its top, its app's icon, name
 and title, centred between the workspace and its layout; the line under the cards keeps the keys
 and what is typed. Floating windows are always floats: they lie over the card where they stand on
-the screen, faint, packed tiles or not, a workspace of floats only too; on a hidden workspace,
-where AeroSpace has parked them in a corner, in the middle of the card at their own size. Only
+the screen, faint, packed tiles or not, a workspace of floats only too; on a hidden workspace, where AeroSpace has parked them in a
+corner, where AeroSpace will put them back, as its rect says, so a float holds still as the
+focus comes and goes. Without that rect (a released AeroSpace), in the middle of the card at
+their own size. Only
 while a query is typed is every window packed as a tile. A card's icon says whether its
 workspace is tiles or an accordion; AeroSpace's own layout key changes it, and the card follows.
 

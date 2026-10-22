@@ -110,11 +110,13 @@ struct LayoutRectTests {
 
 @Suite("a workspace's windows in the layout's order")
 struct LayoutOrderTests {
-    @Test("with AeroSpace's rects a workspace's windows come in the layout's order, floats and windows without a rect after them")
+    @Test("with AeroSpace's rects a workspace's windows come in the layout's order, floats, even one with a rect, and windows without one after them")
     func ordered() throws {
         let json = "[" + [windowJSON(10916, "Ghostty", "1726,48,1698,1375"), windowJSON(10776, "Mail", "16,48,1698,1375"), windowJSON(5, "Finder", "")].joined(separator: ",") + "]"
         let result = buildOverview(windows: try parseWindows(json: json), workspaceMonitors: try parseWorkspaces(json: #"[{"workspace": "4", "monitor-id": 1}]"#))
         #expect(result.workspaces[0].windows.map(\.windowId) == [10776, 10916, 5])
+        let hidden = "[" + [windowJSON(10916, "Ghostty", "1726,48,1698,1375"), #"{"window-id": 6, "app-name": "Finder", "app-bundle-id": "com.Finder", "workspace": "4", "window-parent-container-layout": "floating", "window-layout-rect": "16,48,600,400"}"#, windowJSON(10776, "Mail", "16,48,1698,1375")].joined(separator: ",") + "]"
+        #expect(buildOverview(windows: try parseWindows(json: hidden), workspaceMonitors: try parseWorkspaces(json: #"[{"workspace": "4", "monitor-id": 1}]"#)).workspaces[0].windows.map(\.windowId) == [10776, 10916, 6])   // a float's rect orders nothing
     }
 
     @Test("without rects the listing's order stands")
