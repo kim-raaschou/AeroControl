@@ -121,14 +121,9 @@ struct AeroControlCardFace: View {
     private func heading(_ window: WindowInfo) -> some View {
         HStack(spacing: 5) {
             Image(nsImage: state.pictures.icon(for: window.bundleId)).resizable().frame(width: 16, height: 16)
-            Text(window.appName).font(.system(size: 12, weight: .semibold)).layoutPriority(1)
-            if window.caption != window.appName {
-                Text(window.caption).font(.system(size: 12)).foregroundStyle(look.palette.badgeText.opacity(0.75)).truncationMode(.middle)
-            }
-        }
-        .foregroundStyle(look.palette.badgeText)
-        .lineLimit(1)
-        .frame(maxWidth: size.width * 0.6)
+            Text(window.appName).fontWeight(.semibold).layoutPriority(1)
+            Text(window.caption == window.appName ? "" : window.caption).opacity(0.75).truncationMode(.middle)
+        }.font(.system(size: 12)).foregroundStyle(look.palette.badgeText).lineLimit(1).frame(maxWidth: size.width * 0.6)
     }
 
     private var badge: some View {
