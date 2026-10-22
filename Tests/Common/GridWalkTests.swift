@@ -37,4 +37,12 @@ struct GridWalkTests {
         #expect(top.moved(.next, cards: cards).moved(.next, cards: cards).marked == 3 && Strip(app: "com.a", marked: 3, centre: 3).moved(.next, cards: cards).marked == 1)
     }
 
+    @Test("a window lying inside another is still a step from it and back, by their centres, as AeroSpace's focus takes a float: on its own card the tile behind is reached")
+    func windowInsideAnother() {
+        let card: GridWalk.Card = (CGRect(x: 1100, y: 0, width: 1000, height: 600), [1: CGRect(x: 1100, y: 0, width: 1000, height: 600), 9: CGRect(x: 1280, y: 30, width: 440, height: 480)])
+        let before: GridWalk.Card = (CGRect(x: 0, y: 0, width: 1000, height: 600), [3: CGRect(x: 0, y: 0, width: 1000, height: 600)])
+        let after: GridWalk.Card = (CGRect(x: 2200, y: 0, width: 1000, height: 600), [4: CGRect(x: 2200, y: 0, width: 1000, height: 600)])
+        let go = { (from: Int, d: Int) in Strip(app: nil, marked: from, centre: nil).moved(.window(d), cards: [before, card, after]).marked }
+        #expect([go(3, 1), go(9, 1), go(1, 1), go(4, -1), go(1, -1), go(9, -1)] == [9, 1, 4, 1, 9, 3])
+    }
 }

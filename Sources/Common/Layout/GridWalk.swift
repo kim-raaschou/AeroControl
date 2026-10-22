@@ -16,7 +16,7 @@ public enum GridWalk {
         guard let at = frames[id] else { return nil }
         let inLine = { (r: CGRect) in min(1, max(0, min(r.maxX, at.maxX) - max(r.minX, at.minX))) }
         let key = { (r: CGRect) in (-inLine(r), abs(r.midY - at.midY), abs(r.midX - at.midX), r.minX) }
-        return frames.filter { ($0.value.midY - at.midY) * CGFloat(d) > at.height / 2 }.min { key($0.value) < key($1.value) }?.key
+        return frames.filter { ($0.value.midY - at.midY) * CGFloat(d) > 0 }.min { key($0.value) < key($1.value) }?.key
     }
 
     static func step(from id: Int, columns d: Int, frames: [Int: CGRect]) -> Int? {
