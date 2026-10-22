@@ -66,12 +66,13 @@ or an empty workspace, and the strip closes and you are where AeroSpace put you.
 
 Each card is one of the app's workspaces and holds the app's windows on it, no other app's: the
 strip asks only which of them, and the map is where a window's neighbours are seen. Where they
-are all tiled and make one block on the screen, they stand in AeroSpace's arrangement, side by
+are all tiled and side by side, they stand in AeroSpace's arrangement, other apps' windows
+between them left out, side by
 side, stacked, a column beside a pair, with every split shared equally, as AeroSpace's own
 `balance-sizes` would have it, the card as wide as that block: a picker wants every picture
 legible, and at AeroSpace's shares a window a fifth of the screen wide is a fifth of a tile; with
 the shares even, a window that holds a whole column gets the whole column, and its picture is
-cut to the tile, from its top left. Otherwise (an accordion, a float, another app between them) they are packed
+cut to the tile, from its top left. Otherwise (an accordion, a float) they are packed
 large, each in its window's own shape, two always in one row. A card is at most 45 % of the
 panel high. Each window's title sits on its picture, one line, so three terminals can be told
 apart. The card the marking is in names the marked window at its top, as the map does; one line

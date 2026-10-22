@@ -248,12 +248,11 @@ struct StripLayoutTests {
         #expect(tall.maxX <= top.minX && top.maxY <= bottom.minY && top.minX == bottom.minX && tall.height > 1.5 * top.height)
     }
 
-    @Test("another app's window inside the app's block, or a floating window of the app's, breaks the mirror: the windows are packed as before, two in one row")
-    func holeInTheBlockPacks() throws {
-        let split = [rected(1, "Ghostty", 16, 49, 1696, 340), rected(9, "Code", 16, 401, 1696, 340), rected(2, "Ghostty", 16, 753, 1696, 348)]
-        let card = try #require(layout([WorkspaceInfo(name: "3", windows: split, screenIndex: 1, rootLayout: "v_tiles")]).first)
-        let one = try #require(card.frames[1]), other = try #require(card.frames[2])
-        #expect(card.frames.keys.sorted() == [1, 2] && one.minY == other.minY && other.minX - one.maxX < one.width / 4)
+    @Test("another app's windows between the app's leave the app's own structure standing, balanced: a column beside two stacked is a column and two rows of equal shares; a floating window of the app's has no place in it, and the windows are packed")
+    func otherAppsBetween() throws {
+        let desk = [rected(1, "Ghostty", 24, 42, 828, 1646), rected(2, "Ghostty", 870, 42, 819, 265), rected(3, "Ghostty", 870, 325, 819, 256), rected(9, "Code", 870, 600, 819, 1088)]
+        let card = try #require(layout([WorkspaceInfo(name: "1", windows: desk, screenIndex: 1, rootLayout: "h_tiles")]).first), f = card.frames
+        #expect(f.keys.sorted() == [1, 2, 3] && f[1]!.maxX < f[2]!.minX && f[2]!.minX == f[3]!.minX && f[2]!.maxY < f[3]!.minY && abs(f[1]!.width - f[2]!.width) < 2 && abs(f[2]!.height - f[3]!.height) < 2)
         let float = WindowInfo(windowId: 3, appName: "Ghostty", bundleId: "com.Ghostty", isFloating: true, layoutRect: CGRect(x: 400, y: 300, width: 600, height: 400))
         let stacked = WorkspaceInfo(name: "4", windows: [rected(1, "Ghostty", 16, 49, 1696, 520), rected(2, "Ghostty", 16, 581, 1696, 520), float], screenIndex: 1, rootLayout: "v_tiles")
         let three = try #require(layout([stacked]).first)

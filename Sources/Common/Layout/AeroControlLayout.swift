@@ -135,9 +135,7 @@ public enum AeroControlLayout {
 
     static func stripCard(_ workspace: WorkspaceInfo, app: String, frames: [Int: CGRect], screen: CGRect, inner: CGSize) -> [Int: CGRect] {
         let mine = workspace.windows.filter { $0.bundleId == app }, block = mine.compactMap(\.layoutRect).reduce(CGRect.null) { $0.union($1) }
-        let others = workspace.windows.filter(\.isTiled).filter { $0.bundleId != app }
-        let packed = packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2).frames
-        guard mine.allSatisfy(\.isTiled), mirrors(mine), !others.contains(where: { ($0.layoutRect ?? .null).insetBy(dx: 2, dy: 2).intersects(block) }) else { return packed }
+        guard mine.allSatisfy(\.isTiled), mirrors(mine) else { return packed(mine, frames: frames, screen: screen, inner: inner, caption: 0, oneRow: mine.count == 2).frames }
         let box = CGRect(origin: .zero, size: AeroControlMetrics.fit(block.size, into: inner))
         return Dictionary(WorkspaceTree.balanced(mine.map { ($0.windowId, $0.layoutRect!) }, in: box, gap: packedGap(screen: block.size, inner: inner))) { _, b in b }
     }
