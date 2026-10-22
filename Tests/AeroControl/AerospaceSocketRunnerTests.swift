@@ -68,7 +68,7 @@ import Testing
         let (server, runner) = try served(events: events)
         defer { server.stop() }
         var received: [String] = []
-        for try await line in runner.subscribe(["subscribe", "--all"]) {
+        for await line in runner.subscribe(["subscribe", "--all"]) {
             received.append(line)
             if received.count == events.count { break }
         }

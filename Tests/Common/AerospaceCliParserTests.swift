@@ -22,28 +22,16 @@ struct ParseWindowsTests {
 
 @Suite("parseWindows — state")
 struct ParseWindowStateTests {
-    @Test("a window's fullscreen flag is read; a list without it decodes as not fullscreen")
-    func fullscreen() throws {
-        let json = """
-        [{"window-id": 1, "app-name": "Arc", "app-bundle-id": "company.thebrowser.Browser", "workspace": "1",
-          "window-parent-container-layout": "h_tiles", "window-is-fullscreen": true},
-         {"window-id": 2, "app-name": "Arc", "app-bundle-id": "company.thebrowser.Browser", "workspace": "1",
-          "window-parent-container-layout": "h_tiles"}]
-        """
-        let windows = try parseWindows(json: json)
-        #expect(windows.map(\.isFullscreen) == [true, false])
-    }
-
-    @Test("what AeroSpace says of a window's place is its state: floating, macOS fullscreen, minimized or its app hidden")
+    @Test("what AeroSpace says of a window's place is its state: floating, macOS fullscreen, minimized or its app hidden; its fullscreen flag too, and a list without the flag is not fullscreen")
     func nativeStates() throws {
-        let layouts = ["h_tiles", "floating", "macos_native_fullscreen", "macos_native_minimized", "macos_native_window_of_hidden_app"]
+        let layouts = ["h_tiles", "floating", "macos_native_fullscreen", "macos_native_minimized", "macos_native_window_of_hidden_app", "h_tiles"]
         let json = "[" + layouts.enumerated().map { i, layout in
-            #"{"window-id": \#(i), "app-name": "A", "app-bundle-id": "a", "workspace": "1", "window-parent-container-layout": "\#(layout)"}"#
+            #"{"window-id": \#(i), "app-name": "A", "app-bundle-id": "a", "workspace": "1", "window-parent-container-layout": "\#(layout)"\#(i == 5 ? ", \"window-is-fullscreen\": true" : "")}"#
         }.joined(separator: ",") + "]"
         let windows = try parseWindows(json: json)
-        #expect(windows.map(\.isFloating) == [false, true, false, false, false])
-        #expect(windows.map(\.isFullscreen) == [false, false, true, false, false])
-        #expect(windows.map(\.isHidden) == [false, false, false, true, true])
+        #expect(windows.map(\.isFloating) == [false, true, false, false, false, false])
+        #expect(windows.map(\.isFullscreen) == [false, false, true, false, false, true])
+        #expect(windows.map(\.isHidden) == [false, false, false, true, true, false])
     }
 }
 

@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 enum CardGrid {
-    static func lattice(count n: Int, in box: CGSize, cellRatio: CGFloat, gap: CGFloat, chrome: CGSize = .zero) -> [CGRect] {
+    static func lattice(count n: Int, in box: CGSize, cellRatio: CGFloat, gap: CGFloat, chrome: CGSize) -> [CGRect] {
         guard n > 0 else { return [] }
         var best: (area: CGFloat, rows: Int, columns: Int, cell: CGSize)?
         for r in 1...n {

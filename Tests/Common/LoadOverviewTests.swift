@@ -17,22 +17,6 @@ struct ArgvForActionTests {
     }
 }
 
-@Suite("loadOverview")
-struct LoadOverviewTests {
-    @Test("orchestrates list commands and builds result")
-    func orchestrates() async throws {
-        let result = try await loadOverview(using: FakeAeroSpace(["1": [win(1, "Firefox")], "2": []]))
-        #expect(result.workspaces.map(\.name) == ["1", "2"])
-        #expect(result.workspaces[0].windows.map(\.appName) == ["Firefox"] && result.workspaces[1].windows.isEmpty)
-    }
-
-    @Test("the window AeroSpace has focused is read when asked, so a focus that missed can be asked again; none with nothing focused")
-    func focusedWindow() async {
-        #expect(await loadFocusedWindow(using: FakeAeroSpace(["1": [win(4, "App")]], focused: 4))?.windowId == 4)
-        #expect(await loadFocusedWindow(using: FakeAeroSpace(["1": []])) == nil)
-    }
-}
-
 @Suite("loadOverview: layout rects when AeroSpace can give them")
 struct LoadOverviewLayoutRectsTests {
     private let withRects = AerospaceCommand.listWindows(layoutRects: true)

@@ -11,9 +11,8 @@ enum TilePacker {
                                 gap: CGFloat, caption: CGFloat) -> Packed {
         guard !ratios.isEmpty else { return Packed(height: 0, width: 0, tiles: []) }
         let sizes = ratios.map { ratio in
-            let h = tileHeight.rounded(.down), w = (ratio * h).rounded(.down)
-            let clamped = w > width ? CGSize(width: width, height: (width / max(0.01, ratio)).rounded(.down)) : CGSize(width: w, height: h)
-            return CGSize(width: max(1, clamped.width), height: max(1, clamped.height))
+            let h = min(tileHeight, width / max(0.01, ratio)).rounded(.down)
+            return CGSize(width: max(1, (ratio * h).rounded(.down)), height: max(1, h))
         }
         func rowWidth(_ row: [Int]) -> CGFloat { row.reduce(-gap) { $0 + sizes[$1].width + gap } }
 

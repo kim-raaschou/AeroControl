@@ -62,7 +62,7 @@ struct AerospaceSocketRunner: AerospaceProcessRunner {
         return answer.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
+    func subscribe(_ args: [String]) -> AsyncStream<String> {
         AerospaceSocket.subscribeStream(socketPath: socketPath, args: args)
     }
 }
@@ -95,10 +95,11 @@ enum AerospaceSocket {
         }
     }
 
-    static func subscribeStream(socketPath: String, args: [String]) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+    static func subscribeStream(socketPath: String, args: [String]) -> AsyncStream<String> {
+        AsyncStream { continuation in
             Thread {
-                do { try subscribe(socketPath, args) { continuation.yield($0) } } catch { continuation.finish(throwing: error) }
+                defer { continuation.finish() }
+                try? subscribe(socketPath, args) { continuation.yield($0) }
             }.start()
         }
     }

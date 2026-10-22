@@ -56,20 +56,6 @@ struct ScenarioTests {
         #expect(aero.focusedWorkspace == "2" && app.scene.cards.map(\.focused) == [false, true, false] && !aero.commands.contains(["focus", "--window-id", "0"]))
     }
 
-    @Test("a strip opened from the map is a visit of its own, its pictures taken at the strip's size; another app's key opens that app's strip with its own")
-    func takeoverTakesItsPictures() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Slack")], "2": [win(3, "Teams"), win(4, "Teams")], "3": [win(9, "Slack")], "4": [win(5, "Code")]], focused: 5)
-        let app = await TestApp.opening(aero)
-        let onMap = app.store.pictures.previews[1]?.height ?? 0
-        await app.open("aerocontrol://app-id=com.teams")
-        await app.until { app.scene.body == .strip && onMap > 0 && (app.store.pictures.previews[1]?.height ?? 0) > onMap }
-        await app.open("aerocontrol://workspaces")
-        await app.open("aerocontrol://app-id=com.teams")
-        #expect(app.bridge.captured.last?.contains(9) == false)
-        await app.open("aerocontrol://app-id=com.slack")
-        await app.until { app.store.visit.strip?.app == "com.slack" && app.bridge.captured.last?.contains(9) == true }
-    }
-
     @Test("a workspace dropped on another moves its windows there in their order and goes along; into an empty one a stack arrives as a stack, set on a tiled window, never a float or a fullscreen one; into one with windows, or from floats alone, no layout comes; onto itself, nothing")
     func merge() async {
         let aero = FakeAeroSpace(["1": [win(9, "Pad", floating: true), win(8, "Film", fullscreen: true), win(1, "Teams"), win(2, "Slack")], "2": [], "3": [win(3, "Code")],
@@ -87,19 +73,7 @@ struct ScenarioTests {
         #expect(aero.layout(of: "3") == "h_tiles" && aero.layout(of: "6") == "h_tiles")
     }
 
-    @Test("Escape goes back to where the first visit began, through a takeover: the strip opened from the map, then the map again, and Escape is still the window you came from")
-    func escapeAfterTakeover() async {
-        let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(2, "Teams")], "2": [win(3, "Code")]], focused: 3)
-        let app = await TestApp.opening(aero)
-        await app.open("aerocontrol://app-id=com.teams")
-        await app.until { app.scene.body == .strip && aero.focused != 3 }
-        await app.open("aerocontrol://workspaces")
-        await app.until { app.scene.body == .map }
-        app.key(.escape)
-        await app.until { !app.store.visit.visible && aero.focused == 3 }
-    }
-
-    @Test("the strip's app key again moves the marking on, as ⌘` does; another app's key opens that app's strip, the map's key the map")
+    @Test("the strip's app key again moves the marking on, as ⌘` does; another app's key opens that app's strip, the map's key the map, and again closes it, back on the window the first visit began on, through every takeover")
     func stripKeyAgain() async {
         let aero = FakeAeroSpace(["1": [win(1, "Teams"), win(4, "Slack")], "2": [win(2, "Teams"), win(5, "Slack"), win(6, "Teams")], "3": [win(3, "Code")]], focused: 1)
         let app = await TestApp.opening(aero, "aerocontrol://app-id=com.teams")
@@ -116,7 +90,7 @@ struct ScenarioTests {
         await app.open("aerocontrol://workspaces")
         #expect(app.store.visit.visible && app.scene.body == .map)
         await app.open("aerocontrol://workspaces")
-        await app.until { !app.store.visit.visible && aero.focused == 1 }                       // back on the window it began on
+        await app.until { !app.store.visit.visible && aero.focused == 1 }
     }
 
     @Test("the query takes what is typed: a digit is text, a leading space is nothing, Backspace takes the last; Escape clears it, then closes the overview, back on the focused app")

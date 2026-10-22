@@ -48,12 +48,6 @@ struct CardGridTests {
         #expect(abs((size.width - chrome.width) / (size.height - chrome.height) - screen) < 0.01)
     }
 
-    @Test("without chrome the cell itself has the screen's shape")
-    func cellShapeWithoutChrome() {
-        let size = CardGrid.lattice(count: 7, in: box, cellRatio: screen, gap: gap)[0].size
-        #expect(abs(size.width / size.height - screen) < 0.01)
-    }
-
     @Test("the lattice with the largest cell wins", arguments: [
         (2, "1 2"),
         (4, "1 2 | 3 4"),
@@ -83,9 +77,8 @@ struct CardGridTests {
 
     @Test("nothing to lay out survives, and so does a zero-sized box")
     func degenerate() {
-        let none = CardGrid.lattice(count: 0, in: box, cellRatio: screen, gap: gap)
-        #expect(none.isEmpty)
-        let flat = CardGrid.lattice(count: 3, in: .zero, cellRatio: screen, gap: gap)
+        #expect(lattice(0).isEmpty)
+        let flat = CardGrid.lattice(count: 3, in: .zero, cellRatio: screen, gap: gap, chrome: chrome)
         #expect(flat.count == 3 && shape(flat) == "1 2 3")
     }
 }

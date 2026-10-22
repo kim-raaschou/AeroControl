@@ -24,7 +24,7 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
     static let screen = CGRect(x: 0, y: 33, width: 1728, height: 1084)
     var down = false
     private var log: [[String]] = []
-    private var events: AsyncThrowingStream<String, Error>.Continuation?
+    private var events: AsyncStream<String>.Continuation?
 
     init(_ workspaces: KeyValuePairs<String, [Window]>, focused: Int? = nil, layouts: [String: String] = [:], knowsRects: Bool = false) {
         let all = workspaces.flatMap { name, ws in ws.map { var w = $0; w.workspace = name; return w } }
@@ -87,8 +87,8 @@ final class FakeAeroSpace: AerospaceProcessRunner, @unchecked Sendable {
         announce()
     }
 
-    func subscribe(_ args: [String]) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in self.locked { self.events = continuation; self.log.append(args) } }
+    func subscribe(_ args: [String]) -> AsyncStream<String> {
+        AsyncStream { continuation in self.locked { self.events = continuation; self.log.append(args) } }
     }
 
     private func answer(_ args: [String]) -> (String, String?) {

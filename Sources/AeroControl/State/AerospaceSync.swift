@@ -16,12 +16,10 @@ final class AerospaceSync {
 
     func listen(_ received: @escaping @MainActor (AerospaceEvent) -> Void) {
         Task.detached(priority: .utility) { [runner] in
-            var reconnecting = false
             while true {
                 let events = runner.subscribe(AerospaceCommand.subscribe).compactMap(AerospaceEvent.parse)
-                if reconnecting { await received(.changed) }
-                do { for try await event in events { await received(event) } } catch {}
-                reconnecting = true
+                await received(.changed)
+                for await event in events { await received(event) }
                 try? await Task.sleep(for: .seconds(1))
             }
         }
