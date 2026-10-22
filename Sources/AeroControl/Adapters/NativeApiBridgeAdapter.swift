@@ -114,7 +114,7 @@ final class LiveWindowView: NSView, SCStreamOutput {
     func start(_ window: SCWindow, pixels: CGSize) {
         guard !stopped else { return }
         wantsLayer = true
-        layer?.contentsGravity = .resizeAspectFill
+        layer?.contentsGravity = .resizeAspect
         let config = SCStreamConfiguration()
         (config.width, config.height) = (max(1, Int(pixels.width)), max(1, Int(pixels.height)))
         config.minimumFrameInterval = Self.frameInterval
