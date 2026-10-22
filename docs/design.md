@@ -71,8 +71,8 @@ between them left out, side by
 side, stacked, a column beside a pair, with every split shared equally, as AeroSpace's own
 `balance-sizes` would have it, the card as wide as that block: a picker wants every picture
 legible, and at AeroSpace's shares a window a fifth of the screen wide is a fifth of a tile; with
-the shares even, a window that holds a whole column gets the whole column, and its picture is
-cut to the tile, from its top left. Otherwise (an accordion, a float) they are packed
+the shares even, a window that holds a whole column gets the whole column. Every picture is the
+whole window in its own shape, as large as its tile allows, never cut. Otherwise (an accordion, a float) they are packed
 large, each in its window's own shape, two always in one row. A card is at most 45 % of the
 panel high. Each window's title sits on its picture, one line, so three terminals can be told
 apart. The card the marking is in names the marked window at its top, as the map does; one line

@@ -84,13 +84,13 @@ struct AeroControlAppTile: View {
         ZStack {
             plate.fill(look.palette.badgeFill.opacity(0.35))
             FadingPicture(image: preview, fade: Self.fade * look.motion) { image in
-                PixelImage(image: Image(decorative: image, scale: displayScale), size: AeroControlMetrics.cover(CGSize(width: image.width, height: image.height), into: contentSize))
-                    .frame(width: contentSize.width, height: contentSize.height, alignment: .topLeading)
+                PixelImage(image: Image(decorative: image, scale: displayScale), size: AeroControlMetrics.fit(CGSize(width: image.width, height: image.height), into: contentSize))
+                    .frame(width: contentSize.width, height: contentSize.height)
                     .clipShape(plate)
                     .overlay(plate.strokeBorder(look.palette.cardBorder, lineWidth: 1))
             }
             if tile.ringed {
-                let live = AeroControlMetrics.cover(state.pictures.frames[tile.window.windowId]?.size ?? contentSize, into: contentSize)
+                let live = AeroControlMetrics.fit(state.pictures.frames[tile.window.windowId]?.size ?? contentSize, into: contentSize)
                 LivePicture { state.pictures.live(tile.window.windowId, pixels: CGSize(width: live.width * displayScale, height: live.height * displayScale)) }
                     .id([live.width, live.height])
                     .frame(width: contentSize.width, height: contentSize.height)

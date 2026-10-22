@@ -91,7 +91,7 @@ final class NativeApiBridgeAdapter: NativeApiBridge {
 
     private static func capture(_ window: SCWindow, sized frame: CGSize, filling size: CGSize) async -> CGImage? {
         guard frame.width > 1, frame.height > 1 else { return nil }
-        let scale = min(max(size.width / frame.width, size.height / frame.height), 1)
+        let scale = min(size.width / frame.width, size.height / frame.height, 1)
         let config = SCStreamConfiguration()
         config.width = max(1, Int((frame.width * scale).rounded()))
         config.height = max(1, Int((frame.height * scale).rounded()))

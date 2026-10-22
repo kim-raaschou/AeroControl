@@ -36,9 +36,9 @@ final class FakeBridge: NativeApiBridge {
             if n == holdAfter { await withCheckedContinuation { held = $0 } }
             guard !blank.contains(id), !Task.isCancelled, let box = boxes[id] else { continue }   // a cancelled capture gives nothing, as ScreenCaptureKit's
             filling[id] = box
-            // In the window's shape, just covering the box — like a real capture.
+            // In the window's shape, fitting the box — like a real capture.
             let shape = sizes[id] ?? CGSize(width: 300, height: 200)
-            let scale = max(box.width / shape.width, box.height / shape.height)
+            let scale = min(box.width / shape.width, box.height / shape.height)
             deliver(id, picture(CGSize(width: shape.width * scale, height: shape.height * scale)))
         }
     }

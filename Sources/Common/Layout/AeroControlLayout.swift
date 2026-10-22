@@ -158,12 +158,9 @@ public enum AeroControlLayout {
 public enum AeroControlMetrics {
     public static func badgeSize(_ picture: CGSize) -> CGFloat { min(36, max(12, min(picture.width * 0.11, picture.height * 0.4))) }
 
-    static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize { scaled(imageSize, into: box, min) }
-    public static func cover(_ imageSize: CGSize, into box: CGSize) -> CGSize { scaled(imageSize, into: box, max) }
-
-    private static func scaled(_ imageSize: CGSize, into box: CGSize, _ pick: (CGFloat, CGFloat) -> CGFloat) -> CGSize {
+    public static func fit(_ imageSize: CGSize, into box: CGSize) -> CGSize {
         guard imageSize.width > 0, imageSize.height > 0 else { return box }
-        let scale = pick(box.width / imageSize.width, box.height / imageSize.height)
+        let scale = min(box.width / imageSize.width, box.height / imageSize.height)
         return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
