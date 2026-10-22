@@ -149,6 +149,15 @@ on the mirror.
   the app runs. AeroSpace keeps no such order to ask for, so this is
   remembered on purpose — the one thing besides the strip's marking that is.
 
+### Rule: no special cases
+
+A rule that holds for every window, workspace and key is the design; a branch for one situation is
+a smell, not a fix. When something goes wrong in one case, look for the general rule that makes it
+right in all of them, usually what AeroSpace itself does, before adding an `if`. A fix that needs a
+special case is stopped and discussed first. Learned the hard way: floats were given their own
+place in the arrows' order and then a rule for the card's edge, and in the end could not be reached
+at all; walked like every other window, by where they are drawn, they always could.
+
 ### Rule: read, don't infer — and remember nothing that can drift
 
 Workspace and window data are **immutable values from one read** of AeroSpace (`WorkspaceInfo`,
